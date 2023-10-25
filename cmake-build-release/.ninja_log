@@ -1,0 +1,15 @@
+# ninja log v5
+3	27	7199189186555038	CMakeFiles/integral.dir/types.ixx.obj	da9bb3e38e8819d
+3	161	7199202213941894	CMakeFiles/integral.dir/board.ixx.obj	d9d431ccfe6571a4
+0	424	7199208853268910	CMakeFiles/integral.dir/main.cpp.obj	b5e890aa1c1a42c0
+0	681	7199208580576703	CMakeFiles/integral.dir/fen.ixx.obj	3c4a73d59ab57f2
+424	519	7199208854217153	integral.exe	e6581273e422bf31
+6	381	7199197033094667	CMakeFiles/integral.dir/bitboard.ixx.obj	f2367e0b1101a019
+0	4	0	clean	3ac1ac369df1e668
+0	676	7199585884726273	CMakeFiles/integral.dir/fen.ixx.obj	3c4a73d59ab57f2
+676	781	7199585885791608	integral.exe	e6581273e422bf31
+0	569	7199586004060220	CMakeFiles/integral.dir/fen.ixx.obj	3c4a73d59ab57f2
+569	680	7199586005183305	integral.exe	e6581273e422bf31
+0	364	7199586748475154	CMakeFiles/integral.dir/bitboard.ixx.obj	f2367e0b1101a019
+1	575	7199586826194861	CMakeFiles/integral.dir/fen.ixx.obj	3c4a73d59ab57f2
+575	681	7199586827267091	integral.exe	e6581273e422bf31
