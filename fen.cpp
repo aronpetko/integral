@@ -92,9 +92,8 @@ std::string board_to_string(const std::shared_ptr<BoardState>& state) {
     for (int file = 0; file < 8; file++) {
       U8 square = (rank * 8 + file);
 
-      if (state->pieces[kAllPieces].is_set(square)) {
+      if (state->pieces[kAllPieces].is_set(square))
         output.push_back(get_piece_char(state->pieces, square));
-      }
       else
         empty++;
     }
