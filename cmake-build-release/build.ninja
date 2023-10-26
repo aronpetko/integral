@@ -50,35 +50,28 @@ cmake_ninja_workdir = D$:\Coding\integral\cmake-build-release\
 build cmake_object_order_depends_target_integral: phony || CMakeFiles\integral.dir
 
 build CMakeFiles\integral.dir\main.cpp.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\main.cpp || cmake_object_order_depends_target_integral
-  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++20
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
   OBJECT_DIR = CMakeFiles\integral.dir
   OBJECT_FILE_DIR = CMakeFiles\integral.dir
   TARGET_COMPILE_PDB = CMakeFiles\integral.dir\
   TARGET_PDB = integral.pdb
 
-build CMakeFiles\integral.dir\board.ixx.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\board.ixx || cmake_object_order_depends_target_integral
-  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++20
+build CMakeFiles\integral.dir\board.cpp.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\board.cpp || cmake_object_order_depends_target_integral
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
   OBJECT_DIR = CMakeFiles\integral.dir
   OBJECT_FILE_DIR = CMakeFiles\integral.dir
   TARGET_COMPILE_PDB = CMakeFiles\integral.dir\
   TARGET_PDB = integral.pdb
 
-build CMakeFiles\integral.dir\fen.ixx.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\fen.ixx || cmake_object_order_depends_target_integral
-  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++20
+build CMakeFiles\integral.dir\bitboard.cpp.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\bitboard.cpp || cmake_object_order_depends_target_integral
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
   OBJECT_DIR = CMakeFiles\integral.dir
   OBJECT_FILE_DIR = CMakeFiles\integral.dir
   TARGET_COMPILE_PDB = CMakeFiles\integral.dir\
   TARGET_PDB = integral.pdb
 
-build CMakeFiles\integral.dir\types.ixx.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\types.ixx || cmake_object_order_depends_target_integral
-  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++20
-  OBJECT_DIR = CMakeFiles\integral.dir
-  OBJECT_FILE_DIR = CMakeFiles\integral.dir
-  TARGET_COMPILE_PDB = CMakeFiles\integral.dir\
-  TARGET_PDB = integral.pdb
-
-build CMakeFiles\integral.dir\bitboard.ixx.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\bitboard.ixx || cmake_object_order_depends_target_integral
-  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++20
+build CMakeFiles\integral.dir\fen.cpp.obj: CXX_COMPILER__integral_Release D$:\Coding\integral\fen.cpp || cmake_object_order_depends_target_integral
+  FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD -std:c++17
   OBJECT_DIR = CMakeFiles\integral.dir
   OBJECT_FILE_DIR = CMakeFiles\integral.dir
   TARGET_COMPILE_PDB = CMakeFiles\integral.dir\
@@ -92,7 +85,7 @@ build CMakeFiles\integral.dir\bitboard.ixx.obj: CXX_COMPILER__integral_Release D
 #############################################
 # Link the executable integral.exe
 
-build integral.exe: CXX_EXECUTABLE_LINKER__integral_Release CMakeFiles\integral.dir\main.cpp.obj CMakeFiles\integral.dir\board.ixx.obj CMakeFiles\integral.dir\fen.ixx.obj CMakeFiles\integral.dir\types.ixx.obj CMakeFiles\integral.dir\bitboard.ixx.obj
+build integral.exe: CXX_EXECUTABLE_LINKER__integral_Release CMakeFiles\integral.dir\main.cpp.obj CMakeFiles\integral.dir\board.cpp.obj CMakeFiles\integral.dir\bitboard.cpp.obj CMakeFiles\integral.dir\fen.cpp.obj
   FLAGS = /DWIN32 /D_WINDOWS /EHsc /O2 /Ob2 /DNDEBUG -MD
   LINK_FLAGS = /machine:x64 /INCREMENTAL:NO /subsystem:console
   LINK_LIBRARIES = kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
