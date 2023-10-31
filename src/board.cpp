@@ -1,30 +1,86 @@
 #include "board.h"
+#include "move_gen.h"
 
-void Board::make_move(Move move) {
-  auto new_state = std::make_shared<BoardState>();
-  std::memcpy(new_state.get(), state_.get(), sizeof(BoardState));
+static Color get_piece_color(BoardState* state, U8 pos) {
+  if (!state)
+    return {};
 
+  return state->pieces[kWhitePieces].is_set(pos) ? Color::kWhite : Color::kBlack;
+}
+
+bool Board::is_valid_move(Move move) {
   U8 from = move.get_from(), to = move.get_to();
 
+  // does a piece exist here?
+  if (!state_->pieces[kAllPieces].is_set(from))
+    return false;
+
+  // check if the moved piece belongs to the current move's player
+  if (!state_->pieces[state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces].is_set(from))
+    return false;
+
+  BitBoard possible_moves;
+
+  // pawns
+  if (state_->pieces[kWhitePawns].is_set(from) || state_->pieces[kBlackPawns].is_set(from))
+    possible_moves = generate_pawn_moves(from, state_->pieces[kAllPieces], state_);
+  // knights
+  else if (state_->pieces[kWhiteKnights].is_set(from) || state_->pieces[kBlackKnights].is_set(from))
+    possible_moves = generate_knight_moves(from, state_->pieces[kAllPieces], state_);
+  // bishops
+  else if (state_->pieces[kWhiteBishops].is_set(from) || state_->pieces[kBlackBishops].is_set(from))
+    possible_moves = generate_bishop_moves(from, state_->pieces[kAllPieces], state_);
+  // rooks
+  else if (state_->pieces[kWhiteRooks].is_set(from) || state_->pieces[kBlackRooks].is_set(from))
+    possible_moves = generate_rook_moves(from, state_->pieces[kAllPieces], state_);
+  // queens
+  else if (state_->pieces[kWhiteQueens].is_set(from) || state_->pieces[kBlackQueens].is_set(from))
+    possible_moves = generate_bishop_moves(from, state_->pieces[kAllPieces], state_) | generate_rook_moves(from, state_->pieces[kAllPieces], state_);
+  // king
+  else if (state_->pieces[kWhiteKing].is_set(from) || state_->pieces[kBlackKing].is_set(from))
+    possible_moves = generate_king_moves(from, state_->pieces[kAllPieces], state_);
+
+  return possible_moves.is_set(to);
+}
+
+void Board::make_move(Move move) {
+  if (!is_valid_move(move)) {
+    std::cerr << "invalid move" << std::endl;
+    return;
+  }
+
+  // create a new board state (for history)
+  auto new_state = new BoardState;
+  std::memcpy(new_state, state_, sizeof(BoardState));
+
+  // moving the piece
+  U8 from = move.get_from(), to = move.get_to();
   int start_bb = new_state->turn_to_move == Color::kWhite ? kWhitePawns : kBlackPawns,
       end_bb = new_state->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces;
 
-  for (int bb_idx = start_bb; bb_idx < end_bb; bb_idx++) {
+  for (int bb_idx = start_bb; bb_idx <= end_bb; bb_idx++) {
     BitBoard &piece_bb = new_state->pieces[bb_idx];
 
     // there should be only one piece on this square, so this is kind of safe
     if (piece_bb.is_set(from)) {
       piece_bb.clear_bit(from);
       piece_bb.set_bit(to);
-      break;
     }
   }
 
-  // update bitboards that track all of their pieces
-  new_state->pieces[end_bb].move(from, to);
-  new_state->pieces[kAllPieces].move(from, to);
+  // handle piece capture if it happened
+  int opponent_start_bb = new_state->turn_to_move == Color::kWhite ? kBlackPawns : kWhitePawns;
+  int opponent_end_bb = new_state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces;
 
-  new_state->turn_to_move = Color(static_cast<bool>(new_state->turn_to_move));
+  for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
+    BitBoard &piece_bb = new_state->pieces[bb_idx];
+
+    if (piece_bb.is_set(to))
+      piece_bb.clear_bit(to);
+  }
+
+  new_state->pieces[kAllPieces] = new_state->pieces[kWhitePieces] | new_state->pieces[kBlackPieces];
+  new_state->turn_to_move = Color(!static_cast<bool>(new_state->turn_to_move));
 
   // simple linked list
   new_state->prev_state = state_;
@@ -32,5 +88,11 @@ void Board::make_move(Move move) {
 }
 
 void Board::undo_move() {
-  state_ = state_->prev_state;
+  if (state_ && state_->prev_state) {
+    auto temp = state_;
+    state_ = state_->prev_state;
+    delete temp;
+  } else {
+    std::cerr << "no moves to undo" << std::endl;
+  }
 }

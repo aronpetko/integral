@@ -17,7 +17,8 @@ enum PieceType {
 
 enum class Color {
   kWhite,
-  kBlack
+  kBlack,
+  kNone
 };
 
 enum CastleBits {
@@ -25,6 +26,17 @@ enum CastleBits {
   kWhiteQueenside = 0b0010,
   kBlackKingside = 0b0100,
   kBlackQueenside = 0b1000,
+};
+
+enum Direction {
+  kNorth,
+  kSouth,
+  kEast,
+  kWest,
+  kNorthEast,
+  kNorthWest,
+  kSouthEast,
+  kSouthWest
 };
 
 #endif // INTEGRAL_TYPES_H_

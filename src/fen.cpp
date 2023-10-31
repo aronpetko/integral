@@ -2,8 +2,28 @@
 
 namespace fen {
 
-std::shared_ptr<BoardState> string_to_board(const std::string &fen_str) {
-  auto state = std::make_shared<BoardState>();
+// the bit boards will get populated when fen is parsed
+char get_piece_char(BitBoards &pieces, U8 pos) {
+  if (pieces[kWhitePieces].is_set(pos)) {
+    if (pieces[kWhitePawns].is_set(pos)) return 'P';
+    if (pieces[kWhiteKnights].is_set(pos)) return 'N';
+    if (pieces[kWhiteBishops].is_set(pos)) return 'B';
+    if (pieces[kWhiteRooks].is_set(pos)) return 'R';
+    if (pieces[kWhiteQueens].is_set(pos)) return 'Q';
+    if (pieces[kWhiteKing].is_set(pos)) return 'K';
+  } else if (pieces[kBlackPieces].is_set(pos)) {
+    if (pieces[kBlackPawns].is_set(pos)) return 'p';
+    if (pieces[kBlackKnights].is_set(pos)) return 'n';
+    if (pieces[kBlackBishops].is_set(pos)) return 'b';
+    if (pieces[kBlackRooks].is_set(pos)) return 'r';
+    if (pieces[kBlackQueens].is_set(pos)) return 'q';
+    if (pieces[kBlackKing].is_set(pos)) return 'k';
+  }
+  return ' ';
+}
+
+BoardState* string_to_board(const std::string &fen_str) {
+  auto state = new BoardState;
   BitBoards &pieces = state->pieces;
 
   std::istringstream stream(fen_str);
@@ -11,11 +31,13 @@ std::shared_ptr<BoardState> string_to_board(const std::string &fen_str) {
   stream >> position;
 
   // from 63 to 0, starting from a8 to h1
-  U8 square = 63;
+  U8 square = 56;
 
   for (const char &ch : position) {
-    if (ch == '/') continue;
-
+    if (ch == '/') {
+      square = square - 16 + (square % 8);
+      continue;
+    }
     if (std::isdigit(ch)) {
       square += ch - '0';
       continue;
@@ -48,7 +70,7 @@ std::shared_ptr<BoardState> string_to_board(const std::string &fen_str) {
     if (target)
       target->set_bit(square);
 
-    square--;
+    square++;
   }
 
   pieces[kWhitePieces] = pieces[kWhitePawns] | pieces[kWhiteKnights] | pieces[kWhiteBishops] | pieces[kWhiteRooks] | pieces[kWhiteQueens] | pieces[kWhiteKing];
@@ -90,7 +112,7 @@ std::string board_to_string(const std::shared_ptr<BoardState>& state) {
     int empty = 0;
 
     for (int file = 0; file < 8; file++) {
-      U8 square = (rank * 8 + file);
+      U8 square = rank_file_to_pos(rank, file);
 
       if (state->pieces[kAllPieces].is_set(square))
         output.push_back(get_piece_char(state->pieces, square));

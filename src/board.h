@@ -8,7 +8,7 @@
 #include "move.h"
 
 struct BoardState {
-  std::shared_ptr<BoardState> prev_state;
+  BoardState* prev_state;
   BitBoards pieces;
   Color turn_to_move;
   U32 full_moves;
@@ -26,20 +26,22 @@ struct BoardState {
 
 class Board {
  public:
-  explicit Board(std::shared_ptr<BoardState> state) {
-    state_ = std::move(state);
+  explicit Board(BoardState* state) {
+    state_ = state;
   }
 
-  std::shared_ptr<BoardState> get_state() {
+  BoardState* get_state() {
     return state_;
   }
+
+  bool is_valid_move(Move move);
 
   void make_move(Move move);
 
   void undo_move();
 
  private:
-  std::shared_ptr<BoardState> state_;
+  BoardState* state_;
 };
 
 #endif // INTEGRAL_BOARD_H_
