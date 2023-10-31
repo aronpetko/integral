@@ -212,12 +212,20 @@ static U8 get_lsb_pos(BitBoard bb) {
   return get_lsb_pos(bb.as_int());
 }
 
+static U8 pop_lsb(BitBoard &bb) {
+  U8 lsb_pos = get_lsb_pos(bb);
+  bb &= BitBoard(bb.as_int() - 1);
+  return lsb_pos;
+}
+
 static Color get_piece_color(U8 pos, BitBoards &pieces) {
-  return pieces[kWhitePieces].is_set(pos) ? Color::kWhite : pieces[kBlackPieces].is_set(pos) ? Color::kBlack : Color::kNone;
+  return pieces[kWhitePieces].is_set(pos) ? Color::kWhite : pieces[kBlackPieces].is_set(pos) ? Color::kBlack
+                                                                                             : Color::kNone;
 }
 
 static Color get_piece_color(BitBoard bb, BitBoards &pieces) {
-  return (pieces[kWhitePieces] & bb).as_int() ? Color::kWhite : (pieces[kBlackPieces] & bb).as_int() ? Color::kBlack : Color::kNone;
+  return (pieces[kWhitePieces] & bb).as_int() ? Color::kWhite : (pieces[kBlackPieces] & bb).as_int() ? Color::kBlack
+                                                                                                     : Color::kNone;
 }
 
 static void print_bb(BitBoard board) {
@@ -264,7 +272,7 @@ static void print_pieces(BitBoards &pieces) {
   }
   std::cout << "  ";
   for (int file = 0; file < 8; file++)
-    std::cout << (char)('a' + file) << ' ';
+    std::cout << (char) ('a' + file) << ' ';
   std::cout << std::endl;
 }
 

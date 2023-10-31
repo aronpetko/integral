@@ -8,7 +8,7 @@
 #include "move.h"
 
 struct BoardState {
-  BoardState* prev_state;
+  BoardState *prev_state;
   BitBoards pieces;
   Color turn_to_move;
   U32 full_moves;
@@ -26,13 +26,14 @@ struct BoardState {
 
 class Board {
  public:
-  explicit Board(BoardState* state) {
+  explicit Board(BoardState *state) {
     state_ = state;
   }
 
-  BoardState* get_state() {
+  BoardState *get_state() {
     return state_;
   }
+
 
   bool is_valid_move(Move move);
 
@@ -41,7 +42,7 @@ class Board {
   void undo_move();
 
  private:
-  BoardState* state_;
+  BoardState *state_;
 };
 
 #endif // INTEGRAL_BOARD_H_

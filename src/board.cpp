@@ -1,7 +1,7 @@
 #include "board.h"
 #include "move_gen.h"
 
-static Color get_piece_color(BoardState* state, U8 pos) {
+static Color get_piece_color(BoardState *state, U8 pos) {
   if (!state)
     return {};
 
@@ -23,22 +23,44 @@ bool Board::is_valid_move(Move move) {
 
   // pawns
   if (state_->pieces[kWhitePawns].is_set(from) || state_->pieces[kBlackPawns].is_set(from))
-    possible_moves = generate_pawn_moves(from, state_->pieces[kAllPieces], state_);
-  // knights
+    possible_moves = generate_pawn_moves(from, state_);
+    // knights
   else if (state_->pieces[kWhiteKnights].is_set(from) || state_->pieces[kBlackKnights].is_set(from))
-    possible_moves = generate_knight_moves(from, state_->pieces[kAllPieces], state_);
-  // bishops
+    possible_moves = generate_knight_moves(from, state_);
+    // bishops
   else if (state_->pieces[kWhiteBishops].is_set(from) || state_->pieces[kBlackBishops].is_set(from))
-    possible_moves = generate_bishop_moves(from, state_->pieces[kAllPieces], state_);
-  // rooks
-  else if (state_->pieces[kWhiteRooks].is_set(from) || state_->pieces[kBlackRooks].is_set(from))
-    possible_moves = generate_rook_moves(from, state_->pieces[kAllPieces], state_);
-  // queens
+    possible_moves = generate_bishop_moves(from, state_);
+    // rooks
+  else if (state_->pieces[kWhiteRooks].is_set(from) || state_->pieces[kBlackRooks].is_set(from)) {
+    possible_moves = generate_rook_moves(from, state_);
+
+    switch (from) {
+      case Square::kA1:state_->castle_state &= ~CastleBits::kWhiteQueenside;
+        break;
+      case Square::kH1:state_->castle_state &= ~CastleBits::kWhiteKingside;
+        break;
+      case Square::kA8:state_->castle_state &= ~CastleBits::kBlackQueenside;
+        break;
+      case Square::kH8:state_->castle_state &= ~CastleBits::kBlackKingside;
+        break;
+      default:break;
+    }
+  }
+    // queens
   else if (state_->pieces[kWhiteQueens].is_set(from) || state_->pieces[kBlackQueens].is_set(from))
-    possible_moves = generate_bishop_moves(from, state_->pieces[kAllPieces], state_) | generate_rook_moves(from, state_->pieces[kAllPieces], state_);
-  // king
-  else if (state_->pieces[kWhiteKing].is_set(from) || state_->pieces[kBlackKing].is_set(from))
-    possible_moves = generate_king_moves(from, state_->pieces[kAllPieces], state_);
+    possible_moves = generate_bishop_moves(from, state_) | generate_rook_moves(from, state_);
+    // king
+  else if (state_->pieces[kWhiteKing].is_set(from) || state_->pieces[kBlackKing].is_set(from)) {
+    possible_moves = generate_king_moves(from, state_);
+
+    switch (from) {
+      case Square::kE1:state_->castle_state &= ~(CastleBits::kWhiteKingside | CastleBits::kWhiteQueenside);
+        break;
+      case Square::kE8:state_->castle_state &= ~(CastleBits::kBlackKingside | CastleBits::kBlackQueenside);
+        break;
+      default:break;
+    }
+  }
 
   return possible_moves.is_set(to);
 }
