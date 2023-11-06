@@ -1,27 +1,28 @@
 #include "move_gen.h"
 #include "board.h"
+#include <optional>
+#include <vector>
 
-// todo: make this function generate attacks regardless if there is a piece there and then handle if there is a piece in generate_pawn_moves. you must do this, aron, because rn move generation generates until a capture, which is not good if we're checking where the king can move
 BitBoard generate_pawn_attacks(U8 pos, BoardState *state) {
   BitBoard moves, bb_pos(BitBoard(1ULL << pos));
 
   if (get_piece_color(pos, state->pieces) == Color::kWhite) {
     // immediate diagonal captures
     BitBoard up_left = shift<Direction::kNorthWest>(bb_pos);
-    if (get_piece_color(up_left, state->pieces) == Color::kBlack)
+    if (up_left.as_int())
       moves.set_bit(get_lsb_pos(up_left));
 
     BitBoard up_right = shift<Direction::kNorthEast>(bb_pos);
-    if (get_piece_color(up_right, state->pieces) == Color::kBlack)
+    if (up_right.as_int())
       moves.set_bit(get_lsb_pos(up_right));
   } else {
     // immediate diagonal captures
     BitBoard down_left = shift<Direction::kSouthWest>(bb_pos);
-    if (get_piece_color(down_left, state->pieces) == Color::kWhite)
+    if (down_left.as_int())
       moves.set_bit(get_lsb_pos(down_left));
 
     BitBoard down_right = shift<Direction::kSouthEast>(bb_pos);
-    if (get_piece_color(down_right, state->pieces) == Color::kWhite)
+    if (down_right.as_int())
       moves.set_bit(get_lsb_pos(down_right));
   }
 
@@ -30,7 +31,7 @@ BitBoard generate_pawn_attacks(U8 pos, BoardState *state) {
 
 // todo: handle promotion
 BitBoard generate_pawn_moves(U8 pos, BoardState *state) {
-  BitBoard moves, bb_pos(BitBoard(1ULL << pos)), occupied = state->pieces[kAllPieces];
+  BitBoard moves, bb_pos(BitBoard(1ULL << pos)), occupied = state->pieces[kAllPieces], attacks = generate_pawn_attacks(pos, state);
 
   if (get_piece_color(pos, state->pieces) == Color::kWhite) {
     BitBoard up = shift<Direction::kNorth>(bb_pos);
@@ -43,6 +44,14 @@ BitBoard generate_pawn_moves(U8 pos, BoardState *state) {
       if (get_piece_color(up_up, state->pieces) == Color::kNone && !occupied.is_set(get_lsb_pos(up_up)))
         moves.set_bit(get_lsb_pos(up_up));
     }
+
+    // check if attacks can actually capture a piece
+    U8 attack_pos = pop_lsb(attacks);
+    if (state->pieces[kBlackPieces].is_set(attack_pos))
+      moves.set_bit(attack_pos);
+    attack_pos = pop_lsb(attacks);
+    if (state->pieces[kBlackPieces].is_set(attack_pos))
+      moves.set_bit(attack_pos);
   } else {
     BitBoard down = shift<Direction::kSouth>(bb_pos);
     if (get_piece_color(down, state->pieces) == Color::kNone && !occupied.is_set(get_lsb_pos(down)))
@@ -54,9 +63,17 @@ BitBoard generate_pawn_moves(U8 pos, BoardState *state) {
       if (get_piece_color(down_down, state->pieces) == Color::kNone && !occupied.is_set(get_lsb_pos(down_down)))
         moves.set_bit(get_lsb_pos(down_down));
     }
+
+    // check if attacks can actually capture a piece
+    U8 attack_pos = pop_lsb(attacks);
+    if (state->pieces[kWhitePieces].is_set(attack_pos))
+      moves.set_bit(attack_pos);
+    attack_pos = pop_lsb(attacks);
+    if (state->pieces[kWhitePieces].is_set(attack_pos))
+      moves.set_bit(attack_pos);
   }
 
-  return moves | generate_pawn_attacks(pos, state);
+  return moves;
 }
 
 BitBoard generate_knight_moves(U8 pos, BoardState *state) {
@@ -115,7 +132,6 @@ BitBoard generate_bishop_moves(U8 pos, BoardState *state) {
   return moves;
 }
 
-// todo: handle castling rights
 BitBoard generate_rook_moves(U8 pos, BoardState *state) {
   BitBoard moves, occupied = state->pieces[kAllPieces];
 
@@ -151,7 +167,7 @@ BitBoard generate_rook_moves(U8 pos, BoardState *state) {
   return moves;
 }
 
-// todo: handle castling, in-check moves
+// todo: handle castling
 BitBoard generate_king_moves(U8 pos, BoardState *state) {
   BitBoard moves, occupied = state->pieces[kAllPieces], attacked = get_attacked_squares(state, false);
 
@@ -160,7 +176,7 @@ BitBoard generate_king_moves(U8 pos, BoardState *state) {
     U8 new_pos = get_lsb_pos(shifted);
 
     // king would move into check, which is illegal
-    if (attacked.is_set(new_pos))
+    if (!shifted.as_int() || attacked.is_set(new_pos))
       return;
 
     // if the move collides with another piece
@@ -184,6 +200,39 @@ BitBoard generate_king_moves(U8 pos, BoardState *state) {
   generate_moves_in_direction(shift<Direction::kSouthEast>);
   generate_moves_in_direction(shift<Direction::kSouthWest>);
 
+  print_bb(attacked);
+
+  std::vector<std::pair<std::vector<Square>, Square>> castle_moves;
+
+  if (state->turn_to_move == Color::kWhite) {
+    if (state->castle_state & CastleBits::kWhiteKingside) {
+      const std::vector<Square> kWhiteKingsideCastleSquares = { Square::kF1, Square::kG1, Square::kH1 };
+      const Square kCastleSquare = Square::kG1;
+      castle_moves.emplace_back(kWhiteKingsideCastleSquares, kCastleSquare);
+    }
+
+    if (state->castle_state & CastleBits::kWhiteQueenside) {
+      const std::vector<Square> kWhiteQueensideCastleSquares = { Square::kD1, Square::kC1, Square::kB1, kA1 };
+      const Square kCastleSquare = Square::kC1;
+      castle_moves.emplace_back(kWhiteQueensideCastleSquares, kCastleSquare);
+    }
+  }
+
+  for (const auto &castle_data : castle_moves) {
+    bool can_castle = true;
+    for (Square square : castle_data.first) {
+      if (attacked.is_set(square)) {
+        can_castle = false;
+        break;
+      }
+    }
+
+    if (can_castle) {
+      moves.set_bit(castle_data.second);
+      std::cout << castle_data.second << std::endl;
+    }
+  }
+
   return moves;
 }
 
@@ -192,8 +241,10 @@ BitBoard generate_king_attacks(U8 pos) {
 
   auto generate_attack_in_direction = [&](auto &shift_fn) {
     BitBoard shifted = shift_fn(BitBoard(1ULL << pos));
-    U8 new_pos = get_lsb_pos(shifted);
-    attacks.set_bit(new_pos);
+    if (!shifted.as_int())
+      return;
+
+    attacks.set_bit(get_lsb_pos(shifted));
   };
 
   // Generate attacks for each direction
@@ -209,11 +260,11 @@ BitBoard generate_king_attacks(U8 pos) {
   return attacks;
 }
 
-BitBoard get_attacked_squares(BoardState *state, bool include_king_attacks) {
+BitBoard get_attacked_squares(BoardState *state, bool self, bool include_king_attacks) {
   BitBoard attacked;
 
   // offset for white and black pieces
-  int offset = (state->turn_to_move == Color::kBlack) ? 0 : 7;
+  int offset = (state->turn_to_move == Color::kBlack) ? (self ? 7 : 0) : (self ? 0 : 7);
 
   // pawns
   BitBoard pawns = state->pieces[offset + 0];
@@ -257,12 +308,10 @@ BitBoard get_attacked_squares(BoardState *state, bool include_king_attacks) {
     attacked |= generate_king_attacks(king_square);
   }
 
-  print_bb(attacked);
-
   return attacked;
 }
 
-bool king_in_check(BoardState *state) {
-  BitBoard king_bb = state->turn_to_move == Color::kWhite ? state->pieces[kWhiteKing] : state->pieces[kBlackKing];
-  return get_attacked_squares(state).is_set(get_lsb_pos(king_bb));
+bool king_in_check(Color color, BoardState *state) {
+  BitBoard king_bb = color == Color::kWhite ? state->pieces[kWhiteKing] : state->pieces[kBlackKing];
+  return get_attacked_squares(state, color != state->turn_to_move).is_set(get_lsb_pos(king_bb));
 }

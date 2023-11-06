@@ -185,17 +185,17 @@ static BitBoard shift(BitBoard bb) {
   if (dir == Direction::kSouth)
     return bb >> 8;
   if (dir == Direction::kEast)
-    return (bb & ~FileMasks::kFileA) >> 1;
+    return (bb & ~FileMasks::kFileH) >> 1;
   if (dir == Direction::kWest)
-    return (bb & ~FileMasks::kFileH) << 1;
+    return (bb & ~FileMasks::kFileA) << 1;
   if (dir == Direction::kNorthEast)
     return (bb & ~FileMasks::kFileH) << 9;
   if (dir == Direction::kNorthWest)
     return (bb & ~FileMasks::kFileA) << 7;
   if (dir == Direction::kSouthEast)
-    return ((bb & ~FileMasks::kFileA) >> 9);
+    return ((bb & ~FileMasks::kFileH) >> 9);
   if (dir == Direction::kSouthWest)
-    return ((bb & ~FileMasks::kFileH) >> 7);
+    return ((bb & ~FileMasks::kFileA) >> 7);
 }
 
 static U8 get_lsb_pos(U64 val) {
