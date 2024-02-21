@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-const U8 kMoveMask = 0b00111111;
+const U8 kMoveMask = 0b111111;
 const U8 kPieceTypeMask = 0b111;
 
 // bits 0-5: from

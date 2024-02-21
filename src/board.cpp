@@ -35,7 +35,7 @@ bool Board::is_valid_move(Move move) {
   else if (state_->pieces[kWhiteRooks].is_set(from) || state_->pieces[kBlackRooks].is_set(from)) {
     possible_moves = generate_rook_moves(from, state_);
 
-    switch (from) {
+    /* switch (from) {
       case Square::kA1:state_->castle_state &= ~CastleBits::kWhiteQueenside;
         break;
       case Square::kH1:state_->castle_state &= ~CastleBits::kWhiteKingside;
@@ -45,7 +45,7 @@ bool Board::is_valid_move(Move move) {
       case Square::kH8:state_->castle_state &= ~CastleBits::kBlackKingside;
         break;
       default:break;
-    }
+    } */
   }
   // queens
   else if (state_->pieces[kWhiteQueens].is_set(from) || state_->pieces[kBlackQueens].is_set(from))
@@ -53,14 +53,13 @@ bool Board::is_valid_move(Move move) {
   // king
   else if (state_->pieces[kWhiteKing].is_set(from) || state_->pieces[kBlackKing].is_set(from)) {
     possible_moves = generate_king_moves(from, state_);
-
-    switch (from) {
+    /*switch (from) {
       case Square::kE1:state_->castle_state &= ~(CastleBits::kWhiteKingside | CastleBits::kWhiteQueenside);
         break;
       case Square::kE8:state_->castle_state &= ~(CastleBits::kBlackKingside | CastleBits::kBlackQueenside);
         break;
       default:break;
-    }
+    }*/
   }
 
   // does this move place/keep us in check?
@@ -113,8 +112,13 @@ void Board::make_move(Move move, bool check_valid) {
       piece_bb.clear_bit(to);
   }
 
+  // set all the new BoardState data
   new_state->pieces[kAllPieces] = new_state->pieces[kWhitePieces] | new_state->pieces[kBlackPieces];
   new_state->turn_to_move = Color(!static_cast<bool>(new_state->turn_to_move));
+
+  new_state->half_moves++;
+  if (new_state->half_moves % 2 == 0)
+    new_state->full_moves++;
 
   // simple linked list
   new_state->prev_state = state_;

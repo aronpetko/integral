@@ -158,23 +158,23 @@ static U8 rank_file_to_pos(U8 rank, U8 file) {
 static Move algebraic_to_move(const std::string &move_str) {
   int from_rank = move_str[1] - '1', from_file = move_str[0] - 'a';
   int to_rank = move_str[3] - '1', to_file = move_str[2] - 'a';
-  return Move(rank_file_to_pos(from_rank, from_file), rank_file_to_pos(to_rank, to_file));
+  return {rank_file_to_pos(from_rank, from_file), rank_file_to_pos(to_rank, to_file)};
 }
 
 // todo: handle promotion
 static std::string move_to_algebraic(Move move) {
   std::string output;
-  output.push_back(move.get_from() / 8 + 'a');
-  output.push_back(move.get_from() % 8 + '1');
-  output.push_back(move.get_to() / 8 + 'a');
-  output.push_back(move.get_to() % 8 + '1');
+  output.push_back(static_cast<char>(move.get_from() / 8 + 'a'));
+  output.push_back(static_cast<char>(move.get_from() % 8 + '1'));
+  output.push_back(static_cast<char>(move.get_to() / 8 + 'a'));
+  output.push_back(static_cast<char>(move.get_to() % 8 + '1'));
   return output;
 }
 
 static std::string pos_to_algebraic(U8 pos) {
   std::string output;
-  output.push_back(pos % 8 + 'a');
-  output.push_back(pos / 8 + '1');
+  output.push_back(static_cast<char>(pos % 8 + 'a'));
+  output.push_back(static_cast<char>(pos / 8 + '1'));
   return output;
 }
 
@@ -185,17 +185,17 @@ static BitBoard shift(BitBoard bb) {
   if (dir == Direction::kSouth)
     return bb >> 8;
   if (dir == Direction::kEast)
-    return (bb & ~FileMasks::kFileH) >> 1;
+    return (bb << 1) & ~FileMasks::kFileA;
   if (dir == Direction::kWest)
-    return (bb & ~FileMasks::kFileA) << 1;
+    return (bb >> 1) & ~FileMasks::kFileH;
   if (dir == Direction::kNorthEast)
-    return (bb & ~FileMasks::kFileH) << 9;
+    return (bb << 9) & ~FileMasks::kFileA;
   if (dir == Direction::kNorthWest)
-    return (bb & ~FileMasks::kFileA) << 7;
+    return (bb << 7) & ~FileMasks::kFileH;
   if (dir == Direction::kSouthEast)
-    return ((bb & ~FileMasks::kFileH) >> 9);
+    return (bb >> 7) & ~FileMasks::kFileA;
   if (dir == Direction::kSouthWest)
-    return ((bb & ~FileMasks::kFileA) >> 7);
+    return (bb >> 9) & ~FileMasks::kFileH;
 }
 
 static U8 get_lsb_pos(U64 val) {

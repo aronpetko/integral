@@ -34,7 +34,6 @@ class Board {
     return state_;
   }
 
-
   bool is_valid_move(Move move);
 
   void make_move(Move move, bool check_valid = true);

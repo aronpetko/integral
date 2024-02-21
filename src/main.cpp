@@ -1,12 +1,9 @@
 #include "board.h"
 #include "fen.h"
-
-#include <windows.h>
+#include "move_gen.h"
 
 int main() {
-  SetConsoleOutputCP(65001);
-
-  Board board(fen::string_to_board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1"));
+  Board board(fen::string_to_board("rnbqkbnr/ppp1pppp/8/1Q1p4/3P4/8/PPP1PPPP/RNB1KBNR b KQkq - 0 1"));
   print_pieces(board.get_state()->pieces);
 
   std::string move;
