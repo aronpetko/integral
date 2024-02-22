@@ -155,10 +155,19 @@ static U8 rank_file_to_pos(U8 rank, U8 file) {
 }
 
 // todo: handle promotion
-static std::pair<U8, U8> algebraic_to_pos(const std::string &move_str) {
+static std::optional<std::pair<U8, U8>> algebraic_to_pos(const std::string &move_str) {
+  const int kAlgebraicMoveLen = 4;
+  if (move_str.length() != kAlgebraicMoveLen)
+    return std::nullopt;
+
   int from_rank = move_str[1] - '1', from_file = move_str[0] - 'a';
   int to_rank = move_str[3] - '1', to_file = move_str[2] - 'a';
-  return {rank_file_to_pos(from_rank, from_file), rank_file_to_pos(to_rank, to_file)};
+
+  if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 ||
+      from_file < 0 || from_file >= 8 || to_file < 0 || to_file >= 8)
+    return std::nullopt;
+
+  return std::make_pair(rank_file_to_pos(from_rank, from_file), rank_file_to_pos(to_rank, to_file));
 }
 
 // todo: handle promotion

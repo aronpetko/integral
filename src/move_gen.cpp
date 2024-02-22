@@ -42,14 +42,6 @@ BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
       if (get_piece_color(up_up, state->pieces) == Color::kNone && !occupied.is_set(get_lsb_pos(up_up)))
         moves |= up_up;
     }
-
-    // check if attacks can actually capture a piece
-    U8 attack_pos = pop_lsb(attacks);
-    //if (state->pieces[kBlackPieces].is_set(attack_pos))
-    moves.set_bit(attack_pos);
-    attack_pos = pop_lsb(attacks);
-    //if (state->pieces[kBlackPieces].is_set(attack_pos))
-    moves.set_bit(attack_pos);
   } else {
     BitBoard down = shift<Direction::kSouth>(bb_pos);
     if (get_piece_color(down, state->pieces) == Color::kNone && !occupied.is_set(get_lsb_pos(down)))
@@ -61,17 +53,13 @@ BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
       if (get_piece_color(down_down, state->pieces) == Color::kNone && !occupied.is_set(get_lsb_pos(down_down)))
         moves |= down_down;
     }
-
-    // check if attacks can actually capture a piece
-    U8 attack_pos = pop_lsb(attacks);
-    //if (state->pieces[kWhitePieces].is_set(attack_pos))
-    moves.set_bit(attack_pos);
-    attack_pos = pop_lsb(attacks);
-    //if (state->pieces[kWhitePieces].is_set(attack_pos))
-    moves.set_bit(attack_pos);
   }
 
-  return moves;
+  // allow attacks that can actually capture an opposing piece
+  BitBoard &opposing_pieces = state->pieces[state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces];
+  attacks &= opposing_pieces;
+
+  return moves | attacks;
 }
 
 BitBoard generate_knight_moves(U8 pos, const std::unique_ptr<BoardState> &state) {

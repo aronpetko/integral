@@ -7,7 +7,7 @@ bool Board::is_valid_move(const Move &move) {
     return false;
   }
 
-  auto from = move.get_from(), to = move.get_to();
+  U8 from = move.get_from(), to = move.get_to();
 
   // check if the moved piece belongs to the current move's player
   if (!state_->pieces[state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces].is_set(from)) {
@@ -48,7 +48,7 @@ bool Board::is_valid_move(const Move &move) {
 }
 
 void Board::handle_capturing(const Move &move, const std::unique_ptr<BoardState> &new_state) {
-  const auto to = move.get_to();
+  const U8 to = move.get_to();
 
   const int opponent_start_bb = new_state->turn_to_move == Color::kWhite ? kBlackPawns : kWhitePawns;
   const int opponent_end_bb = new_state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces;
@@ -65,7 +65,7 @@ void Board::handle_capturing(const Move &move, const std::unique_ptr<BoardState>
 }
 
 void Board::handle_castling(const Move &move, const std::unique_ptr<BoardState> &new_state) {
-  const auto from = move.get_from(), to = move.get_to();
+  const U8 from = move.get_from(), to = move.get_to();
   const auto piece_type = move.get_piece_type();
 
   // perform the castle
@@ -117,7 +117,7 @@ void Board::make_move(const Move &move, bool check_valid) {
   if (check_valid && !is_valid_move(move))
     return;
 
-  const auto from = move.get_from(), to = move.get_to();
+  const U8 from = move.get_from(), to = move.get_to();
 
   // create a new board state for history
   auto new_state = std::make_unique<BoardState>(*state_);
