@@ -2,7 +2,7 @@
 #include "fen.h"
 
 int main() {
-  Board board(fen::string_to_board("r3k2r/p6p/8/8/8/8/P6P/R3K2R w KQkq - 0 1"));
+  Board board(fen::string_to_board(fen::kStartFen));
 
   std::string command;
   while (true) {
