@@ -87,13 +87,13 @@ std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
   stream >> castle_rights;
   for (const char &ch : castle_rights) {
     if (ch == 'K')
-      state->castle_state |= CastleBits::kWhiteKingside;
+      state->castle_state |= CastleRights::kWhiteKingside;
     else if (ch == 'Q')
-      state->castle_state |= CastleBits::kWhiteQueenside;
+      state->castle_state |= CastleRights::kWhiteQueenside;
     else if (ch == 'k')
-      state->castle_state |= CastleBits::kBlackKingside;
+      state->castle_state |= CastleRights::kBlackKingside;
     else if (ch == 'q')
-      state->castle_state |= CastleBits::kBlackQueenside;
+      state->castle_state |= CastleRights::kBlackQueenside;
   }
 
   // todo: implement this
@@ -135,13 +135,13 @@ std::string board_to_string(const std::shared_ptr<BoardState>& state) {
 
   // castling rights
   output.push_back(' ');
-  if (state->castle_state & CastleBits::kWhiteKingside)
+  if (state->castle_state & CastleRights::kWhiteKingside)
     output.push_back('K');
-  if (state->castle_state & CastleBits::kWhiteQueenside)
+  if (state->castle_state & CastleRights::kWhiteQueenside)
     output.push_back('Q');
-  if (state->castle_state & CastleBits::kBlackKingside)
+  if (state->castle_state & CastleRights::kBlackKingside)
     output.push_back('k');
-  if (state->castle_state & CastleBits::kBlackQueenside)
+  if (state->castle_state & CastleRights::kBlackQueenside)
     output.push_back('q');
 
   // todo: implement en-passant state

@@ -29,11 +29,13 @@ enum class Color {
   kNone
 };
 
-enum CastleBits : U8 {
+enum CastleRights : U8 {
   kWhiteKingside = 0b0001,
   kWhiteQueenside = 0b0010,
+  kWhiteBothSides = kWhiteKingside | kWhiteQueenside,
   kBlackKingside = 0b0100,
   kBlackQueenside = 0b1000,
+  kBlackBothSides = kBlackKingside | kBlackQueenside,
 };
 
 enum class Direction : U8 {

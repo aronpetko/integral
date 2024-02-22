@@ -53,6 +53,7 @@ void Board::handle_capturing(const Move &move, const std::unique_ptr<BoardState>
   const int opponent_start_bb = new_state->turn_to_move == Color::kWhite ? kBlackPawns : kWhitePawns;
   const int opponent_end_bb = new_state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces;
 
+  // find which bitboard the captured piece belongs to and clear it
   for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
     BitBoard &piece_bb = new_state->pieces[bb_idx];
 
@@ -92,22 +93,21 @@ void Board::handle_castling(const Move &move, const std::unique_ptr<BoardState> 
 
     // remove castling rights
     new_state->castle_state &=
-        new_state->turn_to_move == Color::kWhite ? ~(CastleBits::kWhiteKingside | CastleBits::kWhiteQueenside) :
-        ~(CastleBits::kBlackKingside | CastleBits::kBlackQueenside);
+        new_state->turn_to_move == Color::kWhite ? ~CastleRights::kWhiteBothSides : ~CastleRights::kBlackBothSides;
   }
   // handle rook moves changing castle rights
   else if (piece_type == PieceType::kRook) {
     if (new_state->turn_to_move == Color::kWhite) {
       if (from == Square::kH1) {
-        new_state->castle_state &= ~CastleBits::kWhiteKingside;
+        new_state->castle_state &= ~CastleRights::kWhiteKingside;
       } else if (from == Square::kA1) {
-        new_state->castle_state &= ~CastleBits::kWhiteQueenside;
+        new_state->castle_state &= ~CastleRights::kWhiteQueenside;
       }
     } else {
       if (from == Square::kH8) {
-        new_state->castle_state &= ~CastleBits::kBlackKingside;
+        new_state->castle_state &= ~CastleRights::kBlackKingside;
       } else if (from == Square::kA8) {
-        new_state->castle_state &= ~CastleBits::kBlackQueenside;
+        new_state->castle_state &= ~CastleRights::kBlackQueenside;
       }
     }
   }
@@ -119,7 +119,7 @@ void Board::make_move(const Move &move, bool check_valid) {
 
   const auto from = move.get_from(), to = move.get_to();
 
-  // create a new board state (for history)
+  // create a new board state for history
   auto new_state = std::make_unique<BoardState>(*state_);
 
   // moving the piece
@@ -139,12 +139,12 @@ void Board::make_move(const Move &move, bool check_valid) {
   handle_capturing(move, new_state);
   handle_castling(move, new_state);
 
-  // set all the new BoardState data
+  // set the new board state data
   new_state->pieces[kAllPieces] = new_state->pieces[kWhitePieces] | new_state->pieces[kBlackPieces];
+
   new_state->turn_to_move = Color(!static_cast<bool>(new_state->turn_to_move));
 
-  new_state->half_moves++;
-  if (new_state->half_moves % 2 == 0)
+  if (++new_state->half_moves % 2 == 0)
     new_state->full_moves++;
 
   // simple linked list

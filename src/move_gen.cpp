@@ -242,25 +242,25 @@ BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state) {
   BitBoard moves, attacked = get_attacked_squares(state, false, true), occupied = state->pieces[kAllPieces];
 
   if (state->turn_to_move == Color::kWhite) {
-    if (state->castle_state & CastleBits::kWhiteKingside) {
+    if (state->castle_state & CastleRights::kWhiteKingside) {
       if (!attacked.is_set(Square::kF1) && !occupied.is_set(Square::kF1) &&
           !attacked.is_set(Square::kG1) && !occupied.is_set(Square::kG1))
         moves.set_bit(Square::kG1);
     }
 
-    if (state->castle_state & CastleBits::kWhiteQueenside) {
+    if (state->castle_state & CastleRights::kWhiteQueenside) {
       if (!attacked.is_set(Square::kD1) && !occupied.is_set(Square::kD1) &&
           !attacked.is_set(Square::kC1) && !occupied.is_set(Square::kC1))
         moves.set_bit(Square::kC1);
     }
   } else {
-    if (state->castle_state & CastleBits::kBlackKingside) {
+    if (state->castle_state & CastleRights::kBlackKingside) {
       if (!attacked.is_set(Square::kF8) && !occupied.is_set(Square::kF8) &&
           !attacked.is_set(Square::kG8) && !occupied.is_set(Square::kG8))
         moves.set_bit(Square::kG8);
     }
 
-    if (state->castle_state & CastleBits::kBlackQueenside) {
+    if (state->castle_state & CastleRights::kBlackQueenside) {
       if (!attacked.is_set(Square::kD8) && !occupied.is_set(Square::kD8) &&
           !attacked.is_set(Square::kC8) && !occupied.is_set(Square::kC8))
         moves.set_bit(Square::kC8);

@@ -20,7 +20,7 @@ struct BoardState {
     full_moves = 1;
     prev_state = nullptr;
     turn_to_move = Color::kWhite;
-    castle_state = CastleBits::kWhiteKingside | CastleBits::kWhiteQueenside | CastleBits::kBlackKingside | CastleBits::kBlackQueenside;
+    castle_state = CastleRights::kWhiteKingside | CastleRights::kWhiteQueenside | CastleRights::kBlackKingside | CastleRights::kBlackQueenside;
   }
 
   BoardState(const BoardState& other) :
