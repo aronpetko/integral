@@ -5,20 +5,25 @@
 
 const U8 kMoveMask = 0b111111;
 const U8 kPieceTypeMask = 0b111;
+const U8 kPromotionTypeMask = 0b111;
 
 // bits 0-5: from
 // bits 6-11: to
 // bits 12-14: piece type
+// bits 15-17: promotion type
 struct Move {
-  U32 data;
+  U32 data = 0;
 
   Move(U8 from, U8 to) {
     data = (from & kMoveMask) + ((to & kMoveMask) << 6);
   }
 
   Move(U8 from, U8 to, PieceType piece_type) : Move(from, to) {
-    data &= ~(kPieceTypeMask << 12);
-    data |= (piece_type & kPieceTypeMask) << 12;
+    data |= (static_cast<U8>(piece_type) & kPieceTypeMask) << 12;
+  }
+
+  Move(U8 from, U8 to, PieceType piece_type, PromotionType promotion_type) : Move(from, to, piece_type) {
+    data |= (static_cast<U8>(promotion_type) & kPromotionTypeMask) << 15;
   }
 
   U8 get_from() const {

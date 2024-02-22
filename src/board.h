@@ -41,11 +41,16 @@ class Board {
     return state_;
   }
 
-  bool is_valid_move(Move move);
+  bool is_valid_move(const Move &move);
 
-  void make_move(Move move, bool check_valid = true);
+  void make_move(const Move &move, bool check_valid = true);
 
   void undo_move();
+
+ private:
+  void handle_capturing(const Move &move, const std::unique_ptr<BoardState> &new_state);
+
+  void handle_castling(const Move &move, const std::unique_ptr<BoardState> &new_state);
 
  private:
   std::unique_ptr<BoardState> state_;

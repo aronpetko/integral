@@ -239,7 +239,7 @@ BitBoard generate_king_attacks(U8 pos) {
 }
 
 BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state) {
-  BitBoard moves, attacked = get_attacked_squares(state), occupied = state->pieces[kAllPieces];
+  BitBoard moves, attacked = get_attacked_squares(state, false, true), occupied = state->pieces[kAllPieces];
 
   if (state->turn_to_move == Color::kWhite) {
     if (state->castle_state & CastleBits::kWhiteKingside) {

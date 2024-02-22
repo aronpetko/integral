@@ -12,7 +12,7 @@ namespace fen {
 
 const std::string kStartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-const std::map<char, PieceType> kCharToPieceType = {
+const std::unordered_map<char, PieceType> kCharToPieceType = {
     {'p', PieceType::kPawn},
     {'n', PieceType::kKnight},
     {'b', PieceType::kBishop},
@@ -21,7 +21,7 @@ const std::map<char, PieceType> kCharToPieceType = {
     {'k', PieceType::kKing},
 };
 
-const std::map<PieceType, char> kPieceTypeToChar = {
+const std::unordered_map<PieceType, char> kPieceTypeToChar = {
     {PieceType::kNone, 'x'},
     {PieceType::kPawn, 'p'},
     {PieceType::kKnight, 'n'},

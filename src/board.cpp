@@ -1,8 +1,7 @@
 #include "board.h"
 #include "move_gen.h"
 
-// todo: check if a move takes the king out of check
-bool Board::is_valid_move(Move move) {
+bool Board::is_valid_move(const Move &move) {
   if (move.get_piece_type() == PieceType::kNone) {
     std::cerr << "this piece doesn't exist" << std::endl;
     return false;
@@ -48,7 +47,73 @@ bool Board::is_valid_move(Move move) {
   return false;
 }
 
-void Board::make_move(Move move, bool check_valid) {
+void Board::handle_capturing(const Move &move, const std::unique_ptr<BoardState> &new_state) {
+  const auto to = move.get_to();
+
+  const int opponent_start_bb = new_state->turn_to_move == Color::kWhite ? kBlackPawns : kWhitePawns;
+  const int opponent_end_bb = new_state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces;
+
+  for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
+    BitBoard &piece_bb = new_state->pieces[bb_idx];
+
+    if (piece_bb.is_set(to)) {
+      piece_bb.clear_bit(to);
+      break;
+    }
+  }
+}
+
+void Board::handle_castling(const Move &move, const std::unique_ptr<BoardState> &new_state) {
+  const auto from = move.get_from(), to = move.get_to();
+  const auto piece_type = move.get_piece_type();
+
+  // perform the castle
+  if (piece_type == PieceType::kKing) {
+    const int kKingsideCastleDist = -2;
+    const int kQueensideCastleDist = 2;
+
+    const auto move_rook_for_castling = [&new_state](Square rook_from, Square rook_to) {
+      BitBoard &rooks_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhiteRooks : kBlackRooks];
+      BitBoard &pieces_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces];
+
+      rooks_bb.move(rook_from, rook_to);
+      pieces_bb.move(rook_from, rook_to);
+    };
+
+    // note: the only way move_dist is ever 2 or -2 is from generate_castling_moves allowing it
+    const int move_dist = static_cast<int>(from) - static_cast<int>(to);
+    if (move_dist == kKingsideCastleDist) {
+      move_rook_for_castling(state_->turn_to_move == Color::kWhite ? Square::kH1 : Square::kH8,
+                             state_->turn_to_move == Color::kWhite ? Square::kF1 : Square::kF8);
+    } else if (move_dist == kQueensideCastleDist) {
+      move_rook_for_castling(state_->turn_to_move == Color::kWhite ? Square::kA1 : Square::kA8,
+                             state_->turn_to_move == Color::kWhite ? Square::kD1 : Square::kD8);
+    }
+
+    // remove castling rights
+    new_state->castle_state &=
+        new_state->turn_to_move == Color::kWhite ? ~(CastleBits::kWhiteKingside | CastleBits::kWhiteQueenside) :
+        ~(CastleBits::kBlackKingside | CastleBits::kBlackQueenside);
+  }
+  // handle rook moves changing castle rights
+  else if (piece_type == PieceType::kRook) {
+    if (new_state->turn_to_move == Color::kWhite) {
+      if (from == Square::kH1) {
+        new_state->castle_state &= ~CastleBits::kWhiteKingside;
+      } else if (from == Square::kA1) {
+        new_state->castle_state &= ~CastleBits::kWhiteQueenside;
+      }
+    } else {
+      if (from == Square::kH8) {
+        new_state->castle_state &= ~CastleBits::kBlackKingside;
+      } else if (from == Square::kA8) {
+        new_state->castle_state &= ~CastleBits::kBlackQueenside;
+      }
+    }
+  }
+}
+
+void Board::make_move(const Move &move, bool check_valid) {
   if (check_valid && !is_valid_move(move))
     return;
 
@@ -64,51 +129,15 @@ void Board::make_move(Move move, bool check_valid) {
   for (int bb_idx = start_bb; bb_idx <= end_bb; bb_idx++) {
     BitBoard &piece_bb = new_state->pieces[bb_idx];
 
-    // there should be only one piece on this square, so this is kind of safe
+    // there should be only one piece on this square, so this should be safe
     if (piece_bb.is_set(from)) {
       piece_bb.clear_bit(from);
       piece_bb.set_bit(to);
     }
   }
 
-  // handle piece capture if it happened
-  const int opponent_start_bb = new_state->turn_to_move == Color::kWhite ? kBlackPawns : kWhitePawns;
-  const int opponent_end_bb = new_state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces;
-
-  for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
-    BitBoard &piece_bb = new_state->pieces[bb_idx];
-
-    if (piece_bb.is_set(to))
-      piece_bb.clear_bit(to);
-  }
-
-  // handle castling
-  if (move.get_piece_type() == PieceType::kKing) {
-    const int kKingsideCastleDist = -2;
-    const int kQueensideCastleDist = 2;
-
-    const auto move_rook_for_castling = [&new_state](Square rook_from, Square rook_to) {
-      BitBoard &rooks_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhiteRooks : kBlackRooks];
-      BitBoard &pieces_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces];
-
-      rooks_bb.move(rook_from, rook_to);
-      pieces_bb.move(rook_from, rook_to);
-    };
-
-    const int move_dist = static_cast<int>(from) - static_cast<int>(to);
-    if (move_dist == kKingsideCastleDist) {
-      move_rook_for_castling(state_->turn_to_move == Color::kWhite ? Square::kH1 : Square::kH8,
-                             state_->turn_to_move == Color::kWhite ? Square::kF1 : Square::kF8);
-    } else if (move_dist == kQueensideCastleDist) {
-      move_rook_for_castling(state_->turn_to_move == Color::kWhite ? Square::kA1 : Square::kA8,
-                             state_->turn_to_move == Color::kWhite ? Square::kD1 : Square::kD8);
-    }
-
-    // remove castling rights
-    new_state->castle_state &=
-        new_state->turn_to_move == Color::kWhite ? ~(CastleBits::kWhiteKingside | CastleBits::kWhiteQueenside) :
-        ~(CastleBits::kBlackKingside | CastleBits::kBlackQueenside);
-  }
+  handle_capturing(move, new_state);
+  handle_castling(move, new_state);
 
   // set all the new BoardState data
   new_state->pieces[kAllPieces] = new_state->pieces[kWhitePieces] | new_state->pieces[kBlackPieces];
