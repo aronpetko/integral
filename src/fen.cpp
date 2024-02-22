@@ -24,9 +24,10 @@ char get_piece_char(BitBoards &pieces, U8 pos) {
 
 std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
   auto state = std::make_unique<BoardState>();
-  BitBoards &pieces = state->pieces;
+  auto &pieces = state->pieces;
 
   std::istringstream stream(fen_str);
+  
   std::string position;
   stream >> position;
 
@@ -38,6 +39,7 @@ std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
       square = square - 16 + (square % 8);
       continue;
     }
+    
     if (std::isdigit(ch)) {
       square += ch - '0';
       continue;
@@ -45,25 +47,27 @@ std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
 
     BitBoard *target = nullptr;
 
-    PieceType type = kCharToPieceType.at(static_cast<char>(std::tolower(ch)));
-    switch (type) {
+    const bool is_black_piece = std::islower(ch);
+    const auto piece_type = kCharToPieceType.at(std::tolower(ch, std::locale()));
+
+    switch (piece_type) {
       case PieceType::kPawn:
-        target = std::islower(ch) ? &pieces[kBlackPawns] : &pieces[kWhitePawns];
+        target = is_black_piece ? &pieces[kBlackPawns] : &pieces[kWhitePawns];
         break;
       case PieceType::kKnight:
-        target = std::islower(ch) ? &pieces[kBlackKnights] : &pieces[kWhiteKnights];
+        target = is_black_piece ? &pieces[kBlackKnights] : &pieces[kWhiteKnights];
         break;
       case PieceType::kBishop:
-        target = std::islower(ch) ? &pieces[kBlackBishops] : &pieces[kWhiteBishops];
+        target = is_black_piece ? &pieces[kBlackBishops] : &pieces[kWhiteBishops];
         break;
       case PieceType::kRook:
-        target = std::islower(ch) ? &pieces[kBlackRooks] : &pieces[kWhiteRooks];
+        target = is_black_piece ? &pieces[kBlackRooks] : &pieces[kWhiteRooks];
         break;
       case PieceType::kQueen:
-        target = std::islower(ch) ? &pieces[kBlackQueens] : &pieces[kWhiteQueens];
+        target = is_black_piece ? &pieces[kBlackQueens] : &pieces[kWhiteQueens];
         break;
       case PieceType::kKing:
-        target = std::islower(ch) ? &pieces[kBlackKing] : &pieces[kWhiteKing];
+        target = is_black_piece ? &pieces[kBlackKing] : &pieces[kWhiteKing];
         break;
       case PieceType::kNone:
         break;

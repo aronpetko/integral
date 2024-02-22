@@ -5,6 +5,10 @@ using U8 = unsigned char;
 using U32 = unsigned int;
 using U64 = unsigned long long;
 
+const U8 kBoardFiles = 8;
+const U8 kBoardRanks = 8;
+const U8 kBoardLength = 8;
+
 enum class PieceType : U8 {
   kNone,
   kPawn,

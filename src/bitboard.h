@@ -63,13 +63,11 @@ enum FileMasks : U64 {
 
 class BitBoard {
  public:
-  BitBoard() {
-    bitboard_ = 0ULL;
-  }
+  BitBoard() : bitboard_(0ULL) {}
 
   explicit BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
-  U64 as_int() const {
+  [[nodiscard]] U64 as_u64() const {
     return bitboard_;
   }
 
@@ -81,7 +79,7 @@ class BitBoard {
     bitboard_ &= ~(1ULL << square);
   }
 
-  bool is_set(U8 square) const {
+  [[nodiscard]] bool is_set(U8 square) const {
     return bitboard_ & (1ULL << square);
   }
 
@@ -90,13 +88,35 @@ class BitBoard {
     set_bit(to);
   }
 
+  [[nodiscard]] U8 get_lsb_pos() const {
+    U64 copy = bitboard_;
+
+    U8 position = 0;
+    while (copy) {
+      if (copy & 1)
+        return position;
+
+      copy >>= 1;
+      position++;
+    }
+
+    // should only reach here if the bitboard isn't empty
+    return position;
+  }
+
+  U8 pop_lsb() {
+    U8 lsb_pos = get_lsb_pos();
+    bitboard_ &= bitboard_ - 1;
+    return lsb_pos;
+  }
+
   BitBoard &operator=(U64 bitboard) {
     bitboard_ = bitboard;
     return *this;
   }
 
   BitBoard &operator=(BitBoard other) {
-    bitboard_ = other.as_int();
+    bitboard_ = other.as_u64();
     return *this;
   }
 
@@ -105,11 +125,11 @@ class BitBoard {
   }
 
   BitBoard operator&(const BitBoard &other) const {
-    return BitBoard(bitboard_ & other.as_int());
+    return BitBoard(bitboard_ & other.as_u64());
   }
 
   BitBoard operator|(const BitBoard &other) const {
-    return BitBoard(bitboard_ | other.as_int());
+    return BitBoard(bitboard_ | other.as_u64());
   }
 
   BitBoard operator|(U64 &other) const {
@@ -125,12 +145,12 @@ class BitBoard {
   }
 
   BitBoard &operator|=(const BitBoard &other) {
-    bitboard_ |= other.as_int();
+    bitboard_ |= other.as_u64();
     return *this;
   }
 
   BitBoard &operator&=(const BitBoard &other) {
-    bitboard_ &= other.as_int();
+    bitboard_ &= other.as_u64();
     return *this;
   }
 
@@ -140,7 +160,7 @@ class BitBoard {
   }
 
   BitBoard &operator^=(const BitBoard &other) {
-    bitboard_ ^= other.as_int();
+    bitboard_ ^= other.as_u64();
     return *this;
   }
 
@@ -149,45 +169,6 @@ class BitBoard {
 };
 
 using BitBoards = std::array<BitBoard, kAllPieces + 1>;
-
-static U8 rank_file_to_pos(U8 rank, U8 file) {
-  return rank * 8 + file;
-}
-
-// todo: handle promotion
-static std::optional<std::pair<U8, U8>> algebraic_to_pos(const std::string &move_str) {
-  const int kAlgebraicMoveLen = 4;
-  if (move_str.length() != kAlgebraicMoveLen)
-    return std::nullopt;
-
-  int from_rank = move_str[1] - '1', from_file = move_str[0] - 'a';
-  int to_rank = move_str[3] - '1', to_file = move_str[2] - 'a';
-
-  if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 ||
-      from_file < 0 || from_file >= 8 || to_file < 0 || to_file >= 8)
-    return std::nullopt;
-
-  return std::make_pair(rank_file_to_pos(from_rank, from_file), rank_file_to_pos(to_rank, to_file));
-}
-
-// todo: handle promotion
-static std::string pos_to_algebraic(std::pair<U8, U8> &move) {
-  auto& [from, to] = move;
-
-  std::string output;
-  output.push_back(static_cast<char>(from / 8 + 'a'));
-  output.push_back(static_cast<char>(from % 8 + '1'));
-  output.push_back(static_cast<char>(to / 8 + 'a'));
-  output.push_back(static_cast<char>(to % 8 + '1'));
-  return output;
-}
-
-static std::string pos_to_algebraic(U8 pos) {
-  std::string output;
-  output.push_back(static_cast<char>(pos % 8 + 'a'));
-  output.push_back(static_cast<char>(pos / 8 + '1'));
-  return output;
-}
 
 template<Direction dir>
 static BitBoard shift(BitBoard bb) {
@@ -209,26 +190,6 @@ static BitBoard shift(BitBoard bb) {
     return (bb >> 9) & ~FileMasks::kFileH;
 }
 
-static U8 get_lsb_pos(U64 val) {
-  U8 position = 0;
-  while (val) {
-    if (val & 1) return position;
-    val >>= 1;
-    position++;
-  }
-  return position;  // shouldn't reach here if val is not 0.
-}
-
-static U8 get_lsb_pos(BitBoard bb) {
-  return get_lsb_pos(bb.as_int());
-}
-
-static U8 pop_lsb(BitBoard &bb) {
-  U8 lsb_pos = get_lsb_pos(bb);
-  bb &= BitBoard(bb.as_int() - 1);
-  return lsb_pos;
-}
-
 static Color get_piece_color(U8 pos, BitBoards &pieces) {
   if (pieces[kWhitePieces].is_set(pos)) return Color::kWhite;
   if (pieces[kBlackPieces].is_set(pos)) return Color::kBlack;
@@ -236,8 +197,8 @@ static Color get_piece_color(U8 pos, BitBoards &pieces) {
 }
 
 static Color get_piece_color(BitBoard bb, BitBoards &pieces) {
-  if ((pieces[kWhitePieces] & bb).as_int()) return Color::kWhite;
-  if ((pieces[kBlackPieces] & bb).as_int()) return Color::kBlack;
+  if ((pieces[kWhitePieces] & bb).as_u64()) return Color::kWhite;
+  if ((pieces[kBlackPieces] & bb).as_u64()) return Color::kBlack;
   return Color::kNone;
 }
 

@@ -14,14 +14,14 @@ int main() {
     } else if (command == "undo") {
       board.undo_move();
     } else {
-      auto parsed_move = algebraic_to_pos(command);
-      if (!parsed_move) {
+      auto move = Move::from_str(command);
+      if (!move) {
         std::cerr << "this is an invalid move or command" << std::endl;
         continue;
       }
 
-      auto [from, to] = parsed_move.value();
-      board.make_move({from, to, get_piece_type(from, board.get_state()->pieces)});
+      move->set_piece_type(get_piece_type(move->get_from(), board.get_state()->pieces));
+      board.make_move(move.value());
     }
   }
 }

@@ -20,10 +20,11 @@ struct BoardState {
     full_moves = 1;
     prev_state = nullptr;
     turn_to_move = Color::kWhite;
-    castle_state = CastleRights::kWhiteKingside | CastleRights::kWhiteQueenside | CastleRights::kBlackKingside | CastleRights::kBlackQueenside;
+    castle_state = CastleRights::kWhiteKingside | CastleRights::kWhiteQueenside | CastleRights::kBlackKingside
+        | CastleRights::kBlackQueenside;
   }
 
-  BoardState(const BoardState& other) :
+  BoardState(const BoardState &other) :
       pieces(other.pieces),
       turn_to_move(other.turn_to_move),
       full_moves(other.full_moves),
@@ -33,15 +34,13 @@ struct BoardState {
 
 class Board {
  public:
-  explicit Board(std::unique_ptr<BoardState> state)  {
-    state_ = std::move(state);
-  }
+  explicit Board(std::unique_ptr<BoardState> state) : state_(std::move(state)) {}
 
-  std::unique_ptr<BoardState>& get_state() {
+  std::unique_ptr<BoardState> &get_state() {
     return state_;
   }
 
-  bool is_valid_move(const Move &move);
+  bool is_legal_move(const Move &move);
 
   void make_move(const Move &move, bool check_valid = true);
 

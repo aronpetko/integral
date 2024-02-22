@@ -1,12 +1,7 @@
 #include "board.h"
 #include "move_gen.h"
 
-bool Board::is_valid_move(const Move &move) {
-  if (move.get_piece_type() == PieceType::kNone) {
-    std::cerr << "this piece doesn't exist" << std::endl;
-    return false;
-  }
-
+bool Board::is_legal_move(const Move &move) {
   U8 from = move.get_from(), to = move.get_to();
 
   // check if the moved piece belongs to the current move's player
@@ -30,6 +25,9 @@ bool Board::is_valid_move(const Move &move) {
     possible_moves = generate_bishop_moves(from, state_) | generate_rook_moves(from, state_);
   else if (type == PieceType::kKing)
     possible_moves = generate_king_moves(from, state_);
+
+  // capturing your own pieces is illegal
+  possible_moves &= ~state_->pieces[state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces].as_u64();
 
   if (possible_moves.is_set(to)) {
     // check if this move puts the king in check
@@ -114,7 +112,7 @@ void Board::handle_castling(const Move &move, const std::unique_ptr<BoardState> 
 }
 
 void Board::make_move(const Move &move, bool check_valid) {
-  if (check_valid && !is_valid_move(move))
+  if (check_valid && !is_legal_move(move))
     return;
 
   const U8 from = move.get_from(), to = move.get_to();
@@ -147,7 +145,6 @@ void Board::make_move(const Move &move, bool check_valid) {
   if (++new_state->half_moves % 2 == 0)
     new_state->full_moves++;
 
-  // simple linked list
   new_state->prev_state = std::move(state_);
   state_ = std::move(new_state);
 }
