@@ -96,9 +96,7 @@ void Board::make_move(Move move, bool check_valid) {
     if (move_dist == kKingsideCastleDist) {
       rooks_bb.move(Square::kH1, Square::kF1);
       pieces_bb.move(Square::kH1, Square::kF1);
-
-      print_bb(rooks_bb);
-
+      
       // remove castling right
       new_state->castle_state &= new_state->turn_to_move == Color::kWhite ? ~CastleBits::kWhiteKingside : ~CastleBits::kBlackKingside;
     } else if (move_dist == kQueensideCastleDist) {
