@@ -3,7 +3,7 @@
 #include "move_gen.h"
 
 int main() {
-  Board board(fen::string_to_board("k7/8/8/8/8/8/8/R3K2R w KQ - 0 1"));
+  Board board(fen::string_to_board("r3k2r/p6p/8/8/8/8/P6P/R3K2R w KQkq - 0 1"));
   print_pieces(board.get_state()->pieces);
 
   std::string move;

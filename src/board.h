@@ -29,7 +29,6 @@ struct BoardState {
       full_moves(other.full_moves),
       half_moves(other.half_moves),
       castle_state(other.castle_state) {}
-
 };
 
 class Board {

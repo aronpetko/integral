@@ -36,7 +36,7 @@ enum Square : U8 {
   kA6, kB6, kC6, kD6, kE6, kF6, kG6, kH6,
   kA7, kB7, kC7, kD7, kE7, kF7, kG7, kH7,
   kA8, kB8, kC8, kD8, kE8, kF8, kG8, kH8,
-  kSquareCount = 64
+  kSquareCount = 64,
 };
 
 enum RankMasks : U64 {
