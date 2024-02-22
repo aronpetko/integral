@@ -26,15 +26,15 @@ struct Move {
     data |= (static_cast<U8>(promotion_type) & kPromotionTypeMask) << 15;
   }
 
-  U8 get_from() const {
+  [[nodiscard]] U8 get_from() const {
     return data & kMoveMask;
   }
 
-  U8 get_to() const {
+  [[nodiscard]] U8 get_to() const {
     return (data >> 6) & kMoveMask;
   }
 
-  PieceType get_piece_type() const {
+  [[nodiscard]] PieceType get_piece_type() const {
     return PieceType((data >> 12) & kPieceTypeMask);
   }
 };

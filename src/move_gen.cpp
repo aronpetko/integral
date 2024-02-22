@@ -1,7 +1,5 @@
 #include "move_gen.h"
 #include "board.h"
-#include <optional>
-#include <vector>
 
 BitBoard generate_pawn_attacks(U8 pos, const std::unique_ptr<BoardState> &state) {
   BitBoard moves, bb_pos(BitBoard(1ULL << pos));
