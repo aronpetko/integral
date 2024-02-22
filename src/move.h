@@ -29,8 +29,8 @@ struct Move {
     return (data >> 6) & kMoveMask;
   }
 
-  U8 get_piece_type() const {
-    return ((data >> 12) & kPieceTypeMask);
+  PieceType get_piece_type() const {
+    return PieceType((data >> 12) & kPieceTypeMask);
   }
 };
 

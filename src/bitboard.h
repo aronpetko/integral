@@ -155,19 +155,21 @@ static U8 rank_file_to_pos(U8 rank, U8 file) {
 }
 
 // todo: handle promotion
-static Move algebraic_to_move(const std::string &move_str) {
+static std::pair<U8, U8> algebraic_to_pos(const std::string &move_str) {
   int from_rank = move_str[1] - '1', from_file = move_str[0] - 'a';
   int to_rank = move_str[3] - '1', to_file = move_str[2] - 'a';
   return {rank_file_to_pos(from_rank, from_file), rank_file_to_pos(to_rank, to_file)};
 }
 
 // todo: handle promotion
-static std::string move_to_algebraic(Move move) {
+static std::string pos_to_algebraic(std::pair<U8, U8> &move) {
+  auto& [from, to] = move;
+
   std::string output;
-  output.push_back(static_cast<char>(move.get_from() / 8 + 'a'));
-  output.push_back(static_cast<char>(move.get_from() % 8 + '1'));
-  output.push_back(static_cast<char>(move.get_to() / 8 + 'a'));
-  output.push_back(static_cast<char>(move.get_to() % 8 + '1'));
+  output.push_back(static_cast<char>(from / 8 + 'a'));
+  output.push_back(static_cast<char>(from % 8 + '1'));
+  output.push_back(static_cast<char>(to / 8 + 'a'));
+  output.push_back(static_cast<char>(to % 8 + '1'));
   return output;
 }
 
@@ -219,13 +221,32 @@ static U8 pop_lsb(BitBoard &bb) {
 }
 
 static Color get_piece_color(U8 pos, BitBoards &pieces) {
-  return pieces[kWhitePieces].is_set(pos) ? Color::kWhite : pieces[kBlackPieces].is_set(pos) ? Color::kBlack
-                                                                                             : Color::kNone;
+  if (pieces[kWhitePieces].is_set(pos)) return Color::kWhite;
+  if (pieces[kBlackPieces].is_set(pos)) return Color::kBlack;
+  return Color::kNone;
 }
 
 static Color get_piece_color(BitBoard bb, BitBoards &pieces) {
-  return (pieces[kWhitePieces] & bb).as_int() ? Color::kWhite : (pieces[kBlackPieces] & bb).as_int() ? Color::kBlack
-                                                                                                     : Color::kNone;
+  if ((pieces[kWhitePieces] & bb).as_int()) return Color::kWhite;
+  if ((pieces[kBlackPieces] & bb).as_int()) return Color::kBlack;
+  return Color::kNone;
+}
+
+static PieceType get_piece_type(U8 pos, BitBoards &pieces) {
+  auto color = get_piece_color(pos, pieces);
+
+  int start_bb = color == Color::kWhite ? kWhitePawns : kBlackPawns;
+  int end_bb = color == Color::kWhite ? kWhitePieces : kBlackPieces;
+
+  for (int bb_idx = start_bb; bb_idx <= end_bb; bb_idx++) {
+    BitBoard &piece_bb = pieces[bb_idx];
+
+    // there should be only one piece on this square, so this is kind of safe
+    if (piece_bb.is_set(pos))
+      return PieceType(bb_idx - start_bb + 1);
+  }
+
+  return PieceType::kNone;
 }
 
 static void print_bb(BitBoard board) {
@@ -272,7 +293,7 @@ static void print_pieces(BitBoards &pieces) {
   }
   std::cout << "  ";
   for (int file = 0; file < 8; file++)
-    std::cout << (char) ('a' + file) << ' ';
+    std::cout << static_cast<char>('a' + file) << ' ';
   std::cout << std::endl;
 }
 

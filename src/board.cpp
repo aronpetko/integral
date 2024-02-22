@@ -1,91 +1,62 @@
 #include "board.h"
 #include "move_gen.h"
 
-static Color get_piece_color(BoardState *state, U8 pos) {
-  if (!state)
-    return {};
-
-  return state->pieces[kWhitePieces].is_set(pos) ? Color::kWhite : Color::kBlack;
-}
-
 // todo: check if a move takes the king out of check
 bool Board::is_valid_move(Move move) {
   U8 from = move.get_from(), to = move.get_to();
 
   // does a piece exist here?
-  if (!state_->pieces[kAllPieces].is_set(from))
+  if (!state_->pieces[kAllPieces].is_set(from)) {
+    std::cerr << "this piece doesn't exist\n";
     return false;
+  }
 
   // check if the moved piece belongs to the current move's player
-  if (!state_->pieces[state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces].is_set(from))
+  if (!state_->pieces[state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces].is_set(from)) {
+    std::cerr << "this piece doesn't belong to you\n";
     return false;
+  }
 
   BitBoard possible_moves;
+  auto type = move.get_piece_type();
 
-  // pawns
-  if (state_->pieces[kWhitePawns].is_set(from) || state_->pieces[kBlackPawns].is_set(from))
+  if (type == PieceType::kPawn)
     possible_moves = generate_pawn_moves(from, state_);
-  // knights
-  else if (state_->pieces[kWhiteKnights].is_set(from) || state_->pieces[kBlackKnights].is_set(from))
+  else if (type == PieceType::kKnight)
     possible_moves = generate_knight_moves(from, state_);
-  // bishops
-  else if (state_->pieces[kWhiteBishops].is_set(from) || state_->pieces[kBlackBishops].is_set(from))
+  else if (type == PieceType::kBishop)
     possible_moves = generate_bishop_moves(from, state_);
-  // rooks
-  else if (state_->pieces[kWhiteRooks].is_set(from) || state_->pieces[kBlackRooks].is_set(from)) {
+  else if (type == PieceType::kRook)
     possible_moves = generate_rook_moves(from, state_);
-
-    /* switch (from) {
-      case Square::kA1:state_->castle_state &= ~CastleBits::kWhiteQueenside;
-        break;
-      case Square::kH1:state_->castle_state &= ~CastleBits::kWhiteKingside;
-        break;
-      case Square::kA8:state_->castle_state &= ~CastleBits::kBlackQueenside;
-        break;
-      case Square::kH8:state_->castle_state &= ~CastleBits::kBlackKingside;
-        break;
-      default:break;
-    } */
-  }
-  // queens
-  else if (state_->pieces[kWhiteQueens].is_set(from) || state_->pieces[kBlackQueens].is_set(from))
+  else if (type == PieceType::kQueen)
     possible_moves = generate_bishop_moves(from, state_) | generate_rook_moves(from, state_);
-  // king
-  else if (state_->pieces[kWhiteKing].is_set(from) || state_->pieces[kBlackKing].is_set(from)) {
+  else if (type == PieceType::kKing)
     possible_moves = generate_king_moves(from, state_);
-    /*switch (from) {
-      case Square::kE1:state_->castle_state &= ~(CastleBits::kWhiteKingside | CastleBits::kWhiteQueenside);
-        break;
-      case Square::kE8:state_->castle_state &= ~(CastleBits::kBlackKingside | CastleBits::kBlackQueenside);
-        break;
-      default:break;
-    }*/
-  }
 
-  // does this move place/keep us in check?
   if (possible_moves.is_set(to)) {
+    // check if this move puts the king in check
     // now that we have made the move, the turn to move has flipped to the other side, so we flip it back to see if that king is in check
     make_move(move, false);
     bool in_check = king_in_check(Color(!static_cast<bool>(state_->turn_to_move)), state_);
     undo_move();
 
+    if (in_check)
+      std::cerr << "this move places you in check\n";
     return !in_check;
   }
 
+  std::cerr << "this piece cant move here\n";
   return false;
 }
 
 void Board::make_move(Move move, bool check_valid) {
-  if (check_valid && !is_valid_move(move)) {
-    std::cerr << "invalid move" << std::endl;
+  if (check_valid && !is_valid_move(move))
     return;
-  }
 
   U8 from = move.get_from(), to = move.get_to();
 
   // create a new board state (for history)
-  auto new_state = new BoardState;
-  std::memcpy(new_state, state_, sizeof(BoardState));
+  auto new_state = std::make_unique<BoardState>(*state_);
 
   // moving the piece
   int start_bb = new_state->turn_to_move == Color::kWhite ? kWhitePawns : kBlackPawns;
@@ -112,6 +83,33 @@ void Board::make_move(Move move, bool check_valid) {
       piece_bb.clear_bit(to);
   }
 
+  // handle castle if it happened
+  if (move.get_piece_type() == PieceType::kKing) {
+    BitBoard &rooks_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhiteRooks : kBlackRooks];
+    BitBoard &pieces_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces];
+
+    const int kKingsideCastleDist = -2;
+    const int kQueensideCastleDist = 2;
+
+    int move_dist = static_cast<int>(from) - static_cast<int>(to);
+
+    if (move_dist == kKingsideCastleDist) {
+      rooks_bb.move(Square::kH1, Square::kF1);
+      pieces_bb.move(Square::kH1, Square::kF1);
+
+      print_bb(rooks_bb);
+
+      // remove castling right
+      new_state->castle_state &= new_state->turn_to_move == Color::kWhite ? ~CastleBits::kWhiteKingside : ~CastleBits::kBlackKingside;
+    } else if (move_dist == kQueensideCastleDist) {
+      rooks_bb.move(Square::kA1, Square::kD1);
+      pieces_bb.move(Square::kA1, Square::kD1);
+
+      // remove castling right
+      new_state->castle_state &= new_state->turn_to_move == Color::kWhite ? ~CastleBits::kWhiteQueenside : ~CastleBits::kBlackQueenside;
+    }
+  }
+
   // set all the new BoardState data
   new_state->pieces[kAllPieces] = new_state->pieces[kWhitePieces] | new_state->pieces[kBlackPieces];
   new_state->turn_to_move = Color(!static_cast<bool>(new_state->turn_to_move));
@@ -121,15 +119,13 @@ void Board::make_move(Move move, bool check_valid) {
     new_state->full_moves++;
 
   // simple linked list
-  new_state->prev_state = state_;
-  state_ = new_state;
+  new_state->prev_state = std::move(state_);
+  state_ = std::move(new_state);
 }
 
 void Board::undo_move() {
   if (state_ && state_->prev_state) {
-    auto temp = state_;
-    state_ = state_->prev_state;
-    delete temp;
+    state_ = std::move(state_->prev_state);
   } else {
     std::cerr << "no moves to undo" << std::endl;
   }

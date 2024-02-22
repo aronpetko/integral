@@ -3,7 +3,7 @@
 #include "move_gen.h"
 
 int main() {
-  Board board(fen::string_to_board("rnbqkbnr/ppp1pppp/8/1Q1p4/3P4/8/PPP1PPPP/RNB1KBNR b KQkq - 0 1"));
+  Board board(fen::string_to_board("k7/8/8/8/8/8/8/R3K2R w KQ - 0 1"));
   print_pieces(board.get_state()->pieces);
 
   std::string move;
@@ -14,7 +14,9 @@ int main() {
       continue;
     }
 
-    board.make_move(algebraic_to_move(move));
+    auto [from, to] = algebraic_to_pos(move);
+    board.make_move({from, to, get_piece_type(from, board.get_state()->pieces)});
+
     print_pieces(board.get_state()->pieces);
   }
 }

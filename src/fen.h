@@ -31,7 +31,7 @@ const std::map<PieceType, char> kPieceTypeToChar = {
     {PieceType::kKing, 'k'},
 };
 
-BoardState* string_to_board(const std::string &fen_str = kStartFen);
+std::unique_ptr<BoardState> string_to_board(const std::string &fen_str = kStartFen);
 
 std::string board_to_string(const std::shared_ptr<BoardState>& state);
 

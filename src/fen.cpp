@@ -22,8 +22,8 @@ char get_piece_char(BitBoards &pieces, U8 pos) {
   return ' ';
 }
 
-BoardState* string_to_board(const std::string &fen_str) {
-  auto state = new BoardState;
+std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
+  auto state = std::make_unique<BoardState>();
   BitBoards &pieces = state->pieces;
 
   std::istringstream stream(fen_str);
@@ -45,7 +45,7 @@ BoardState* string_to_board(const std::string &fen_str) {
 
     BitBoard *target = nullptr;
 
-    PieceType type = kCharToPieceType.at(std::tolower(ch));
+    PieceType type = kCharToPieceType.at(static_cast<char>(std::tolower(ch)));
     switch (type) {
       case PieceType::kPawn:
         target = std::islower(ch) ? &pieces[kBlackPawns] : &pieces[kWhitePawns];
@@ -64,6 +64,8 @@ BoardState* string_to_board(const std::string &fen_str) {
         break;
       case PieceType::kKing:
         target = std::islower(ch) ? &pieces[kBlackKing] : &pieces[kWhiteKing];
+        break;
+      case PieceType::kNone:
         break;
     }
 
