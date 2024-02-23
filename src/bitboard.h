@@ -251,18 +251,18 @@ static std::string get_piece_unicode(BitBoards &pieces, U8 pos) {
 }
 
 static void print_pieces(BitBoards &pieces) {
-  for (int rank = 7; rank >= 0; rank--) {
+  for (int rank = kBoardRanks - 1; rank >= 0; rank--) {
     std::cout << rank + 1 << ' ';
-    for (int file = 0; file < 8; file++) {
+    for (int file = 0; file < kBoardFiles; file++) {
       U8 square = rank_file_to_pos(rank, file);
       std::cout << get_piece_unicode(pieces, square);
-      if (file < 7)
+      if (file < kBoardFiles - 1)
         std::cout << " ";  // space separator for clarity
     }
     std::cout << std::endl;
   }
   std::cout << "  ";
-  for (int file = 0; file < 8; file++)
+  for (int file = 0; file < kBoardFiles; file++)
     std::cout << static_cast<char>('a' + file) << ' ';
   std::cout << std::endl;
 }

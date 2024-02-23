@@ -7,9 +7,10 @@ static U8 rank_file_to_pos(U8 rank, U8 file) {
   return rank * kBoardLength + file;
 }
 
-const U8 kMoveMask = 0b111111;
-const U8 kPieceTypeMask = 0b111;
-const U8 kPromotionTypeMask = 0b111;
+const U32 kFromMask = 0b000000000000111111;
+const U32 kToMask = 0b000000111111000000;
+const U32 kPieceTypeMask = 0b000111000000000000;
+const U32 kPromotionTypeMask = 0b111000000000000000;
 
 // bits 0-5: from
 // bits 6-11: to
@@ -75,31 +76,37 @@ struct Move {
   }
 
   [[nodiscard]] U8 get_from() const {
-    return data & kMoveMask;
+    return data & kFromMask;
   }
 
   [[nodiscard]] U8 get_to() const {
-    return (data >> 6) & kMoveMask;
+    return (data & kToMask) >> 6;
   }
 
   [[nodiscard]] PieceType get_piece_type() const {
-    return PieceType((data >> 12) & kPieceTypeMask);
+    return PieceType((data & kPieceTypeMask) >> 12);
+  }
+
+  [[nodiscard]] PromotionType get_promotion_type() const {
+    return PromotionType((data & kPromotionTypeMask) >> 15);
   }
 
   void set_from(U8 from) {
-    data |= from & kMoveMask;
+    data &= ~kFromMask;
+    data |= static_cast<U32>(from) & kFromMask;
   }
 
   void set_to(U8 to) {
-    data |= ((to & kMoveMask) << 6);
+    data &= ~kToMask;
+    data |= (static_cast<U32>(to) << 6) & kToMask;
   }
 
   void set_piece_type(PieceType piece_type) {
-    data |= (static_cast<U8>(piece_type) & kPieceTypeMask) << 12;
+    data = (data & ~kPieceTypeMask) | (static_cast<U8>(piece_type) << 12);
   }
 
   void set_promotion_type(PromotionType promotion_type) {
-    data |= (static_cast<U8>(promotion_type) & kPromotionTypeMask) << 15;
+    data = (data & ~kPromotionTypeMask) | (static_cast<U8>(promotion_type) << 15);
   }
 };
 

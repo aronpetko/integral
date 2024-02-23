@@ -8,7 +8,6 @@
 #include "move.h"
 
 struct BoardState {
-  std::unique_ptr<BoardState> prev_state;
   BitBoards pieces;
   Color turn_to_move;
   U32 full_moves;
@@ -18,7 +17,6 @@ struct BoardState {
   BoardState() {
     half_moves = 0;
     full_moves = 1;
-    prev_state = nullptr;
     turn_to_move = Color::kWhite;
     castle_state = CastleRights::kWhiteKingside | CastleRights::kWhiteQueenside | CastleRights::kBlackKingside
         | CastleRights::kBlackQueenside;
@@ -47,12 +45,15 @@ class Board {
   void undo_move();
 
  private:
-  void handle_capturing(const Move &move, const std::unique_ptr<BoardState> &new_state);
+  void handle_capturing(const Move &move);
 
-  void handle_castling(const Move &move, const std::unique_ptr<BoardState> &new_state);
+  void handle_castling(const Move &move);
+
+  void handle_promotions(const Move &move);
 
  private:
   std::unique_ptr<BoardState> state_;
+  std::vector<std::unique_ptr<BoardState>> history_;
 };
 
 #endif // INTEGRAL_BOARD_H_

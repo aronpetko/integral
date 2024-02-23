@@ -26,8 +26,10 @@ bool Board::is_legal_move(const Move &move) {
   else if (type == PieceType::kKing)
     possible_moves = generate_king_moves(from, state_);
 
+
   // capturing your own pieces is illegal
   possible_moves &= ~state_->pieces[state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces].as_u64();
+  print_bb(possible_moves);
 
   if (possible_moves.is_set(to)) {
     // check if this move puts the king in check
@@ -45,24 +47,21 @@ bool Board::is_legal_move(const Move &move) {
   return false;
 }
 
-void Board::handle_capturing(const Move &move, const std::unique_ptr<BoardState> &new_state) {
+void Board::handle_capturing(const Move &move) {
   const U8 to = move.get_to();
 
-  const int opponent_start_bb = new_state->turn_to_move == Color::kWhite ? kBlackPawns : kWhitePawns;
-  const int opponent_end_bb = new_state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces;
+  const int opponent_start_bb = state_->turn_to_move == Color::kWhite ? kBlackPawns : kWhitePawns;
+  const int opponent_end_bb = state_->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces;
 
-  // find which bitboard the captured piece belongs to and clear it
+  // find which bitboards the captured piece belong to and clear it
   for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
-    BitBoard &piece_bb = new_state->pieces[bb_idx];
-
-    if (piece_bb.is_set(to)) {
+    BitBoard &piece_bb = state_->pieces[bb_idx];
+    if (piece_bb.is_set(to))
       piece_bb.clear_bit(to);
-      break;
-    }
   }
 }
 
-void Board::handle_castling(const Move &move, const std::unique_ptr<BoardState> &new_state) {
+void Board::handle_castling(const Move &move) {
   const U8 from = move.get_from(), to = move.get_to();
   const auto piece_type = move.get_piece_type();
 
@@ -71,9 +70,9 @@ void Board::handle_castling(const Move &move, const std::unique_ptr<BoardState> 
     const int kKingsideCastleDist = -2;
     const int kQueensideCastleDist = 2;
 
-    const auto move_rook_for_castling = [&new_state](Square rook_from, Square rook_to) {
-      BitBoard &rooks_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhiteRooks : kBlackRooks];
-      BitBoard &pieces_bb = new_state->pieces[new_state->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces];
+    const auto move_rook_for_castling = [this](Square rook_from, Square rook_to) {
+      BitBoard &rooks_bb = state_->pieces[state_->turn_to_move == Color::kWhite ? kWhiteRooks : kBlackRooks];
+      BitBoard &pieces_bb = state_->pieces[state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces];
 
       rooks_bb.move(rook_from, rook_to);
       pieces_bb.move(rook_from, rook_to);
@@ -90,23 +89,82 @@ void Board::handle_castling(const Move &move, const std::unique_ptr<BoardState> 
     }
 
     // remove castling rights
-    new_state->castle_state &=
-        new_state->turn_to_move == Color::kWhite ? ~CastleRights::kWhiteBothSides : ~CastleRights::kBlackBothSides;
+    state_->castle_state &=
+        state_->turn_to_move == Color::kWhite ? ~CastleRights::kWhiteBothSides : ~CastleRights::kBlackBothSides;
   }
   // handle rook moves changing castle rights
   else if (piece_type == PieceType::kRook) {
-    if (new_state->turn_to_move == Color::kWhite) {
+    if (state_->turn_to_move == Color::kWhite) {
       if (from == Square::kH1) {
-        new_state->castle_state &= ~CastleRights::kWhiteKingside;
+        state_->castle_state &= ~CastleRights::kWhiteKingside;
       } else if (from == Square::kA1) {
-        new_state->castle_state &= ~CastleRights::kWhiteQueenside;
+        state_->castle_state &= ~CastleRights::kWhiteQueenside;
       }
     } else {
       if (from == Square::kH8) {
-        new_state->castle_state &= ~CastleRights::kBlackKingside;
+        state_->castle_state &= ~CastleRights::kBlackKingside;
       } else if (from == Square::kA8) {
-        new_state->castle_state &= ~CastleRights::kBlackQueenside;
+        state_->castle_state &= ~CastleRights::kBlackQueenside;
       }
+    }
+  }
+}
+
+void Board::handle_promotions(const Move &move) {
+  const auto piece_type = move.get_piece_type();
+  if (piece_type != PieceType::kPawn)
+    return;
+
+  const U8 to = move.get_to();
+  const U32 to_rank = to / 8;
+  
+  if (state_->turn_to_move == Color::kWhite) {
+    if (to_rank == kBoardRanks - 1) {
+      switch (move.get_promotion_type()) {
+        case PromotionType::kKnight:
+          state_->pieces[kWhiteKnights].set_bit(to);
+          break;
+        case PromotionType::kBishop:
+          state_->pieces[kWhiteBishops].set_bit(to);
+          break;
+        case PromotionType::kRook:
+          state_->pieces[kWhiteKnights].set_bit(to);
+          break;
+        case PromotionType::kQueen:
+          state_->pieces[kWhiteQueens].set_bit(to);
+          break;
+        default:
+          std::cerr << "invalid promotion type" << std::endl;
+          return;
+      }
+
+      state_->pieces[kWhitePawns].clear_bit(to);
+      state_->pieces[kWhitePieces].clear_bit(to);
+      state_->pieces[kWhitePieces].set_bit(to);
+    }
+  } else {
+    if (to_rank == 0) {
+      switch (move.get_promotion_type()) {
+        case PromotionType::kKnight:
+          state_->pieces[kBlackKnights].set_bit(to);
+          break;
+        case PromotionType::kBishop:
+          state_->pieces[kBlackBishops].set_bit(to);
+          break;
+        case PromotionType::kRook:
+          state_->pieces[kBlackKnights].set_bit(to);
+          break;
+        case PromotionType::kQueen:
+          state_->pieces[kBlackQueens].set_bit(to);
+          break;
+        default:
+          std::cerr << "invalid promotion type" << std::endl;
+          return;
+      }
+
+      state_->pieces[kBlackPawns].clear_bit(to);
+      state_->pieces[kBlackPieces].clear_bit(to);
+      state_->pieces[kBlackPieces].set_bit(to);
     }
   }
 }
@@ -117,41 +175,36 @@ void Board::make_move(const Move &move, bool check_valid) {
 
   const U8 from = move.get_from(), to = move.get_to();
 
-  // create a new board state for history
-  auto new_state = std::make_unique<BoardState>(*state_);
+  // save current state before making changes
+  history_.push_back(std::make_unique<BoardState>(*state_));
 
   // moving the piece
-  const int start_bb = new_state->turn_to_move == Color::kWhite ? kWhitePawns : kBlackPawns;
-  const int end_bb = new_state->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces;
+  const int start_bb = state_->turn_to_move == Color::kWhite ? kWhitePawns : kBlackPawns;
+  const int end_bb = state_->turn_to_move == Color::kWhite ? kWhitePieces : kBlackPieces;
 
   for (int bb_idx = start_bb; bb_idx <= end_bb; bb_idx++) {
-    BitBoard &piece_bb = new_state->pieces[bb_idx];
-
-    // there should be only one piece on this square, so this should be safe
-    if (piece_bb.is_set(from)) {
-      piece_bb.clear_bit(from);
-      piece_bb.set_bit(to);
-    }
+    BitBoard &piece_bb = state_->pieces[bb_idx];
+    if (piece_bb.is_set(from))
+      piece_bb.move(from, to);
   }
 
-  handle_capturing(move, new_state);
-  handle_castling(move, new_state);
+  handle_capturing(move);
+  handle_castling(move);
+  handle_promotions(move);
 
   // set the new board state data
-  new_state->pieces[kAllPieces] = new_state->pieces[kWhitePieces] | new_state->pieces[kBlackPieces];
+  state_->pieces[kAllPieces] = state_->pieces[kWhitePieces] | state_->pieces[kBlackPieces];
 
-  new_state->turn_to_move = Color(!static_cast<bool>(new_state->turn_to_move));
+  state_->turn_to_move = Color(!static_cast<bool>(state_->turn_to_move));
 
-  if (++new_state->half_moves % 2 == 0)
-    new_state->full_moves++;
-
-  new_state->prev_state = std::move(state_);
-  state_ = std::move(new_state);
+  if (++state_->half_moves % 2 == 0)
+    state_->full_moves++;
 }
 
 void Board::undo_move() {
-  if (state_ && state_->prev_state) {
-    state_ = std::move(state_->prev_state);
+  if (!history_.empty()) {
+    state_ = std::move(history_.back());
+    history_.pop_back();
   } else {
     std::cerr << "no moves to undo" << std::endl;
   }
