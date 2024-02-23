@@ -1,8 +1,16 @@
 #include "board.h"
 #include "fen.h"
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 int main() {
-  Board board(fen::string_to_board("8/3P4/8/8/8/8/5p2/8 w - - 0 1"));
+#ifdef WIN32
+  SetConsoleOutputCP(CP_UTF8);
+#endif
+
+  Board board(fen::string_to_board("rnbqkbnr/pppppppp/8/4P3/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"));
 
   std::string command;
   while (true) {

@@ -3,7 +3,7 @@
 
 #include <sstream>
 #include <string>
-#include <map>
+#include <unordered_map>
 
 #include "types.h"
 #include "board.h"

@@ -83,9 +83,9 @@ std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
   pieces[kBlackPieces] = pieces[kBlackPawns] | pieces[kBlackKnights] | pieces[kBlackBishops] | pieces[kBlackRooks] | pieces[kBlackQueens] | pieces[kBlackKing];
   pieces[kAllPieces] = pieces[kWhitePieces] | pieces[kBlackPieces];
 
-  char turn_to_move;
-  stream >> turn_to_move;
-  state->turn_to_move = (turn_to_move == 'w' ? Color::kWhite : Color::kBlack);
+  char turn;
+  stream >> turn;
+  state->turn = (turn == 'w' ? Color::kWhite : Color::kBlack);
 
   std::string castle_rights;
   stream >> castle_rights;
@@ -135,7 +135,7 @@ std::string board_to_string(const std::shared_ptr<BoardState>& state) {
 
   // move turn
   output.push_back(' ');
-  output.push_back(state->turn_to_move == Color::kWhite ? 'w' : 'b');
+  output.push_back(state->turn == Color::kWhite ? 'w' : 'b');
 
   // castling rights
   output.push_back(' ');

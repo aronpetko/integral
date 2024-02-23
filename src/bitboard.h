@@ -27,7 +27,7 @@ enum PieceBitBoard {
   kAllPieces
 };
 
-enum Square : U8 {
+enum Square : U32 {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
   kA2, kB2, kC2, kD2, kE2, kF2, kG2, kH2,
   kA3, kB3, kC3, kD3, kE3, kF3, kG3, kH3,
@@ -190,20 +190,22 @@ static BitBoard shift(BitBoard bb) {
     return (bb >> 9) & ~FileMasks::kFileH;
 }
 
-static Color get_piece_color(U8 pos, BitBoards &pieces) {
+static std::optional<Color> get_piece_color(U8 pos, BitBoards &pieces) {
   if (pieces[kWhitePieces].is_set(pos)) return Color::kWhite;
   if (pieces[kBlackPieces].is_set(pos)) return Color::kBlack;
-  return Color::kNone;
+  return std::nullopt;
 }
 
-static Color get_piece_color(BitBoard bb, BitBoards &pieces) {
+static std::optional<Color> get_piece_color(BitBoard bb, BitBoards &pieces) {
   if ((pieces[kWhitePieces] & bb).as_u64()) return Color::kWhite;
   if ((pieces[kBlackPieces] & bb).as_u64()) return Color::kBlack;
-  return Color::kNone;
+  return std::nullopt;
 }
 
 static PieceType get_piece_type(U8 pos, BitBoards &pieces) {
   auto color = get_piece_color(pos, pieces);
+  if (!color.has_value())
+    return PieceType::kNone;
 
   int start_bb = color == Color::kWhite ? kWhitePawns : kBlackPawns;
   int end_bb = color == Color::kWhite ? kWhitePieces : kBlackPieces;

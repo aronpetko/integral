@@ -1,6 +1,7 @@
 #ifndef INTEGRAL_BOARD_H_
 #define INTEGRAL_BOARD_H_
 
+#include <vector>
 #include <memory>
 #include <utility>
 
@@ -9,25 +10,21 @@
 
 struct BoardState {
   BitBoards pieces;
-  Color turn_to_move;
+  Move move;
+  Color turn;
   U32 full_moves;
   U32 half_moves;
   U8 castle_state;
+  std::optional<Square> en_passant;
 
   BoardState() {
     half_moves = 0;
     full_moves = 1;
-    turn_to_move = Color::kWhite;
-    castle_state = CastleRights::kWhiteKingside | CastleRights::kWhiteQueenside | CastleRights::kBlackKingside
-        | CastleRights::kBlackQueenside;
+    turn = Color::kWhite;
+    castle_state = CastleRights::kWhiteKingside | CastleRights::kWhiteQueenside | CastleRights::kBlackKingside | CastleRights::kBlackQueenside;
   }
 
-  BoardState(const BoardState &other) :
-      pieces(other.pieces),
-      turn_to_move(other.turn_to_move),
-      full_moves(other.full_moves),
-      half_moves(other.half_moves),
-      castle_state(other.castle_state) {}
+  BoardState(const BoardState &other) = default;
 };
 
 class Board {
@@ -45,8 +42,6 @@ class Board {
   void undo_move();
 
  private:
-  void handle_capturing(const Move &move);
-
   void handle_castling(const Move &move);
 
   void handle_promotions(const Move &move);

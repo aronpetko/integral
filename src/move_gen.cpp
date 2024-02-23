@@ -17,7 +17,6 @@ BitBoard generate_pawn_attacks(U8 pos, const std::unique_ptr<BoardState> &state)
   return moves;
 }
 
-// todo: handle promotion
 BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
   BitBoard moves, bb_pos(1ULL << pos), occupied = state->pieces[kAllPieces], attacks = generate_pawn_attacks(pos, state);
 
@@ -46,26 +45,42 @@ BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
   }
 
   // allow attacks that can actually capture an opposing piece
-  BitBoard &opposing_pieces = state->pieces[state->turn_to_move == Color::kWhite ? kBlackPieces : kWhitePieces];
+  BitBoard &opposing_pieces = state->pieces[state->turn == Color::kWhite ? kBlackPieces : kWhitePieces];
   attacks &= opposing_pieces;
+
+  // and en passant too
+  if (state->en_passant.has_value()) {
+    std::cout << state->en_passant.value() << std::endl;
+    attacks.set_bit(state->en_passant.value());
+  }
 
   return moves | attacks;
 }
 
 BitBoard generate_knight_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
   BitBoard moves, occupied = state->pieces[kAllPieces];
-  
-  const int kKnightOffsets[] = {6, 10, 15, 17, -6, -10, -15, -17};
-  for (const int &offset : kKnightOffsets) {
-    U8 new_pos = pos + offset;
 
-    // if the move collides with another piece
-    if (occupied.is_set(new_pos)) {
-      moves.set_bit(new_pos);
-      continue;
+  // Knight's move patterns in terms of rank and file offsets
+  const int kKnightMovePatterns[][2] = {
+      {-2, -1}, {-2, 1}, {2, -1}, {2, 1},
+      {-1, -2}, {-1, 2}, {1, -2}, {1, 2}
+  };
+
+  int original_rank = pos / 8;
+  int original_file = pos % 8;
+
+  for (const auto &pattern : kKnightMovePatterns) {
+    int new_rank = original_rank + pattern[0];
+    int new_file = original_file + pattern[1];
+
+    // check if the new position is within the bounds of the board
+    if (new_rank >= 0 && new_rank < 8 && new_file >= 0 && new_file < 8) {
+      U8 new_pos = new_rank * 8 + new_file;  // Convert board coordinates back to position
+
+      // check if the move is to an occupied square and add it to the moves bitboard
+      if (!occupied.is_set(new_pos))
+        moves.set_bit(new_pos);
     }
-
-    moves.set_bit(new_pos);
   }
 
   return moves;
@@ -165,7 +180,7 @@ BitBoard generate_king_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
   generate_moves_in_direction(shift<Direction::kSouthEast>);
   generate_moves_in_direction(shift<Direction::kSouthWest>);
 
-  if (!king_in_check(state->turn_to_move, state))
+  if (!king_in_check(state->turn, state))
     moves |= generate_castling_moves(state);
 
   return moves;
@@ -198,7 +213,7 @@ BitBoard generate_king_attacks(U8 pos) {
 BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state) {
   BitBoard moves, attacked = get_attacked_squares(state, false, true), occupied = state->pieces[kAllPieces];
 
-  if (state->turn_to_move == Color::kWhite) {
+  if (state->turn == Color::kWhite) {
     if (state->castle_state & CastleRights::kWhiteKingside) {
       if (!attacked.is_set(Square::kF1) && !occupied.is_set(Square::kF1) &&
           !attacked.is_set(Square::kG1) && !occupied.is_set(Square::kG1))
@@ -231,7 +246,7 @@ BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, bool sel
   BitBoard attacked;
 
   // offset for white and black pieces
-  int offset = (state->turn_to_move == Color::kBlack) ? (self ? 7 : 0) : (self ? 0 : 7);
+  int offset = (state->turn == Color::kBlack) ? (self ? 7 : 0) : (self ? 0 : 7);
 
   BitBoard pawns = state->pieces[offset + 0];
   while (pawns.as_u64()) {
@@ -276,5 +291,5 @@ BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, bool sel
 
 bool king_in_check(Color color, const std::unique_ptr<BoardState> &state) {
   BitBoard king_bb = color == Color::kWhite ? state->pieces[kWhiteKing] : state->pieces[kBlackKing];
-  return get_attacked_squares(state, color != state->turn_to_move, true).is_set(king_bb.get_lsb_pos());
+  return get_attacked_squares(state, color != state->turn, true).is_set(king_bb.get_lsb_pos());
 }

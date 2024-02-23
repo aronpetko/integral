@@ -27,10 +27,9 @@ enum class PromotionType : U8 {
   kQueen
 };
 
-enum class Color {
+enum Color {
   kWhite,
-  kBlack,
-  kNone
+  kBlack
 };
 
 enum CastleRights : U8 {

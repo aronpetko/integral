@@ -1,6 +1,7 @@
 #ifndef INTEGRAL_MOVE_H_
 #define INTEGRAL_MOVE_H_
 
+#include <optional>
 #include "types.h"
 
 static U8 rank_file_to_pos(U8 rank, U8 file) {
@@ -18,6 +19,8 @@ const U32 kPromotionTypeMask = 0b111000000000000000;
 // bits 15-17: promotion type
 struct Move {
   U32 data = 0;
+
+  Move() = default;
 
   Move(U8 from, U8 to) {
     set_from(from);
