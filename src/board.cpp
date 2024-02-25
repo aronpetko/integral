@@ -6,15 +6,20 @@ bool Board::is_legal_move(const Move &move) {
 
   // check if the moved piece belongs to the current move's player
   if (!state_->pieces[state_->turn == Color::kWhite ? kWhitePieces : kBlackPieces].is_set(from)) {
-    std::cerr << "this piece doesn't belong to you" << std::endl;
+    //std::cerr << "this piece doesn't belong to you" << std::endl;
     return false;
   }
 
+  BitBoard &our_pieces = state_->pieces[state_->turn == Color::kWhite ? kWhitePieces : kBlackPieces];
+  BitBoard &their_pieces = state_->pieces[state_->turn == Color::kWhite ? kBlackPieces : kWhitePieces];
   BitBoard possible_moves;
+
   switch (move.get_piece_type()) {
-    case PieceType::kPawn:
-      possible_moves = generate_pawn_moves(from, state_);
+    case PieceType::kPawn: {
+      const BitBoard en_passant_mask = state_->en_passant.has_value() ? BitBoard(1ULL << state_->en_passant.value()) : BitBoard(0);
+      possible_moves = generate_pawn_moves(from, state_) | (generate_pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
       break;
+    }
     case PieceType::kKnight:
       possible_moves = generate_knight_moves(from, state_);
       break;
@@ -35,29 +40,27 @@ bool Board::is_legal_move(const Move &move) {
       return false;
   }
 
-  // capturing your own pieces is illegal
-  possible_moves &= ~state_->pieces[state_->turn == Color::kWhite ? kWhitePieces : kBlackPieces].as_u64();
+  const bool en_passant_set = state_->en_passant.has_value() && possible_moves.is_set(state_->en_passant.value());
+  possible_moves &= ~our_pieces;
+  if (en_passant_set) possible_moves.set_bit(state_->en_passant.value());
 
   if (possible_moves.is_set(to)) {
     // check if this move puts the king in check
     // now that we have made the move, the turn to move has flipped to the other side, so we flip it back to see if that king is in check
-    make_move(move, false);
+    make_move(move);
     bool in_check = king_in_check(Color(!state_->turn), state_);
     undo_move();
 
-    if (in_check)
-      std::cerr << "this move places you in check" << std::endl;
+    //if (in_check)
+    //  std::cerr << "this move places you in check" << std::endl;
     return !in_check;
   }
 
-  std::cerr << "this piece cant move here" << std::endl;
+  //std::cerr << "this piece cant move here" << std::endl;
   return false;
 }
 
-void Board::make_move(const Move &move, bool check_valid) {
-  if (check_valid && !is_legal_move(move))
-    return;
-
+void Board::make_move(const Move &move, bool perft, int perft_depth) {
   const U8 from = move.get_from(), to = move.get_to();
   const int from_rank = from / kBoardRanks, to_rank = to / kBoardRanks, from_file = from % kBoardFiles, to_file = to % kBoardFiles;
 
@@ -83,8 +86,14 @@ void Board::make_move(const Move &move, bool check_valid) {
   // find which bitboards the captured piece belong to and clear it
   for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
     BitBoard &piece_bb = state_->pieces[bb_idx];
-    if (piece_bb.is_set(to))
+    if (piece_bb.is_set(to)) {
+      // perft debugging
+      if (perft && perft_depth == 1 && bb_idx != opponent_end_bb) {
+        ++captures;
+      }
+
       piece_bb.clear_bit(to);
+    }
   }
 
   // en passant capture
@@ -98,6 +107,12 @@ void Board::make_move(const Move &move, bool check_valid) {
     if (opposing_pawns.is_set(en_passant_pawn_pos)) {
       opposing_pawns.clear_bit(en_passant_pawn_pos);
       opposing_pieces.clear_bit(en_passant_pawn_pos);
+
+      // perft debugging
+      if (perft && perft_depth == 1) {
+        ++en_passant_captures;
+        ++captures;
+      }
     } else {
       std::cerr << "en passant pawn does not exist" << std::endl;
       return;
@@ -112,13 +127,18 @@ void Board::make_move(const Move &move, bool check_valid) {
     state_->en_passant = std::nullopt;
   }
 
-  handle_castling(move);
-  handle_promotions(move);
+  handle_castling(move, perft, perft_depth);
+  handle_promotions(move, perft, perft_depth);
 
   // set the new board state data
   state_->pieces[kAllPieces] = state_->pieces[kWhitePieces] | state_->pieces[kBlackPieces];
 
-  state_->turn = Color(!static_cast<bool>(state_->turn));
+  state_->turn = Color(!state_->turn);
+
+  // perft debugging
+  if (perft && perft_depth == 1 && king_in_check(state_->turn, state_)) {
+    ++checks;
+  }
 
   if (++state_->half_moves % 2 == 0)
     state_->full_moves++;
@@ -133,7 +153,7 @@ void Board::undo_move() {
   }
 }
 
-void Board::handle_castling(const Move &move) {
+void Board::handle_castling(const Move &move, bool perft, int perft_depth) {
   const U8 from = move.get_from(), to = move.get_to();
   const auto piece_type = move.get_piece_type();
 
@@ -155,9 +175,15 @@ void Board::handle_castling(const Move &move) {
     if (move_dist == kKingsideCastleDist) {
       move_rook_for_castling(state_->turn == Color::kWhite ? Square::kH1 : Square::kH8,
                              state_->turn == Color::kWhite ? Square::kF1 : Square::kF8);
+
+      if (perft && perft_depth == 1)
+        ++castles;
     } else if (move_dist == kQueensideCastleDist) {
       move_rook_for_castling(state_->turn == Color::kWhite ? Square::kA1 : Square::kA8,
                              state_->turn == Color::kWhite ? Square::kD1 : Square::kD8);
+
+      if (perft && perft_depth == 1)
+        ++castles;
     }
 
     // remove castling rights
@@ -179,9 +205,28 @@ void Board::handle_castling(const Move &move) {
       }
     }
   }
+  // handle rook getting captured changing castle rights
+  else {
+    auto their_kingside_rook = state_->castle.get_kingside_rook(Color(!state_->turn));
+    auto their_queenside_rook = state_->castle.get_kingside_rook(Color(!state_->turn));
+
+    if (move.get_to() == their_kingside_rook) {
+      if (state_->turn == Color::kWhite) {
+        state_->castle_state &= ~CastleRights::kBlackKingside;
+      } else {
+        state_->castle_state &= ~CastleRights::kWhiteKingside;
+      }
+    } else if (move.get_to() == their_queenside_rook) {
+      if (state_->turn == Color::kWhite) {
+        state_->castle_state &= ~CastleRights::kBlackQueenside;
+      } else {
+        state_->castle_state &= ~CastleRights::kWhiteQueenside;
+      }
+    }
+  }
 }
 
-void Board::handle_promotions(const Move &move) {
+void Board::handle_promotions(const Move &move, bool perft, int perft_depth) {
   const auto piece_type = move.get_piece_type();
   if (piece_type != PieceType::kPawn)
     return;
@@ -209,6 +254,9 @@ void Board::handle_promotions(const Move &move) {
           return;
       }
 
+      if (perft && perft_depth == 1)
+        ++promotions;
+
       state_->pieces[kWhitePawns].clear_bit(to);
       state_->pieces[kWhitePieces].clear_bit(to);
       state_->pieces[kWhitePieces].set_bit(to);
@@ -232,6 +280,9 @@ void Board::handle_promotions(const Move &move) {
           std::cerr << "invalid promotion type" << std::endl;
           return;
       }
+
+      if (perft && perft_depth == 1)
+        ++promotions;
 
       state_->pieces[kBlackPawns].clear_bit(to);
       state_->pieces[kBlackPieces].clear_bit(to);

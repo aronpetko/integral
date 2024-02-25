@@ -17,12 +17,14 @@ BitBoard generate_rook_moves(U8 pos, const std::unique_ptr<BoardState> &state);
 
 BitBoard generate_king_moves(U8 pos, const std::unique_ptr<BoardState> &state);
 
-BitBoard generate_king_attacks(U8 pos);
+BitBoard generate_king_attacks(U8 pos, const std::unique_ptr<BoardState> &state);
 
-BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state);
+BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state, Color which);
 
-BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, bool self = false, bool include_king_attacks = true);
+BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, Color attacker, bool include_king_attacks = true);
 
 bool king_in_check(Color color, const std::unique_ptr<BoardState> &state);
+
+MoveList generate_moves(const std::unique_ptr<BoardState> &state);
 
 #endif // INTEGRAL_MOVE_GEN_H_

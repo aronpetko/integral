@@ -164,6 +164,10 @@ class BitBoard {
     return *this;
   }
 
+  BitBoard operator~() const {
+    return BitBoard(~bitboard_);
+  }
+
  private:
   U64 bitboard_;
 };
