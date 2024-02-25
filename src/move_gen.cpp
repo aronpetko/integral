@@ -89,9 +89,9 @@ BitBoard generate_bishop_moves(U8 pos, const std::unique_ptr<BoardState> &state)
     their_pieces = color == Color::kWhite ? state->pieces[kBlackPieces] : state->pieces[kWhitePieces];
 
   auto generate_moves_in_direction = [&](auto &shift_fn) {
-    U8 current = pos;
+    BitBoard current(1ULL << pos);
     while (true) {
-      BitBoard shifted = shift_fn(BitBoard(1ULL << current));
+      BitBoard shifted = shift_fn(current);
       // check if move is outside board
       if (!shifted.as_u64())
         break;
@@ -104,7 +104,7 @@ BitBoard generate_bishop_moves(U8 pos, const std::unique_ptr<BoardState> &state)
         break;
 
       // update the piece's position
-      current = new_pos;
+      current = shifted;
     }
   };
 
@@ -124,9 +124,9 @@ BitBoard generate_rook_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
       &their_pieces = color == Color::kWhite ? state->pieces[kBlackPieces] : state->pieces[kWhitePieces];
 
   auto generate_moves_in_direction = [&](auto &shift_fn) {
-    U8 current = pos;
+    BitBoard current(1ULL << pos);
     while (true) {
-      BitBoard shifted = shift_fn(BitBoard(1ULL << current));
+      BitBoard shifted = shift_fn(current);
       // check if move is outside board
       if (!shifted.as_u64())
         break;
@@ -139,7 +139,7 @@ BitBoard generate_rook_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
         break;
 
       // update the piece's position
-      current = new_pos;
+      current = shifted;
     }
   };
 
@@ -156,8 +156,10 @@ BitBoard generate_king_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
   const auto color = get_piece_color(pos, state->pieces);
 
   BitBoard moves;
-  auto generate_moves_in_direction = [&](auto &shift_fn) {
-    BitBoard shifted = shift_fn(BitBoard(1ULL << pos));
+  BitBoard pos_bb(1ULL << pos);
+
+  auto generate_moves_in_direction = [&moves, &pos_bb](auto &shift_fn) {
+    BitBoard shifted = shift_fn(pos_bb);
     // check if move is outside board
     if (!shifted.as_u64())
       return;
@@ -182,13 +184,11 @@ BitBoard generate_king_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
 }
 
 BitBoard generate_king_attacks(U8 pos, const std::unique_ptr<BoardState> &state) {
-  const auto color = get_piece_color(pos, state->pieces);
-
   BitBoard attacks;
-  BitBoard &our_pieces = color == Color::kWhite ? state->pieces[kWhitePieces] : state->pieces[kBlackPieces];
+  BitBoard pos_bb(1ULL << pos);
 
-  auto generate_attack_in_direction = [&attacks, &pos, &our_pieces](auto &shift_fn) {
-    BitBoard shifted = shift_fn(BitBoard(1ULL << pos));
+  auto generate_attack_in_direction = [&attacks, &pos_bb](auto &shift_fn) {
+    BitBoard shifted = shift_fn(pos_bb);
     // check if move is outside board
     if (!shifted.as_u64())
       return;

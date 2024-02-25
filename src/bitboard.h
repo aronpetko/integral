@@ -63,7 +63,7 @@ enum FileMasks : U64 {
 
 class BitBoard {
  public:
-  BitBoard() : bitboard_(0ULL) {}
+  constexpr BitBoard() : bitboard_(0ULL) {}
 
   explicit BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
@@ -89,19 +89,7 @@ class BitBoard {
   }
 
   [[nodiscard]] U8 get_lsb_pos() const {
-    U64 copy = bitboard_;
-
-    U8 position = 0;
-    while (copy) {
-      if (copy & 1)
-        return position;
-
-      copy >>= 1;
-      position++;
-    }
-
-    // should only reach here if the bitboard isn't empty
-    return position;
+    return std::countr_zero(bitboard_);
   }
 
   U8 pop_lsb() {
@@ -175,23 +163,25 @@ class BitBoard {
 using BitBoards = std::array<BitBoard, kAllPieces + 1>;
 
 template<Direction dir>
-static BitBoard shift(BitBoard bb) {
-  if (dir == Direction::kNorth)
-    return bb << 8;
-  if (dir == Direction::kSouth)
-    return bb >> 8;
-  if (dir == Direction::kEast)
-    return (bb << 1) & ~FileMasks::kFileA;
-  if (dir == Direction::kWest)
-    return (bb >> 1) & ~FileMasks::kFileH;
-  if (dir == Direction::kNorthEast)
-    return (bb << 9) & ~FileMasks::kFileA;
-  if (dir == Direction::kNorthWest)
-    return (bb << 7) & ~FileMasks::kFileH;
-  if (dir == Direction::kSouthEast)
-    return (bb >> 7) & ~FileMasks::kFileA;
-  if (dir == Direction::kSouthWest)
-    return (bb >> 9) & ~FileMasks::kFileH;
+constexpr inline BitBoard shift(const BitBoard& bitboard) {
+  if constexpr (dir == Direction::kNorth)
+    return BitBoard(bitboard << 8);
+  else if constexpr (dir == Direction::kSouth)
+    return BitBoard(bitboard >> 8);
+  else if constexpr (dir == Direction::kEast)
+    return BitBoard((bitboard << 1) & ~FileMasks::kFileA);
+  else if constexpr (dir == Direction::kWest)
+    return BitBoard((bitboard >> 1) & ~FileMasks::kFileH);
+  else if constexpr (dir == Direction::kNorthEast)
+    return BitBoard((bitboard << 9) & ~FileMasks::kFileA);
+  else if constexpr (dir == Direction::kNorthWest)
+    return BitBoard((bitboard << 7) & ~FileMasks::kFileH);
+  else if constexpr (dir == Direction::kSouthEast)
+    return BitBoard((bitboard >> 7) & ~FileMasks::kFileA);
+  else if constexpr (dir == Direction::kSouthWest)
+    return BitBoard((bitboard >> 9) & ~FileMasks::kFileH);
+  else
+    return BitBoard(0); // default case to avoid compiler warnings, should not be reached
 }
 
 static std::optional<Color> get_piece_color(U8 pos, BitBoards &pieces) {
