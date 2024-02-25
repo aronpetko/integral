@@ -56,10 +56,7 @@ BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
 }
 
 BitBoard generate_knight_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
-  const auto color = get_piece_color(pos, state->pieces);
-
   BitBoard moves;
-  BitBoard &our_pieces = color == Color::kWhite ? state->pieces[kWhitePieces] : state->pieces[kBlackPieces];
 
   // knight's move patterns in terms of rank and file offsets
   const int kKnightMovePatterns[][2] = {

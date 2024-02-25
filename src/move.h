@@ -2,6 +2,8 @@
 #define INTEGRAL_MOVE_H_
 
 #include <optional>
+#include <vector>
+
 #include "types.h"
 
 static U8 rank_file_to_pos(U8 rank, U8 file) {

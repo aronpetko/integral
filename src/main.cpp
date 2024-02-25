@@ -16,16 +16,15 @@ unsigned long perft(Board &board, int depth) {
   if (!depth)
     return 1;
 
-  int positions = 0;
-  for (const auto& move : generate_moves(board.get_state())) {
+  const auto moves = generate_moves(board.get_state());
+
+  unsigned long positions = 0;
+  for (const auto& move : moves) {
     if (!board.is_legal_move(move))
       continue;
 
     board.make_move(move, true, depth);
-    int per = perft(board, depth - 1);
-    if (depth == 2)
-      poses.push_back({move.to_string(), per});
-    positions += per;
+    positions += perft(board, depth - 1);
     board.undo_move();
   }
 
@@ -37,11 +36,13 @@ int main() {
   SetConsoleOutputCP(CP_UTF8);
 #endif
 
-  Board board(fen::string_to_board("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"));
+  Board board(fen::string_to_board(fen::kStartFen));
 
   const auto start = std::chrono::high_resolution_clock::now();
+  const int perft_nodes = perft(board, 6);
+  const auto end = std::chrono::high_resolution_clock::now();
+  const auto elapsed = std::chrono::duration<double>(end - start).count();
 
-  const int perft_nodes = perft(board, 4);
   std::cout << "+-+-+-+-+-+-+-+-+" << std::endl;
   std::cout << "Nodes: " << perft_nodes << std::endl;
   std::cout << "Captures: " << captures << std::endl;
@@ -49,10 +50,9 @@ int main() {
   std::cout << "Castles: " << castles << std::endl;
   std::cout << "Promotions: " << promotions << std::endl;
   std::cout << "Checks: " << checks << std::endl;
-
-  const auto end = std::chrono::high_resolution_clock::now();
-  const double elapsed = std::chrono::duration<double>(end - start).count();
   std::cout << std::endl << "Took " << std::fixed << std::setprecision(2) << elapsed << "s" << std::endl;
+  std::cout << "NPS: " << perft_nodes / elapsed << std::endl;
+
   std::cout << "+-+-+-+-+-+-+-+-+" << std::endl << std::endl;
 
   sort(poses.begin(), poses.end());
