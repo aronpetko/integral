@@ -23,8 +23,12 @@ BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state, Color
 
 BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, Color attacker, bool include_king_attacks = true);
 
+bool is_square_attacked(U8 pos, Color attacker, const std::unique_ptr<BoardState> &state);
+
 bool king_in_check(Color color, const std::unique_ptr<BoardState> &state);
 
 MoveList generate_moves(const std::unique_ptr<BoardState> &state);
+
+MoveList generate_legal_moves(Board &board);
 
 #endif // INTEGRAL_MOVE_GEN_H_

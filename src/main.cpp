@@ -1,6 +1,8 @@
 #include "board.h"
 #include "fen.h"
 #include "move_gen.h"
+#include "eval.h"
+#include "search.h"
 
 #include <chrono>
 #include <iomanip>
@@ -12,34 +14,25 @@
 
 inline std::vector<std::pair<std::string, int>> poses;
 
-unsigned long perft(Board &board, int depth) {
+unsigned long perft_helper(Board &board, int depth) {
   if (!depth)
     return 1;
 
-  const auto moves = generate_moves(board.get_state());
+  const auto moves = generate_legal_moves(board);
 
   unsigned long positions = 0;
-  for (const auto& move : moves) {
-    if (!board.is_legal_move(move))
-      continue;
-
+  for (const auto &move : moves) {
     board.make_move(move, true, depth);
-    positions += perft(board, depth - 1);
+    positions += perft_helper(board, depth - 1);
     board.undo_move();
   }
 
   return positions;
 }
 
-int main() {
-#ifdef WIN32
-  SetConsoleOutputCP(CP_UTF8);
-#endif
-
-  Board board(fen::string_to_board(fen::kStartFen));
-
+void perft(Board &board, int depth) {
   const auto start = std::chrono::high_resolution_clock::now();
-  const int perft_nodes = perft(board, 6);
+  const int perft_nodes = perft_helper(board, 2);
   const auto end = std::chrono::high_resolution_clock::now();
   const auto elapsed = std::chrono::duration<double>(end - start).count();
 
@@ -54,14 +47,18 @@ int main() {
   std::cout << "NPS: " << perft_nodes / elapsed << std::endl;
 
   std::cout << "+-+-+-+-+-+-+-+-+" << std::endl << std::endl;
+}
 
-  sort(poses.begin(), poses.end());
-  for (const auto& [move, nodes] : poses) {
-    // std::cout << move + ": " << nodes << std::endl;
-  }
+int main() {
+#ifdef WIN32
+  SetConsoleOutputCP(CP_UTF8);
+#endif
+
+  Board board(fen::string_to_board(fen::kStartFen));
 
   std::string command;
   while (true) {
+    std::cout << "eval: " << eval::evaluate(board.get_state()) << std::endl << std::endl;
     print_pieces(board.get_state()->pieces);
 
     std::getline(std::cin, command);
@@ -78,8 +75,18 @@ int main() {
 
       move->set_piece_type(get_piece_type(move->get_from(), board.get_state()->pieces));
 
-      if (board.is_legal_move(move.value()))
+      if (board.is_legal_move(move.value())) {
         board.make_move(move.value());
+
+        std::cout << "\nthinking... end_game: " << board.get_state()->is_end_game() << "\n";
+        const auto start = std::chrono::high_resolution_clock::now();
+        auto best_response = search::find_best_move(board);
+        const auto end = std::chrono::high_resolution_clock::now();
+        const auto elapsed = std::chrono::duration<double>(end - start).count();
+        std::cout << "found best move in: " << elapsed << " | nps: " << (double)search::nodes_searched / (double)elapsed << std::endl;
+        std::cout << "computer move: " << best_response.to_string() << std::endl;
+        board.make_move(best_response);
+      }
     }
   }
 }

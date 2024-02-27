@@ -24,7 +24,8 @@ enum class PromotionType : U8 {
   kKnight,
   kBishop,
   kRook,
-  kQueen
+  kQueen,
+  kAny
 };
 
 enum Color {

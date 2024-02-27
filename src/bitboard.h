@@ -80,7 +80,7 @@ class BitBoard {
   }
 
   [[nodiscard]] bool is_set(U8 square) const {
-    return bitboard_ & (1ULL << square);
+    return (bitboard_ >> square) & 1;
   }
 
   void move(U8 from, U8 to) {
@@ -96,6 +96,10 @@ class BitBoard {
     U8 lsb_pos = get_lsb_pos();
     bitboard_ &= bitboard_ - 1;
     return lsb_pos;
+  }
+
+  [[nodiscard]] U8 pop_count() const {
+    return std::popcount(bitboard_);
   }
 
   BitBoard &operator=(U64 bitboard) {

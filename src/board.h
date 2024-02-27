@@ -12,9 +12,9 @@ class CastleData {
  public:
   CastleData() : rights(0) {
     set_kingside_rook(Color::kWhite, Square::kH1);
-    set_kingside_rook(Color::kBlack, Square::kH8);
     set_queenside_rook(Color::kWhite, Square::kA1);
-    set_queenside_rook(Color::kWhite, Square::kA8);
+    set_kingside_rook(Color::kBlack, Square::kH8);
+    set_queenside_rook(Color::kBlack, Square::kA8);
   }
 
   [[nodiscard]] bool can_kingside_castle(Color turn) const {
@@ -27,14 +27,14 @@ class CastleData {
     return rights & mask;
   }
 
-  void set_can_kingside_castle(Color turn) {
+  void set_can_kingside_castle(Color turn, bool value) {
     U8 mask = turn == Color::kWhite ? CastleRights::kWhiteKingside : CastleRights::kBlackKingside;
-    rights |= mask;
+    value ? rights |= mask : rights &= ~mask;
   }
 
-  void set_can_queenside_castle(Color turn) {
+  void set_can_queenside_castle(Color turn, bool value) {
     U8 mask = turn == Color::kWhite ? CastleRights::kWhiteQueenside : CastleRights::kBlackQueenside;
-    rights |= mask;
+    value ? rights |= mask : rights &= ~mask;
   }
 
   [[nodiscard]] Square get_kingside_rook(Color turn) const {
@@ -63,11 +63,19 @@ class BoardState {
   BoardState() {
     half_moves = 0;
     full_moves = 0;
-    castle_state = 0;
     turn = Color::kWhite;
   }
 
   BoardState(const BoardState &other) = default;
+
+  bool is_end_game() const {
+    const BitBoard minor_pieces = pieces[kWhiteKnights] | pieces[kWhiteBishops] |
+        pieces[kBlackKnights] | pieces[kBlackBishops];
+    const BitBoard major_pieces = pieces[kWhiteRooks] | pieces[kWhiteQueens] |
+        pieces[kBlackRooks] | pieces[kBlackQueens];
+
+    return minor_pieces.pop_count() + major_pieces.pop_count() < 7;
+  }
 
  public:
   BitBoards pieces;
@@ -75,7 +83,6 @@ class BoardState {
   Color turn;
   U32 full_moves;
   U32 half_moves;
-  U8 castle_state;
   std::optional<Square> en_passant;
   CastleData castle;
 };

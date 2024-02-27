@@ -86,7 +86,7 @@ BitBoard generate_bishop_moves(U8 pos, const std::unique_ptr<BoardState> &state)
 
   BitBoard moves;
   BitBoard &our_pieces = color == Color::kWhite ? state->pieces[kWhitePieces] : state->pieces[kBlackPieces],
-    their_pieces = color == Color::kWhite ? state->pieces[kBlackPieces] : state->pieces[kWhitePieces];
+      their_pieces = color == Color::kWhite ? state->pieces[kBlackPieces] : state->pieces[kWhitePieces];
 
   auto generate_moves_in_direction = [&](auto &shift_fn) {
     BitBoard current(1ULL << pos);
@@ -212,26 +212,26 @@ BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state, Color
   BitBoard moves, attacked = get_attacked_squares(state, Color(!which), true), occupied = state->pieces[kAllPieces];
 
   if (which == Color::kWhite) {
-    if (state->castle_state & CastleRights::kWhiteKingside) {
+    if (state->castle.can_kingside_castle(Color::kWhite)) {
       if (!attacked.is_set(Square::kF1) && !occupied.is_set(Square::kF1) &&
           !attacked.is_set(Square::kG1) && !occupied.is_set(Square::kG1))
         moves.set_bit(Square::kG1);
     }
 
-    if (state->castle_state & CastleRights::kWhiteQueenside) {
+    if (state->castle.can_queenside_castle(Color::kWhite)) {
       if (!attacked.is_set(Square::kD1) && !occupied.is_set(Square::kD1) &&
           !attacked.is_set(Square::kC1) && !occupied.is_set(Square::kC1) &&
           !occupied.is_set(Square::kB1))
         moves.set_bit(Square::kC1);
     }
   } else {
-    if (state->castle_state & CastleRights::kBlackKingside) {
+    if (state->castle.can_kingside_castle(Color::kBlack)) {
       if (!attacked.is_set(Square::kF8) && !occupied.is_set(Square::kF8) &&
           !attacked.is_set(Square::kG8) && !occupied.is_set(Square::kG8))
         moves.set_bit(Square::kG8);
     }
 
-    if (state->castle_state & CastleRights::kBlackQueenside) {
+    if (state->castle.can_queenside_castle(Color::kBlack)) {
       if (!attacked.is_set(Square::kD8) && !occupied.is_set(Square::kD8) &&
           !attacked.is_set(Square::kC8) && !occupied.is_set(Square::kC8) &&
           !occupied.is_set(Square::kB8))
@@ -289,49 +289,101 @@ BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, Color at
   return attacked;
 }
 
+bool is_square_attacked(U8 pos, Color attacker, const std::unique_ptr<BoardState> &state) {
+  // offset for white and black pieces
+  const int offset = attacker == Color::kBlack ? kBlackPawns : kWhitePawns;
+
+  BitBoard queens = state->pieces[offset + 4];
+  while (queens.as_u64()) {
+    U8 from_square = queens.pop_lsb();
+    if ((generate_rook_moves(from_square, state) | generate_bishop_moves(from_square, state)).is_set(pos))
+      return true;
+  }
+
+  BitBoard rooks = state->pieces[offset + 3];
+  while (rooks.as_u64()) {
+    U8 from_square = rooks.pop_lsb();
+    if (generate_rook_moves(from_square, state).is_set(pos))
+      return true;
+  }
+
+  BitBoard bishops = state->pieces[offset + 2];
+  while (bishops.as_u64()) {
+    U8 from_square = bishops.pop_lsb();
+    if (generate_bishop_moves(from_square, state).is_set(pos))
+      return true;
+  }
+
+  BitBoard knights = state->pieces[offset + 1];
+  while (knights.as_u64()) {
+    U8 from_square = knights.pop_lsb();
+    if (generate_knight_moves(from_square, state).is_set(pos))
+      return true;
+  }
+
+  BitBoard pawns = state->pieces[offset + 0];
+  while (pawns.as_u64()) {
+    U8 from_square = pawns.pop_lsb();
+    if (generate_pawn_attacks(from_square, state).is_set(pos))
+      return true;
+  }
+
+  BitBoard king = state->pieces[offset + 5];
+  if (king.as_u64()) {
+    U8 king_square = king.pop_lsb(); // king is only in one position
+    if (generate_king_attacks(king_square, state).is_set(pos))
+      return true;
+  }
+
+  return false;
+}
+
 bool king_in_check(Color color, const std::unique_ptr<BoardState> &state) {
   BitBoard king_bb = color == Color::kWhite ? state->pieces[kWhiteKing] : state->pieces[kBlackKing];
-  return get_attacked_squares(state, Color(!color), true).is_set(king_bb.get_lsb_pos());
+  return is_square_attacked(king_bb.get_lsb_pos(), Color(!color), state);
 }
 
 MoveList generate_moves(const std::unique_ptr<BoardState> &state) {
   MoveList moves;
-  
+
   for (U8 rank = 0; rank < kBoardRanks; rank++) {
     for (U8 file = 0; file < kBoardFiles; file++) {
       const U8 from = rank_file_to_pos(rank, file);
-      
+
       const auto piece_type = get_piece_type(from, state->pieces);
       if (piece_type == PieceType::kNone)
         continue;
-      
+
       const auto piece_color = get_piece_color(from, state->pieces);
       if (piece_color != state->turn)
         continue;
 
+      BitBoard &our_pieces = state->pieces[state->turn == Color::kWhite ? kWhitePieces : kBlackPieces];
+      BitBoard &their_pieces = state->pieces[state->turn == Color::kWhite ? kBlackPieces : kWhitePieces];
+
       BitBoard possible_moves;
       switch (piece_type) {
-        case PieceType::kPawn:
-          possible_moves = generate_pawn_moves(from, state) | generate_pawn_attacks(from, state);
+        case PieceType::kPawn: {
+          const BitBoard en_passant_mask = state->en_passant.has_value() ? BitBoard(1ULL << state ->en_passant.value()) : BitBoard(0);
+          possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
           break;
-        case PieceType::kKnight:
-          possible_moves = generate_knight_moves(from, state);
+        }
+        case PieceType::kKnight:possible_moves = generate_knight_moves(from, state);
           break;
-        case PieceType::kBishop:
-          possible_moves = generate_bishop_moves(from, state);
+        case PieceType::kBishop:possible_moves = generate_bishop_moves(from, state);
           break;
-        case PieceType::kRook:
-          possible_moves = generate_rook_moves(from, state);
+        case PieceType::kRook:possible_moves = generate_rook_moves(from, state);
           break;
-        case PieceType::kQueen:
-          possible_moves = generate_bishop_moves(from, state) | generate_rook_moves(from, state);
+        case PieceType::kQueen:possible_moves = generate_bishop_moves(from, state) | generate_rook_moves(from, state);
           break;
-        case PieceType::kKing:
-          possible_moves = generate_king_moves(from, state);
+        case PieceType::kKing:possible_moves = generate_king_moves(from, state);
           break;
-        default:
-          break;
+        default:break;
       }
+
+      const bool en_passant_set = state->en_passant.has_value() && possible_moves.is_set(state->en_passant.value());
+      possible_moves &= ~our_pieces;
+      if (en_passant_set) possible_moves.set_bit(state->en_passant.value());
 
       while (possible_moves.as_u64()) {
         const U8 to = possible_moves.pop_lsb();
@@ -339,7 +391,8 @@ MoveList generate_moves(const std::unique_ptr<BoardState> &state) {
 
         // add the different promotion moves if possible
         if (piece_type == PieceType::kPawn) {
-          if ((state->turn == Color::kWhite && to_rank == kBoardRanks - 1) || (state->turn == Color::kBlack && to_rank == 0)) {
+          if ((state->turn == Color::kWhite && to_rank == kBoardRanks - 1)
+              || (state->turn == Color::kBlack && to_rank == 0)) {
             moves.emplace_back(from, to, piece_type, PromotionType::kKnight);
             moves.emplace_back(from, to, piece_type, PromotionType::kBishop);
             moves.emplace_back(from, to, piece_type, PromotionType::kRook);
@@ -354,4 +407,25 @@ MoveList generate_moves(const std::unique_ptr<BoardState> &state) {
   }
 
   return moves;
+}
+
+MoveList generate_legal_moves(Board &board) {
+  const auto &state = board.get_state();
+
+  auto quick_is_legal_move = [&board, &state](const Move &move) {
+    board.make_move(move);
+    const bool in_check = king_in_check(Color(!state->turn), state);
+    board.undo_move();
+    return !in_check;
+  };
+
+  MoveList moves = generate_moves(state);
+  MoveList legal_moves;
+
+  for (const auto &move : moves) {
+    if (quick_is_legal_move(move))
+      legal_moves.push_back(move);
+  }
+
+  return legal_moves;
 }

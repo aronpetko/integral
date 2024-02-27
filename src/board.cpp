@@ -7,7 +7,7 @@ bool Board::is_legal_move(const Move &move) {
 
   // check if the moved piece belongs to the current move's player
   if (!state_->pieces[is_white ? kWhitePieces : kBlackPieces].is_set(from)) {
-    //std::cerr << "this piece doesn't belong to you" << std::endl;
+    std::cerr << "this piece doesn't belong to you" << std::endl;
     return false;
   }
 
@@ -21,23 +21,17 @@ bool Board::is_legal_move(const Move &move) {
       possible_moves = generate_pawn_moves(from, state_) | (generate_pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
       break;
     }
-    case PieceType::kKnight:
-      possible_moves = generate_knight_moves(from, state_);
+    case PieceType::kKnight: possible_moves = generate_knight_moves(from, state_);
       break;
-    case PieceType::kBishop:
-      possible_moves = generate_bishop_moves(from, state_);
+    case PieceType::kBishop: possible_moves = generate_bishop_moves(from, state_);
       break;
-    case PieceType::kRook:
-      possible_moves = generate_rook_moves(from, state_);
+    case PieceType::kRook: possible_moves = generate_rook_moves(from, state_);
       break;
-    case PieceType::kQueen:
-      possible_moves = generate_bishop_moves(from, state_) | generate_rook_moves(from, state_);
+    case PieceType::kQueen: possible_moves = generate_bishop_moves(from, state_) | generate_rook_moves(from, state_);
       break;
-    case PieceType::kKing:
-      possible_moves = generate_king_moves(from, state_);
+    case PieceType::kKing: possible_moves = generate_king_moves(from, state_);
       break;
-    default:
-      std::cerr << "this piece doesn't exist" << std::endl;
+    default:std::cerr << "this piece doesn't exist" << std::endl;
       return false;
   }
 
@@ -52,12 +46,12 @@ bool Board::is_legal_move(const Move &move) {
     bool in_check = king_in_check(Color(!state_->turn), state_);
     undo_move();
 
-    //if (in_check)
-    //  std::cerr << "this move places you in check" << std::endl;
+    if (in_check)
+      std::cerr << "this move places you in check" << std::endl;
     return !in_check;
   }
 
-  //std::cerr << "this piece cant move here" << std::endl;
+  std::cerr << "this piece cant move here" << std::endl;
   return false;
 }
 
@@ -190,42 +184,34 @@ void Board::handle_castling(const Move &move, bool perft, int perft_depth) {
         ++castles;
     }
 
-    // remove castling rights
-    state_->castle_state &= is_white ? ~CastleRights::kWhiteBothSides : ~CastleRights::kBlackBothSides;
+    state_->castle.set_can_kingside_castle(state_->turn, false);
+    state_->castle.set_can_queenside_castle(state_->turn, false);
   }
-  // handle rook moves changing castle rights
+    // handle rook moves changing castle rights
   else if (piece_type == PieceType::kRook) {
     if (is_white) {
       if (from == Square::kH1) {
-        state_->castle_state &= ~CastleRights::kWhiteKingside;
+        state_->castle.set_can_kingside_castle(state_->turn, false);
       } else if (from == Square::kA1) {
-        state_->castle_state &= ~CastleRights::kWhiteQueenside;
+        state_->castle.set_can_queenside_castle(state_->turn, false);
       }
     } else {
       if (from == Square::kH8) {
-        state_->castle_state &= ~CastleRights::kBlackKingside;
+        state_->castle.set_can_kingside_castle(state_->turn, false);
       } else if (from == Square::kA8) {
-        state_->castle_state &= ~CastleRights::kBlackQueenside;
+        state_->castle.set_can_queenside_castle(state_->turn, false);
       }
     }
   }
-  // handle rook getting captured changing castle rights
+    // handle rook getting captured changing castle rights
   else {
     auto their_kingside_rook = state_->castle.get_kingside_rook(Color(!state_->turn));
-    auto their_queenside_rook = state_->castle.get_kingside_rook(Color(!state_->turn));
+    auto their_queenside_rook = state_->castle.get_queenside_rook(Color(!state_->turn));
 
-    if (move.get_to() == their_kingside_rook) {
-      if (is_white) {
-        state_->castle_state &= ~CastleRights::kBlackKingside;
-      } else {
-        state_->castle_state &= ~CastleRights::kWhiteKingside;
-      }
-    } else if (move.get_to() == their_queenside_rook) {
-      if (is_white) {
-        state_->castle_state &= ~CastleRights::kBlackQueenside;
-      } else {
-        state_->castle_state &= ~CastleRights::kWhiteQueenside;
-      }
+    if (to == their_kingside_rook) {
+      state_->castle.set_can_kingside_castle(Color(!state_->turn), false);
+    } else if (to == their_queenside_rook) {
+      state_->castle.set_can_queenside_castle(Color(!state_->turn), false);
     }
   }
 }
@@ -239,24 +225,20 @@ void Board::handle_promotions(const Move &move, bool perft, int perft_depth) {
 
   const U8 to = move.get_to();
   const U32 to_rank = to / 8;
-  
+
   if (is_white) {
     if (to_rank == kBoardRanks - 1) {
       switch (move.get_promotion_type()) {
-        case PromotionType::kKnight:
-          state_->pieces[kWhiteKnights].set_bit(to);
+        case PromotionType::kKnight:state_->pieces[kWhiteKnights].set_bit(to);
           break;
-        case PromotionType::kBishop:
-          state_->pieces[kWhiteBishops].set_bit(to);
+        case PromotionType::kBishop:state_->pieces[kWhiteBishops].set_bit(to);
           break;
-        case PromotionType::kRook:
-          state_->pieces[kWhiteRooks].set_bit(to);
+        case PromotionType::kRook:state_->pieces[kWhiteRooks].set_bit(to);
           break;
-        case PromotionType::kQueen:
-          state_->pieces[kWhiteQueens].set_bit(to);
+        case PromotionType::kAny: // just choose a queen
+        case PromotionType::kQueen:state_->pieces[kWhiteQueens].set_bit(to);
           break;
-        default:
-          std::cerr << "invalid promotion type" << std::endl;
+        default:std::cerr << "invalid promotion type" << std::endl;
           return;
       }
 
@@ -270,20 +252,16 @@ void Board::handle_promotions(const Move &move, bool perft, int perft_depth) {
   } else {
     if (to_rank == 0) {
       switch (move.get_promotion_type()) {
-        case PromotionType::kKnight:
-          state_->pieces[kBlackKnights].set_bit(to);
+        case PromotionType::kKnight:state_->pieces[kBlackKnights].set_bit(to);
           break;
-        case PromotionType::kBishop:
-          state_->pieces[kBlackBishops].set_bit(to);
+        case PromotionType::kBishop:state_->pieces[kBlackBishops].set_bit(to);
           break;
-        case PromotionType::kRook:
-          state_->pieces[kBlackRooks].set_bit(to);
+        case PromotionType::kRook:state_->pieces[kBlackRooks].set_bit(to);
           break;
-        case PromotionType::kQueen:
-          state_->pieces[kBlackQueens].set_bit(to);
+        case PromotionType::kAny: // just choose a queen
+        case PromotionType::kQueen:state_->pieces[kBlackQueens].set_bit(to);
           break;
-        default:
-          std::cerr << "invalid promotion type" << std::endl;
+        default:std::cerr << "invalid promotion type" << std::endl;
           return;
       }
 

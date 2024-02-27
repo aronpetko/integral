@@ -1,5 +1,5 @@
-#ifndef INTEGRAL__FEN_H_
-#define INTEGRAL__FEN_H_
+#ifndef INTEGRAL_FEN_H_
+#define INTEGRAL_FEN_H_
 
 #include <sstream>
 #include <string>
@@ -37,4 +37,4 @@ std::string board_to_string(const std::shared_ptr<BoardState>& state);
 
 }
 
-#endif // INTEGRAL__FEN_H_
+#endif // INTEGRAL_FEN_H_
