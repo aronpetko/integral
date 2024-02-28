@@ -83,7 +83,7 @@ int main() {
         auto best_response = search::find_best_move(board);
         const auto end = std::chrono::high_resolution_clock::now();
         const auto elapsed = std::chrono::duration<double>(end - start).count();
-        std::cout << "found best move in: " << elapsed << " | nps: " << (double)search::nodes_searched / (double)elapsed << std::endl;
+        std::cout << "found best move in: " << elapsed << " | nps: " << std::fixed << std::setprecision(2) << (double)search::nodes_searched / (double)elapsed << std::endl;
         std::cout << "computer move: " << best_response.to_string() << std::endl;
         board.make_move(best_response);
       }

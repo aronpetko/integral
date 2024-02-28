@@ -3,10 +3,49 @@
 
 namespace search {
 
+int quiesce(Board &board, int alpha, int beta) {
+  const int evaluation = eval::evaluate(board.get_state());
+  if (evaluation >= beta)
+    return beta;
+
+  const int delta = eval::kPieceValues[static_cast<int>(PieceType::kQueen) - 1]; // queen value
+  if (evaluation < alpha - delta)
+    return alpha;
+
+  if (alpha < evaluation)
+    alpha = evaluation;
+
+  const auto capture_moves = order_moves(board, generate_capture_moves(board));
+  for (const auto &capture : capture_moves) {
+    board.make_move(capture);
+    const int score = -quiesce(board, -beta, -alpha);
+    board.undo_move();
+
+    if (score >= beta)
+      return beta;
+    alpha = std::max(alpha, score);
+  }
+
+  if (capture_moves.empty() && king_in_check(board.get_state()->turn, board.get_state())) {
+    const auto all_moves = order_moves(board, generate_legal_moves(board));
+    for (const auto &move : all_moves) {
+      board.make_move(move);
+      const int score = -quiesce(board, -beta, -alpha);
+      board.undo_move();
+
+      if (score >= beta)
+        return beta;
+      alpha = std::max(alpha, score);
+    }
+  }
+
+  return alpha;
+}
+
 int negamax(Board &board, int depth, int alpha, int beta) {
   if (depth == 0) {
     ++nodes_searched;
-    return eval::evaluate(board.get_state());
+    return quiesce(board, alpha, beta);
   }
 
   auto moves = generate_legal_moves(board);
@@ -34,12 +73,11 @@ int negamax(Board &board, int depth, int alpha, int beta) {
 }
 
 MoveList order_moves(Board &board, const MoveList &moves) {
-  auto is_capture = [&board](const Move& move) {
-    const auto& state = board.get_state();
-    return state->pieces[kAllPieces].is_set(move.get_to());
-  };
-
   const auto& state = board.get_state();
+
+  const auto is_capture = [&board, &state](const Move &move) {
+    return state->pieces[state->turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
+  };
 
   std::vector<std::pair<int, Move>> capture_moves;
   std::vector<std::pair<int, Move>> non_capture_moves;

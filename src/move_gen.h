@@ -31,4 +31,6 @@ MoveList generate_moves(const std::unique_ptr<BoardState> &state);
 
 MoveList generate_legal_moves(Board &board);
 
+MoveList generate_capture_moves(Board &board);
+
 #endif // INTEGRAL_MOVE_GEN_H_

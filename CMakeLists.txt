@@ -8,6 +8,8 @@ add_executable(integral src/main.cpp src/board.cpp src/board.h src/move.h src/ty
         src/eval.cpp
         src/eval.h
         src/search.cpp
-        src/search.h)
+        src/search.h
+        src/zobrist.cpp
+        src/zobrist.h)
 
 target_link_options(integral PRIVATE)

@@ -117,8 +117,30 @@ struct Move {
   [[nodiscard]] std::string to_string() const {
     const U8 from_rank = get_from() / 8, from_file = get_from() % 8;
     const U8 to_rank = get_to() / 8, to_file = get_to() % 8;
-    return std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) +
+
+    std::string res = std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) +
         std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);
+
+    const auto promo_type = get_promotion_type();
+    switch (promo_type) {
+      case PromotionType::kAny:
+      case PromotionType::kQueen:
+        res += 'q';
+        break;
+      case PromotionType::kKnight:
+        res += 'n';
+        break;
+      case PromotionType::kBishop:
+        res += 'b';
+        break;
+      case PromotionType::kRook:
+        res += 'r';
+        break;
+      default:
+        break;
+    }
+
+    return res;
   }
 
 };

@@ -429,3 +429,80 @@ MoveList generate_legal_moves(Board &board) {
 
   return legal_moves;
 }
+
+MoveList generate_capture_moves(Board &board) {
+  const auto &state = board.get_state();
+
+  auto quick_is_legal_move = [&board, &state](const Move &move) {
+    board.make_move(move);
+    const bool in_check = king_in_check(Color(!state->turn), state);
+    board.undo_move();
+    return !in_check;
+  };
+
+  MoveList moves;
+
+  for (U8 rank = 0; rank < kBoardRanks; rank++) {
+    for (U8 file = 0; file < kBoardFiles; file++) {
+      const U8 from = rank_file_to_pos(rank, file);
+
+      const auto piece_type = get_piece_type(from, state->pieces);
+      if (piece_type == PieceType::kNone)
+        continue;
+
+      const auto piece_color = get_piece_color(from, state->pieces);
+      if (piece_color != state->turn)
+        continue;
+
+      BitBoard &our_pieces = state->pieces[state->turn == Color::kWhite ? kWhitePieces : kBlackPieces];
+      BitBoard &their_pieces = state->pieces[state->turn == Color::kWhite ? kBlackPieces : kWhitePieces];
+
+      BitBoard possible_moves;
+      switch (piece_type) {
+        case PieceType::kPawn: {
+          const BitBoard en_passant_mask = state->en_passant.has_value() ? BitBoard(1ULL << state ->en_passant.value()) : BitBoard(0);
+          possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
+          break;
+        }
+        case PieceType::kKnight: possible_moves = generate_knight_moves(from, state);
+          break;
+        case PieceType::kBishop: possible_moves = generate_bishop_moves(from, state);
+          break;
+        case PieceType::kRook: possible_moves = generate_rook_moves(from, state);
+          break;
+        case PieceType::kQueen: possible_moves = generate_bishop_moves(from, state) | generate_rook_moves(from, state);
+          break;
+        case PieceType::kKing: possible_moves = generate_king_moves(from, state);
+          break;
+        default:break;
+      }
+
+      const bool en_passant_set = state->en_passant.has_value() && possible_moves.is_set(state->en_passant.value());
+      possible_moves &= ~our_pieces;
+      possible_moves &= their_pieces;
+      if (en_passant_set) possible_moves.set_bit(state->en_passant.value());
+
+      while (possible_moves.as_u64()) {
+        const U8 to = possible_moves.pop_lsb();
+        const U8 to_rank = to / 8;
+
+        // add the different promotion moves if possible
+        if (piece_type == PieceType::kPawn) {
+          if ((state->turn == Color::kWhite && to_rank == kBoardRanks - 1)
+              || (state->turn == Color::kBlack && to_rank == 0)) {
+            moves.emplace_back(from, to, piece_type, PromotionType::kKnight);
+            moves.emplace_back(from, to, piece_type, PromotionType::kBishop);
+            moves.emplace_back(from, to, piece_type, PromotionType::kRook);
+            moves.emplace_back(from, to, piece_type, PromotionType::kQueen);
+            continue;
+          }
+        }
+
+        if (quick_is_legal_move({from, to, piece_type, PromotionType::kAny}))
+          moves.emplace_back(from, to, piece_type);
+      }
+    }
+  }
+
+  return moves;
+}
