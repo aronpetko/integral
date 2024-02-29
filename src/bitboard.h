@@ -68,6 +68,10 @@ class BitBoard {
 
   explicit BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
+  static BitBoard from_square(U8 pos) {
+    return BitBoard(1ULL << pos);
+  }
+
   [[nodiscard]] U64 as_u64() const {
     return bitboard_;
   }
@@ -161,6 +165,10 @@ class BitBoard {
     return BitBoard(~bitboard_);
   }
 
+  explicit operator bool() const {
+    return bitboard_ != 0ULL;
+  }
+
  private:
   U64 bitboard_;
 };
@@ -196,8 +204,8 @@ static std::optional<Color> get_piece_color(U8 pos, BitBoards &pieces) {
 }
 
 static std::optional<Color> get_piece_color(BitBoard bb, BitBoards &pieces) {
-  if ((pieces[kWhitePieces] & bb).as_u64()) return Color::kWhite;
-  if ((pieces[kBlackPieces] & bb).as_u64()) return Color::kBlack;
+  if (pieces[kWhitePieces] & bb) return Color::kWhite;
+  if (pieces[kBlackPieces] & bb) return Color::kBlack;
   return std::nullopt;
 }
 

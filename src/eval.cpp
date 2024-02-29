@@ -111,8 +111,7 @@ int piece_positions_value(Color turn, const std::unique_ptr<BoardState> &state) 
     const bool is_king = piece_idx == kWhiteKing || piece_idx == kBlackKing;
 
     BitBoard pieces = state->pieces[piece_idx];
-
-    while (pieces.as_u64()) {
+    while (pieces) {
       U8 pos = pieces.pop_lsb();
 
       const bool use_end_game_table = is_king && state->is_end_game() && less_or_equal_material;

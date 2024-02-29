@@ -17,7 +17,7 @@ bool Board::is_legal_move(const Move &move) {
 
   switch (move.get_piece_type()) {
     case PieceType::kPawn: {
-      const BitBoard en_passant_mask = state_->en_passant.has_value() ? BitBoard(1ULL << state_->en_passant.value()) : BitBoard(0);
+      const BitBoard en_passant_mask = state_->en_passant.has_value() ? BitBoard::from_square(state_->en_passant.value()) : BitBoard(0);
       possible_moves = generate_pawn_moves(from, state_) | (generate_pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
       break;
     }

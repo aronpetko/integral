@@ -60,11 +60,21 @@ U64 generate_key(const std::unique_ptr<BoardState> &state) {
   if (state->castle.can_kingside_castle(Color::kBlack)) castle ^= kRandomsArray[Indices::kBlackKingside];
   if (state->castle.can_queenside_castle(Color::kBlack)) castle ^= kRandomsArray[Indices::kBlackQueenside];
 
-  // this is different from the unnecessarily expensive computation that the polyglot specifies
   U64 en_passant = 0;
   if (state->en_passant.has_value()) {
-    U8 en_passant_file = state->en_passant.value() % kBoardFiles;
-    en_passant ^= kRandomsArray[Indices::kEnPassantFileA + en_passant_file];
+    const Square ep_square = state->en_passant.value();
+
+    // if our pawn can capture the en passant
+    const BitBoard &our_pawns = state->pieces[state->turn == kWhite ? kWhitePawns : kBlackPawns];
+
+    BitBoard en_passant_bb = BitBoard::from_square(ep_square);
+    en_passant_bb = state->turn == Color::kWhite ? shift<Direction::kSouth>(en_passant_bb) : shift<Direction::kNorth>(en_passant_bb);
+    en_passant_bb = shift<Direction::kEast>(en_passant_bb) | shift<Direction::kWest>(en_passant_bb);
+
+    if (en_passant_bb & our_pawns) {
+      const int en_passant_file = ep_square % 8;
+      en_passant ^= kRandomsArray[Indices::kEnPassantFileA + en_passant_file];
+    }
   }
 
   return pieces ^ castle ^ en_passant ^ turn;

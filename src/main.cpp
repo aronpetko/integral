@@ -55,7 +55,7 @@ int main() {
   SetConsoleOutputCP(CP_UTF8);
 #endif
 
-  Board board(fen::string_to_board(fen::kStartFen));
+  Board board(fen::string_to_board("rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4"));
 
   std::string command;
   while (true) {
