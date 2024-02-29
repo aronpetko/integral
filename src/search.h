@@ -4,6 +4,9 @@
 #include "board.h"
 #include "eval.h"
 
+#include <algorithm>
+#include <ranges>
+
 namespace search {
 
 inline int nodes_searched = 0;

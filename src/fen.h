@@ -33,7 +33,7 @@ const std::unordered_map<PieceType, char> kPieceTypeToChar = {
 
 std::unique_ptr<BoardState> string_to_board(const std::string &fen_str = kStartFen);
 
-std::string board_to_string(const std::shared_ptr<BoardState>& state);
+std::string board_to_string(const std::unique_ptr<BoardState>& state);
 
 }
 

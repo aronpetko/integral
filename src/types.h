@@ -1,9 +1,11 @@
 #ifndef INTEGRAL_TYPES_H_
 #define INTEGRAL_TYPES_H_
 
-using U8 = unsigned char;
-using U32 = unsigned int;
-using U64 = unsigned long long;
+#include <cstdint>
+
+using U8 = std::uint8_t;
+using U32 = std::uint32_t;
+using U64 = std::uint64_t;
 
 const U8 kBoardFiles = 8;
 const U8 kBoardRanks = 8;
@@ -29,16 +31,16 @@ enum class PromotionType : U8 {
 };
 
 enum Color {
-  kWhite,
-  kBlack
+  kBlack = 0,
+  kWhite
 };
 
 enum CastleRights : U8 {
   kWhiteKingside = 0b0001,
   kWhiteQueenside = 0b0010,
-  kWhiteBothSides = kWhiteKingside | kWhiteQueenside,
   kBlackKingside = 0b0100,
   kBlackQueenside = 0b1000,
+  kWhiteBothSides = kWhiteKingside | kWhiteQueenside,
   kBlackBothSides = kBlackKingside | kBlackQueenside,
 };
 

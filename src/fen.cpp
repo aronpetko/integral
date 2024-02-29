@@ -36,7 +36,7 @@ std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
 
   for (const char &ch : position) {
     if (ch == '/') {
-      square = square - 16 + (square % 8);
+      square = square - 16 + (square % kBoardFiles);
       continue;
     }
     
@@ -110,7 +110,7 @@ std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
   return state;
 }
 
-std::string board_to_string(const std::shared_ptr<BoardState>& state) {
+std::string board_to_string(const std::unique_ptr<BoardState>& state) {
   std::string output;
 
   // fen notation starts with black pieces, so we begin at the 8th rank (0-indexed)

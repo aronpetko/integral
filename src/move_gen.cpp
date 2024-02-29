@@ -44,7 +44,7 @@ BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
     if (!occupied.is_set(down.get_lsb_pos()))
       moves |= down;
 
-    // Pawns can move two squares on their first move
+    // pawns can move two squares on their first move
     if (!occupied.is_set(down.get_lsb_pos()) && (bb_pos & RankMasks::kRank7).as_u64()) {
       BitBoard down_down = shift<Direction::kSouth>(down);
       if (!occupied.is_set(down_down.get_lsb_pos()))
@@ -65,7 +65,7 @@ BitBoard generate_knight_moves(U8 pos, const std::unique_ptr<BoardState> &state)
   };
 
   int original_rank = pos / 8;
-  int original_file = pos % 8;
+  int original_file = pos % kBoardFiles;
 
   for (const auto &pattern : kKnightMovePatterns) {
     int new_rank = original_rank + pattern[0];

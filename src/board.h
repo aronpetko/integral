@@ -64,11 +64,12 @@ class BoardState {
     half_moves = 0;
     full_moves = 0;
     turn = Color::kWhite;
+    en_passant = std::nullopt;
   }
 
   BoardState(const BoardState &other) = default;
 
-  bool is_end_game() const {
+  [[nodiscard]] bool is_end_game() const {
     const BitBoard minor_pieces = pieces[kWhiteKnights] | pieces[kWhiteBishops] |
         pieces[kBlackKnights] | pieces[kBlackBishops];
     const BitBoard major_pieces = pieces[kWhiteRooks] | pieces[kWhiteQueens] |

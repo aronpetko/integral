@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <vector>
+#include <string>
 
 #include "types.h"
 
@@ -115,8 +116,8 @@ struct Move {
   }
 
   [[nodiscard]] std::string to_string() const {
-    const U8 from_rank = get_from() / 8, from_file = get_from() % 8;
-    const U8 to_rank = get_to() / 8, to_file = get_to() % 8;
+    const U8 from_rank = get_from() / 8, from_file = get_from() % kBoardFiles;
+    const U8 to_rank = get_to() / 8, to_file = get_to() % kBoardFiles;
 
     std::string res = std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) +
         std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);

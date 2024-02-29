@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <array>
+#include <bit>
 
 #include "types.h"
 #include "move.h"
@@ -27,7 +28,7 @@ enum PieceBitBoard {
   kAllPieces
 };
 
-enum Square : U32 {
+enum Square : int {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
   kA2, kB2, kC2, kD2, kE2, kF2, kG2, kH2,
   kA3, kB3, kC3, kD3, kE3, kF3, kG3, kH3,

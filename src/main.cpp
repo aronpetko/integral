@@ -3,6 +3,7 @@
 #include "move_gen.h"
 #include "eval.h"
 #include "search.h"
+#include "zobrist.h"
 
 #include <chrono>
 #include <iomanip>
@@ -59,6 +60,8 @@ int main() {
   std::string command;
   while (true) {
     std::cout << "eval: " << eval::evaluate(board.get_state()) << std::endl << std::endl;
+    std::cout << "zobrist key: " << std::hex << zobrist::generate_key(board.get_state()) << std::dec << std::endl;
+
     print_pieces(board.get_state()->pieces);
 
     std::getline(std::cin, command);
@@ -78,14 +81,14 @@ int main() {
       if (board.is_legal_move(move.value())) {
         board.make_move(move.value());
 
-        std::cout << "\nthinking... end_game: " << board.get_state()->is_end_game() << "\n";
+        /*std::cout << "\nthinking... end_game: " << board.get_state()->is_end_game() << "\n";
         const auto start = std::chrono::high_resolution_clock::now();
         auto best_response = search::find_best_move(board);
         const auto end = std::chrono::high_resolution_clock::now();
         const auto elapsed = std::chrono::duration<double>(end - start).count();
         std::cout << "found best move in: " << elapsed << " | nps: " << std::fixed << std::setprecision(2) << (double)search::nodes_searched / (double)elapsed << std::endl;
         std::cout << "computer move: " << best_response.to_string() << std::endl;
-        board.make_move(best_response);
+        board.make_move(best_response);*/
       }
     }
   }
