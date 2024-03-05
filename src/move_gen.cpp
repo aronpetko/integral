@@ -1,11 +1,56 @@
 #include "move_gen.h"
 #include "board.h"
 
-BitBoard generate_pawn_attacks(U8 pos, const std::unique_ptr<BoardState> &state) {
-  const auto color = get_piece_color(pos, state->pieces);
+std::array<std::array<BitBoard, 64>, 8> ray_attacks;
 
+void initialize_ray_attacks() {
+  auto generate_moves_in_direction = [](auto &shift_fn, U8 from) {
+    BitBoard moves;
+    BitBoard current = BitBoard::from_square(from);
+
+    while (true) {
+      current = shift_fn(current);
+      // check if move is outside board
+      if (!current)
+        break;
+
+      // update the piece's position
+      moves |= current;
+    }
+
+    return moves;
+  };
+
+  for (int square = 0; square < Square::kSquareCount; square++) {
+    ray_attacks[Direction::kNorth][square] = generate_moves_in_direction(shift<Direction::kNorth>, square);
+    ray_attacks[Direction::kEast][square] = generate_moves_in_direction(shift<Direction::kEast>, square);
+    ray_attacks[Direction::kSouth][square] = generate_moves_in_direction(shift<Direction::kSouth>, square);
+    ray_attacks[Direction::kWest][square] = generate_moves_in_direction(shift<Direction::kWest>, square);
+    ray_attacks[Direction::kNorthEast][square] = generate_moves_in_direction(shift<Direction::kNorthEast>, square);
+    ray_attacks[Direction::kNorthWest][square] = generate_moves_in_direction(shift<Direction::kNorthWest>, square);
+    ray_attacks[Direction::kSouthEast][square] = generate_moves_in_direction(shift<Direction::kSouthEast>, square);
+    ray_attacks[Direction::kSouthWest][square] = generate_moves_in_direction(shift<Direction::kSouthWest>, square);
+  }
+}
+
+inline BitBoard get_positive_ray_attacks(BitBoard occupied, Direction dir, U8 square) {
+  BitBoard attacks = ray_attacks[dir][square];
+  BitBoard blocker = attacks & occupied;
+  square = __builtin_ctzll((blocker | U64(0x8000000000000000ULL)).as_u64());
+  return attacks ^ ray_attacks[dir][square];
+}
+
+inline BitBoard get_negative_ray_attacks(BitBoard occupied, Direction dir, U8 square) {
+  BitBoard attacks = ray_attacks[dir][square];
+  BitBoard blocker = attacks & occupied;
+  square = (Square::kSquareCount - 1) - __builtin_clzll((blocker | 1).as_u64());
+  return attacks ^ ray_attacks[dir][square];
+}
+
+BitBoard generate_pawn_attacks(U8 pos, BoardState &state) {
   BitBoard moves, bb_pos = BitBoard::from_square(pos);
 
+  const auto color = get_piece_color(pos, state.pieces);
   if (color == Color::kWhite) {
     BitBoard up_left = shift<Direction::kNorthWest>(bb_pos);
     BitBoard up_right = shift<Direction::kNorthEast>(bb_pos);
@@ -17,221 +62,119 @@ BitBoard generate_pawn_attacks(U8 pos, const std::unique_ptr<BoardState> &state)
   }
 
   // allow en passant attack
-  if (state->en_passant.has_value() && moves.is_set(state->en_passant.value()))
-    moves.set_bit(state->en_passant.value());
+  if (state.en_passant.has_value() && moves.is_set(state.en_passant.value()))
+    moves.set_bit(state.en_passant.value());
 
   return moves;
 }
 
-BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
-  const auto color = get_piece_color(pos, state->pieces);
+BitBoard generate_pawn_moves(U8 pos, BoardState &state) {
+  BitBoard moves, bb_pos = BitBoard::from_square(pos), occupied = state.pieces[kAllPieces];
 
-  BitBoard moves, bb_pos = BitBoard::from_square(pos), occupied = state->pieces[kAllPieces];
-
+  const auto color = get_piece_color(pos, state.pieces);
   if (color == Color::kWhite) {
-    BitBoard up = shift<Direction::kNorth>(bb_pos);
-    if (!occupied.is_set(up.get_lsb_pos()))
-      moves |= up;
+    BitBoard up = shift<Direction::kNorth>(bb_pos) & ~occupied;
+    moves |= up;
 
-    // pawns can move two squares on their first move
-    if (!occupied.is_set(up.get_lsb_pos()) && (bb_pos & RankMasks::kRank2)) {
-      BitBoard up_up = shift<Direction::kNorth>(up);
-      if (!occupied.is_set(up_up.get_lsb_pos()))
-        moves |= up_up;
+    if (bb_pos & RankMask::kRank2) {
+      BitBoard up_up = shift<Direction::kNorth>(up) & ~occupied;
+      moves |= up_up;
     }
   } else {
-    BitBoard down = shift<Direction::kSouth>(bb_pos);
-    if (!occupied.is_set(down.get_lsb_pos()))
-      moves |= down;
+    BitBoard down = shift<Direction::kSouth>(bb_pos) & ~occupied;
+    moves |= down;
 
-    // pawns can move two squares on their first move
-    if (!occupied.is_set(down.get_lsb_pos()) && (bb_pos & RankMasks::kRank7)) {
-      BitBoard down_down = shift<Direction::kSouth>(down);
-      if (!occupied.is_set(down_down.get_lsb_pos()))
-        moves |= down_down;
+    if (bb_pos & RankMask::kRank7) {
+      BitBoard down_down = shift<Direction::kSouth>(down) & ~occupied;
+      moves |= down_down;
     }
   }
 
   return moves;
 }
 
-BitBoard generate_knight_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
-  BitBoard moves;
+BitBoard generate_knight_moves(U8 pos, BoardState &state) {
+  BitBoard moves, bb_pos = BitBoard::from_square(pos);
 
-  // knight's move patterns in terms of rank and file offsets
-  const int kKnightMovePatterns[][2] = {
-      {-2, -1}, {-2, 1}, {2, -1}, {2, 1},
-      {-1, -2}, {-1, 2}, {1, -2}, {1, 2}
-  };
+  moves |= (bb_pos & ~FileMask::kFileH) << 17;
+  moves |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) << 10;
+  moves |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) >> 6;
+  moves |= (bb_pos & ~FileMask::kFileH) >> 15;
+  moves |= (bb_pos & ~FileMask::kFileA) << 15;
+  moves |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) << 6;
+  moves |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) >> 10;
+  moves |= (bb_pos & ~FileMask::kFileA) >> 17;
 
-  int original_rank = pos / 8;
-  int original_file = pos % kBoardFiles;
+  return moves;
+}
 
-  for (const auto &pattern : kKnightMovePatterns) {
-    int new_rank = original_rank + pattern[0];
-    int new_file = original_file + pattern[1];
+BitBoard generate_bishop_moves(U8 pos, BoardState &state) {
+  BitBoard &occupied = state.pieces[kAllPieces];
+  return get_positive_ray_attacks(occupied, Direction::kNorthEast, pos) |
+      get_positive_ray_attacks(occupied, Direction::kNorthWest, pos) |
+      get_negative_ray_attacks(occupied, Direction::kSouthEast, pos) |
+      get_negative_ray_attacks(occupied, Direction::kSouthWest, pos);
+}
 
-    // check if the new position is within the bounds of the board
-    if (new_rank >= 0 && new_rank < 8 && new_file >= 0 && new_file < 8) {
-      U8 new_pos = new_rank * 8 + new_file;
-      moves.set_bit(new_pos);
-    }
+BitBoard generate_rook_moves(U8 pos, BoardState &state) {
+  BitBoard &occupied = state.pieces[kAllPieces];
+  return get_positive_ray_attacks(occupied, Direction::kNorth, pos) |
+      get_negative_ray_attacks(occupied, Direction::kSouth, pos) |
+      get_positive_ray_attacks(occupied, Direction::kEast, pos) |
+      get_negative_ray_attacks(occupied, Direction::kWest, pos);
+}
+
+BitBoard generate_king_moves(U8 pos, BoardState &state, bool include_castling) {
+  BitBoard moves = generate_king_attacks(pos, state), bb_pos = BitBoard::from_square(pos);
+
+  if (include_castling) {
+    const auto color = get_piece_color(pos, state.pieces);
+    if (!king_in_check(color, state))
+      moves |= generate_castling_moves(state, color);
   }
 
   return moves;
 }
 
-BitBoard generate_bishop_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
-  const auto color = get_piece_color(pos, state->pieces);
+BitBoard generate_king_attacks(U8 pos, BoardState &state) {
+  BitBoard attacks, bb_pos = BitBoard::from_square(pos);
 
-  BitBoard moves;
-  BitBoard &our_pieces = color == Color::kWhite ? state->pieces[kWhitePieces] : state->pieces[kBlackPieces],
-      their_pieces = color == Color::kWhite ? state->pieces[kBlackPieces] : state->pieces[kWhitePieces];
-
-  auto generate_moves_in_direction = [&](auto &shift_fn) {
-    BitBoard current = BitBoard::from_square(pos);
-    while (true) {
-      BitBoard shifted = shift_fn(current);
-      // check if move is outside board
-      if (!shifted)
-        break;
-
-      U8 new_pos = shifted.get_lsb_pos();
-      moves.set_bit(new_pos);
-
-      // if the move collides with a piece it can't move any further
-      if (our_pieces.is_set(new_pos) || their_pieces.is_set(new_pos))
-        break;
-
-      // update the piece's position
-      current = shifted;
-    }
-  };
-
-  generate_moves_in_direction(shift<Direction::kNorthEast>);
-  generate_moves_in_direction(shift<Direction::kNorthWest>);
-  generate_moves_in_direction(shift<Direction::kSouthEast>);
-  generate_moves_in_direction(shift<Direction::kSouthWest>);
-
-  return moves;
-}
-
-BitBoard generate_rook_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
-  const auto color = get_piece_color(pos, state->pieces);
-
-  BitBoard moves;
-  BitBoard &our_pieces = color == Color::kWhite ? state->pieces[kWhitePieces] : state->pieces[kBlackPieces],
-      &their_pieces = color == Color::kWhite ? state->pieces[kBlackPieces] : state->pieces[kWhitePieces];
-
-  auto generate_moves_in_direction = [&](auto &shift_fn) {
-    BitBoard current = BitBoard::from_square(pos);
-    while (true) {
-      BitBoard shifted = shift_fn(current);
-      // check if move is outside board
-      if (!shifted)
-        break;
-
-      U8 new_pos = shifted.get_lsb_pos();
-      moves.set_bit(new_pos);
-
-      // if the move collides with a piece it can't move any further
-      if (our_pieces.is_set(new_pos) || their_pieces.is_set(new_pos))
-        break;
-
-      // update the piece's position
-      current = shifted;
-    }
-  };
-
-  // generate moves for each diagonal direction
-  generate_moves_in_direction(shift<Direction::kNorth>);
-  generate_moves_in_direction(shift<Direction::kSouth>);
-  generate_moves_in_direction(shift<Direction::kEast>);
-  generate_moves_in_direction(shift<Direction::kWest>);
-
-  return moves;
-}
-
-BitBoard generate_king_moves(U8 pos, const std::unique_ptr<BoardState> &state) {
-  const auto color = get_piece_color(pos, state->pieces);
-
-  BitBoard moves;
-  BitBoard pos_bb = BitBoard::from_square(pos);
-
-  auto generate_moves_in_direction = [&moves, &pos_bb](auto &shift_fn) {
-    BitBoard shifted = shift_fn(pos_bb);
-    // check if move is outside board
-    if (!shifted)
-      return;
-
-    U8 new_pos = shifted.get_lsb_pos();
-    moves.set_bit(new_pos);
-  };
-
-  generate_moves_in_direction(shift<Direction::kNorth>);
-  generate_moves_in_direction(shift<Direction::kSouth>);
-  generate_moves_in_direction(shift<Direction::kEast>);
-  generate_moves_in_direction(shift<Direction::kWest>);
-  generate_moves_in_direction(shift<Direction::kNorthEast>);
-  generate_moves_in_direction(shift<Direction::kNorthWest>);
-  generate_moves_in_direction(shift<Direction::kSouthEast>);
-  generate_moves_in_direction(shift<Direction::kSouthWest>);
-
-  if (!king_in_check(color.value(), state))
-    moves |= generate_castling_moves(state, color.value());
-
-  return moves;
-}
-
-BitBoard generate_king_attacks(U8 pos, const std::unique_ptr<BoardState> &state) {
-  BitBoard attacks;
-  BitBoard pos_bb = BitBoard::from_square(pos);
-
-  auto generate_attack_in_direction = [&attacks, &pos_bb](auto &shift_fn) {
-    BitBoard shifted = shift_fn(pos_bb);
-    // check if move is outside board
-    if (!shifted)
-      return;
-
-    attacks.set_bit(shifted.get_lsb_pos());
-  };
-
-  generate_attack_in_direction(shift<Direction::kNorth>);
-  generate_attack_in_direction(shift<Direction::kSouth>);
-  generate_attack_in_direction(shift<Direction::kEast>);
-  generate_attack_in_direction(shift<Direction::kWest>);
-  generate_attack_in_direction(shift<Direction::kNorthEast>);
-  generate_attack_in_direction(shift<Direction::kNorthWest>);
-  generate_attack_in_direction(shift<Direction::kSouthEast>);
-  generate_attack_in_direction(shift<Direction::kSouthWest>);
+  attacks |= shift<Direction::kNorth>(bb_pos);
+  attacks |= shift<Direction::kSouth>(bb_pos);
+  attacks |= shift<Direction::kEast>(bb_pos);
+  attacks |= shift<Direction::kWest>(bb_pos);
+  attacks |= shift<Direction::kNorthEast>(bb_pos);
+  attacks |= shift<Direction::kNorthWest>(bb_pos);
+  attacks |= shift<Direction::kSouthEast>(bb_pos);
+  attacks |= shift<Direction::kSouthWest>(bb_pos);
 
   return attacks;
 }
 
-BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state, Color which) {
-  BitBoard moves, attacked = get_attacked_squares(state, Color(!which), true), occupied = state->pieces[kAllPieces];
+BitBoard generate_castling_moves(BoardState &state, Color which) {
+  BitBoard moves, attacked = get_attacked_squares(state, Color(!which), true), occupied = state.pieces[kAllPieces];
 
   if (which == Color::kWhite) {
-    if (state->castle.can_kingside_castle(Color::kWhite)) {
+    if (state.castle.can_kingside_castle(Color::kWhite)) {
       if (!attacked.is_set(Square::kF1) && !occupied.is_set(Square::kF1) &&
           !attacked.is_set(Square::kG1) && !occupied.is_set(Square::kG1))
         moves.set_bit(Square::kG1);
     }
 
-    if (state->castle.can_queenside_castle(Color::kWhite)) {
+    if (state.castle.can_queenside_castle(Color::kWhite)) {
       if (!attacked.is_set(Square::kD1) && !occupied.is_set(Square::kD1) &&
           !attacked.is_set(Square::kC1) && !occupied.is_set(Square::kC1) &&
           !occupied.is_set(Square::kB1))
         moves.set_bit(Square::kC1);
     }
   } else {
-    if (state->castle.can_kingside_castle(Color::kBlack)) {
+    if (state.castle.can_kingside_castle(Color::kBlack)) {
       if (!attacked.is_set(Square::kF8) && !occupied.is_set(Square::kF8) &&
           !attacked.is_set(Square::kG8) && !occupied.is_set(Square::kG8))
         moves.set_bit(Square::kG8);
     }
 
-    if (state->castle.can_queenside_castle(Color::kBlack)) {
+    if (state.castle.can_queenside_castle(Color::kBlack)) {
       if (!attacked.is_set(Square::kD8) && !occupied.is_set(Square::kD8) &&
           !attacked.is_set(Square::kC8) && !occupied.is_set(Square::kC8) &&
           !occupied.is_set(Square::kB8))
@@ -242,44 +185,44 @@ BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state, Color
   return moves;
 }
 
-BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, Color attacker, bool include_king_attacks) {
+BitBoard get_attacked_squares(BoardState &state, Color attacker, bool include_king_attacks) {
   BitBoard attacked;
 
   // offset for white and black pieces
   const int offset = attacker == Color::kBlack ? kBlackPawns : kWhitePawns;
 
-  BitBoard pawns = state->pieces[offset + 0];
+  BitBoard pawns = state.pieces[offset + 0];
   while (pawns) {
     U8 from_square = pawns.pop_lsb();
     attacked |= generate_pawn_attacks(from_square, state);
   }
 
-  BitBoard knights = state->pieces[offset + 1];
+  BitBoard knights = state.pieces[offset + 1];
   while (knights) {
     U8 from_square = knights.pop_lsb();
     attacked |= generate_knight_moves(from_square, state);
   }
 
-  BitBoard bishops = state->pieces[offset + 2];
+  BitBoard bishops = state.pieces[offset + 2];
   while (bishops) {
     U8 from_square = bishops.pop_lsb();
     attacked |= generate_bishop_moves(from_square, state);
   }
 
-  BitBoard rooks = state->pieces[offset + 3];
+  BitBoard rooks = state.pieces[offset + 3];
   while (rooks) {
     U8 from_square = rooks.pop_lsb();
     attacked |= generate_rook_moves(from_square, state);
   }
 
-  BitBoard queens = state->pieces[offset + 4];
+  BitBoard queens = state.pieces[offset + 4];
   while (queens) {
     U8 from_square = queens.pop_lsb();
     attacked |= generate_rook_moves(from_square, state) | generate_bishop_moves(from_square, state);
   }
 
   if (include_king_attacks) {
-    BitBoard king = state->pieces[offset + 5];
+    BitBoard king = state.pieces[offset + 5];
     if (king) {
       U8 king_square = king.pop_lsb(); // king is only in one position
       attacked |= generate_king_attacks(king_square, state);
@@ -289,46 +232,46 @@ BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, Color at
   return attacked;
 }
 
-bool is_square_attacked(U8 pos, Color attacker, const std::unique_ptr<BoardState> &state) {
+bool is_square_attacked(U8 pos, Color attacker, BoardState &state) {
   // offset for white and black pieces
   const int offset = attacker == Color::kBlack ? kBlackPawns : kWhitePawns;
 
-  BitBoard queens = state->pieces[offset + 4];
+  BitBoard queens = state.pieces[offset + 4];
   while (queens) {
     U8 from_square = queens.pop_lsb();
     if ((generate_rook_moves(from_square, state) | generate_bishop_moves(from_square, state)).is_set(pos))
       return true;
   }
 
-  BitBoard rooks = state->pieces[offset + 3];
+  BitBoard rooks = state.pieces[offset + 3];
   while (rooks) {
     U8 from_square = rooks.pop_lsb();
     if (generate_rook_moves(from_square, state).is_set(pos))
       return true;
   }
 
-  BitBoard bishops = state->pieces[offset + 2];
+  BitBoard bishops = state.pieces[offset + 2];
   while (bishops) {
     U8 from_square = bishops.pop_lsb();
     if (generate_bishop_moves(from_square, state).is_set(pos))
       return true;
   }
 
-  BitBoard knights = state->pieces[offset + 1];
+  BitBoard knights = state.pieces[offset + 1];
   while (knights) {
     U8 from_square = knights.pop_lsb();
     if (generate_knight_moves(from_square, state).is_set(pos))
       return true;
   }
 
-  BitBoard pawns = state->pieces[offset + 0];
+  BitBoard pawns = state.pieces[offset + 0];
   while (pawns) {
     U8 from_square = pawns.pop_lsb();
     if (generate_pawn_attacks(from_square, state).is_set(pos))
       return true;
   }
 
-  BitBoard king = state->pieces[offset + 5];
+  BitBoard king = state.pieces[offset + 5];
   if (king) {
     U8 king_square = king.pop_lsb(); // king is only in one position
     if (generate_king_attacks(king_square, state).is_set(pos))
@@ -338,71 +281,127 @@ bool is_square_attacked(U8 pos, Color attacker, const std::unique_ptr<BoardState
   return false;
 }
 
-bool king_in_check(Color color, const std::unique_ptr<BoardState> &state) {
-  BitBoard king_bb = color == Color::kWhite ? state->pieces[kWhiteKing] : state->pieces[kBlackKing];
+bool king_in_check(Color color, BoardState &state) {
+  BitBoard king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
   return is_square_attacked(king_bb.get_lsb_pos(), Color(!color), state);
 }
 
-MoveList generate_moves(const std::unique_ptr<BoardState> &state) {
+MoveList generate_moves(BoardState &state) {
   MoveList moves;
+  
+  const bool is_white = state.turn == Color::kWhite;
+  
+  BitBoard pawns;
+  BitBoard knights;
+  BitBoard bishops;
+  BitBoard rooks;
+  BitBoard queens;
+  BitBoard king;
+  
+  if (is_white) {
+    pawns = state.pieces[kWhitePawns];
+    knights = state.pieces[kWhiteKnights];
+    bishops = state.pieces[kWhiteBishops];
+    rooks = state.pieces[kWhiteRooks];
+    queens = state.pieces[kWhiteQueens];
+    king = state.pieces[kWhiteKing];
+  } else  {
+    pawns = state.pieces[kBlackPawns];
+    knights = state.pieces[kBlackKnights];
+    bishops = state.pieces[kBlackBishops];
+    rooks = state.pieces[kBlackRooks];
+    queens = state.pieces[kBlackQueens];
+    king = state.pieces[kBlackKing];
+  }
 
-  for (U8 rank = 0; rank < kBoardRanks; rank++) {
-    for (U8 file = 0; file < kBoardFiles; file++) {
-      const U8 from = rank_file_to_pos(rank, file);
+  BitBoard &our_pieces = state.pieces[is_white ? kWhitePieces : kBlackPieces];
+  BitBoard &their_pieces = state.pieces[is_white ? kBlackPieces : kWhitePieces];
 
-      const auto piece_type = get_piece_type(from, state->pieces);
-      if (piece_type == PieceType::kNone)
+  while (pawns) {
+    U8 from = pawns.pop_lsb();
+
+    const BitBoard en_passant_mask = state.en_passant.has_value() ? BitBoard::from_square(state.en_passant.value()) : BitBoard(0);
+    auto possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
+
+    const bool en_passant_set = state.en_passant.has_value() && possible_moves.is_set(state.en_passant.value());
+    possible_moves &= ~our_pieces;
+    if (en_passant_set) possible_moves.set_bit(state.en_passant.value());
+
+    while (possible_moves) {
+      const U8 to = possible_moves.pop_lsb();
+      const U8 to_rank = to / kBoardRanks;
+
+      // add the different promotion moves if possible
+      if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
+          || (state.turn == Color::kBlack && to_rank == 0))) {
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kKnight);
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kBishop);
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kRook);
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kQueen);
         continue;
-
-      const auto piece_color = get_piece_color(from, state->pieces);
-      if (piece_color != state->turn)
-        continue;
-
-      BitBoard &our_pieces = state->pieces[state->turn == Color::kWhite ? kWhitePieces : kBlackPieces];
-      BitBoard &their_pieces = state->pieces[state->turn == Color::kWhite ? kBlackPieces : kWhitePieces];
-
-      BitBoard possible_moves;
-      switch (piece_type) {
-        case PieceType::kPawn: {
-          const BitBoard en_passant_mask = state->en_passant.has_value() ? BitBoard::from_square(state->en_passant.value()) : BitBoard(0);
-          possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
-          break;
-        }
-        case PieceType::kKnight:possible_moves = generate_knight_moves(from, state);
-          break;
-        case PieceType::kBishop:possible_moves = generate_bishop_moves(from, state);
-          break;
-        case PieceType::kRook:possible_moves = generate_rook_moves(from, state);
-          break;
-        case PieceType::kQueen:possible_moves = generate_bishop_moves(from, state) | generate_rook_moves(from, state);
-          break;
-        case PieceType::kKing:possible_moves = generate_king_moves(from, state);
-          break;
-        default:break;
+      } else {
+        moves.emplace_back(from, to, PieceType::kPawn);
       }
+    }
+  }
 
-      const bool en_passant_set = state->en_passant.has_value() && possible_moves.is_set(state->en_passant.value());
-      possible_moves &= ~our_pieces;
-      if (en_passant_set) possible_moves.set_bit(state->en_passant.value());
+  while (knights) {
+    U8 from = knights.pop_lsb();
 
-      while (possible_moves) {
-        const U8 to = possible_moves.pop_lsb();
-        const U8 to_rank = to / 8;
+    auto possible_moves = generate_knight_moves(from, state);
+    possible_moves &= ~our_pieces;
 
-        // add the different promotion moves if possible
-        if (piece_type == PieceType::kPawn) {
-          if ((state->turn == Color::kWhite && to_rank == kBoardRanks - 1)
-              || (state->turn == Color::kBlack && to_rank == 0)) {
-            moves.emplace_back(from, to, piece_type, PromotionType::kKnight);
-            moves.emplace_back(from, to, piece_type, PromotionType::kBishop);
-            moves.emplace_back(from, to, piece_type, PromotionType::kRook);
-            moves.emplace_back(from, to, piece_type, PromotionType::kQueen);
-            continue;
-          }
-        }
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kKnight);
+    }
+  }
 
-        moves.emplace_back(from, to, piece_type);
-      }
+  while (bishops) {
+    U8 from = bishops.pop_lsb();
+
+    auto possible_moves = generate_bishop_moves(from, state);
+    possible_moves &= ~our_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kBishop);
+    }
+  }
+
+  while (rooks) {
+    U8 from = rooks.pop_lsb();
+
+    auto possible_moves = generate_rook_moves(from, state);
+    possible_moves &= ~our_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kRook);
+    }
+  }
+
+  while (queens) {
+    U8 from = queens.pop_lsb();
+
+    auto possible_moves = generate_rook_moves(from, state) | generate_bishop_moves(from, state);
+    possible_moves &= ~our_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kQueen);
+    }
+  }
+
+  while (king) {
+    U8 from = king.pop_lsb();
+
+    auto possible_moves = generate_king_moves(from, state);
+    possible_moves &= ~our_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kKing);
     }
   }
 
@@ -410,97 +409,141 @@ MoveList generate_moves(const std::unique_ptr<BoardState> &state) {
 }
 
 MoveList generate_legal_moves(Board &board) {
-  const auto &state = board.get_state();
+  auto &state = board.get_state();
 
-  auto quick_is_legal_move = [&board, &state](const Move &move) {
+  const auto quick_is_legal_move = [&board, &state](const Move &move) {
     board.make_move(move);
-    const bool in_check = king_in_check(Color(!state->turn), state);
+    const bool in_check = king_in_check(Color(!state.turn), state);
     board.undo_move();
     return !in_check;
   };
 
-  MoveList moves = generate_moves(state);
   MoveList legal_moves;
 
-  for (const auto &move : moves) {
+  for (const auto &move : generate_moves(state))
     if (quick_is_legal_move(move))
       legal_moves.push_back(move);
-  }
 
   return legal_moves;
 }
 
 MoveList generate_capture_moves(Board &board) {
-  const auto &state = board.get_state();
-
-  auto quick_is_legal_move = [&board, &state](const Move &move) {
-    board.make_move(move);
-    const bool in_check = king_in_check(Color(!state->turn), state);
-    board.undo_move();
-    return !in_check;
-  };
-
   MoveList moves;
 
-  for (U8 rank = 0; rank < kBoardRanks; rank++) {
-    for (U8 file = 0; file < kBoardFiles; file++) {
-      const U8 from = rank_file_to_pos(rank, file);
+  auto &state = board.get_state();
+  const bool is_white = state.turn == Color::kWhite;
 
-      const auto piece_type = get_piece_type(from, state->pieces);
-      if (piece_type == PieceType::kNone)
+  BitBoard pawns;
+  BitBoard knights;
+  BitBoard bishops;
+  BitBoard rooks;
+  BitBoard queens;
+  BitBoard king;
+
+  if (is_white) {
+    pawns = state.pieces[kWhitePawns];
+    knights = state.pieces[kWhiteKnights];
+    bishops = state.pieces[kWhiteBishops];
+    rooks = state.pieces[kWhiteRooks];
+    queens = state.pieces[kWhiteQueens];
+    king = state.pieces[kWhiteKing];
+  } else  {
+    pawns = state.pieces[kBlackPawns];
+    knights = state.pieces[kBlackKnights];
+    bishops = state.pieces[kBlackBishops];
+    rooks = state.pieces[kBlackRooks];
+    queens = state.pieces[kBlackQueens];
+    king = state.pieces[kBlackKing];
+  }
+
+  BitBoard &our_pieces = state.pieces[is_white ? kWhitePieces : kBlackPieces];
+  BitBoard &their_pieces = state.pieces[is_white ? kBlackPieces : kWhitePieces];
+
+  while (pawns) {
+    U8 from = pawns.pop_lsb();
+
+    const BitBoard en_passant_mask = state.en_passant.has_value() ? BitBoard::from_square(state.en_passant.value()) : BitBoard(0);
+    auto possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
+
+    const bool en_passant_set = state.en_passant.has_value() && possible_moves.is_set(state.en_passant.value());
+    possible_moves &= ~our_pieces & their_pieces;
+    if (en_passant_set) possible_moves.set_bit(state.en_passant.value());
+
+    while (possible_moves) {
+      const U8 to = possible_moves.pop_lsb();
+      const U8 to_rank = to / 8;
+
+      // add the different promotion moves if possible
+      if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
+          || (state.turn == Color::kBlack && to_rank == 0))) {
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kKnight);
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kBishop);
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kRook);
+        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kQueen);
         continue;
-
-      const auto piece_color = get_piece_color(from, state->pieces);
-      if (piece_color != state->turn)
-        continue;
-
-      BitBoard &our_pieces = state->pieces[state->turn == Color::kWhite ? kWhitePieces : kBlackPieces];
-      BitBoard &their_pieces = state->pieces[state->turn == Color::kWhite ? kBlackPieces : kWhitePieces];
-
-      BitBoard possible_moves;
-      switch (piece_type) {
-        case PieceType::kPawn: {
-          const BitBoard en_passant_mask = state->en_passant.has_value() ? BitBoard::from_square(state ->en_passant.value()) : BitBoard(0);
-          possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
-          break;
-        }
-        case PieceType::kKnight: possible_moves = generate_knight_moves(from, state);
-          break;
-        case PieceType::kBishop: possible_moves = generate_bishop_moves(from, state);
-          break;
-        case PieceType::kRook: possible_moves = generate_rook_moves(from, state);
-          break;
-        case PieceType::kQueen: possible_moves = generate_bishop_moves(from, state) | generate_rook_moves(from, state);
-          break;
-        case PieceType::kKing: possible_moves = generate_king_moves(from, state);
-          break;
-        default:break;
+      } else {
+        moves.emplace_back(from, to, PieceType::kPawn);
       }
+    }
+  }
 
-      const bool en_passant_set = state->en_passant.has_value() && possible_moves.is_set(state->en_passant.value());
-      possible_moves &= ~our_pieces;
-      possible_moves &= their_pieces;
-      if (en_passant_set) possible_moves.set_bit(state->en_passant.value());
+  while (knights) {
+    U8 from = knights.pop_lsb();
 
-      while (possible_moves) {
-        const U8 to = possible_moves.pop_lsb();
-        const U8 to_rank = to / 8;
+    auto possible_moves = generate_knight_moves(from, state);
+    possible_moves &= ~our_pieces & their_pieces;
 
-        // add the different promotion moves if possible
-        if (piece_type == PieceType::kPawn) {
-          if ((state->turn == Color::kWhite && to_rank == kBoardRanks - 1)
-              || (state->turn == Color::kBlack && to_rank == 0)) {
-            moves.emplace_back(from, to, piece_type, PromotionType::kKnight);
-            moves.emplace_back(from, to, piece_type, PromotionType::kBishop);
-            moves.emplace_back(from, to, piece_type, PromotionType::kRook);
-            moves.emplace_back(from, to, piece_type, PromotionType::kQueen);
-            continue;
-          }
-        }
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kKnight);
+    }
+  }
 
-        if (quick_is_legal_move({from, to, piece_type, PromotionType::kAny}))
-          moves.emplace_back(from, to, piece_type);
-      }
+  while (bishops) {
+    U8 from = bishops.pop_lsb();
+
+    auto possible_moves = generate_bishop_moves(from, state);
+    possible_moves &= ~our_pieces & their_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kBishop);
+    }
+  }
+
+  while (rooks) {
+    U8 from = rooks.pop_lsb();
+
+    auto possible_moves = generate_rook_moves(from, state);
+    possible_moves &= ~our_pieces & their_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kRook);
+    }
+  }
+
+  while (queens) {
+    U8 from = queens.pop_lsb();
+
+    auto possible_moves = generate_rook_moves(from, state) | generate_bishop_moves(from, state);
+    possible_moves &= ~our_pieces & their_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kQueen);
+    }
+  }
+
+  while (king) {
+    U8 from = king.pop_lsb();
+
+    auto possible_moves = generate_king_moves(from, state);
+    possible_moves &= ~our_pieces & their_pieces;
+
+    while (possible_moves) {
+      U8 to = possible_moves.pop_lsb();
+      moves.emplace_back(from, to, PieceType::kKing);
     }
   }
 

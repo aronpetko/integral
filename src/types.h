@@ -31,8 +31,9 @@ enum class PromotionType : U8 {
 };
 
 enum Color {
-  kBlack = 0,
-  kWhite
+  kBlack,
+  kWhite,
+  kNoColor
 };
 
 enum CastleRights : U8 {
@@ -44,7 +45,7 @@ enum CastleRights : U8 {
   kBlackBothSides = kBlackKingside | kBlackQueenside,
 };
 
-enum class Direction : U8 {
+enum Direction : int {
   kNorth,
   kSouth,
   kEast,

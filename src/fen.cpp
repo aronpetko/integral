@@ -22,9 +22,9 @@ char get_piece_char(BitBoards &pieces, U8 pos) {
   return ' ';
 }
 
-std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
-  auto state = std::make_unique<BoardState>();
-  auto &pieces = state->pieces;
+BoardState string_to_board(const std::string &fen_str) {
+  BoardState state;
+  auto &pieces = state.pieces;
 
   std::istringstream stream(fen_str);
   
@@ -85,32 +85,34 @@ std::unique_ptr<BoardState> string_to_board(const std::string &fen_str) {
 
   char turn;
   stream >> turn;
-  state->turn = (turn == 'w' ? Color::kWhite : Color::kBlack);
+  state.turn = (turn == 'w' ? Color::kWhite : Color::kBlack);
 
   std::string castle_rights;
   stream >> castle_rights;
   for (const char &ch : castle_rights) {
     if (ch == 'K')
-      state->castle.set_can_kingside_castle(Color::kWhite, true);
+      state.castle.set_can_kingside_castle(Color::kWhite, true);
     else if (ch == 'Q')
-      state->castle.set_can_queenside_castle(Color::kWhite, true);
+      state.castle.set_can_queenside_castle(Color::kWhite, true);
     else if (ch == 'k')
-      state->castle.set_can_kingside_castle(Color::kBlack, true);
+      state.castle.set_can_kingside_castle(Color::kBlack, true);
     else if (ch == 'q')
-      state->castle.set_can_queenside_castle(Color::kBlack, true);
+      state.castle.set_can_queenside_castle(Color::kBlack, true);
   }
 
   // todo: implement this
   char en_passant;
   stream >> en_passant;
 
-  stream >> state->half_moves;
-  stream >> state->full_moves;
+  stream >> state.half_moves;
+  stream >> state.full_moves;
+
+  state.zobrist_key = zobrist::generate_key(state);
 
   return state;
 }
 
-std::string board_to_string(const std::unique_ptr<BoardState>& state) {
+std::string board_to_string(BoardState& state) {
   std::string output;
 
   // fen notation starts with black pieces, so we begin at the 8th rank (0-indexed)
@@ -120,8 +122,8 @@ std::string board_to_string(const std::unique_ptr<BoardState>& state) {
     for (int file = 0; file < 8; file++) {
       U8 square = rank_file_to_pos(rank, file);
 
-      if (state->pieces[kAllPieces].is_set(square))
-        output.push_back(get_piece_char(state->pieces, square));
+      if (state.pieces[kAllPieces].is_set(square))
+        output.push_back(get_piece_char(state.pieces, square));
       else
         empty++;
     }
@@ -135,17 +137,17 @@ std::string board_to_string(const std::unique_ptr<BoardState>& state) {
 
   // move turn
   output.push_back(' ');
-  output.push_back(state->turn == Color::kWhite ? 'w' : 'b');
+  output.push_back(state.turn == Color::kWhite ? 'w' : 'b');
 
   // castling rights
   output.push_back(' ');
-  if (state->castle.can_kingside_castle(Color::kWhite))
+  if (state.castle.can_kingside_castle(Color::kWhite))
     output.push_back('K');
-  if (state->castle.can_queenside_castle(Color::kWhite))
+  if (state.castle.can_queenside_castle(Color::kWhite))
     output.push_back('Q');
-  if (state->castle.can_kingside_castle(Color::kBlack))
+  if (state.castle.can_kingside_castle(Color::kBlack))
     output.push_back('k');
-  if (state->castle.can_queenside_castle(Color::kBlack))
+  if (state.castle.can_queenside_castle(Color::kBlack))
     output.push_back('q');
 
   // todo: implement en-passant state
@@ -154,9 +156,9 @@ std::string board_to_string(const std::unique_ptr<BoardState>& state) {
 
   // half and full moves
   output.push_back(' ');
-  output.append(std::to_string(state->half_moves));
+  output.append(std::to_string(state.half_moves));
   output.push_back(' ');
-  output.append(std::to_string(state->full_moves));
+  output.append(std::to_string(state.full_moves));
 
   return output;
 }

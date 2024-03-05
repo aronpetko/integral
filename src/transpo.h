@@ -11,37 +11,33 @@ class TranspositionTable {
   struct Entry {
     enum Flag : U8 {
       kExact,
-      kAlpha,
-      kBeta
+      kLowerBound,
+      kUpperBound
     };
 
-    explicit Entry() : hash(0ULL), depth(0), flag(Flag::kExact), evaluation(0) {}
+    explicit Entry() : key(0ULL), depth(0), flag(Flag::kExact), evaluation(0) {}
 
-    U64 hash;
+    U64 key;
     U8 depth;
     Flag flag;
     int evaluation;
     Move best_move;
   };
 
-  explicit TranspositionTable(int mb_size) {
-    resize(mb_size);
-  }
+  explicit TranspositionTable(int mb_size);
 
-  void resize(int mb_size) {
-    assert(mb_size >= 0);
+  void resize(std::size_t mb_size);
 
-    const int kBytesInMegabyte = 1048576;
-    table_.clear();
-    table_.resize(mb_size * kBytesInMegabyte / sizeof(Entry));
-  }
+  void clear();
 
-  Entry *operator[](U64 key) {
-    return &table_[key % table_.size()];
-  }
+  void save(const Entry &entry);
+
+  const Entry *probe(U64 key) const;
 
  private:
-  std::vector<Entry> table_;
+  Entry* table_;
+
+  std::size_t table_size_;
 };
 
 #endif // INTEGRAL_TRANSPO_H_

@@ -1,10 +1,11 @@
 #include "eval.h"
+#include "move_gen.h"
 
 namespace eval {
 
 const std::vector<std::vector<int>> kPieceSquareTables = {
     { // pawns
-      100, 100, 100, 100, 100, 100, 100, 100,
+      0, 0, 0, 0, 0, 0, 0, 0,
       50, 50, 50, 50, 50, 50, 50, 50,
       10, 10, 20, 30, 30, 20, 10, 10,
       5, 5, 10, 25, 25, 10, 5, 5,
@@ -86,12 +87,12 @@ const std::vector<int> kFlipTable = {
     0,  1,  2,  3,  4,  5,  6,  7,
 };
 
-int material_count(Color turn, const std::unique_ptr<BoardState> &state) {
+int material_count(Color turn, BoardState &state) {
   int material = 0;
 
   const int piece_idx_offset = turn == Color::kWhite ? kWhitePawns : kBlackPawns;
-  for (int i = 0; i < kPieceValues.size(); i++) {
-    const int piece_count = state->pieces[piece_idx_offset + i].pop_count();
+  for (int i = 1; i < kPieceValues.size(); i++) {
+    const int piece_count = state.pieces[piece_idx_offset + i - 1].pop_count();
     const int piece_value = kPieceValues[i];
     material += piece_count * piece_value;
   }
@@ -99,10 +100,10 @@ int material_count(Color turn, const std::unique_ptr<BoardState> &state) {
   return material;
 }
 
-int piece_positions_value(Color turn, const std::unique_ptr<BoardState> &state) {
+int piece_positions_value(Color turn, int material_count, BoardState &state) {
   int position_value = 0;
 
-  const bool less_or_equal_material = material_count(turn, state) <= material_count(Color(!turn), state);
+  const bool less_or_equal_material = material_count <= 0;
   const bool is_white = turn == Color::kWhite;
   const int piece_idx_offset = is_white ? kWhitePawns : kBlackPawns;
 
@@ -110,11 +111,11 @@ int piece_positions_value(Color turn, const std::unique_ptr<BoardState> &state) 
     const int piece_idx = i + piece_idx_offset;
     const bool is_king = piece_idx == kWhiteKing || piece_idx == kBlackKing;
 
-    BitBoard pieces = state->pieces[piece_idx];
+    BitBoard pieces = state.pieces[piece_idx];
     while (pieces) {
       U8 pos = pieces.pop_lsb();
 
-      const bool use_end_game_table = is_king && state->is_end_game() && less_or_equal_material;
+      const bool use_end_game_table = is_king && state.is_end_game() && less_or_equal_material;
       position_value += kPieceSquareTables[i + use_end_game_table][is_white ? kFlipTable[pos] : pos];
     }
   }
@@ -122,11 +123,68 @@ int piece_positions_value(Color turn, const std::unique_ptr<BoardState> &state) 
   return position_value;
 }
 
-int evaluate(const std::unique_ptr<BoardState> &state) {
-  const int material_diff = material_count(state->turn, state) - material_count(Color(!state->turn), state);
-  const int position_value = piece_positions_value(state->turn, state) - piece_positions_value(Color(!state->turn), state);
+int stacked_pawns_penalty(Color turn, BoardState &state) {
+  int penalty = 0;
 
-  return material_diff + position_value;
+  // each stacked pawn is worth 3/4 of a pawn
+  const int kStackedPawnPenalty = 25;
+  const BitBoard &pawns = state.pieces[turn == Color::kWhite ? kWhitePawns : kBlackPawns];
+
+  for (const auto& file_mask : kFileMasks) {
+    penalty += std::max(0, ((pawns & file_mask).pop_count() - 1)) * kStackedPawnPenalty;
+  }
+
+  return penalty;
+}
+
+int piece_mobility_score(Color turn, BoardState &state) {
+  int mobility = 0;
+
+  const bool is_white = turn == Color::kWhite;
+
+  const BitBoard &all_pieces = state.pieces[kAllPieces];
+  const BitBoard &their_pawns = state.pieces[is_white ? kBlackPawns : kWhitePawns];
+
+  // favor open/semi-open files
+  BitBoard &our_rooks = state.pieces[is_white ? kWhiteRooks : kBlackRooks];
+  BitBoard rooks = state.pieces[is_white ? kWhiteRooks : kBlackRooks];
+
+  while (rooks) {
+    U8 rook_file = rooks.pop_lsb() % kBoardFiles;
+
+    // rook is on an open file, so it is worth 25% more
+    if ((all_pieces & kFileMasks[rook_file]) == (our_rooks & kFileMasks[rook_file]))
+      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kRook)] * 1.25);
+
+    // rook is on a semi-open file (a file with only opposing pawns), so it is worth 10% more
+    if ((their_pawns & kFileMasks[rook_file]) == (all_pieces & kFileMasks[rook_file]))
+      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kRook)] * 1.10);
+  }
+
+  // our king should be less mobile in the mid-game
+  const BitBoard &our_king = state.pieces[is_white ? kWhiteKing : kBlackKing];
+  if (!state.is_end_game()) {
+    BitBoard king_moves = generate_king_moves(our_king.get_lsb_pos(), state, false);
+    const int king_move_count = (~all_pieces & king_moves).pop_count();
+
+    // ideally we want the king to only move left/right in the mid-game (protected by pawns in front of it)
+    if (king_move_count > 2) {
+      // for every square a king can move to, let's deduct a third of a pawn
+      const int kPawnValue = kPieceValues[static_cast<int>(PieceType::kPawn)];
+      mobility -= king_move_count * (kPawnValue / 3);
+    }
+  }
+
+  return mobility;
+}
+
+int evaluate(BoardState &state) {
+  const int material_diff = material_count(state.turn, state) - material_count(Color(!state.turn), state);
+  const int position_value = piece_positions_value(state.turn, material_diff, state) - piece_positions_value(Color(!state.turn), material_diff, state);
+  const int stacked_pawns = stacked_pawns_penalty(state.turn, state) - stacked_pawns_penalty(Color(!state.turn), state);
+  const int mobility_score = piece_mobility_score(state.turn, state) - piece_mobility_score(Color(!state.turn), state);
+
+  return material_diff + position_value + mobility_score - stacked_pawns;
 }
 
 }

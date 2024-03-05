@@ -5,29 +5,33 @@
 #include "board.h"
 #include "types.h"
 
-BitBoard generate_pawn_attacks(U8 pos, const std::unique_ptr<BoardState> &state);
+extern std::array<std::array<BitBoard, 64>, 8> ray_attacks;
 
-BitBoard generate_pawn_moves(U8 pos, const std::unique_ptr<BoardState> &state);
+void initialize_ray_attacks();
 
-BitBoard generate_knight_moves(U8 pos, const std::unique_ptr<BoardState> &state);
+BitBoard generate_pawn_attacks(U8 pos, BoardState &state);
 
-BitBoard generate_bishop_moves(U8 pos, const std::unique_ptr<BoardState> &state);
+BitBoard generate_pawn_moves(U8 pos, BoardState &state);
 
-BitBoard generate_rook_moves(U8 pos, const std::unique_ptr<BoardState> &state);
+BitBoard generate_knight_moves(U8 pos, BoardState &state);
 
-BitBoard generate_king_moves(U8 pos, const std::unique_ptr<BoardState> &state);
+BitBoard generate_bishop_moves(U8 pos, BoardState &state);
 
-BitBoard generate_king_attacks(U8 pos, const std::unique_ptr<BoardState> &state);
+BitBoard generate_rook_moves(U8 pos, BoardState &state);
 
-BitBoard generate_castling_moves(const std::unique_ptr<BoardState> &state, Color which);
+BitBoard generate_king_moves(U8 pos, BoardState &state, bool include_castling = true);
 
-BitBoard get_attacked_squares(const std::unique_ptr<BoardState> &state, Color attacker, bool include_king_attacks = true);
+BitBoard generate_king_attacks(U8 pos, BoardState &state);
 
-bool is_square_attacked(U8 pos, Color attacker, const std::unique_ptr<BoardState> &state);
+BitBoard generate_castling_moves(BoardState &state, Color which);
 
-bool king_in_check(Color color, const std::unique_ptr<BoardState> &state);
+BitBoard get_attacked_squares(BoardState &state, Color attacker, bool include_king_attacks = true);
 
-MoveList generate_moves(const std::unique_ptr<BoardState> &state);
+bool is_square_attacked(U8 pos, Color attacker, BoardState &state);
+
+bool king_in_check(Color color, BoardState &state);
+
+MoveList generate_moves(BoardState &state);
 
 MoveList generate_legal_moves(Board &board);
 

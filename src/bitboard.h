@@ -40,7 +40,7 @@ enum Square : int {
   kSquareCount = 64,
 };
 
-enum RankMasks : U64 {
+enum RankMask : U64 {
   kRank1 = 0x00000000000000FFULL,
   kRank2 = 0x000000000000FF00ULL,
   kRank3 = 0x0000000000FF0000ULL,
@@ -51,7 +51,18 @@ enum RankMasks : U64 {
   kRank8 = 0xFF00000000000000ULL
 };
 
-enum FileMasks : U64 {
+static const std::vector<RankMask> kRankMasks = {
+    RankMask::kRank1,
+    RankMask::kRank2,
+    RankMask::kRank3,
+    RankMask::kRank4,
+    RankMask::kRank5,
+    RankMask::kRank6,
+    RankMask::kRank7,
+    RankMask::kRank8,
+};
+
+enum FileMask : U64 {
   kFileH = 0x8080808080808080ULL,
   kFileG = 0x4040404040404040ULL,
   kFileF = 0x2020202020202020ULL,
@@ -60,6 +71,17 @@ enum FileMasks : U64 {
   kFileC = 0x0404040404040404ULL,
   kFileB = 0x0202020202020202ULL,
   kFileA = 0x0101010101010101ULL
+};
+
+static const std::vector<FileMask> kFileMasks = {
+    FileMask::kFileA,
+    FileMask::kFileB,
+    FileMask::kFileC,
+    FileMask::kFileD,
+    FileMask::kFileE,
+    FileMask::kFileF,
+    FileMask::kFileG,
+    FileMask::kFileH,
 };
 
 class BitBoard {
@@ -72,25 +94,24 @@ class BitBoard {
     return BitBoard(1ULL << pos);
   }
 
-  [[nodiscard]] U64 as_u64() const {
+  [[nodiscard]] inline U64 as_u64() const {
     return bitboard_;
   }
 
-  void set_bit(U8 square) {
+  inline void set_bit(U8 square) {
     bitboard_ |= (1ULL << square);
   }
 
-  void clear_bit(U8 square) {
+  inline void clear_bit(U8 square) {
     bitboard_ &= ~(1ULL << square);
   }
 
-  [[nodiscard]] bool is_set(U8 square) const {
+  [[nodiscard]] inline bool is_set(U8 square) const {
     return (bitboard_ >> square) & 1;
   }
 
-  void move(U8 from, U8 to) {
-    clear_bit(from);
-    set_bit(to);
+  inline void move(U8 from, U8 to) {
+    bitboard_ ^= (1ULL << from) | (1ULL << to);
   }
 
   [[nodiscard]] U8 get_lsb_pos() const {
@@ -129,8 +150,20 @@ class BitBoard {
     return BitBoard(bitboard_ | other.as_u64());
   }
 
+  BitBoard operator|(U64 other) const {
+    return BitBoard(bitboard_ | other);
+  }
+
   BitBoard operator|(U64 &other) const {
     return BitBoard(bitboard_ | other);
+  }
+
+  BitBoard operator^(U64 other) const {
+    return BitBoard(bitboard_ ^ other);
+  }
+
+  BitBoard operator^(const BitBoard &other) const {
+    return BitBoard(bitboard_ ^ other.as_u64());
   }
 
   BitBoard operator<<(U8 shift) const {
@@ -165,6 +198,14 @@ class BitBoard {
     return BitBoard(~bitboard_);
   }
 
+  bool operator==(const BitBoard &other) const {
+    return bitboard_ == other.bitboard_;
+  }
+
+  bool operator==(U64 value) const {
+    return bitboard_ == value;
+  }
+
   explicit operator bool() const {
     return bitboard_ != 0ULL;
   }
@@ -182,48 +223,50 @@ constexpr inline BitBoard shift(const BitBoard& bitboard) {
   else if constexpr (dir == Direction::kSouth)
     return BitBoard(bitboard >> 8);
   else if constexpr (dir == Direction::kEast)
-    return BitBoard((bitboard << 1) & ~FileMasks::kFileA);
+    return BitBoard((bitboard << 1) & ~FileMask::kFileA);
   else if constexpr (dir == Direction::kWest)
-    return BitBoard((bitboard >> 1) & ~FileMasks::kFileH);
+    return BitBoard((bitboard >> 1) & ~FileMask::kFileH);
   else if constexpr (dir == Direction::kNorthEast)
-    return BitBoard((bitboard << 9) & ~FileMasks::kFileA);
+    return BitBoard((bitboard << 9) & ~FileMask::kFileA);
   else if constexpr (dir == Direction::kNorthWest)
-    return BitBoard((bitboard << 7) & ~FileMasks::kFileH);
+    return BitBoard((bitboard << 7) & ~FileMask::kFileH);
   else if constexpr (dir == Direction::kSouthEast)
-    return BitBoard((bitboard >> 7) & ~FileMasks::kFileA);
+    return BitBoard((bitboard >> 7) & ~FileMask::kFileA);
   else if constexpr (dir == Direction::kSouthWest)
-    return BitBoard((bitboard >> 9) & ~FileMasks::kFileH);
+    return BitBoard((bitboard >> 9) & ~FileMask::kFileH);
   else
     return BitBoard(0); // default case to avoid compiler warnings, should not be reached
 }
 
-static std::optional<Color> get_piece_color(U8 pos, BitBoards &pieces) {
+static Color get_piece_color(U8 pos, BitBoards &pieces) {
   if (pieces[kWhitePieces].is_set(pos)) return Color::kWhite;
   if (pieces[kBlackPieces].is_set(pos)) return Color::kBlack;
-  return std::nullopt;
+  return Color::kNoColor;
 }
 
-static std::optional<Color> get_piece_color(BitBoard bb, BitBoards &pieces) {
+static Color get_piece_color(BitBoard bb, BitBoards &pieces) {
   if (pieces[kWhitePieces] & bb) return Color::kWhite;
   if (pieces[kBlackPieces] & bb) return Color::kBlack;
-  return std::nullopt;
+  return Color::kNoColor;
 }
 
 static PieceType get_piece_type(U8 pos, BitBoards &pieces) {
-  auto color = get_piece_color(pos, pieces);
-  if (!color.has_value())
+  if (!pieces[kAllPieces].is_set(pos))
     return PieceType::kNone;
 
-  int start_bb = color == Color::kWhite ? kWhitePawns : kBlackPawns;
-  int end_bb = color == Color::kWhite ? kWhitePieces : kBlackPieces;
+  BitBoard pawns = pieces[kWhitePawns] | pieces[kBlackPawns];
+  BitBoard knights = pieces[kWhiteKnights] | pieces[kBlackKnights];
+  BitBoard bishops = pieces[kWhiteBishops] | pieces[kBlackBishops];
+  BitBoard rooks = pieces[kWhiteRooks] | pieces[kBlackRooks];
+  BitBoard queens = pieces[kWhiteQueens] | pieces[kBlackQueens];
+  BitBoard kings = pieces[kWhiteKing] | pieces[kBlackKing];
 
-  for (int bb_idx = start_bb; bb_idx <= end_bb; bb_idx++) {
-    BitBoard &piece_bb = pieces[bb_idx];
-
-    // there should be only one piece on this square, so this is kind of safe
-    if (piece_bb.is_set(pos))
-      return PieceType(bb_idx - start_bb + 1);
-  }
+  if (pawns.is_set(pos)) return PieceType::kPawn;
+  if (knights.is_set(pos)) return PieceType::kKnight;
+  if (bishops.is_set(pos)) return PieceType::kBishop;
+  if (rooks.is_set(pos)) return PieceType::kRook;
+  if (queens.is_set(pos)) return PieceType::kQueen;
+  if (kings.is_set(pos)) return PieceType::kKing;
 
   return PieceType::kNone;
 }

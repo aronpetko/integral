@@ -208,7 +208,30 @@ const U64 kRandomsArray[781] = {
     0xF8D626AAAF278509
 };
 
-U64 generate_key(const std::unique_ptr<BoardState> &state);
+enum Indices : int {
+  kPieceStart = 0,
+  kPieceEnd = 767,
+
+  kWhiteKingside = 768,
+  kWhiteQueenside = 769,
+  kBlackKingside = 770,
+  kBlackQueenside = 771,
+
+  kEnPassantFileA = 772,
+  kEnPassantFileH = 779,
+
+  kTurn = 780,
+};
+
+U64 hash_turn(BoardState &state);
+
+U64 hash_square(U8 square, BoardState &state);
+
+U64 hash_castle_rights(BoardState &state);
+
+U64 hash_en_passant(BoardState &state);
+
+U64 generate_key(BoardState &state);
 
 }
 

@@ -1,12 +1,15 @@
 #ifndef INTEGRAL_BOARD_H_
 #define INTEGRAL_BOARD_H_
 
+#include <utility>
 #include <vector>
 #include <memory>
 #include <utility>
 
 #include "bitboard.h"
+#include "zobrist.h"
 #include "move.h"
+#include "transpo.h"
 
 class CastleData {
  public:
@@ -15,6 +18,11 @@ class CastleData {
     set_queenside_rook(Color::kWhite, Square::kA1);
     set_kingside_rook(Color::kBlack, Square::kH8);
     set_queenside_rook(Color::kBlack, Square::kA8);
+  }
+
+  CastleData(const CastleData &other) {
+    rooks = other.rooks;
+    rights = other.rights;
   }
 
   [[nodiscard]] bool can_kingside_castle(Color turn) const {
@@ -63,11 +71,10 @@ class BoardState {
   BoardState() {
     half_moves = 0;
     full_moves = 0;
+    zobrist_key = 0;
     turn = Color::kWhite;
     en_passant = std::nullopt;
   }
-
-  BoardState(const BoardState &other) = default;
 
   [[nodiscard]] bool is_end_game() const {
     const BitBoard minor_pieces = pieces[kWhiteKnights] | pieces[kWhiteBishops] |
@@ -80,12 +87,12 @@ class BoardState {
 
  public:
   BitBoards pieces;
-  Move move;
   Color turn;
   U32 full_moves;
   U32 half_moves;
   std::optional<Square> en_passant;
   CastleData castle;
+  U64 zobrist_key;
 };
 
 inline unsigned long captures = 0;
@@ -96,10 +103,16 @@ inline unsigned long promotions = 0;
 
 class Board {
  public:
-  explicit Board(std::unique_ptr<BoardState> state) : state_(std::move(state)) {}
+  explicit Board(BoardState state) : state_(std::move(state)), transpo_table_(32) {
+    history_.reserve(10000000);
+  }
 
-  const std::unique_ptr<BoardState> &get_state() {
+  BoardState &get_state() {
     return state_;
+  }
+
+  TranspositionTable &get_transpo_table() {
+    return transpo_table_;
   }
 
   bool is_legal_move(const Move &move);
@@ -109,13 +122,16 @@ class Board {
   void undo_move();
 
  private:
-  void handle_castling(const Move &move, bool perft = false, int perft_depth = 0);
+  void handle_castling(const Move &move, BoardState &state, bool perft = false, int perft_depth = 0);
 
-  void handle_promotions(const Move &move, bool perft = false, int perft_depth = 0);
+  void handle_promotions(const Move &move, BoardState &state, bool perft = false, int perft_depth = 0);
 
  private:
-  std::unique_ptr<BoardState> state_;
-  std::vector<std::unique_ptr<BoardState>> history_;
+  BoardState state_;
+
+  std::vector<BoardState> history_;
+
+  TranspositionTable transpo_table_;
 };
 
 #endif // INTEGRAL_BOARD_H_

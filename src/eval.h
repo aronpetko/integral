@@ -5,20 +5,20 @@
 
 namespace eval {
 
-const int kBestScore = 1e5;
-const int kEvenScore = 0;
-const int kWorstScore = -1e5;
+const int kDrawScore = 0;
+const int kMateScore = 1e5;
 
 const std::vector<int> kPieceValues = {
+    0, // none
     100, // pawn
-    300, // knight
-    315, // bishop
+    315, // knight
+    325, // bishop
     500, // rook
     900, // queen
-    900000, // king
+    20000, // king
 };
 
-int evaluate(const std::unique_ptr<BoardState> &state);
+int evaluate(BoardState &state);
 
 }
 
