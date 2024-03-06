@@ -15,7 +15,7 @@ class TranspositionTable {
       kUpperBound
     };
 
-    explicit Entry() : key(0ULL), depth(0), flag(Flag::kExact), evaluation(0) {}
+    explicit Entry() : key(0), depth(0), flag(kExact), evaluation(0), best_move({}) {}
 
     U64 key;
     U8 depth;
@@ -30,9 +30,9 @@ class TranspositionTable {
 
   void clear();
 
-  void save(const Entry &entry);
+  void save(const Entry &entry, int ply);
 
-  const Entry *probe(U64 key) const;
+  [[nodiscard]] const Entry *probe(U64 key) const;
 
  private:
   Entry* table_;

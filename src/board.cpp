@@ -46,8 +46,8 @@ bool Board::is_legal_move(const Move &move) {
     bool in_check = king_in_check(Color(!state_.turn), state_);
     undo_move();
 
-    if (in_check)
-      std::cerr << "this move places you in check" << std::endl;
+    //if (in_check)
+    //  std::cerr << "this move places you in check" << std::endl;
     return !in_check;
   }
 
@@ -67,19 +67,16 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
   new_state.zobrist_key ^= zobrist::hash_square(from, new_state);
   new_state.zobrist_key ^= zobrist::hash_turn(new_state);
 
-  BitBoard &our_pieces_bb = new_state.pieces[is_white ? kWhitePieces : kBlackPieces];
-  BitBoard &their_pieces_bb = new_state.pieces[is_white ? kBlackPieces : kWhitePieces];
-
-  BitBoard &piece_bb = new_state.pieces[is_white ? static_cast<int>(piece_type) - 1 : static_cast<int>(piece_type) - 1 + kBlackPawns];
-  piece_bb.move(from, to);
-  our_pieces_bb.move(from, to);
+  BitBoard &our_pieces = new_state.pieces[is_white ? kWhitePieces : kBlackPieces];
+  BitBoard &their_pieces = new_state.pieces[is_white ? kBlackPieces : kWhitePieces];
+  BitBoard &all_pieces = new_state.pieces[kAllPieces];
 
   // perform a capture if possible
   const int opponent_start_bb = is_white ? kBlackPawns : kWhitePawns;
-  const int opponent_end_bb = is_white ? kBlackPieces : kWhitePieces;
+  const int opponent_end_bb = is_white ? kBlackKing : kWhiteKing;
 
   // find which bitboards the captured piece belong to and clear it
-  for (int bb_idx = opponent_start_bb; bb_idx < opponent_end_bb; bb_idx++) {
+  for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
     BitBoard &captured_piece_bb = new_state.pieces[bb_idx];
     if (captured_piece_bb.is_set(to)) {
       // perft debugging
@@ -91,7 +88,8 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
       new_state.zobrist_key ^= zobrist::hash_square(to, new_state);
 
       captured_piece_bb.clear_bit(to);
-      their_pieces_bb.clear_bit(to);
+      their_pieces.clear_bit(to);
+      all_pieces.clear_bit(to);
       break;
     }
   }
@@ -99,14 +97,22 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
   // en passant capture
   if (piece_type == PieceType::kPawn && to == new_state.en_passant) {
     // pawn must be directly behind/in front of the attack square
-    const U8 en_passant_pawn_pos = is_white ? to - kBoardRanks : to + kBoardRanks;
+    const U8 en_passant_pawn_pos = is_white ? to - 8 : to + 8;
 
     BitBoard &opposing_pawns = is_white ? new_state.pieces[kBlackPawns] : new_state.pieces[kWhitePawns];
     BitBoard &opposing_pieces = is_white ? new_state.pieces[kBlackPieces] : new_state.pieces[kWhitePieces];
 
     if (opposing_pawns.is_set(en_passant_pawn_pos)) {
+      // xor out the en passant captured pawn
+      new_state.zobrist_key ^= zobrist::hash_square(en_passant_pawn_pos, new_state);
+
       opposing_pawns.clear_bit(en_passant_pawn_pos);
       opposing_pieces.clear_bit(en_passant_pawn_pos);
+      all_pieces.clear_bit(en_passant_pawn_pos);
+
+      // xor out the en passant pos
+      new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
+      new_state.en_passant.reset();
 
       // perft debugging
       if (perft && perft_depth == 1) {
@@ -123,27 +129,47 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
   const int to_rank = to / kBoardRanks;
 
   // setting en passant target if pawn moved two squares
-  const int kEnPassantMoveDist = 2;
-  if (move.get_piece_type() == PieceType::kPawn && abs(from_rank - to_rank) == kEnPassantMoveDist) {
-    // xor out previous en passant square, xor in new en passant square
+  const int kDoublePushDist = 2;
+  bool move_is_double_push = false;
+  if (move.get_piece_type() == PieceType::kPawn && abs(from_rank - to_rank) == kDoublePushDist) {
+    // xor out previous en passant square (if it exists)
+    // we will xor in new en passant square after the turn has been updated
     new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
     new_state.en_passant = Square(rank_file_to_pos(to_rank + ((from_rank - to_rank) > 0 ? 1 : -1), to % kBoardFiles));
-    new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
-  } else if (new_state.en_passant.has_value()) {
-    // xor out previous en passant square
+
+    // keep track if this was a move that caused en passant to be set (for zobrist hashing)
+    move_is_double_push = true;
+  }
+  // this move wasn't a double pawn push, so if ep square was set from the previous move, we xor it out
+  else if (new_state.en_passant.has_value()) {
     new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
     new_state.en_passant.reset();
   }
+
+  BitBoard &piece_bb = new_state.pieces[is_white ? static_cast<int>(piece_type) - 1 : static_cast<int>(piece_type) - 1 + kBlackPawns];
+  piece_bb.move(from, to);
+  our_pieces.move(from, to);
+  all_pieces.move(from, to);
+
+  // xor in the moved piece
+  new_state.zobrist_key ^= zobrist::hash_square(to, new_state);
 
   handle_castling(move, new_state, perft, perft_depth);
   handle_promotions(move, new_state, perft, perft_depth);
 
   // set the new board state data
   new_state.pieces[kAllPieces] = new_state.pieces[kWhitePieces] | new_state.pieces[kBlackPieces];
-  new_state.zobrist_key ^= zobrist::hash_square(to, new_state);
 
   new_state.turn = Color(!new_state.turn);
+  // auto correct_zobrist = zobrist::generate_key(new_state);
+
   new_state.zobrist_key ^= zobrist::hash_turn(new_state);
+
+  // xor en passant in now that the turn's have been switched (should only happen this move wasn't an ep capture)
+  // this is important since hash_en_passant checks if the opponents pawn is next to the double-pushed pawn
+  if (move_is_double_push) {
+    new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
+  }
 
   // perft debugging
   //if (perft && perft_depth == 1 && king_in_check(new_state.turn, new_state)) {
@@ -152,6 +178,30 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
 
   if (++new_state.half_moves % 2 == 0)
     new_state.full_moves++;
+
+  // save this updated board state
+  history_.push_back(state_);
+  state_ = new_state;
+}
+
+void Board::make_null_move() {
+  BoardState new_state = state_;
+
+  // xor out the previous turn hash
+  new_state.zobrist_key ^= zobrist::hash_turn(new_state);
+
+  // xor out en passant if it exists
+  if (new_state.en_passant.has_value()) {
+    new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
+    new_state.en_passant.reset();
+  }
+
+  if (++new_state.half_moves % 2 == 0)
+    new_state.full_moves++;
+
+  // switch turn and xor in the new turn hash
+  new_state.turn = Color(!new_state.turn);
+  new_state.zobrist_key ^= zobrist::hash_turn(new_state);
 
   // save this updated board state
   history_.push_back(state_);
@@ -179,11 +229,13 @@ void Board::handle_castling(const Move &move, BoardState &state, bool perft, int
     const auto move_rook_for_castling = [&state, &is_white](Square rook_from, Square rook_to) {
       BitBoard &rooks_bb = state.pieces[is_white ? kWhiteRooks : kBlackRooks];
       BitBoard &pieces_bb = state.pieces[is_white ? kWhitePieces : kBlackPieces];
+      BitBoard &all_pieces_bb = state.pieces[kAllPieces];
 
       // xor out the rook's previous square, xor in the rook's new square
       state.zobrist_key ^= zobrist::hash_square(rook_from, state);
       rooks_bb.move(rook_from, rook_to);
       pieces_bb.move(rook_from, rook_to);
+      all_pieces_bb.move(rook_from, rook_to);
       state.zobrist_key ^= zobrist::hash_square(rook_to, state);
     };
 
@@ -264,7 +316,6 @@ void Board::handle_promotions(const Move &move, BoardState &state, bool perft, i
         case PromotionType::kQueen:state.pieces[kWhiteQueens].set_bit(to);
           break;
         default:
-          std::cerr << "fuck\n";
           break;
       }
 

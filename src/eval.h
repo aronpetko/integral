@@ -6,7 +6,7 @@
 namespace eval {
 
 const int kDrawScore = 0;
-const int kMateScore = 1e5;
+const int kMateScore = 1e9;
 
 const std::vector<int> kPieceValues = {
     0, // none

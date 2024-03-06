@@ -127,7 +127,7 @@ int stacked_pawns_penalty(Color turn, BoardState &state) {
   int penalty = 0;
 
   // each stacked pawn is worth 3/4 of a pawn
-  const int kStackedPawnPenalty = 25;
+  const int kStackedPawnPenalty = -static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.75);
   const BitBoard &pawns = state.pieces[turn == Color::kWhite ? kWhitePawns : kBlackPawns];
 
   for (const auto& file_mask : kFileMasks) {
@@ -152,26 +152,26 @@ int piece_mobility_score(Color turn, BoardState &state) {
   while (rooks) {
     U8 rook_file = rooks.pop_lsb() % kBoardFiles;
 
-    // rook is on an open file, so it is worth 25% more
+    // rook is on an open file, so it is worth 3/4 of a pawn
     if ((all_pieces & kFileMasks[rook_file]) == (our_rooks & kFileMasks[rook_file]))
-      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kRook)] * 1.25);
+      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.75);
 
-    // rook is on a semi-open file (a file with only opposing pawns), so it is worth 10% more
+    // rook is on a semi-open file (a file with only opposing pawns), so it is worth half a pawn
     if ((their_pawns & kFileMasks[rook_file]) == (all_pieces & kFileMasks[rook_file]))
-      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kRook)] * 1.10);
+      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.5);
   }
 
   // our king should be less mobile in the mid-game
   const BitBoard &our_king = state.pieces[is_white ? kWhiteKing : kBlackKing];
   if (!state.is_end_game()) {
     BitBoard king_moves = generate_king_moves(our_king.get_lsb_pos(), state, false);
-    const int king_move_count = (~all_pieces & king_moves).pop_count();
+    const int king_open_squares = (~all_pieces & king_moves).pop_count();
 
     // ideally we want the king to only move left/right in the mid-game (protected by pawns in front of it)
-    if (king_move_count > 2) {
-      // for every square a king can move to, let's deduct a third of a pawn
-      const int kPawnValue = kPieceValues[static_cast<int>(PieceType::kPawn)];
-      mobility -= king_move_count * (kPawnValue / 3);
+    if (king_open_squares > 2) {
+      // for every square a king can move to, let's deduct 3/4 of a pawn
+      const int kOpenSquarePenalty = static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.75);
+      mobility -= king_open_squares * kOpenSquarePenalty;
     }
   }
 
@@ -184,7 +184,7 @@ int evaluate(BoardState &state) {
   const int stacked_pawns = stacked_pawns_penalty(state.turn, state) - stacked_pawns_penalty(Color(!state.turn), state);
   const int mobility_score = piece_mobility_score(state.turn, state) - piece_mobility_score(Color(!state.turn), state);
 
-  return material_diff + position_value + mobility_score - stacked_pawns;
+  return material_diff + position_value + mobility_score + stacked_pawns;
 }
 
 }

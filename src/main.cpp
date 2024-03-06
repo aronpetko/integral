@@ -55,12 +55,18 @@ int main() {
 
   initialize_ray_attacks();
 
-  Board board(fen::string_to_board("r1bqk2r/ppp1nppp/2n5/2bpp1N1/2B1P3/8/PPPP1PPP/RNBQ1RK1 w kq - 0 6"));
+  Board board(fen::string_to_board(fen::kStartFen));
 
   std::string command;
   while (true) {
-    std::cout << "static eval: " << eval::evaluate(board.get_state()) << std::endl << std::endl;
-    std::cout << "zobrist key: " << std::hex << zobrist::generate_key(board.get_state()) << std::dec << std::endl;
+    std::cout << "\nthinking... end_game: " << board.get_state().is_end_game() << "\n";
+    const auto start = std::chrono::high_resolution_clock::now();
+    auto best_response = search::find_best_move(board);
+    const auto end = std::chrono::high_resolution_clock::now();
+    const auto elapsed = std::chrono::duration<double>(end - start).count();
+    std::cout << "found best move in: " << elapsed << " | nps: " << std::fixed << std::setprecision(2) << (double)search::nodes_searched / (double)elapsed << std::endl;
+    std::cout << "computer move: " << best_response.to_string() << std::endl;
+    board.make_move(best_response);
 
     print_pieces(board.get_state().pieces);
 
@@ -80,15 +86,6 @@ int main() {
 
       if (board.is_legal_move(move.value())) {
         board.make_move(move.value());
-
-        std::cout << "\nthinking... end_game: " << board.get_state().is_end_game() << "\n";
-        const auto start = std::chrono::high_resolution_clock::now();
-        auto best_response = search::find_best_move(board);
-        const auto end = std::chrono::high_resolution_clock::now();
-        const auto elapsed = std::chrono::duration<double>(end - start).count();
-        std::cout << "found best move in: " << elapsed << " | nps: " << std::fixed << std::setprecision(2) << (double)search::nodes_searched / (double)elapsed << std::endl;
-        std::cout << "computer move: " << best_response.to_string() << std::endl;
-        board.make_move(best_response);
       }
     }
   }

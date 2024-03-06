@@ -1,32 +1,37 @@
 #include "transpo.h"
-#include <iostream>
+#include "eval.h"
 
 TranspositionTable::TranspositionTable(int mb_size) : table_(nullptr), table_size_(mb_size) {
   resize(mb_size);
 }
 
 void TranspositionTable::resize(std::size_t mb_size) {
-  assert(mb_size >= 0);
+  assert(mb_size > 0);
 
   std::free(table_);
 
-  const std::size_t kBytesInMegabyte = 1048576;
-  table_ = reinterpret_cast<Entry*>(std::malloc(mb_size * kBytesInMegabyte));
-  std::memset(table_, 0, mb_size * kBytesInMegabyte);
-  table_size_ = mb_size * kBytesInMegabyte / sizeof(Entry) - 1;
+  const std::size_t kBytesInMegabyte = 1024 * 1024;
+  const std::size_t table_byte_size = mb_size * kBytesInMegabyte;
+
+  table_ = reinterpret_cast<Entry*>(std::malloc(table_byte_size));
+  table_size_ = table_byte_size / sizeof(Entry) - 1;
+
+  clear();
 }
 
 void TranspositionTable::clear() {
   std::memset(table_, 0, (table_size_ + 1) * sizeof(Entry));
 }
 
-void TranspositionTable::save(const Entry &entry) {
+void TranspositionTable::save(const Entry &entry, int ply) {
   auto &table_entry = table_[entry.key % table_size_];
+  table_entry = entry;
 
-  if (table_entry.key == 0ULL ||
-      entry.key == table_entry.key && entry.depth >= table_entry.depth ||
-      entry.flag == Entry::kExact && table_entry.flag != Entry::kExact) {
-    table_entry = entry;
+  const int kRoughlyMate = -eval::kMateScore + 1000;
+  if (entry.evaluation <= kRoughlyMate) {
+    table_entry.evaluation += ply;
+  } else if (entry.evaluation >= -kRoughlyMate) {
+    table_entry.evaluation -= ply;
   }
 }
 

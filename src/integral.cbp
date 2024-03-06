@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="integral"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/Users/aron/Documents/chess_engine/integral/src"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="integral">
+				<Option output="/Users/aron/Documents/chess_engine/integral/src/integral" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/aron/Documents/chess_engine/integral/src"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/14.0.3/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 integral"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="integral/fast">
+				<Option output="/Users/aron/Documents/chess_engine/integral/src/integral" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/aron/Documents/chess_engine/integral/src"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/14.0.3/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 integral/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/Users/aron/Documents/chess_engine/integral/src"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/Users/aron/Documents/chess_engine/integral/src"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/aron/Documents/chess_engine/integral/src/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/bitboard.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/board.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/board.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/eval.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/eval.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/fen.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/fen.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/main.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/move.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/move_gen.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/move_gen.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/search.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/search.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/transpo.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/transpo.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/types.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/zobrist.cpp">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/src/zobrist.h">
+			<Option target="integral"/>
+		</Unit>
+		<Unit filename="/Users/aron/Documents/chess_engine/integral/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

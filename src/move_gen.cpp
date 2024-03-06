@@ -125,7 +125,7 @@ BitBoard generate_rook_moves(U8 pos, BoardState &state) {
 }
 
 BitBoard generate_king_moves(U8 pos, BoardState &state, bool include_castling) {
-  BitBoard moves = generate_king_attacks(pos, state), bb_pos = BitBoard::from_square(pos);
+  BitBoard moves = generate_king_attacks(pos, state);
 
   if (include_castling) {
     const auto color = get_piece_color(pos, state.pieces);
@@ -471,7 +471,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       const U8 to = possible_moves.pop_lsb();
-      const U8 to_rank = to / 8;
+      const U8 to_rank = to / kBoardRanks;
 
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)

@@ -103,7 +103,7 @@ inline unsigned long promotions = 0;
 
 class Board {
  public:
-  explicit Board(BoardState state) : state_(std::move(state)), transpo_table_(32) {
+  explicit Board(BoardState state) : state_(std::move(state)), transpo_table_(64) {
     history_.reserve(10000000);
   }
 
@@ -118,6 +118,8 @@ class Board {
   bool is_legal_move(const Move &move);
 
   void make_move(const Move &move, bool perft = false, int perft_depth = 0);
+
+  void make_null_move();
 
   void undo_move();
 
