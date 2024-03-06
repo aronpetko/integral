@@ -36,14 +36,14 @@ void initialize_ray_attacks() {
 inline BitBoard get_positive_ray_attacks(BitBoard occupied, Direction dir, U8 square) {
   BitBoard attacks = ray_attacks[dir][square];
   BitBoard blocker = attacks & occupied;
-  square = __builtin_ctzll((blocker | U64(0x8000000000000000ULL)).as_u64());
+  square = std::countr_zero((blocker | U64(0x8000000000000000ULL)).as_u64());
   return attacks ^ ray_attacks[dir][square];
 }
 
 inline BitBoard get_negative_ray_attacks(BitBoard occupied, Direction dir, U8 square) {
   BitBoard attacks = ray_attacks[dir][square];
   BitBoard blocker = attacks & occupied;
-  square = (Square::kSquareCount - 1) - __builtin_clzll((blocker | 1).as_u64());
+  square = (Square::kSquareCount - 1) - std::countl_zero((blocker | 1).as_u64());
   return attacks ^ ray_attacks[dir][square];
 }
 

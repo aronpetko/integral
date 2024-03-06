@@ -1,6 +1,8 @@
 #include "transpo.h"
 #include "eval.h"
 
+#include <cstring>
+
 TranspositionTable::TranspositionTable(int mb_size) : table_(nullptr), table_size_(mb_size) {
   resize(mb_size);
 }

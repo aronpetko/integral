@@ -20,7 +20,7 @@ int best_eval_this_iteration;
 
 bool search_cancelled;
 
-bool can_do_null_move;
+inline bool can_do_null_move = true;
 
 }
 
@@ -40,10 +40,6 @@ int quiesce(Board &board, int alpha, int beta) {
   int stand_pat = eval::evaluate(state);
   if (stand_pat >= beta)
     return beta;
-
-  /* const int delta = eval::kPieceValues[static_cast<int>(PieceType::kQueen)]; // queen value
-  if (stand_pat < alpha - delta)
-    return alpha; */
 
   if (alpha < stand_pat)
     alpha = stand_pat;
@@ -109,7 +105,7 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     return 0;
   }
 
-  if (depth == 0) {
+  if (depth <= 0) {
     ++nodes_searched;
     return quiesce(board, alpha, beta);
   }
@@ -125,18 +121,18 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     detail::can_do_null_move = false;
 
     board.make_null_move();
-
     const int reduction = depth / 4 + 3;
     const int null_move_score = -negamax(board, depth - reduction, ply + 1, -beta, -alpha);
 
     board.undo_move();
 
     detail::can_do_null_move = true;
-    if (null_move_score >= beta)
+    if (null_move_score >= beta) {
       return beta;
+    }
   }
 
-  detail::can_do_null_move = true;
+  // detail::can_do_null_move = true;
 
   Move best_move;
   int best_eval = std::numeric_limits<int>::min();
@@ -276,7 +272,7 @@ MoveList order_moves(Board &board, const MoveList &moves) {
 Move find_best_move(Board &board) {
   nodes_searched = 0;
 
-  detail::start_time = std::chrono::high_resolution_clock::now();
+  detail::start_time = std::chrono::steady_clock::now();
   detail::search_cancelled = false;
 
   Move best_move;
@@ -286,15 +282,10 @@ Move find_best_move(Board &board) {
     detail::best_move_this_iteration.reset();
     detail::best_eval_this_iteration = std::numeric_limits<int>::min();
 
-    std::optional<Move> tt_move;
-    const auto tt_entry = board.get_transpo_table().probe(board.get_state().zobrist_key);
-    if (tt_entry->key == board.get_state().zobrist_key)
-      std::cout << tt_entry->best_move.to_string() << std::endl;
-
     negamax(board, depth, 0, -eval::kMateScore, eval::kMateScore);
 
     if (detail::best_move_this_iteration.has_value()) {
-      std::cout << "Best Move: " << detail::best_move_this_iteration->to_string() << " Score: " << detail::best_eval_this_iteration << " Depth: " << depth << std::endl;
+      std::cout << "Best Move: " << detail::best_move_this_iteration->to_string() << " |  Move Score: " << std::fixed << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | Depth: " << depth << std::endl;
       best_move = detail::best_move_this_iteration.value();
       best_eval = detail::best_eval_this_iteration;
     }

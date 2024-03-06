@@ -196,9 +196,6 @@ void Board::make_null_move() {
     new_state.en_passant.reset();
   }
 
-  if (++new_state.half_moves % 2 == 0)
-    new_state.full_moves++;
-
   // switch turn and xor in the new turn hash
   new_state.turn = Color(!new_state.turn);
   new_state.zobrist_key ^= zobrist::hash_turn(new_state);

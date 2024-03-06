@@ -48,7 +48,7 @@ BoardState string_to_board(const std::string &fen_str) {
     BitBoard *target = nullptr;
 
     const bool is_black_piece = std::islower(ch);
-    const auto piece_type = kCharToPieceType.at(std::tolower(ch, std::locale()));
+    const auto piece_type = kCharToPieceType.at(std::tolower(ch));
 
     switch (piece_type) {
       case PieceType::kPawn:
