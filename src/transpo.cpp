@@ -18,8 +18,6 @@ void TranspositionTable::resize(std::size_t mb_size) {
   table_ = reinterpret_cast<Entry*>(std::malloc(table_byte_size));
   table_size_ = table_byte_size / sizeof(Entry) - 1;
 
-  std::cout << table_size_ << std::endl;
-
   clear();
 }
 

@@ -52,6 +52,7 @@ int main() {
   SetConsoleOutputCP(CP_UTF8);
 #endif
 
+  // initialize bishop/rook attacks the move generator
   initialize_ray_attacks();
 
   const int kTranspositionTableMbSize = 64;

@@ -161,6 +161,8 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     }
 
     alpha = std::max(alpha, best_eval);
+
+    // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
       break;
     }
@@ -193,6 +195,7 @@ Move find_best_move(Board &board) {
   Move best_move;
   int best_eval;
 
+  // iterative deepening
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     detail::best_move_this_iteration.reset();
     detail::best_eval_this_iteration = std::numeric_limits<int>::min();
@@ -217,7 +220,8 @@ Move find_best_move(Board &board) {
 
   std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << best_eval / 100.0 << std::endl;
   std::cout << "nodes searched: " << detail::nodes_searched << std::endl;
-  std::cout << "nps: " << std::fixed << std::setprecision(2) << (double)search::detail::nodes_searched / (double)elapsed << std::endl;
+  std::cout << "nps: " << std::fixed << std::setprecision(2) << search::detail::nodes_searched / elapsed << std::endl;
+  std::cout << "took: " << elapsed << "s" << std::endl << std::endl;
 
   return best_move;
 }
