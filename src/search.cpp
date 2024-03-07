@@ -121,7 +121,7 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     detail::can_do_null_move = false;
 
     board.make_null_move();
-    const int reduction = depth / 4 + 3;
+    const int reduction = depth > 6 ? 3 : 2;
     const int null_move_score = -negamax(board, depth - reduction, ply + 1, -beta, -alpha);
 
     board.undo_move();
@@ -157,8 +157,10 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     }
 
     alpha = std::max(alpha, best_eval);
-    if (alpha >= beta)
+    if (alpha >= beta) {
+
       break;
+    }
   }
 
   TranspositionTable::Entry entry;
@@ -285,7 +287,7 @@ Move find_best_move(Board &board) {
     negamax(board, depth, 0, -eval::kMateScore, eval::kMateScore);
 
     if (detail::best_move_this_iteration.has_value()) {
-      std::cout << "Best Move: " << detail::best_move_this_iteration->to_string() << " |  Move Score: " << std::fixed << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | Depth: " << depth << std::endl;
+      std::cout << "Best Move: " << detail::best_move_this_iteration->to_string() << " | Evaluation: " << std::fixed << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | Depth: " << depth << std::endl;
       best_move = detail::best_move_this_iteration.value();
       best_eval = detail::best_eval_this_iteration;
     }

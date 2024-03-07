@@ -55,7 +55,7 @@ int main() {
 
   initialize_ray_attacks();
 
-  Board board(fen::string_to_board(fen::kStartFen));
+  Board board(fen::string_to_board("7N/p2k2p1/4rr2/6p1/3b1p2/7P/P1p2PP1/2R2R1K w - - 0 1"));
 
   std::string command;
   while (true) {
@@ -68,6 +68,7 @@ int main() {
     std::cout << "computer move: " << best_response.to_string() << std::endl;
     board.make_move(best_response);
 
+    get_move:
     print_pieces(board.get_state().pieces);
 
     std::getline(std::cin, command);
@@ -75,6 +76,7 @@ int main() {
       break;
     } else if (command == "undo") {
       board.undo_move();
+      goto get_move;
     } else {
       auto move = Move::from_str(command);
       if (!move) {
@@ -86,6 +88,8 @@ int main() {
 
       if (board.is_legal_move(move.value())) {
         board.make_move(move.value());
+      } else {
+        goto get_move;
       }
     }
   }
