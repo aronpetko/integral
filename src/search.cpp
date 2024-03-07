@@ -7,7 +7,7 @@
 
 namespace search {
 
-const int kMaxSearchDepth = 25;
+const int kMaxSearchDepth = 99;
 const int kMaxSearchTime = 15; // seconds
 
 namespace detail {
@@ -44,9 +44,7 @@ int quiesce(Board &board, int alpha, int beta) {
   if (alpha < stand_pat)
     alpha = stand_pat;
 
-  MoveList capture_moves;
-
-  for (const auto &capture : order_moves(board, generate_capture_moves(board))) {
+  for (const auto &capture : order_moves(board, generate_capture_moves(board), true)) {
     board.make_move(capture);
 
     const bool in_check = state.pieces[state.turn == Color::kWhite ? kBlackKing : kWhiteKing] == 0ULL || king_in_check(Color(!state.turn), state);
@@ -224,19 +222,22 @@ void quick_sort(std::vector<std::pair<int, Move>> &list, int low, int high) {
   }
 }
 
-MoveList order_moves(Board &board, const MoveList &moves) {
+MoveList order_moves(Board &board, const MoveList &moves, bool captures_only) {
   auto &state = board.get_state();
   auto &transpo_table = board.get_transpo_table();
-
-  std::optional<Move> tt_move;
-  const auto tt_entry = transpo_table.probe(state.zobrist_key);
-
-  if (tt_entry->key == state.zobrist_key)
-    tt_move = tt_entry->best_move;
 
   const auto is_capture = [&state](const Move &move) {
     return state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
   };
+
+  std::optional<Move> tt_move;
+  const auto tt_entry = transpo_table.probe(state.zobrist_key);
+
+  if (tt_entry->key == state.zobrist_key) {
+    if (!captures_only || is_capture(tt_entry->best_move)) {
+      tt_move = tt_entry->best_move;
+    }
+  }
 
   std::vector<std::pair<int, Move>> valued_moves;
 
@@ -287,7 +288,8 @@ Move find_best_move(Board &board) {
     negamax(board, depth, 0, -eval::kMateScore, eval::kMateScore);
 
     if (detail::best_move_this_iteration.has_value()) {
-      std::cout << "Best Move: " << detail::best_move_this_iteration->to_string() << " | Evaluation: " << std::fixed << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | Depth: " << depth << std::endl;
+      std::cout << "best move: " << detail::best_move_this_iteration->to_string() << " | evaluation: " << std::fixed << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | depth: " << depth << std::endl;
+
       best_move = detail::best_move_this_iteration.value();
       best_eval = detail::best_eval_this_iteration;
     }

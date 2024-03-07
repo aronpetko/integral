@@ -458,6 +458,7 @@ MoveList generate_capture_moves(Board &board) {
 
   BitBoard &our_pieces = state.pieces[is_white ? kWhitePieces : kBlackPieces];
   BitBoard &their_pieces = state.pieces[is_white ? kBlackPieces : kWhitePieces];
+  BitBoard &their_king = state.pieces[is_white ? kBlackKing : kWhiteKing];
 
   while (pawns) {
     U8 from = pawns.pop_lsb();
@@ -466,7 +467,7 @@ MoveList generate_capture_moves(Board &board) {
     auto possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
 
     const bool en_passant_set = state.en_passant.has_value() && possible_moves.is_set(state.en_passant.value());
-    possible_moves &= ~our_pieces & their_pieces;
+    possible_moves &= ~our_pieces & their_pieces & ~their_king;
     if (en_passant_set) possible_moves.set_bit(state.en_passant.value());
 
     while (possible_moves) {
@@ -491,7 +492,7 @@ MoveList generate_capture_moves(Board &board) {
     U8 from = knights.pop_lsb();
 
     auto possible_moves = generate_knight_moves(from, state);
-    possible_moves &= ~our_pieces & their_pieces;
+    possible_moves &= ~our_pieces & their_pieces & ~their_king;
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
@@ -503,7 +504,7 @@ MoveList generate_capture_moves(Board &board) {
     U8 from = bishops.pop_lsb();
 
     auto possible_moves = generate_bishop_moves(from, state);
-    possible_moves &= ~our_pieces & their_pieces;
+    possible_moves &= ~our_pieces & their_pieces & ~their_king;
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
@@ -527,7 +528,7 @@ MoveList generate_capture_moves(Board &board) {
     U8 from = queens.pop_lsb();
 
     auto possible_moves = generate_rook_moves(from, state) | generate_bishop_moves(from, state);
-    possible_moves &= ~our_pieces & their_pieces;
+    possible_moves &= ~our_pieces & their_pieces & ~their_king;
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
@@ -539,7 +540,7 @@ MoveList generate_capture_moves(Board &board) {
     U8 from = king.pop_lsb();
 
     auto possible_moves = generate_king_moves(from, state);
-    possible_moves &= ~our_pieces & their_pieces;
+    possible_moves &= ~our_pieces & their_pieces & ~their_king;
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();

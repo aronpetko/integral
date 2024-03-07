@@ -55,7 +55,7 @@ int main() {
 
   initialize_ray_attacks();
 
-  Board board(fen::string_to_board("7N/p2k2p1/4rr2/6p1/3b1p2/7P/P1p2PP1/2R2R1K w - - 0 1"));
+  Board board(fen::string_to_board("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1"));
 
   std::string command;
   while (true) {
