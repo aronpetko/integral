@@ -30,6 +30,12 @@ enum class PromotionType : U8 {
   kAny
 };
 
+enum class MoveType {
+  kAll,
+  kCaptures,
+  kQuiet
+};
+
 enum Color {
   kBlack,
   kWhite,

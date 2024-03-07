@@ -1,7 +1,6 @@
 #include "board.h"
 #include "fen.h"
 #include "move_gen.h"
-#include "eval.h"
 #include "search.h"
 #include "zobrist.h"
 
@@ -56,23 +55,18 @@ int main() {
   initialize_ray_attacks();
 
   const int kTranspositionTableMbSize = 64;
-  Board board(fen::string_to_board("2k5/p1p2p1p/2p2p1b/2Pr4/1P2r3/P3P3/5KPP/R5NR w - - 0 1"), kTranspositionTableMbSize);
+  Board board(fen::string_to_board(fen::kStartFen), kTranspositionTableMbSize);
 
   std::string command;
   while (true) {
     std::cout << "started search" << std::endl;
 
-    const auto start = std::chrono::steady_clock::now();
     const auto best_response = search::find_best_move(board);
-    const auto end = std::chrono::steady_clock::now();
-    const auto elapsed = std::chrono::duration<double>(end - start).count();
-
-    std::cout << "found best move in: " << elapsed << " | nps: " << std::fixed << std::setprecision(2) << (double)search::nodes_searched / (double)elapsed << std::endl;
-    std::cout << "computer move: " << best_response.to_string() << std::endl;
-
     board.make_move(best_response);
 
-    get_move:
+    std::cout << "computer move: " << best_response.to_string() << std::endl;
+
+  get_move:
     print_pieces(board.get_state().pieces);
 
     std::getline(std::cin, command);

@@ -4,7 +4,6 @@
 #include "move_orderer.h"
 
 #include <iomanip>
-#include <thread>
 
 namespace search {
 
@@ -47,8 +46,10 @@ int quiesce(Board &board, int alpha, int beta) {
   if (alpha < stand_pat)
     alpha = stand_pat;
 
-  for (const auto &capture : order_moves(board, generate_capture_moves(board), true)) {
-    board.make_move(capture);
+  MoveOrderer move_orderer(board, generate_capture_moves(board), MoveType::kCaptures);
+
+  for (int i = 0; i < move_orderer.size(); i++) {
+    board.make_move(move_orderer.get_move(i));
 
     const bool in_check = state.pieces[state.turn == Color::kWhite ? kBlackKing : kWhiteKing] == 0ULL
         || king_in_check(flip_color(state.turn), state);
@@ -85,9 +86,11 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
         }
 
         return tt_entry->evaluation;
-      case TranspositionTable::Entry::kLowerBound:alpha = std::max(alpha, tt_entry->evaluation);
+      case TranspositionTable::Entry::kLowerBound:
+        alpha = std::max(alpha, tt_entry->evaluation);
         break;
-      case TranspositionTable::Entry::kUpperBound:beta = std::min(beta, tt_entry->evaluation);
+      case TranspositionTable::Entry::kUpperBound:
+        beta = std::min(beta, tt_entry->evaluation);
         break;
     }
 
@@ -106,7 +109,7 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
   }
 
   if (depth <= 0) {
-    ++nodes_searched;
+    ++detail::nodes_searched;
     return quiesce(board, alpha, beta);
   }
 
@@ -131,10 +134,14 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     }
   }
 
+  MoveOrderer move_orderer(board, generate_legal_moves(board), MoveType::kAll);
+
   Move best_move;
   int best_eval = std::numeric_limits<int>::min();
 
-  for (const auto &move : order_moves(board, moves)) {
+  for (int i = 0; i < move_orderer.size(); i++) {
+    const Move &move = move_orderer.get_move(i);
+
     board.make_move(move);
     const int score = -negamax(board, depth - 1, ply + 1, -beta, -alpha);
     board.undo_move();
@@ -155,7 +162,6 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
 
     alpha = std::max(alpha, best_eval);
     if (alpha >= beta) {
-
       break;
     }
   }
@@ -176,99 +182,6 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
   transpo.save(entry, ply);
 
   return best_eval;
-}
-
-int partition(std::vector<std::pair<int, Move>> &list, int low, int high) {
-  // select the rightmost element as pivot
-  int pivot = list[high].first;
-
-  // pointer for greater element
-  int i = (low - 1);
-
-  // traverse each element of the array
-  // compare them with the pivot
-  for (int j = low; j < high; j++) {
-    if (list[j].first > pivot) {
-
-      // if element smaller than pivot is found
-      // swap it with the greater element pointed by i
-      i++;
-
-      // swap element at i with element at j
-      std::swap(list[i], list[j]);
-    }
-  }
-
-  // swap pivot with the greater element at i
-  std::swap(list[i + 1], list[high]);
-
-  // return the partition point
-  return i + 1;
-}
-
-void quick_sort(std::vector<std::pair<int, Move>> &list, int low, int high) {
-  if (low < high) {
-    // find the pivot element such that
-    // elements smaller than pivot are on left of pivot
-    // elements greater than pivot are on righ of pivot
-    int pivot = partition(list, low, high);
-
-    // recursive call on the left of pivot
-    quick_sort(list, low, pivot - 1);
-
-    // recursive call on the right of pivot
-    quick_sort(list, pivot + 1, high);
-  }
-}
-
-MoveList order_moves(Board &board, const MoveList &moves, bool captures_only) {
-  auto &state = board.get_state();
-  auto &transpo_table = board.get_transpo_table();
-
-  const auto is_capture = [&state](const Move &move) {
-    return state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
-  };
-
-  std::optional<Move> tt_move;
-  const auto tt_entry = transpo_table.probe(state.zobrist_key);
-
-  if (tt_entry->key == state.zobrist_key) {
-    if (!captures_only || is_capture(tt_entry->best_move)) {
-      tt_move = tt_entry->best_move;
-    }
-  }
-
-  std::vector<std::pair<int, Move>> valued_moves;
-
-  for (const auto &move : moves) {
-    int score = 0;
-
-    const auto promotion_type = move.get_promotion_type();
-    if (promotion_type != PromotionType::kNone) {
-      score += eval::kPieceValues[static_cast<int>(promotion_type)];
-    }
-
-    if (is_capture(move)) {
-      const int aggressor_piece_value = eval::kPieceValues[static_cast<int>(move.get_piece_type())];
-      const int victim_piece_value = eval::kPieceValues[static_cast<int>(get_piece_type(move.get_to(), state.pieces))];
-
-      // 1000 for move valuation
-      score += 1000 + victim_piece_value * 10 - aggressor_piece_value;
-    }
-
-    valued_moves.emplace_back(score, move);
-  }
-
-  quick_sort(valued_moves, 0, valued_moves.size() - 1);
-
-  MoveList ordered_moves;
-
-  // always prefer the transposition table's stored best move first
-  if (tt_move.has_value())
-    ordered_moves.push_back(tt_move.value());
-
-  for (const auto &move : valued_moves) ordered_moves.push_back(move.second);
-  return ordered_moves;
 }
 
 Move find_best_move(Board &board) {
@@ -300,8 +213,12 @@ Move find_best_move(Board &board) {
     }
   }
 
+  const auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - detail::start_time).count();
+
   std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << best_eval / 100.0 << std::endl;
-  std::cout << "nodes searched: " << nodes_searched << std::endl;
+  std::cout << "nodes searched: " << detail::nodes_searched << std::endl;
+  std::cout << "nps: " << std::fixed << std::setprecision(2) << (double)search::detail::nodes_searched / (double)elapsed << std::endl;
+
   return best_move;
 }
 
