@@ -9,10 +9,6 @@
 
 namespace search {
 
-inline int nodes_searched = 0;
-
-MoveList order_moves(Board &board, const MoveList &moves, bool captures_only = false);
-
 Move find_best_move(Board &board);
 
 }

@@ -68,13 +68,7 @@ class CastleData {
 
 class BoardState {
  public:
-  BoardState() {
-    half_moves = 0;
-    full_moves = 0;
-    zobrist_key = 0;
-    turn = Color::kWhite;
-    en_passant = std::nullopt;
-  }
+  BoardState() : half_moves(0), full_moves(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {}
 
   [[nodiscard]] bool is_end_game() const {
     const BitBoard minor_pieces = pieces[kWhiteKnights] | pieces[kWhiteBishops] |
@@ -95,17 +89,9 @@ class BoardState {
   U64 zobrist_key;
 };
 
-inline unsigned long captures = 0;
-inline unsigned long checks = 0;
-inline unsigned long en_passant_captures = 0;
-inline unsigned long castles = 0;
-inline unsigned long promotions = 0;
-
 class Board {
  public:
-  explicit Board(BoardState state) : state_(std::move(state)), transpo_table_(64) {
-    history_.reserve(10000000);
-  }
+  explicit Board(BoardState state, std::size_t transpo_table_size) : state_(std::move(state)), transpo_table_(transpo_table_size) {}
 
   BoardState &get_state() {
     return state_;

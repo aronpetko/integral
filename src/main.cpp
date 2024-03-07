@@ -21,7 +21,7 @@ int perft_helper(Board &board, int depth) {
   int positions = 0;
   for (const auto &move : generate_moves(state)) {
     board.make_move(move, true, depth);
-    const bool in_check = king_in_check(Color(!state.turn), state);
+    const bool in_check = king_in_check(flip_color(state.turn), state);
     if (!in_check) positions += perft_helper(board, depth - 1);
     board.undo_move();
   }
@@ -37,11 +37,11 @@ void perft(Board &board, int depth) {
 
   std::cout << "+-+-+-+-+-+-+-+-+" << std::endl;
   std::cout << "Nodes: " << perft_nodes << std::endl;
-  std::cout << "Captures: " << captures << std::endl;
+  /* std::cout << "Captures: " << captures << std::endl;
   std::cout << "En Passants: " << en_passant_captures << std::endl;
   std::cout << "Castles: " << castles << std::endl;
   std::cout << "Promotions: " << promotions << std::endl;
-  std::cout << "Checks: " << checks << std::endl;
+  std::cout << "Checks: " << checks << std::endl; */
   std::cout << std::endl << "Took " << std::fixed << std::setprecision(2) << elapsed << "s" << std::endl;
   std::cout << "NPS: " << perft_nodes / elapsed << std::endl;
 
@@ -55,17 +55,21 @@ int main() {
 
   initialize_ray_attacks();
 
-  Board board(fen::string_to_board("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1"));
+  const int kTranspositionTableMbSize = 64;
+  Board board(fen::string_to_board("2k5/p1p2p1p/2p2p1b/2Pr4/1P2r3/P3P3/5KPP/R5NR w - - 0 1"), kTranspositionTableMbSize);
 
   std::string command;
   while (true) {
-    std::cout << "\nthinking... end_game: " << board.get_state().is_end_game() << "\n";
-    const auto start = std::chrono::high_resolution_clock::now();
-    auto best_response = search::find_best_move(board);
-    const auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "started search" << std::endl;
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto best_response = search::find_best_move(board);
+    const auto end = std::chrono::steady_clock::now();
     const auto elapsed = std::chrono::duration<double>(end - start).count();
+
     std::cout << "found best move in: " << elapsed << " | nps: " << std::fixed << std::setprecision(2) << (double)search::nodes_searched / (double)elapsed << std::endl;
     std::cout << "computer move: " << best_response.to_string() << std::endl;
+
     board.make_move(best_response);
 
     get_move:
@@ -81,7 +85,7 @@ int main() {
       auto move = Move::from_str(command);
       if (!move) {
         std::cerr << "this is an invalid move or command" << std::endl;
-        continue;
+        goto get_move;
       }
 
       move->set_piece_type(get_piece_type(move->get_from(), board.get_state().pieces));

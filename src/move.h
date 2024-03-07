@@ -146,6 +146,4 @@ struct Move {
 
 };
 
-using MoveList = std::vector<Move>;
-
 #endif // INTEGRAL_MOVE_H_

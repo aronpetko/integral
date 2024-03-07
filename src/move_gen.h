@@ -5,7 +5,7 @@
 #include "board.h"
 #include "types.h"
 
-extern std::array<std::array<BitBoard, 64>, 8> ray_attacks;
+using MoveList = std::vector<Move>;
 
 void initialize_ray_attacks();
 

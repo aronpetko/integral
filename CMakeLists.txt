@@ -11,6 +11,6 @@ add_executable(integral src/main.cpp src/board.cpp src/board.h src/move.h src/ty
         src/search.cpp
         src/search.h
         src/zobrist.cpp
-        src/zobrist.h src/transpo.cpp src/transpo.h)
+        src/zobrist.h src/transpo.cpp src/transpo.h src/move_orderer.cpp src/move_orderer.h)
 
 target_link_options(integral PRIVATE)

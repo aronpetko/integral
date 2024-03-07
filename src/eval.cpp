@@ -179,10 +179,10 @@ int piece_mobility_score(Color turn, BoardState &state) {
 }
 
 int evaluate(BoardState &state) {
-  const int material_diff = material_count(state.turn, state) - material_count(Color(!state.turn), state);
-  const int position_value = piece_positions_value(state.turn, material_diff, state) - piece_positions_value(Color(!state.turn), material_diff, state);
-  const int stacked_pawns = stacked_pawns_penalty(state.turn, state) - stacked_pawns_penalty(Color(!state.turn), state);
-  const int mobility_score = piece_mobility_score(state.turn, state) - piece_mobility_score(Color(!state.turn), state);
+  const int material_diff = material_count(state.turn, state) - material_count(flip_color(state.turn), state);
+  const int position_value = piece_positions_value(state.turn, material_diff, state) - piece_positions_value(flip_color(state.turn), material_diff, state);
+  const int stacked_pawns = stacked_pawns_penalty(state.turn, state) - stacked_pawns_penalty(flip_color(state.turn), state);
+  const int mobility_score = piece_mobility_score(state.turn, state) - piece_mobility_score(flip_color(state.turn), state);
 
   return material_diff + position_value + mobility_score + stacked_pawns;
 }

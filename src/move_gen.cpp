@@ -283,7 +283,7 @@ bool is_square_attacked(U8 pos, Color attacker, BoardState &state) {
 
 bool king_in_check(Color color, BoardState &state) {
   BitBoard king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
-  return is_square_attacked(king_bb.get_lsb_pos(), Color(!color), state);
+  return is_square_attacked(king_bb.get_lsb_pos(), flip_color(color), state);
 }
 
 MoveList generate_moves(BoardState &state) {
@@ -413,7 +413,7 @@ MoveList generate_legal_moves(Board &board) {
 
   const auto quick_is_legal_move = [&board, &state](const Move &move) {
     board.make_move(move);
-    const bool in_check = king_in_check(Color(!state.turn), state);
+    const bool in_check = king_in_check(flip_color(state.turn), state);
     board.undo_move();
     return !in_check;
   };

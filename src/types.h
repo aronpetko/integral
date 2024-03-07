@@ -36,6 +36,10 @@ enum Color {
   kNoColor
 };
 
+static Color flip_color(const Color &color) {
+  return Color(!color);
+}
+
 enum CastleRights : U8 {
   kWhiteKingside = 0b0001,
   kWhiteQueenside = 0b0010,

@@ -1,6 +1,7 @@
 #include "search.h"
 #include "move_gen.h"
 #include "transpo.h"
+#include "move_orderer.h"
 
 #include <iomanip>
 #include <thread>
@@ -20,12 +21,14 @@ int best_eval_this_iteration;
 
 bool search_cancelled;
 
-inline bool can_do_null_move = true;
+bool can_do_null_move;
+
+int nodes_searched;
 
 }
 
 bool should_exit_search() {
-  if (detail::search_cancelled || nodes_searched % 200000 == 0) {
+  if (detail::search_cancelled || detail::nodes_searched % 500000 == 0) {
     const auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - detail::start_time).count();
     if (elapsed >= kMaxSearchTime)
       return detail::search_cancelled = true;
@@ -47,7 +50,8 @@ int quiesce(Board &board, int alpha, int beta) {
   for (const auto &capture : order_moves(board, generate_capture_moves(board), true)) {
     board.make_move(capture);
 
-    const bool in_check = state.pieces[state.turn == Color::kWhite ? kBlackKing : kWhiteKing] == 0ULL || king_in_check(Color(!state.turn), state);
+    const bool in_check = state.pieces[state.turn == Color::kWhite ? kBlackKing : kWhiteKing] == 0ULL
+        || king_in_check(flip_color(state.turn), state);
     if (in_check) {
       board.undo_move();
       continue;
@@ -81,11 +85,9 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
         }
 
         return tt_entry->evaluation;
-      case TranspositionTable::Entry::kLowerBound:
-        alpha = std::max(alpha, tt_entry->evaluation);
+      case TranspositionTable::Entry::kLowerBound:alpha = std::max(alpha, tt_entry->evaluation);
         break;
-      case TranspositionTable::Entry::kUpperBound:
-        beta = std::min(beta, tt_entry->evaluation);
+      case TranspositionTable::Entry::kUpperBound:beta = std::min(beta, tt_entry->evaluation);
         break;
     }
 
@@ -121,7 +123,6 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     board.make_null_move();
     const int reduction = depth > 6 ? 3 : 2;
     const int null_move_score = -negamax(board, depth - reduction, ply + 1, -beta, -alpha);
-
     board.undo_move();
 
     detail::can_do_null_move = true;
@@ -129,8 +130,6 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
       return beta;
     }
   }
-
-  // detail::can_do_null_move = true;
 
   Move best_move;
   int best_eval = std::numeric_limits<int>::min();
@@ -273,10 +272,10 @@ MoveList order_moves(Board &board, const MoveList &moves, bool captures_only) {
 }
 
 Move find_best_move(Board &board) {
-  nodes_searched = 0;
-
-  detail::start_time = std::chrono::steady_clock::now();
   detail::search_cancelled = false;
+  detail::can_do_null_move = true;
+  detail::nodes_searched = 0;
+  detail::start_time = std::chrono::steady_clock::now();
 
   Move best_move;
   int best_eval;
@@ -288,7 +287,9 @@ Move find_best_move(Board &board) {
     negamax(board, depth, 0, -eval::kMateScore, eval::kMateScore);
 
     if (detail::best_move_this_iteration.has_value()) {
-      std::cout << "best move: " << detail::best_move_this_iteration->to_string() << " | evaluation: " << std::fixed << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | depth: " << depth << std::endl;
+      std::cout << "best move: " << detail::best_move_this_iteration->to_string() << " | evaluation: " << std::fixed
+                << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | depth: " << depth
+                << std::endl;
 
       best_move = detail::best_move_this_iteration.value();
       best_eval = detail::best_eval_this_iteration;

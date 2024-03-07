@@ -79,11 +79,6 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
   for (int bb_idx = opponent_start_bb; bb_idx <= opponent_end_bb; bb_idx++) {
     BitBoard &captured_piece_bb = new_state.pieces[bb_idx];
     if (captured_piece_bb.is_set(to)) {
-      // perft debugging
-      if (perft && perft_depth == 1) {
-        ++captures;
-      }
-
       // xor out this piece
       new_state.zobrist_key ^= zobrist::hash_square(to, new_state);
 
@@ -113,12 +108,6 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
       // xor out the en passant pos
       new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
       new_state.en_passant.reset();
-
-      // perft debugging
-      if (perft && perft_depth == 1) {
-        ++en_passant_captures;
-        ++captures;
-      }
     } else {
       std::cerr << "en passant pawn does not exist" << std::endl;
       return;
@@ -244,15 +233,9 @@ void Board::handle_castling(const Move &move, BoardState &state, bool perft, int
     if (move_dist == kKingsideCastleDist) {
       move_rook_for_castling(is_white ? Square::kH1 : Square::kH8,
                              is_white ? Square::kF1 : Square::kF8);
-
-      if (perft && perft_depth == 1)
-        ++castles;
     } else if (move_dist == kQueensideCastleDist) {
       move_rook_for_castling(is_white ? Square::kA1 : Square::kA8,
                              is_white ? Square::kD1 : Square::kD8);
-
-      if (perft && perft_depth == 1)
-        ++castles;
     }
 
     state.castle.set_can_kingside_castle(state.turn, false);
@@ -276,13 +259,13 @@ void Board::handle_castling(const Move &move, BoardState &state, bool perft, int
   }
   // handle rook getting captured changing castle rights
   else {
-    auto their_kingside_rook = state.castle.get_kingside_rook(Color(!state.turn));
-    auto their_queenside_rook = state.castle.get_queenside_rook(Color(!state.turn));
+    auto their_kingside_rook = state.castle.get_kingside_rook(flip_color(state.turn));
+    auto their_queenside_rook = state.castle.get_queenside_rook(flip_color(state.turn));
 
     if (to == their_kingside_rook) {
-      state.castle.set_can_kingside_castle(Color(!state.turn), false);
+      state.castle.set_can_kingside_castle(flip_color(state.turn), false);
     } else if (to == their_queenside_rook) {
-      state.castle.set_can_queenside_castle(Color(!state.turn), false);
+      state.castle.set_can_queenside_castle(flip_color(state.turn), false);
     }
   }
 
@@ -316,9 +299,6 @@ void Board::handle_promotions(const Move &move, BoardState &state, bool perft, i
           break;
       }
 
-      if (perft && perft_depth == 1)
-        ++promotions;
-
       // xor out the promoted pawn
       state.zobrist_key ^= zobrist::hash_square(to, state);
 
@@ -344,9 +324,6 @@ void Board::handle_promotions(const Move &move, BoardState &state, bool perft, i
         default:std::cerr << "invalid promotion type" << std::endl;
           return;
       }
-
-      if (perft && perft_depth == 1)
-        ++promotions;
 
       // xor out the promoted pawn
       state.zobrist_key ^= zobrist::hash_square(to, state);
