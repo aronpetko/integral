@@ -1,6 +1,7 @@
 #include "move_orderer.h"
 #include "eval.h"
 
+const int kTranspoTableMoveScore = 10000;
 const int kCaptureScore = 1000;
 
 MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type)
@@ -9,23 +10,6 @@ MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type)
 }
 
 const Move &MoveOrderer::get_move(int start) {
-  auto &state = board_.get_state();
-
-  // we always want to get the stored best move for this position first if available
-  if (start == 0) {
-    auto tt_entry = board_.get_transpo_table().probe(state.zobrist_key);
-
-    if (tt_entry->key == state.zobrist_key) {
-      const auto is_capture = [&state](const Move &move) {
-        return state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
-      };
-
-      if (move_type_ != MoveType::kCaptures || is_capture(tt_entry->best_move)) {
-        return tt_entry->best_move;
-      }
-    }
-  }
-
   // perform a selection sort for the next best move
   int best_score = move_scores_[start];
   int best_score_idx = start;
@@ -48,29 +32,42 @@ const Move &MoveOrderer::get_move(int start) {
 }
 
 void MoveOrderer::score_moves() {
-  move_scores_.resize(moves_.size());
+  auto &state = board_.get_state();
 
+  // we always want to get the stored best move for this position first if available
+  auto tt_entry = board_.get_transpo_table().probe(state.zobrist_key);
+  bool tt_move_exists = false;
+
+  if (tt_entry->key == state.zobrist_key) {
+    const auto is_capture = [&state](const Move &move) {
+      return state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
+    };
+
+    if (move_type_ != MoveType::kCaptures || is_capture(tt_entry->best_move)) {
+      moves_.insert(moves_.begin(), tt_entry->best_move);
+      tt_move_exists = true;
+    }
+  }
+
+  move_scores_.resize(moves_.size());
   for (int i = 0; i < moves_.size(); i++) {
-    move_scores_[i] = calculate_move_score(moves_[i]);
+    move_scores_[i] = i == 0 && tt_move_exists ? kTranspoTableMoveScore : calculate_move_score(moves_[i]);
   }
 }
 
 int MoveOrderer::calculate_move_score(const Move &move) {
   auto &state = board_.get_state();
 
-  const auto is_capture = [&state](const Move &move) {
-    return state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
-  };
-
   int score = 0;
 
+  // will be +0 if move isn't a promotion move
   const auto promotion_type = move.get_promotion_type();
-  if (promotion_type != PromotionType::kNone) {
-    score += eval::kPieceValues[static_cast<int>(promotion_type)];
-  }
+  score += eval::kPieceValues[static_cast<int>(promotion_type)];
 
   const auto move_piece_type = move.get_piece_type();
-  if (is_capture(move)) {
+  const bool is_capture_move = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
+
+  if (is_capture_move) {
     const int aggressor_piece_value = eval::kPieceValues[static_cast<int>(move_piece_type)];
     const int victim_piece_value = eval::kPieceValues[static_cast<int>(get_piece_type(move.get_to(), state.pieces))];
 
