@@ -31,7 +31,7 @@ U64 hash_square(U8 square, BoardState &state) {
   const int rank = square / kBoardRanks;
   const int file = square % kBoardFiles;
 
-  const int piece_kind = (static_cast<int>(get_piece_type(square, state.pieces)) - 1) * 2 + color;
+  const int piece_kind = (get_piece_type(square, state.pieces) - 1) * 2 + color;
   const int piece_idx = Square::kSquareCount * piece_kind + kBoardRanks * rank + file;
 
   return kRandomsArray[piece_idx];

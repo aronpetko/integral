@@ -87,47 +87,58 @@ const std::vector<int> kFlipTable = {
     0,  1,  2,  3,  4,  5,  6,  7,
 };
 
-int material_count(Color turn, BoardState &state) {
+int material_difference(BoardState &state) {
   int material = 0;
 
-  const int piece_idx_offset = turn == Color::kWhite ? kWhitePawns : kBlackPawns;
   for (int i = 1; i < kPieceValues.size(); i++) {
-    const int piece_count = state.pieces[piece_idx_offset + i - 1].pop_count();
+    const int white_piece_idx = kWhitePawns + i - 1;
+    const int black_piece_idx = kBlackPawns + i - 1;
+
+    const int white_piece_count = state.pieces[white_piece_idx].pop_count();
+    const int black_piece_count = state.pieces[black_piece_idx].pop_count();
+
     const int piece_value = kPieceValues[i];
-    material += piece_count * piece_value;
+    material += (white_piece_count - black_piece_count) * piece_value;
   }
 
-  return material;
+  return state.turn == Color::kWhite ? material : -material;
 }
 
-int piece_positions_value(Color turn, int material_count, BoardState &state) {
+int positional_difference(int material_diff, BoardState &state) {
   int position_value = 0;
 
-  const bool less_or_equal_material = material_count <= 0;
-  const bool is_white = turn == Color::kWhite;
-  const int piece_idx_offset = is_white ? kWhitePawns : kBlackPawns;
+  const bool less_or_equal_material = material_diff <= 0;
+  const bool is_end_game = state.is_end_game();
 
   for (int i = 0; i < kPieceSquareTables.size() - 1; i++) {
-    const int piece_idx = i + piece_idx_offset;
-    const bool is_king = piece_idx == kWhiteKing || piece_idx == kBlackKing;
+    const int white_piece_idx = kWhitePawns + i;
+    const int black_piece_idx = kBlackPawns + i;
 
-    BitBoard pieces = state.pieces[piece_idx];
-    while (pieces) {
-      U8 pos = pieces.pop_lsb();
+    BitBoard white_pieces = state.pieces[white_piece_idx];
+    while (white_pieces) {
+      U8 pos = white_pieces.pop_lsb();
 
-      const bool use_end_game_table = is_king && state.is_end_game() && less_or_equal_material;
-      position_value += kPieceSquareTables[i + use_end_game_table][is_white ? kFlipTable[pos] : pos];
+      const bool use_end_game_table = white_piece_idx == kWhiteKing && is_end_game && less_or_equal_material;
+      position_value += kPieceSquareTables[i + use_end_game_table][pos ^ 56];
+    }
+
+    BitBoard black_pieces = state.pieces[black_piece_idx];
+    while (black_pieces) {
+      U8 pos = black_pieces.pop_lsb();
+
+      const bool use_end_game_table = black_piece_idx == kBlackKing && is_end_game && less_or_equal_material;
+      position_value -= kPieceSquareTables[i + use_end_game_table][pos];
     }
   }
 
-  return position_value;
+  return state.turn == Color::kWhite ? position_value : -position_value;
 }
 
 int stacked_pawns_penalty(Color turn, BoardState &state) {
   int penalty = 0;
 
   // each stacked pawn is worth 3/4 of a pawn
-  const int kStackedPawnPenalty = -static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.75);
+  const int kStackedPawnPenalty = -static_cast<int>(kPieceValues[PieceType::kPawn] * 0.75);
   const BitBoard &pawns = state.pieces[turn == Color::kWhite ? kWhitePawns : kBlackPawns];
 
   for (const auto& file_mask : kFileMasks) {
@@ -137,7 +148,7 @@ int stacked_pawns_penalty(Color turn, BoardState &state) {
   return penalty;
 }
 
-int piece_mobility_score(Color turn, BoardState &state) {
+int mobility_score(Color turn, BoardState &state) {
   int mobility = 0;
 
   const bool is_white = turn == Color::kWhite;
@@ -149,20 +160,20 @@ int piece_mobility_score(Color turn, BoardState &state) {
   BitBoard &our_rooks = state.pieces[is_white ? kWhiteRooks : kBlackRooks];
   BitBoard rooks = state.pieces[is_white ? kWhiteRooks : kBlackRooks];
 
-  while (rooks) {
+  while (rooks != 0ULL) {
     U8 rook_file = rooks.pop_lsb() % kBoardFiles;
 
     // rook is on an open file, so it is worth 3/4 of a pawn
     if ((all_pieces & kFileMasks[rook_file]) == (our_rooks & kFileMasks[rook_file]))
-      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.75);
+      mobility += static_cast<int>(kPieceValues[PieceType::kPawn] * 0.75);
 
     // rook is on a semi-open file (a file with only opposing pawns), so it is worth half a pawn
     if ((their_pawns & kFileMasks[rook_file]) == (all_pieces & kFileMasks[rook_file]))
-      mobility += static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.5);
+      mobility += static_cast<int>(kPieceValues[PieceType::kPawn] * 0.5);
   }
 
   // our king should be less mobile in the mid-game
-  const BitBoard &our_king = state.pieces[is_white ? kWhiteKing : kBlackKing];
+  /* const BitBoard &our_king = state.pieces[is_white ? kWhiteKing : kBlackKing];
   if (!state.is_end_game()) {
     BitBoard king_moves = generate_king_moves(our_king.get_lsb_pos(), state, false);
     const int king_open_squares = (~all_pieces & king_moves).pop_count();
@@ -170,21 +181,21 @@ int piece_mobility_score(Color turn, BoardState &state) {
     // ideally we want the king to only move left/right in the mid-game (protected by pawns in front of it)
     if (king_open_squares > 2) {
       // for every square a king can move to, let's deduct 3/4 of a pawn
-      const int kOpenSquarePenalty = static_cast<int>(kPieceValues[static_cast<int>(PieceType::kPawn)] * 0.75);
+      const int kOpenSquarePenalty = static_cast<int>(kPieceValues[PieceType::kPawn] * 0.75);
       mobility -= king_open_squares * kOpenSquarePenalty;
     }
-  }
+  } */
 
   return mobility;
 }
 
 int evaluate(BoardState &state) {
-  const int material_diff = material_count(state.turn, state) - material_count(flip_color(state.turn), state);
-  const int position_value = piece_positions_value(state.turn, material_diff, state) - piece_positions_value(flip_color(state.turn), material_diff, state);
+  const int material_diff = material_difference(state);
+  const int position_value = positional_difference(material_diff, state);
   const int stacked_pawns = stacked_pawns_penalty(state.turn, state) - stacked_pawns_penalty(flip_color(state.turn), state);
-  const int mobility_score = piece_mobility_score(state.turn, state) - piece_mobility_score(flip_color(state.turn), state);
+  const int mobility = mobility_score(state.turn, state) - mobility_score(flip_color(state.turn), state);
 
-  return material_diff + position_value + mobility_score + stacked_pawns;
+  return material_diff + position_value + mobility + stacked_pawns;
 }
 
 }

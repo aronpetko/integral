@@ -286,9 +286,10 @@ bool king_in_check(Color color, BoardState &state) {
   return is_square_attacked(king_bb.get_lsb_pos(), flip_color(color), state);
 }
 
-MoveList generate_moves(BoardState &state) {
+MoveList generate_moves(Board &board) {
   MoveList moves;
-  
+
+  auto &state = board.get_state();
   const bool is_white = state.turn == Color::kWhite;
   
   BitBoard pawns;
@@ -420,7 +421,7 @@ MoveList generate_legal_moves(Board &board) {
 
   MoveList legal_moves;
 
-  for (const auto &move : generate_moves(state))
+  for (const auto &move : generate_moves(board))
     if (quick_is_legal_move(move))
       legal_moves.push_back(move);
 

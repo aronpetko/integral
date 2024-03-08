@@ -119,7 +119,9 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
 
   // setting en passant target if pawn moved two squares
   const int kDoublePushDist = 2;
+
   bool move_is_double_push = false;
+
   if (move.get_piece_type() == PieceType::kPawn && abs(from_rank - to_rank) == kDoublePushDist) {
     // xor out previous en passant square (if it exists)
     // we will xor in new en passant square after the turn has been updated
@@ -135,7 +137,7 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
     new_state.en_passant.reset();
   }
 
-  BitBoard &piece_bb = new_state.pieces[is_white ? static_cast<int>(piece_type) - 1 : static_cast<int>(piece_type) - 1 + kBlackPawns];
+  BitBoard &piece_bb = new_state.pieces[is_white ? piece_type - 1 : piece_type - 1 + kBlackPawns];
   piece_bb.move(from, to);
   our_pieces.move(from, to);
   all_pieces.move(from, to);
@@ -150,20 +152,12 @@ void Board::make_move(const Move &move, bool perft, int perft_depth) {
   new_state.pieces[kAllPieces] = new_state.pieces[kWhitePieces] | new_state.pieces[kBlackPieces];
 
   new_state.turn = Color(!new_state.turn);
-  // auto correct_zobrist = zobrist::generate_key(new_state);
-
   new_state.zobrist_key ^= zobrist::hash_turn(new_state);
 
   // xor en passant in now that the turn's have been switched (should only happen this move wasn't an ep capture)
   // this is important since hash_en_passant checks if the opponents pawn is next to the double-pushed pawn
-  if (move_is_double_push) {
+  if (move_is_double_push)
     new_state.zobrist_key ^= zobrist::hash_en_passant(new_state);
-  }
-
-  // perft debugging
-  //if (perft && perft_depth == 1 && king_in_check(new_state.turn, new_state)) {
-  //  ++checks;
-  //}
 
   if (++new_state.half_moves % 2 == 0)
     new_state.full_moves++;
@@ -217,11 +211,14 @@ void Board::handle_castling(const Move &move, BoardState &state, bool perft, int
       BitBoard &pieces_bb = state.pieces[is_white ? kWhitePieces : kBlackPieces];
       BitBoard &all_pieces_bb = state.pieces[kAllPieces];
 
-      // xor out the rook's previous square, xor in the rook's new square
+      // xor out the rook's previous square
       state.zobrist_key ^= zobrist::hash_square(rook_from, state);
+
       rooks_bb.move(rook_from, rook_to);
       pieces_bb.move(rook_from, rook_to);
       all_pieces_bb.move(rook_from, rook_to);
+
+      // xor in the rook's new square
       state.zobrist_key ^= zobrist::hash_square(rook_to, state);
     };
 

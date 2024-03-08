@@ -18,7 +18,7 @@ int perft_helper(Board &board, int depth) {
   auto &state = board.get_state();
 
   int positions = 0;
-  for (const auto &move : generate_moves(state)) {
+  for (const auto &move : generate_moves(board)) {
     board.make_move(move, true, depth);
     const bool in_check = king_in_check(flip_color(state.turn), state);
     if (!in_check) positions += perft_helper(board, depth - 1);

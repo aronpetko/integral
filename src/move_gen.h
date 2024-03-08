@@ -31,7 +31,7 @@ bool is_square_attacked(U8 pos, Color attacker, BoardState &state);
 
 bool king_in_check(Color color, BoardState &state);
 
-MoveList generate_moves(BoardState &state);
+MoveList generate_moves(Board &board);
 
 MoveList generate_legal_moves(Board &board);
 

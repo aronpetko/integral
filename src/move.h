@@ -38,6 +38,10 @@ struct Move {
     set_promotion_type(promotion_type);
   }
 
+  bool operator==(const Move& other) const {
+    return data == other.data;
+  }
+
   static std::optional<Move> from_str(std::string_view str, PieceType piece_type = PieceType::kNone) {
     const int kMinMoveLen = 4, kMaxMoveLen = 5;
     if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)

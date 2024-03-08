@@ -11,7 +11,7 @@ const U8 kBoardFiles = 8;
 const U8 kBoardRanks = 8;
 const U8 kBoardLength = 8;
 
-enum class PieceType : U8 {
+enum PieceType : U8 {
   kNone,
   kPawn,
   kKnight,

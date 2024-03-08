@@ -9,6 +9,9 @@
 
 namespace search {
 
+const int kMaxDepth = 99;
+const int kMaxSearchTime = 15; // seconds
+
 Move find_best_move(Board &board);
 
 }

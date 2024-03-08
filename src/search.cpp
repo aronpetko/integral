@@ -7,9 +7,6 @@
 
 namespace search {
 
-const int kMaxSearchDepth = 99;
-const int kMaxSearchTime = 15; // seconds
-
 namespace detail {
 
 std::chrono::steady_clock::time_point start_time;
@@ -42,6 +39,10 @@ int quiesce(Board &board, int alpha, int beta) {
   int stand_pat = eval::evaluate(state);
   if (stand_pat >= beta)
     return beta;
+
+  // delta pruning
+  if (stand_pat + eval::kPieceValues[PieceType::kQueen] < alpha)
+    return alpha;
 
   if (alpha < stand_pat)
     alpha = stand_pat;
@@ -108,33 +109,38 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     return 0;
   }
 
+  // ensure we never run quiesce when in check
+  bool in_check = king_in_check(state.turn, state);
+  if (in_check) {
+    depth++;
+  }
+
   if (depth <= 0) {
     ++detail::nodes_searched;
     return quiesce(board, alpha, beta);
   }
 
-  auto moves = generate_legal_moves(board);
-  if (moves.empty()) {
-    // prefer checkmates that are delivered in fewer moves
-    return king_in_check(state.turn, state) ? -eval::kMateScore + ply : eval::kDrawScore;
-  }
-
   // null move heuristic
-  if (detail::can_do_null_move && !king_in_check(state.turn, state)) {
+  if (detail::can_do_null_move && depth > 2 && !in_check) {
     detail::can_do_null_move = false;
-
     board.make_null_move();
+
     const int reduction = depth > 6 ? 3 : 2;
     const int null_move_score = -negamax(board, depth - reduction, ply + 1, -beta, -alpha);
-    board.undo_move();
 
+    board.undo_move();
     detail::can_do_null_move = true;
-    if (null_move_score >= beta) {
+
+    if (should_exit_search()) {
+      return 0;
+    } else if (null_move_score >= beta) {
       return beta;
     }
   }
 
-  MoveOrderer move_orderer(board, generate_legal_moves(board), MoveType::kAll);
+  MoveOrderer move_orderer(board, generate_moves(board), MoveType::kAll);
+
+  int moves_tried = 0;
 
   Move best_move;
   int best_eval = std::numeric_limits<int>::min();
@@ -143,7 +149,16 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     const Move &move = move_orderer.get_move(i);
 
     board.make_move(move);
+
+    // apparently this is faster than generating all legal moves initially
+    if (king_in_check(flip_color(state.turn), state)) {
+      board.undo_move();
+      continue;
+    }
+
     const int score = -negamax(board, depth - 1, ply + 1, -beta, -alpha);
+    moves_tried++;
+
     board.undo_move();
 
     if (should_exit_search()) {
@@ -164,8 +179,20 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
 
     // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
+      const bool is_capture_move =
+          state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
+      if (!is_capture_move) {
+        MoveOrderer::update_killer_move(move, depth);
+      }
+
       break;
     }
+  }
+
+  // the game is over if we couldn't try a move
+  if (moves_tried == 0) {
+    // print_pieces(state.pieces);
+    return in_check ? -eval::kMateScore + ply : eval::kDrawScore;
   }
 
   TranspositionTable::Entry entry;
@@ -196,7 +223,7 @@ Move find_best_move(Board &board) {
   int best_eval;
 
   // iterative deepening
-  for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
+  for (int depth = 1; depth <= kMaxDepth; depth++) {
     detail::best_move_this_iteration.reset();
     detail::best_eval_this_iteration = std::numeric_limits<int>::min();
 
