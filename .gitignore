@@ -46,6 +46,9 @@
 # CMake
 cmake-build-*/
 
+# Mac stuff
+**/.DS_Store
+
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
 
