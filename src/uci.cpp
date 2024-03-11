@@ -80,18 +80,18 @@ int perft_internal(Board &board, int depth) {
 
   auto &state = board.get_state();
 
-  int positions = 0;
+  int nodes = 0;
   auto moves = generate_moves(board);
 
   for (int i = 0; i < moves.size(); i++) {
     board.make_move(moves[i]);
     if (!king_in_check(flip_color(state.turn), state)) {
-      positions += perft_internal(board, depth - 1);
+      nodes += perft_internal(board, depth - 1);
     }
     board.undo_move();
   }
 
-  return positions;
+  return nodes;
 }
 
 void perft(Board &board, std::stringstream &input_stream) {
@@ -102,7 +102,11 @@ void perft(Board &board, std::stringstream &input_stream) {
     input_stream >> depth;
     assert(depth >= 0);
 
-    std::cout << std::format("perft({}): {}", depth, perft_internal(board, depth)) << std::endl;
+    const auto start_time = std::chrono::steady_clock::now();
+    const int nodes = perft_internal(board, depth);
+    const auto elapsed = duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
+
+    std::cout << std::format("perft({}): {}\ntook: {:.2f}s\nnps: {}", depth, nodes, elapsed, nodes / elapsed) << std::endl;
   }
 }
 
