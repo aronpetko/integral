@@ -5,11 +5,7 @@
 #include <vector>
 #include <string>
 
-#include "types.h"
-
-static U8 rank_file_to_pos(U8 rank, U8 file) {
-  return rank * kBoardLength + file;
-}
+class BoardState;
 
 const U32 kFromMask = 0b000000000000111111;
 const U32 kToMask = 0b000000111111000000;
@@ -25,129 +21,39 @@ struct Move {
 
   Move() = default;
 
-  Move(U8 from, U8 to) {
-    set_from(from);
-    set_to(to);
-  }
+  Move(U8 from, U8 to);
 
-  Move(U8 from, U8 to, PieceType piece_type) : Move(from, to) {
-    set_piece_type(piece_type);
-  }
+  Move(U8 from, U8 to, PieceType piece_type);
 
-  Move(U8 from, U8 to, PieceType piece_type, PromotionType promotion_type) : Move(from, to, piece_type) {
-    set_promotion_type(promotion_type);
-  }
+  Move(U8 from, U8 to, PieceType piece_type, PromotionType promotion_type);
 
-  bool operator==(const Move& other) const {
-    return data == other.data;
-  }
+  [[nodiscard]] static Move null_move();
 
-  static std::optional<Move> from_str(std::string_view str, PieceType piece_type = PieceType::kNone) {
-    const int kMinMoveLen = 4, kMaxMoveLen = 5;
-    if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)
-      return std::nullopt;
+  bool operator==(const Move &other) const;
 
-    const int from_rank = str[1] - '1', from_file = str[0] - 'a';
-    const int to_rank = str[3] - '1', to_file = str[2] - 'a';
+  static std::optional<Move> from_str(BoardState &board, std::string_view str);
 
-    if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 ||
-        from_file < 0 || from_file >= 8 || to_file < 0 || to_file >= 8)
-      return std::nullopt;
+  [[nodiscard]] U8 get_from() const;
 
-    U8 from = rank_file_to_pos(from_rank, from_file);
-    U8 to = rank_file_to_pos(to_rank, to_file);
+  [[nodiscard]] U8 get_to() const;
 
-    if (str.length() < kMaxMoveLen)
-      return Move(from, to, piece_type);
+  [[nodiscard]] PieceType get_piece_type() const;
 
-    PromotionType promotion_type;
-    switch (str[4]) {
-      case 'q':
-      case 'Q':
-        promotion_type = PromotionType::kQueen;
-        break;
-      case 'r':
-      case 'R':
-        promotion_type = PromotionType::kRook;
-        break;
-      case 'b':
-      case 'B':
-        promotion_type = PromotionType::kBishop;
-        break;
-      case 'n':
-      case 'N':
-        promotion_type = PromotionType::kKnight;
-        break;
-      default:
-        return std::nullopt;
-    }
+  [[nodiscard]] PromotionType get_promotion_type() const;
 
-    return Move(from, to, piece_type, promotion_type);
-  }
+  void set_from(U8 from);
 
-  [[nodiscard]] U8 get_from() const {
-    return data & kFromMask;
-  }
+  void set_to(U8 to);
 
-  [[nodiscard]] U8 get_to() const {
-    return (data & kToMask) >> 6;
-  }
+  void set_piece_type(PieceType piece_type);
 
-  [[nodiscard]] PieceType get_piece_type() const {
-    return PieceType((data & kPieceTypeMask) >> 12);
-  }
+  void set_promotion_type(PromotionType promotion_type);
 
-  [[nodiscard]] PromotionType get_promotion_type() const {
-    return PromotionType((data & kPromotionTypeMask) >> 15);
-  }
-
-  void set_from(U8 from) {
-    data &= ~kFromMask;
-    data |= static_cast<U32>(from) & kFromMask;
-  }
-
-  void set_to(U8 to) {
-    data &= ~kToMask;
-    data |= (static_cast<U32>(to) << 6) & kToMask;
-  }
-
-  void set_piece_type(PieceType piece_type) {
-    data = (data & ~kPieceTypeMask) | (static_cast<U8>(piece_type) << 12);
-  }
-
-  void set_promotion_type(PromotionType promotion_type) {
-    data = (data & ~kPromotionTypeMask) | (static_cast<U8>(promotion_type) << 15);
-  }
-
-  [[nodiscard]] std::string to_string() const {
-    const U8 from_rank = get_from() / 8, from_file = get_from() % kBoardFiles;
-    const U8 to_rank = get_to() / 8, to_file = get_to() % kBoardFiles;
-
-    std::string res = std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) +
-        std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);
-
-    const auto promo_type = get_promotion_type();
-    switch (promo_type) {
-      case PromotionType::kAny:
-      case PromotionType::kQueen:
-        res += 'q';
-        break;
-      case PromotionType::kKnight:
-        res += 'n';
-        break;
-      case PromotionType::kBishop:
-        res += 'b';
-        break;
-      case PromotionType::kRook:
-        res += 'r';
-        break;
-      default:
-        break;
-    }
-
-    return res;
-  }
-
+  [[nodiscard]] std::string to_string() const;
 };
+
+static U8 rank_file_to_pos(U8 rank, U8 file) {
+  return rank * kBoardLength + file;
+}
 
 #endif // INTEGRAL_MOVE_H_

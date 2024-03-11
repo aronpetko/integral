@@ -4,6 +4,7 @@
 #include "types.h"
 #include "move.h"
 
+#include <cstddef>
 #include <cassert>
 
 class TranspositionTable {
@@ -24,7 +25,9 @@ class TranspositionTable {
     Move best_move;
   };
 
-  explicit TranspositionTable(int mb_size);
+  explicit TranspositionTable(std::size_t mb_size);
+
+  TranspositionTable() : table_(nullptr), table_size_(0) {}
 
   void resize(std::size_t mb_size);
 

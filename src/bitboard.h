@@ -118,6 +118,10 @@ class BitBoard {
     return std::countr_zero(bitboard_);
   }
 
+  [[nodiscard]] U8 get_msb_pos() const {
+    return 63 - std::countl_zero(bitboard_);
+  }
+
   U8 pop_lsb() {
     U8 lsb_pos = get_lsb_pos();
     bitboard_ &= bitboard_ - 1;
@@ -236,39 +240,6 @@ constexpr inline BitBoard shift(const BitBoard& bitboard) {
     return BitBoard((bitboard >> 9) & ~FileMask::kFileH);
   else
     return BitBoard(0); // default case to avoid compiler warnings, should not be reached
-}
-
-static Color get_piece_color(U8 pos, BitBoards &pieces) {
-  if (pieces[kWhitePieces].is_set(pos)) return Color::kWhite;
-  if (pieces[kBlackPieces].is_set(pos)) return Color::kBlack;
-  return Color::kNoColor;
-}
-
-static Color get_piece_color(BitBoard bb, BitBoards &pieces) {
-  if (pieces[kWhitePieces] & bb) return Color::kWhite;
-  if (pieces[kBlackPieces] & bb) return Color::kBlack;
-  return Color::kNoColor;
-}
-
-static PieceType get_piece_type(U8 pos, BitBoards &pieces) {
-  if (!pieces[kAllPieces].is_set(pos))
-    return PieceType::kNone;
-
-  BitBoard pawns = pieces[kWhitePawns] | pieces[kBlackPawns];
-  BitBoard knights = pieces[kWhiteKnights] | pieces[kBlackKnights];
-  BitBoard bishops = pieces[kWhiteBishops] | pieces[kBlackBishops];
-  BitBoard rooks = pieces[kWhiteRooks] | pieces[kBlackRooks];
-  BitBoard queens = pieces[kWhiteQueens] | pieces[kBlackQueens];
-  BitBoard kings = pieces[kWhiteKing] | pieces[kBlackKing];
-
-  if (pawns.is_set(pos)) return PieceType::kPawn;
-  if (knights.is_set(pos)) return PieceType::kKnight;
-  if (bishops.is_set(pos)) return PieceType::kBishop;
-  if (rooks.is_set(pos)) return PieceType::kRook;
-  if (queens.is_set(pos)) return PieceType::kQueen;
-  if (kings.is_set(pos)) return PieceType::kKing;
-
-  return PieceType::kNone;
 }
 
 static void print_bb(BitBoard board) {

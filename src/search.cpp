@@ -2,39 +2,20 @@
 #include "move_gen.h"
 #include "transpo.h"
 #include "move_orderer.h"
+#include "time_mgmt.h"
 
 #include <iomanip>
 
-namespace search {
+Search::Search(TimeManagement::Config &time_config, Board &board)
+    : board_(board),
+      best_eval_this_iteration_(0),
+      following_pv_(false),
+      time_mgmt_(time_config, board.get_state()),
+      branching_factor_(0.0),
+      total_bfs_(0) {}
 
-namespace detail {
-
-std::chrono::steady_clock::time_point start_time;
-
-std::optional<Move> best_move_this_iteration;
-
-int best_eval_this_iteration;
-
-bool search_cancelled;
-
-bool can_do_null_move;
-
-int nodes_searched;
-
-}
-
-bool should_exit_search() {
-  if (detail::search_cancelled || detail::nodes_searched % 500000 == 0) {
-    const auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - detail::start_time).count();
-    if (elapsed >= kMaxSearchTime)
-      return detail::search_cancelled = true;
-  }
-
-  return false;
-}
-
-int quiesce(Board &board, int alpha, int beta) {
-  auto &state = board.get_state();
+int Search::quiesce(int alpha, int beta) {
+  auto &state = board_.get_state();
 
   int stand_pat = eval::evaluate(state);
   if (stand_pat >= beta)
@@ -47,20 +28,20 @@ int quiesce(Board &board, int alpha, int beta) {
   if (alpha < stand_pat)
     alpha = stand_pat;
 
-  MoveOrderer move_orderer(board, generate_capture_moves(board), MoveType::kCaptures);
+  MoveOrderer move_orderer(board_, generate_capture_moves(board_), MoveType::kCaptures);
 
   for (int i = 0; i < move_orderer.size(); i++) {
-    board.make_move(move_orderer.get_move(i));
+    board_.make_move(move_orderer.get_move(i));
 
     const bool in_check = state.pieces[state.turn == Color::kWhite ? kBlackKing : kWhiteKing] == 0ULL
-        || king_in_check(flip_color(state.turn), state);
+                          || king_in_check(flip_color(state.turn), state);
     if (in_check) {
-      board.undo_move();
+      board_.undo_move();
       continue;
     }
 
-    const int score = -quiesce(board, -beta, -alpha);
-    board.undo_move();
+    const int score = -quiesce(-beta, -alpha);
+    board_.undo_move();
 
     if (score >= beta)
       return beta;
@@ -71,9 +52,9 @@ int quiesce(Board &board, int alpha, int beta) {
   return alpha;
 }
 
-int negamax(Board &board, int depth, int ply, int alpha, int beta) {
-  auto &state = board.get_state();
-  auto &transpo = board.get_transpo_table();
+int Search::negamax(int depth, int ply, int alpha, int beta) {
+  auto &state = board_.get_state();
+  auto &transpo = board_.get_transpo_table();
 
   const int original_alpha = alpha;
 
@@ -82,8 +63,8 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     switch (tt_entry->flag) {
       case TranspositionTable::Entry::kExact:
         if (ply == 0) {
-          detail::best_move_this_iteration = tt_entry->best_move;
-          detail::best_eval_this_iteration = tt_entry->evaluation;
+          best_move_this_iteration_ = tt_entry->best_move;
+          best_eval_this_iteration_ = tt_entry->evaluation;
         }
 
         return tt_entry->evaluation;
@@ -97,15 +78,15 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
 
     if (alpha >= beta) {
       if (ply == 0) {
-        detail::best_move_this_iteration = tt_entry->best_move;
-        detail::best_eval_this_iteration = tt_entry->evaluation;
+        best_move_this_iteration_ = tt_entry->best_move;
+        best_eval_this_iteration_ = tt_entry->evaluation;
       }
 
       return tt_entry->evaluation;
     }
   }
 
-  if (should_exit_search()) {
+  if (time_mgmt_.times_up() || board_.has_repeated(2)) {
     return 0;
   }
 
@@ -115,30 +96,34 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
     depth++;
   }
 
+  // search until we've found a "quiet" position to evaluate
   if (depth <= 0) {
-    ++detail::nodes_searched;
-    return quiesce(board, alpha, beta);
+    time_mgmt_.update_nodes_searched();
+    following_pv_ = false;
+    return quiesce(alpha, beta);
   }
 
-  // null move heuristic
-  if (detail::can_do_null_move && depth > 2 && !in_check) {
-    detail::can_do_null_move = false;
-    board.make_null_move();
+  // null move pruning
+  static bool can_do_null_move = true;
+
+  if (can_do_null_move && depth > 2 && !in_check && !following_pv_) {
+    can_do_null_move = false;
+    board_.make_null_move();
 
     const int reduction = depth > 6 ? 3 : 2;
-    const int null_move_score = -negamax(board, depth - reduction, ply + 1, -beta, -alpha);
+    const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -alpha);
 
-    board.undo_move();
-    detail::can_do_null_move = true;
+    board_.undo_move();
+    can_do_null_move = true;
 
-    if (should_exit_search()) {
+    if (time_mgmt_.times_up()) {
       return 0;
     } else if (null_move_score >= beta) {
       return beta;
     }
   }
 
-  MoveOrderer move_orderer(board, generate_moves(board), MoveType::kAll);
+  MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
 
   int moves_tried = 0;
 
@@ -148,20 +133,42 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
-    board.make_move(move);
+    const bool is_capture = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
+    const bool is_promotion = move.get_promotion_type() != PromotionType::kNone;
 
-    // apparently this is faster than generating all legal moves initially
+    board_.make_move(move);
+
+    // since the move generator is pseudo-legal, we must verify legality here
     if (king_in_check(flip_color(state.turn), state)) {
-      board.undo_move();
+      board_.undo_move();
       continue;
     }
 
-    const int score = -negamax(board, depth - 1, ply + 1, -beta, -alpha);
+    // conditions for late-move-reduction
+    int reduction = 0;
+    if (depth >= 3 && !following_pv_ && moves_tried > 1 && !is_promotion && !is_capture && !in_check) {
+      reduction = depth <= 6 ? 2 : depth / 3;
+    }
+
+    int score;
+    if (reduction != 0) {
+      // perform a reduced-depth search
+      score = -negamax(depth - 1 - reduction, ply + 1, -beta, -alpha);
+
+      // if the reduced-depth search indicates this move might be good, re-search at full depth
+      if (score > alpha) {
+        score = -negamax(depth - 1, ply + 1, -beta, -alpha);
+      }
+    } else {
+      // full-depth search for this move
+      score = -negamax(depth - 1, ply + 1, -beta, -alpha);
+    }
+
     moves_tried++;
 
-    board.undo_move();
+    board_.undo_move();
 
-    if (should_exit_search()) {
+    if (time_mgmt_.times_up()) {
       return 0;
     }
 
@@ -170,8 +177,8 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
       best_move = move;
 
       if (ply == 0) {
-        detail::best_move_this_iteration = best_move;
-        detail::best_eval_this_iteration = best_eval;
+        best_move_this_iteration_ = best_move;
+        best_eval_this_iteration_ = best_eval;
       }
     }
 
@@ -179,10 +186,9 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
 
     // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
-      const bool is_capture_move =
-          state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
-      if (!is_capture_move) {
+      if (!is_capture) {
         MoveOrderer::update_killer_move(move, depth);
+        MoveOrderer::update_move_history(move, state.turn, depth);
       }
 
       break;
@@ -191,8 +197,15 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
 
   // the game is over if we couldn't try a move
   if (moves_tried == 0) {
-    // print_pieces(state.pieces);
     return in_check ? -eval::kMateScore + ply : eval::kDrawScore;
+  } else {
+    if (state.half_moves >= 100) {
+      best_eval = eval::kDrawScore;
+      best_move = Move();
+    }
+
+    branching_factor_ += pow(moves_tried, 1.0 / depth);
+    total_bfs_++;
   }
 
   TranspositionTable::Entry entry;
@@ -213,44 +226,45 @@ int negamax(Board &board, int depth, int ply, int alpha, int beta) {
   return best_eval;
 }
 
-Move find_best_move(Board &board) {
-  detail::search_cancelled = false;
-  detail::can_do_null_move = true;
-  detail::nodes_searched = 0;
-  detail::start_time = std::chrono::steady_clock::now();
+Move Search::find_best_move() {
+  MoveOrderer::reset_move_history();
+
+  time_mgmt_.start();
+
+  const int config_depth = time_mgmt_.get_config().depth;
+  const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
   Move best_move;
   int best_eval;
 
   // iterative deepening
-  for (int depth = 1; depth <= kMaxDepth; depth++) {
-    detail::best_move_this_iteration.reset();
-    detail::best_eval_this_iteration = std::numeric_limits<int>::min();
+  for (int depth = 1; depth <= max_search_depth; depth++) {
+    time_mgmt_.update_move_time();
 
-    negamax(board, depth, 0, -eval::kMateScore, eval::kMateScore);
+    best_move_this_iteration_ = Move::null_move();
+    best_eval_this_iteration_ = std::numeric_limits<int>::min();
 
-    if (detail::best_move_this_iteration.has_value()) {
-      std::cout << "best move: " << detail::best_move_this_iteration->to_string() << " | evaluation: " << std::fixed
-                << std::setprecision(2) << detail::best_eval_this_iteration / 100.0 << " | depth: " << depth
-                << std::endl;
+    negamax(depth, 0, -eval::kMateScore, eval::kMateScore);
 
-      best_move = detail::best_move_this_iteration.value();
-      best_eval = detail::best_eval_this_iteration;
+    if (best_move_this_iteration_ != Move::null_move()) {
+      /* std::cout << "best move: " << best_move_this_iteration_.to_string() << " | evaluation: " << std::fixed
+                << std::setprecision(2) << best_eval_this_iteration_ / 100.0 << " | depth: " << depth
+                << std::endl; */
+
+      best_move = best_move_this_iteration_;
+      best_eval = best_eval_this_iteration_;
     }
 
-    if (should_exit_search()) {
+    if (time_mgmt_.times_up()) {
       break;
     }
   }
 
-  const auto elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - detail::start_time).count();
-
-  std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << best_eval / 100.0 << std::endl;
-  std::cout << "nodes searched: " << detail::nodes_searched << std::endl;
-  std::cout << "nps: " << std::fixed << std::setprecision(2) << search::detail::nodes_searched / elapsed << std::endl;
-  std::cout << "took: " << elapsed << "s" << std::endl << std::endl;
+  /* std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << best_eval / 100.0 << std::endl;
+  std::cout << "took: " << time_mgmt_.get_move_time() << "s" << std::endl << std::endl;
+  std::cout << "nodes searched: " << time_mgmt_.get_nodes_searched() << std::endl;
+  std::cout << "nps: " << std::fixed << std::setprecision(2) << time_mgmt_.get_nodes_searched() / time_mgmt_.get_move_time() << std::endl;
+  std::cout << "bf: " << branching_factor_ / total_bfs_ << std::endl; */
 
   return best_move;
-}
-
 }

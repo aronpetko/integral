@@ -5,11 +5,15 @@
 #include <vector>
 #include <memory>
 #include <utility>
+#include <optional>
 
 #include "bitboard.h"
 #include "zobrist.h"
-#include "move.h"
 #include "transpo.h"
+
+const int kMaxGameMoves = 2048;
+
+const int kHalfMoveLimit = 1024;
 
 class CastleData {
  public:
@@ -21,7 +25,10 @@ class CastleData {
   }
 
   CastleData(const CastleData &other) {
-    rooks = other.rooks;
+    rooks[0][0] = other.rooks[0][0];
+    rooks[0][1] = other.rooks[0][1];
+    rooks[1][0] = other.rooks[1][0];
+    rooks[1][0] = other.rooks[1][1];
     rights = other.rights;
   }
 
@@ -63,27 +70,24 @@ class CastleData {
 
  private:
   U8 rights;
-  std::array<std::array<Square, 2>, 2> rooks{}; // 2 rooks for each side
+  Square rooks[2][2]; // 2 rooks for each side
 };
 
-class BoardState {
- public:
-  BoardState() : half_moves(0), full_moves(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {}
+struct BoardState {
+  BoardState() : half_moves(0), fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {}
 
-  [[nodiscard]] bool is_end_game() const {
-    const BitBoard minor_pieces = pieces[kWhiteKnights] | pieces[kWhiteBishops] |
-        pieces[kBlackKnights] | pieces[kBlackBishops];
-    const BitBoard major_pieces = pieces[kWhiteRooks] | pieces[kWhiteQueens] |
-        pieces[kBlackRooks] | pieces[kBlackQueens];
+  [[nodiscard]] Color get_piece_color(U8 pos) const;
 
-    return minor_pieces.pop_count() + major_pieces.pop_count() < 7;
-  }
+  [[nodiscard]] Color get_piece_color(const BitBoard &bb) const;
 
- public:
+  [[nodiscard]] PieceType get_piece_type(U8 pos) const;
+
+  [[nodiscard]] PieceType get_piece_type(const BitBoard &bb) const;
+
   BitBoards pieces;
   Color turn;
-  U32 full_moves;
   U32 half_moves;
+  U32 fifty_moves_clock;
   std::optional<Square> en_passant;
   CastleData castle;
   U64 zobrist_key;
@@ -91,7 +95,9 @@ class BoardState {
 
 class Board {
  public:
-  explicit Board(BoardState state, std::size_t transpo_table_size) : state_(std::move(state)), transpo_table_(transpo_table_size) {}
+  explicit Board(BoardState state, std::size_t transpo_table_size) : state_(std::move(state)), transpo_table_(transpo_table_size), history_count_(0) {}
+
+  Board() : history_count_(0) {}
 
   BoardState &get_state() {
     return state_;
@@ -103,21 +109,27 @@ class Board {
 
   bool is_legal_move(const Move &move);
 
-  void make_move(const Move &move, bool perft = false, int perft_depth = 0);
+  void make_move(const Move &move);
 
   void make_null_move();
 
   void undo_move();
 
- private:
-  void handle_castling(const Move &move, BoardState &state, bool perft = false, int perft_depth = 0);
+  [[nodiscard]] bool has_repeated(U8 times) const;
 
-  void handle_promotions(const Move &move, BoardState &state, bool perft = false, int perft_depth = 0);
+ private:
+  void handle_castling(const Move &move, BoardState &state);
+
+  void handle_promotions(const Move &move, BoardState &state);
 
  private:
   BoardState state_;
 
-  std::vector<BoardState> history_;
+  BoardState history_[kMaxGameMoves];
+
+  int history_count_;
+
+  U64 key_history_[kHalfMoveLimit];
 
   TranspositionTable transpo_table_;
 };

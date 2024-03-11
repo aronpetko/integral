@@ -7,7 +7,7 @@
 
 using MoveList = std::vector<Move>;
 
-void initialize_ray_attacks();
+void initialize_attacks();
 
 BitBoard generate_pawn_attacks(U8 pos, BoardState &state);
 

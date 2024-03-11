@@ -3,17 +3,36 @@
 
 #include "board.h"
 #include "eval.h"
+#include "time_mgmt.h"
 
-#include <algorithm>
-#include <ranges>
+class Search {
+ public:
+  explicit Search(TimeManagement::Config &time_config, Board &board);
 
-namespace search {
+  Move find_best_move();
 
-const int kMaxDepth = 99;
-const int kMaxSearchTime = 15; // seconds
+ private:
+  int quiesce(int alpha, int beta);
 
-Move find_best_move(Board &board);
+  int negamax(int depth, int ply, int alpha, int beta);
 
-}
+ private:
+  Board &board_;
+
+  TimeManagement time_mgmt_;
+
+  Move best_move_this_iteration_;
+
+  int best_eval_this_iteration_;
+
+  double branching_factor_;
+
+  int total_bfs_;
+
+  bool following_pv_;
+
+ public:
+  static constexpr int kMaxSearchDepth = 100;
+};
 
 #endif // INTEGRAL_SEARCH_H_

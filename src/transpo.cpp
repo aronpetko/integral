@@ -3,7 +3,7 @@
 
 #include <cstring>
 
-TranspositionTable::TranspositionTable(int mb_size) : table_(nullptr), table_size_(mb_size) {
+TranspositionTable::TranspositionTable(std::size_t mb_size) : table_(nullptr), table_size_(mb_size) {
   resize(mb_size);
 }
 

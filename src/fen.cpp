@@ -104,8 +104,13 @@ BoardState string_to_board(const std::string &fen_str) {
   char en_passant;
   stream >> en_passant;
 
+  stream >> state.fifty_moves_clock;
   stream >> state.half_moves;
-  stream >> state.full_moves;
+
+  // adjust the full moves to half moves
+  state.half_moves *= 2;
+  if (state.turn == Color::kWhite)
+    state.half_moves++;
 
   state.zobrist_key = zobrist::generate_key(state);
 
@@ -156,9 +161,11 @@ std::string board_to_string(BoardState& state) {
 
   // half and full moves
   output.push_back(' ');
-  output.append(std::to_string(state.half_moves));
+  output.append(std::to_string(state.fifty_moves_clock));
   output.push_back(' ');
-  output.append(std::to_string(state.full_moves));
+
+  const int full_moves = state.half_moves / 2;
+  output.append(std::to_string(full_moves));
 
   return output;
 }

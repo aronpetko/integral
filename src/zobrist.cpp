@@ -8,10 +8,12 @@ U64 hash_turn(BoardState &state) {
 }
 
 U64 hash_square(U8 square, BoardState &state) {
-  if (!state.pieces[kAllPieces].is_set(square))
+  const BitBoard bb_pos = BitBoard::from_square(square);
+
+  if (!(state.pieces[kAllPieces] & bb_pos))
     return 0ULL;
 
-  const auto color = get_piece_color(square, state.pieces);
+  const auto color = state.get_piece_color(bb_pos);
 
   /*
    * http://hgm.nubati.net/book_format.html
@@ -31,7 +33,7 @@ U64 hash_square(U8 square, BoardState &state) {
   const int rank = square / kBoardRanks;
   const int file = square % kBoardFiles;
 
-  const int piece_kind = (get_piece_type(square, state.pieces) - 1) * 2 + color;
+  const int piece_kind = (state.get_piece_type(bb_pos) - 1) * 2 + color;
   const int piece_idx = Square::kSquareCount * piece_kind + kBoardRanks * rank + file;
 
   return kRandomsArray[piece_idx];

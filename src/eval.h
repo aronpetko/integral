@@ -18,6 +18,8 @@ const std::vector<int> kPieceValues = {
     20000, // king
 };
 
+bool is_end_game(BoardState &state);
+
 int evaluate(BoardState &state);
 
 }

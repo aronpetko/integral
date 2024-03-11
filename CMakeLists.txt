@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(integral)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-O2")
 
@@ -11,6 +11,12 @@ add_executable(integral src/main.cpp src/board.cpp src/board.h src/move.h src/ty
         src/search.cpp
         src/search.h
         src/zobrist.cpp
-        src/zobrist.h src/transpo.cpp src/transpo.h src/move_orderer.cpp src/move_orderer.h)
+        src/zobrist.h src/transpo.cpp src/transpo.h src/move_orderer.cpp src/move_orderer.h
+        src/uci.cpp
+        src/uci.h
+        src/move.cpp
+        src/time_mgmt.cpp
+        src/time_mgmt.h
+        src/time_mgmt.h)
 
 target_link_options(integral PRIVATE)

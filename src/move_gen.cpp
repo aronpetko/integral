@@ -2,19 +2,15 @@
 #include "board.h"
 
 std::array<std::array<BitBoard, 64>, 8> ray_attacks;
+std::array<BitBoard, 64> knight_attacks;
 
-void initialize_ray_attacks() {
-  auto generate_moves_in_direction = [](auto &shift_fn, U8 from) {
+void initialize_attacks() {
+  const auto generate_moves_in_direction = [](auto &shift_fn, U8 from) {
     BitBoard moves;
     BitBoard current = BitBoard::from_square(from);
 
-    while (true) {
+    while (current) {
       current = shift_fn(current);
-      // check if move is outside board
-      if (!current)
-        break;
-
-      // update the piece's position
       moves |= current;
     }
 
@@ -22,6 +18,7 @@ void initialize_ray_attacks() {
   };
 
   for (int square = 0; square < Square::kSquareCount; square++) {
+    // ray attacks (i.e. bishop, rooks, and queens)
     ray_attacks[Direction::kNorth][square] = generate_moves_in_direction(shift<Direction::kNorth>, square);
     ray_attacks[Direction::kEast][square] = generate_moves_in_direction(shift<Direction::kEast>, square);
     ray_attacks[Direction::kSouth][square] = generate_moves_in_direction(shift<Direction::kSouth>, square);
@@ -30,6 +27,18 @@ void initialize_ray_attacks() {
     ray_attacks[Direction::kNorthWest][square] = generate_moves_in_direction(shift<Direction::kNorthWest>, square);
     ray_attacks[Direction::kSouthEast][square] = generate_moves_in_direction(shift<Direction::kSouthEast>, square);
     ray_attacks[Direction::kSouthWest][square] = generate_moves_in_direction(shift<Direction::kSouthWest>, square);
+    
+    // knight attacks
+    BitBoard bb_pos = BitBoard::from_square(square);
+
+    knight_attacks[square] |= (bb_pos & ~FileMask::kFileH) << 17;
+    knight_attacks[square] |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) << 10;
+    knight_attacks[square] |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) >> 6;
+    knight_attacks[square] |= (bb_pos & ~FileMask::kFileH) >> 15;
+    knight_attacks[square] |= (bb_pos & ~FileMask::kFileA) << 15;
+    knight_attacks[square] |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) << 6;
+    knight_attacks[square] |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) >> 10;
+    knight_attacks[square] |= (bb_pos & ~FileMask::kFileA) >> 17;
   }
 }
 
@@ -50,7 +59,7 @@ inline BitBoard get_negative_ray_attacks(BitBoard occupied, Direction dir, U8 sq
 BitBoard generate_pawn_attacks(U8 pos, BoardState &state) {
   BitBoard moves, bb_pos = BitBoard::from_square(pos);
 
-  const auto color = get_piece_color(pos, state.pieces);
+  const auto color = state.get_piece_color(pos);
   if (color == Color::kWhite) {
     BitBoard up_left = shift<Direction::kNorthWest>(bb_pos);
     BitBoard up_right = shift<Direction::kNorthEast>(bb_pos);
@@ -71,7 +80,7 @@ BitBoard generate_pawn_attacks(U8 pos, BoardState &state) {
 BitBoard generate_pawn_moves(U8 pos, BoardState &state) {
   BitBoard moves, bb_pos = BitBoard::from_square(pos), occupied = state.pieces[kAllPieces];
 
-  const auto color = get_piece_color(pos, state.pieces);
+  const auto color = state.get_piece_color(pos);
   if (color == Color::kWhite) {
     BitBoard up = shift<Direction::kNorth>(bb_pos) & ~occupied;
     moves |= up;
@@ -94,18 +103,7 @@ BitBoard generate_pawn_moves(U8 pos, BoardState &state) {
 }
 
 BitBoard generate_knight_moves(U8 pos, BoardState &state) {
-  BitBoard moves, bb_pos = BitBoard::from_square(pos);
-
-  moves |= (bb_pos & ~FileMask::kFileH) << 17;
-  moves |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) << 10;
-  moves |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) >> 6;
-  moves |= (bb_pos & ~FileMask::kFileH) >> 15;
-  moves |= (bb_pos & ~FileMask::kFileA) << 15;
-  moves |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) << 6;
-  moves |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) >> 10;
-  moves |= (bb_pos & ~FileMask::kFileA) >> 17;
-
-  return moves;
+  return knight_attacks[pos];
 }
 
 BitBoard generate_bishop_moves(U8 pos, BoardState &state) {
@@ -128,7 +126,7 @@ BitBoard generate_king_moves(U8 pos, BoardState &state, bool include_castling) {
   BitBoard moves = generate_king_attacks(pos, state);
 
   if (include_castling) {
-    const auto color = get_piece_color(pos, state.pieces);
+    const auto color = state.get_piece_color(pos);
     if (!king_in_check(color, state))
       moves |= generate_castling_moves(state, color);
   }
@@ -281,9 +279,39 @@ bool is_square_attacked(U8 pos, Color attacker, BoardState &state) {
   return false;
 }
 
+bool is_square_attacked_by_sliding_pieces(U8 pos, Color attacker, BoardState &state) {
+  BitBoard rook_attacks = generate_rook_moves(pos, state);
+  BitBoard bishop_attacks = generate_bishop_moves(pos, state);
+
+  const BitBoard &attacker_rooks = state.pieces[attacker == Color::kWhite ? kWhiteRooks : kBlackRooks];
+  const BitBoard &attacker_bishops = state.pieces[attacker == Color::kWhite ? kWhiteBishops : kBlackBishops];
+  const BitBoard &attacker_queens = state.pieces[attacker == Color::kWhite ? kWhiteQueens : kBlackQueens];
+
+  return (attacker_queens & (rook_attacks | bishop_attacks)) != 0 ||
+      (attacker_rooks & rook_attacks) != 0 ||
+      (attacker_bishops & bishop_attacks) != 0;
+}
+
+bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, BoardState &state) {
+  BitBoard pawn_attacks = generate_pawn_attacks(pos, state);
+  BitBoard knight_attacks = generate_knight_moves(pos, state);
+  BitBoard king_attacks = generate_king_attacks(pos, state);
+
+  const BitBoard &attacker_pawns = state.pieces[attacker == Color::kWhite ? kWhitePawns : kBlackPawns];
+  const BitBoard &attacker_knights = state.pieces[attacker == Color::kWhite ? kWhiteKnights : kBlackKnights];
+  const BitBoard &attacker_king = state.pieces[attacker == Color::kWhite ? kWhiteKing : kBlackKing];
+
+  return (attacker_pawns & pawn_attacks) != 0 ||
+      (attacker_knights & knight_attacks) != 0 ||
+      (attacker_king & king_attacks) != 0;
+}
+
 bool king_in_check(Color color, BoardState &state) {
-  BitBoard king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
-  return is_square_attacked(king_bb.get_lsb_pos(), flip_color(color), state);
+  const BitBoard &king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
+  const U8 king_pos = king_bb.get_lsb_pos();
+
+  return is_square_attacked_non_sliding_pieces(king_pos, flip_color(color), state)
+      || is_square_attacked_by_sliding_pieces(king_pos, flip_color(color), state);
 }
 
 MoveList generate_moves(Board &board) {
@@ -291,14 +319,14 @@ MoveList generate_moves(Board &board) {
 
   auto &state = board.get_state();
   const bool is_white = state.turn == Color::kWhite;
-  
+
   BitBoard pawns;
   BitBoard knights;
   BitBoard bishops;
   BitBoard rooks;
   BitBoard queens;
   BitBoard king;
-  
+
   if (is_white) {
     pawns = state.pieces[kWhitePawns];
     knights = state.pieces[kWhiteKnights];
