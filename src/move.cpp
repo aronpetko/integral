@@ -101,7 +101,7 @@ void Move::set_promotion_type(PromotionType promotion_type) {
 
 [[nodiscard]] std::string Move::to_string() const {
   const auto from_rank = get_from() / kBoardRanks, from_file = get_from() % kBoardFiles;
-  const U8 to_rank = get_to() / kBoardRanks, to_file = get_to() % kBoardFiles;
+  const auto to_rank = get_to() / kBoardRanks, to_file = get_to() % kBoardFiles;
 
   std::string res = std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) +
                     std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);

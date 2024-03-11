@@ -12,7 +12,7 @@ void TranspositionTable::resize(std::size_t mb_size) {
 
   const std::size_t kBytesInMegabyte = 1024 * 1024;
 
-  table_size_ = mb_size * kBytesInMegabyte / sizeof(Entry);
+  table_size_ = (mb_size * kBytesInMegabyte) / sizeof(Entry) - 1;
   table_.resize(table_size_);
 
   clear();

@@ -33,7 +33,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
   if (legal_moves.empty()) {
     return king_in_check(flip_color(state.turn), state) ? -eval::kMateScore : eval::kDrawScore;
-  } else if (state.half_moves >= 100 || board_.has_repeated(2)) {
+  } else if (state.fifty_moves_clock >= 100 || board_.has_repeated(2)) {
     return eval::kDrawScore;
   }
 
@@ -212,7 +212,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
   if (moves_tried == 0) {
     return in_check ? -eval::kMateScore + ply : eval::kDrawScore;
   } else {
-    if (state.half_moves >= 100) {
+    if (state.fifty_moves_clock >= 100) {
       best_eval = eval::kDrawScore;
       best_move = Move();
     }

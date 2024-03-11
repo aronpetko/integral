@@ -69,9 +69,10 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_entry = board_.get_transpo_table().probe(state.zobrist_key);
   bool tt_move_exists = false;
 
-  if (tt_entry.key == state.zobrist_key) {
-    const bool is_capture_move =
-        state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(tt_entry.best_move.get_to());
+  if (tt_entry.key == state.zobrist_key && tt_entry.best_move != Move::null_move()) {
+    const auto to = tt_entry.best_move.get_to();
+    const bool is_capture_move = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(to)
+        || (state.en_passant.has_value() && state.en_passant == to);
 
     if (move_type_ != MoveType::kCaptures || is_capture_move) {
       moves_.push({tt_entry.best_move});
@@ -97,7 +98,7 @@ int MoveOrderer::calculate_move_score(const Move &move) {
   }
 
   const auto from = move.get_from();
-  const U8 to = move.get_to();
+  const auto to = move.get_to();
 
   int score = 0;
 
@@ -105,7 +106,8 @@ int MoveOrderer::calculate_move_score(const Move &move) {
   score += eval::kPieceValues[static_cast<int>(move.get_promotion_type())];
 
   const auto move_piece_type = move.get_piece_type();
-  const bool is_capture_move = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(to);
+  const bool is_capture_move = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(to)
+      || (state.en_passant.has_value() && state.en_passant == to);
 
   // MVV-LVA
   if (is_capture_move) {

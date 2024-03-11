@@ -73,8 +73,10 @@ BoardState string_to_board(const std::string &fen_str) {
         break;
     }
 
-    if (target)
+    if (target) {
       target->set_bit(square);
+      state.piece_types[square] = piece_type;
+    }
 
     square++;
   }

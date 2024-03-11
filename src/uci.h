@@ -7,9 +7,9 @@
 
 namespace uci {
 
+const std::string kEngineName = "Integral";
 const std::string kEngineVersion = "0.1";
-
-Board create_board(std::stringstream &input_stream);
+const std::string kEngineAuthor = "Aron Petkovski";
 
 void position(Board &board, std::stringstream &input_stream);
 

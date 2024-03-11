@@ -71,7 +71,7 @@ class CastleData {
 };
 
 struct BoardState {
-  BoardState() : half_moves(0), fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {}
+  BoardState() : half_moves(0), fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt), piece_types({}) {}
 
   [[nodiscard]] Color get_piece_color(U8 pos) const;
 
@@ -82,6 +82,7 @@ struct BoardState {
   [[nodiscard]] PieceType get_piece_type(const BitBoard &bb) const;
 
   BitBoards pieces;
+  std::array<PieceType, Square::kSquareCount> piece_types;
   Color turn;
   U32 half_moves;
   U32 fifty_moves_clock;
@@ -92,9 +93,9 @@ struct BoardState {
 
 class Board {
  public:
-  explicit Board(BoardState state, std::size_t transpo_table_size) : state_(std::move(state)), transpo_table_(transpo_table_size), history_count_(0) {}
+  explicit Board(BoardState state, std::size_t transpo_table_size);
 
-  Board() : history_count_(0) {}
+  Board();
 
   BoardState &get_state() {
     return state_;
@@ -102,6 +103,10 @@ class Board {
 
   TranspositionTable &get_transpo_table() {
     return transpo_table_;
+  }
+
+  bool initialized() const {
+    return initialized_;
   }
 
   bool is_legal_move(const Move &move);
@@ -115,20 +120,22 @@ class Board {
   [[nodiscard]] bool has_repeated(U8 times) const;
 
  private:
-  void handle_castling(const Move &move, BoardState &state);
+  void handle_castling(const Move &move);
 
-  void handle_promotions(const Move &move, BoardState &state);
+  void handle_promotions(const Move &move);
 
  private:
   BoardState state_;
 
-  BoardState history_[kMaxGameMoves];
+  std::array<BoardState, kMaxGameMoves>  history_;
 
   int history_count_;
 
-  U64 key_history_[kHalfMoveLimit];
+  std::array<U64, kHalfMoveLimit> key_history_;
 
   TranspositionTable transpo_table_;
+
+  bool initialized_;
 };
 
 #endif // INTEGRAL_BOARD_H_

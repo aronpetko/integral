@@ -357,8 +357,8 @@ MoveList generate_moves(Board &board) {
     if (en_passant_set) possible_moves.set_bit(state.en_passant.value());
 
     while (possible_moves) {
-      const U8 to = possible_moves.pop_lsb();
-      const U8 to_rank = to / kBoardRanks;
+      const auto to = possible_moves.pop_lsb();
+      const auto to_rank = to / kBoardRanks;
 
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
@@ -502,8 +502,8 @@ MoveList generate_capture_moves(Board &board) {
     if (en_passant_set) possible_moves.set_bit(state.en_passant.value());
 
     while (possible_moves) {
-      const U8 to = possible_moves.pop_lsb();
-      const U8 to_rank = to / kBoardRanks;
+      const auto to = possible_moves.pop_lsb();
+      const auto to_rank = to / kBoardRanks;
 
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
@@ -602,12 +602,14 @@ MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
 
+    const bool is_capture = all_pieces.is_set(move.get_to()) || (state.en_passant.has_value() && state.en_passant == move.get_to());
+
     if (type == MoveType::kCaptures) {
-      if (all_pieces.is_set(move.get_to())) {
+      if (is_capture) {
         filtered.push(move);
       }
     } else if (type == MoveType::kQuiet) {
-      if (!all_pieces.is_set(move.get_to()) && !causes_check(move)
+      if (!is_capture && !causes_check(move)
           && move.get_promotion_type() == PromotionType::kNone) {
         filtered.push(move);
       }

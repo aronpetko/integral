@@ -7,7 +7,7 @@
 
 namespace uci {
 
-Board create_board(std::stringstream &input_stream) {
+void position(Board &board, std::stringstream &input_stream) {
   std::string position_type;
   input_stream >> position_type;
 
@@ -18,24 +18,29 @@ Board create_board(std::stringstream &input_stream) {
     position = fen::kStartFen;
   }
 
-  // todo: set this as an option
-  const int kTranspositionTableMbSize = 64;
-  return Board(fen::string_to_board(position), kTranspositionTableMbSize);
-}
-
-void position(Board &board, std::stringstream &input_stream) {
   std::string dummy;
   while (input_stream >> dummy && dummy != "moves");
 
   std::string move_input;
   while (input_stream >> move_input);
 
-  // we now have the last move sent in the position
-  const auto move = Move::from_str(board.get_state(), move_input);
-  if (move.has_value()) {
-    board.make_move(move.value());
+  const int kTranspositionTableMbSize = 64;
+
+  // if no moves were given then this command wants to set a new position
+  if (move_input.empty()) {
+    board = Board(fen::string_to_board(position), kTranspositionTableMbSize);
   } else {
-    std::cerr << std::format("invalid move: {}\n", move_input);
+    if (!board.initialized()) {
+      board = Board(fen::string_to_board(position), kTranspositionTableMbSize);
+    }
+
+    // we now have the last move sent in the position
+    const auto move = Move::from_str(board.get_state(), move_input);
+    if (move.has_value()) {
+      board.make_move(move.value());
+    } else {
+      std::cerr << std::format("invalid move: {}\n", move_input);
+    }
   }
 }
 
@@ -119,7 +124,7 @@ void accept_commands() {
   std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
   log << "new process" << std::endl;
 
-  std::optional<Board> board;
+  Board board;
 
   std::string input_line;
   while (input_line != "quit") {
@@ -132,19 +137,15 @@ void accept_commands() {
     input_stream >> command;
 
     if (command == "uci") {
-      std::cout << "id name Integral" << std::endl;
-      std::cout << "id author Aron Petkovski" << std::endl;
+      std::cout << std::format("id name {}", kEngineName) << std::endl;
+      std::cout << std::format("id author {}", kEngineAuthor) << std::endl;
       std::cout << "uciok" << std::endl;
     } else if (command == "isready") {
       std::cout << "readyok" << std::endl;
     } else if (command == "position") {
-      if (!board.has_value()) {
-        board = create_board(input_stream);
-      } else {
-        position(board.value(), input_stream);
-      }
+      position(board, input_stream);
     } else if (command == "go") {
-      go(board.value(), input_stream);
+      go(board, input_stream);
     }
   }
 
