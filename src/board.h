@@ -25,10 +25,7 @@ class CastleData {
   }
 
   CastleData(const CastleData &other) {
-    rooks[0][0] = other.rooks[0][0];
-    rooks[0][1] = other.rooks[0][1];
-    rooks[1][0] = other.rooks[1][0];
-    rooks[1][0] = other.rooks[1][1];
+    rooks = other.rooks;
     rights = other.rights;
   }
 
@@ -70,7 +67,7 @@ class CastleData {
 
  private:
   U8 rights;
-  Square rooks[2][2]; // 2 rooks for each side
+  std::array<std::array<Square, 2>, 2> rooks; // 2 rooks for each side
 };
 
 struct BoardState {

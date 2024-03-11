@@ -12,7 +12,7 @@ class Search {
   Move find_best_move();
 
  private:
-  int quiesce(int alpha, int beta);
+  int quiesce(int ply, int alpha, int beta);
 
   int negamax(int depth, int ply, int alpha, int beta);
 

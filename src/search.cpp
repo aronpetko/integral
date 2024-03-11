@@ -14,7 +14,7 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
       branching_factor_(0.0),
       total_bfs_(0) {}
 
-int Search::quiesce(int alpha, int beta) {
+int Search::quiesce(int ply, int alpha, int beta) {
   auto &state = board_.get_state();
 
   int stand_pat = eval::evaluate(state);
@@ -28,7 +28,18 @@ int Search::quiesce(int alpha, int beta) {
   if (alpha < stand_pat)
     alpha = stand_pat;
 
-  MoveOrderer move_orderer(board_, generate_capture_moves(board_), MoveType::kCaptures);
+  // the game is over if we couldn't try a move
+  auto legal_moves = generate_legal_moves(board_);
+
+  if (legal_moves.empty()) {
+    return king_in_check(flip_color(state.turn), state) ? -eval::kMateScore : eval::kDrawScore;
+  } else if (state.half_moves >= 100 || board_.has_repeated(2)) {
+    return eval::kDrawScore;
+  }
+
+  MoveOrderer move_orderer(board_, filter_moves(legal_moves, MoveType::kCaptures, board_), MoveType::kCaptures);
+
+  int moves_tried = 0;
 
   for (int i = 0; i < move_orderer.size(); i++) {
     board_.make_move(move_orderer.get_move(i));
@@ -40,7 +51,9 @@ int Search::quiesce(int alpha, int beta) {
       continue;
     }
 
-    const int score = -quiesce(-beta, -alpha);
+    const int score = -quiesce(ply + 1, -beta, -alpha);
+    ++moves_tried;
+
     board_.undo_move();
 
     if (score >= beta)
@@ -58,31 +71,31 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
 
   const int original_alpha = alpha;
 
-  auto tt_entry = transpo.probe(state.zobrist_key);
-  if (tt_entry->key == state.zobrist_key && tt_entry->depth >= depth) {
-    switch (tt_entry->flag) {
+  const auto &tt_entry = transpo.probe(state.zobrist_key);
+  if (tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
+    switch (tt_entry.flag) {
       case TranspositionTable::Entry::kExact:
         if (ply == 0) {
-          best_move_this_iteration_ = tt_entry->best_move;
-          best_eval_this_iteration_ = tt_entry->evaluation;
+          best_move_this_iteration_ = tt_entry.best_move;
+          best_eval_this_iteration_ = tt_entry.evaluation;
         }
 
-        return tt_entry->evaluation;
+        return tt_entry.evaluation;
       case TranspositionTable::Entry::kLowerBound:
-        alpha = std::max(alpha, tt_entry->evaluation);
+        alpha = std::max(alpha, tt_entry.evaluation);
         break;
       case TranspositionTable::Entry::kUpperBound:
-        beta = std::min(beta, tt_entry->evaluation);
+        beta = std::min(beta, tt_entry.evaluation);
         break;
     }
 
     if (alpha >= beta) {
       if (ply == 0) {
-        best_move_this_iteration_ = tt_entry->best_move;
-        best_eval_this_iteration_ = tt_entry->evaluation;
+        best_move_this_iteration_ = tt_entry.best_move;
+        best_eval_this_iteration_ = tt_entry.evaluation;
       }
 
-      return tt_entry->evaluation;
+      return tt_entry.evaluation;
     }
   }
 
@@ -100,7 +113,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
   if (depth <= 0) {
     time_mgmt_.update_nodes_searched();
     following_pv_ = false;
-    return quiesce(alpha, beta);
+    return quiesce(ply, alpha, beta);
   }
 
   // null move pruning
@@ -263,7 +276,7 @@ Move Search::find_best_move() {
   /* std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << best_eval / 100.0 << std::endl;
   std::cout << "took: " << time_mgmt_.get_move_time() << "s" << std::endl << std::endl;
   std::cout << "nodes searched: " << time_mgmt_.get_nodes_searched() << std::endl;
-  std::cout << "nps: " << std::fixed << std::setprecision(2) << time_mgmt_.get_nodes_searched() / time_mgmt_.get_move_time() << std::endl;
+  std::cout << "nps: " << std::fixed << std::setprecision(2) << time_mgmt_.get_nodes_searched() / (time_mgmt_.get_move_time() / 1000.0)<< std::endl;
   std::cout << "bf: " << branching_factor_ / total_bfs_ << std::endl; */
 
   return best_move;

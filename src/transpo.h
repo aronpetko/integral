@@ -27,7 +27,7 @@ class TranspositionTable {
 
   explicit TranspositionTable(std::size_t mb_size);
 
-  TranspositionTable() : table_(nullptr), table_size_(0) {}
+  TranspositionTable() : table_size_(0) {}
 
   void resize(std::size_t mb_size);
 
@@ -35,10 +35,10 @@ class TranspositionTable {
 
   void save(const Entry &entry, int ply);
 
-  [[nodiscard]] const Entry *probe(U64 key) const;
+  [[nodiscard]] const Entry &probe(U64 key) const;
 
  private:
-  Entry* table_;
+  std::vector<Entry> table_;
 
   std::size_t table_size_;
 };

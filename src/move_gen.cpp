@@ -56,7 +56,7 @@ inline BitBoard get_negative_ray_attacks(BitBoard occupied, Direction dir, U8 sq
   return attacks ^ ray_attacks[dir][square];
 }
 
-BitBoard generate_pawn_attacks(U8 pos, BoardState &state) {
+BitBoard generate_pawn_attacks(U8 pos, const BoardState &state) {
   BitBoard moves, bb_pos = BitBoard::from_square(pos);
 
   const auto color = state.get_piece_color(pos);
@@ -77,7 +77,7 @@ BitBoard generate_pawn_attacks(U8 pos, BoardState &state) {
   return moves;
 }
 
-BitBoard generate_pawn_moves(U8 pos, BoardState &state) {
+BitBoard generate_pawn_moves(U8 pos, const BoardState &state) {
   BitBoard moves, bb_pos = BitBoard::from_square(pos), occupied = state.pieces[kAllPieces];
 
   const auto color = state.get_piece_color(pos);
@@ -102,27 +102,27 @@ BitBoard generate_pawn_moves(U8 pos, BoardState &state) {
   return moves;
 }
 
-BitBoard generate_knight_moves(U8 pos, BoardState &state) {
+BitBoard generate_knight_moves(U8 pos, const BoardState &state) {
   return knight_attacks[pos];
 }
 
-BitBoard generate_bishop_moves(U8 pos, BoardState &state) {
-  BitBoard &occupied = state.pieces[kAllPieces];
+BitBoard generate_bishop_moves(U8 pos, const BoardState &state) {
+  const BitBoard &occupied = state.pieces[kAllPieces];
   return get_positive_ray_attacks(occupied, Direction::kNorthEast, pos) |
       get_positive_ray_attacks(occupied, Direction::kNorthWest, pos) |
       get_negative_ray_attacks(occupied, Direction::kSouthEast, pos) |
       get_negative_ray_attacks(occupied, Direction::kSouthWest, pos);
 }
 
-BitBoard generate_rook_moves(U8 pos, BoardState &state) {
-  BitBoard &occupied = state.pieces[kAllPieces];
+BitBoard generate_rook_moves(U8 pos, const BoardState &state) {
+  const BitBoard &occupied = state.pieces[kAllPieces];
   return get_positive_ray_attacks(occupied, Direction::kNorth, pos) |
       get_negative_ray_attacks(occupied, Direction::kSouth, pos) |
       get_positive_ray_attacks(occupied, Direction::kEast, pos) |
       get_negative_ray_attacks(occupied, Direction::kWest, pos);
 }
 
-BitBoard generate_king_moves(U8 pos, BoardState &state, bool include_castling) {
+BitBoard generate_king_moves(U8 pos, const BoardState &state, bool include_castling) {
   BitBoard moves = generate_king_attacks(pos, state);
 
   if (include_castling) {
@@ -134,7 +134,7 @@ BitBoard generate_king_moves(U8 pos, BoardState &state, bool include_castling) {
   return moves;
 }
 
-BitBoard generate_king_attacks(U8 pos, BoardState &state) {
+BitBoard generate_king_attacks(U8 pos, const BoardState &state) {
   BitBoard attacks, bb_pos = BitBoard::from_square(pos);
 
   attacks |= shift<Direction::kNorth>(bb_pos);
@@ -149,7 +149,7 @@ BitBoard generate_king_attacks(U8 pos, BoardState &state) {
   return attacks;
 }
 
-BitBoard generate_castling_moves(BoardState &state, Color which) {
+BitBoard generate_castling_moves(const BoardState &state, Color which) {
   BitBoard moves, attacked = get_attacked_squares(state, Color(!which), true), occupied = state.pieces[kAllPieces];
 
   if (which == Color::kWhite) {
@@ -183,7 +183,7 @@ BitBoard generate_castling_moves(BoardState &state, Color which) {
   return moves;
 }
 
-BitBoard get_attacked_squares(BoardState &state, Color attacker, bool include_king_attacks) {
+BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool include_king_attacks) {
   BitBoard attacked;
 
   // offset for white and black pieces
@@ -230,7 +230,7 @@ BitBoard get_attacked_squares(BoardState &state, Color attacker, bool include_ki
   return attacked;
 }
 
-bool is_square_attacked(U8 pos, Color attacker, BoardState &state) {
+bool is_square_attacked(U8 pos, Color attacker, const BoardState &state) {
   // offset for white and black pieces
   const int offset = attacker == Color::kBlack ? kBlackPawns : kWhitePawns;
 
@@ -279,7 +279,7 @@ bool is_square_attacked(U8 pos, Color attacker, BoardState &state) {
   return false;
 }
 
-bool is_square_attacked_by_sliding_pieces(U8 pos, Color attacker, BoardState &state) {
+bool is_square_attacked_by_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
   BitBoard rook_attacks = generate_rook_moves(pos, state);
   BitBoard bishop_attacks = generate_bishop_moves(pos, state);
 
@@ -292,7 +292,7 @@ bool is_square_attacked_by_sliding_pieces(U8 pos, Color attacker, BoardState &st
       (attacker_bishops & bishop_attacks) != 0;
 }
 
-bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, BoardState &state) {
+bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
   BitBoard pawn_attacks = generate_pawn_attacks(pos, state);
   BitBoard knight_attacks = generate_knight_moves(pos, state);
   BitBoard king_attacks = generate_king_attacks(pos, state);
@@ -306,7 +306,7 @@ bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, BoardState &s
       (attacker_king & king_attacks) != 0;
 }
 
-bool king_in_check(Color color, BoardState &state) {
+bool king_in_check(Color color, const BoardState &state) {
   const BitBoard &king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
   const U8 king_pos = king_bb.get_lsb_pos();
 
@@ -315,7 +315,7 @@ bool king_in_check(Color color, BoardState &state) {
 }
 
 MoveList generate_moves(Board &board) {
-  MoveList moves;
+  MoveList move_list;
 
   auto &state = board.get_state();
   const bool is_white = state.turn == Color::kWhite;
@@ -363,13 +363,13 @@ MoveList generate_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kKnight);
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kBishop);
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kRook);
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kQueen);
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kKnight});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kBishop});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
         continue;
       } else {
-        moves.emplace_back(from, to, PieceType::kPawn);
+        move_list.push({from, to, PieceType::kPawn});
       }
     }
   }
@@ -382,7 +382,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kKnight);
+      move_list.push({from, to, PieceType::kKnight});
     }
   }
 
@@ -394,7 +394,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kBishop);
+      move_list.push({from, to, PieceType::kBishop});
     }
   }
 
@@ -406,7 +406,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kRook);
+      move_list.push({from, to, PieceType::kRook});
     }
   }
 
@@ -418,7 +418,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kQueen);
+      move_list.push({from, to, PieceType::kQueen});
     }
   }
 
@@ -430,11 +430,11 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kKing);
+      move_list.push({from, to, PieceType::kKing});
     }
   }
 
-  return moves;
+  return move_list;
 }
 
 MoveList generate_legal_moves(Board &board) {
@@ -447,17 +447,19 @@ MoveList generate_legal_moves(Board &board) {
     return !in_check;
   };
 
-  MoveList legal_moves;
+  MoveList pseudo_legal_moves = generate_moves(board), legal_moves;
 
-  for (const auto &move : generate_moves(board))
-    if (quick_is_legal_move(move))
-      legal_moves.push_back(move);
+  for (int i = 0; i < pseudo_legal_moves.size(); i++) {
+    if (quick_is_legal_move(pseudo_legal_moves[i])) {
+      legal_moves.push(pseudo_legal_moves[i]);
+    }
+  }
 
   return legal_moves;
 }
 
 MoveList generate_capture_moves(Board &board) {
-  MoveList moves;
+  MoveList move_list;
 
   auto &state = board.get_state();
   const bool is_white = state.turn == Color::kWhite;
@@ -506,13 +508,13 @@ MoveList generate_capture_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kKnight);
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kBishop);
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kRook);
-        moves.emplace_back(from, to, PieceType::kPawn, PromotionType::kQueen);
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kKnight});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kBishop});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
         continue;
       } else {
-        moves.emplace_back(from, to, PieceType::kPawn);
+        move_list.push({from, to, PieceType::kPawn});
       }
     }
   }
@@ -525,7 +527,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kKnight);
+      move_list.push({from, to, PieceType::kKnight});
     }
   }
 
@@ -537,7 +539,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kBishop);
+      move_list.push({from, to, PieceType::kBishop});
     }
   }
 
@@ -549,7 +551,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kRook);
+      move_list.push({from, to, PieceType::kRook});
     }
   }
 
@@ -561,7 +563,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kQueen);
+      move_list.push({from, to, PieceType::kQueen});
     }
   }
 
@@ -573,9 +575,44 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      moves.emplace_back(from, to, PieceType::kKing);
+      move_list.push({from, to, PieceType::kKing});
     }
   }
 
-  return moves;
+  return move_list;
+}
+
+MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
+  if (type == MoveType::kAll)
+    return moves;
+
+  auto &state = board.get_state();
+
+  const auto causes_check = [&board, &state](const Move &move) {
+    board.make_move(move);
+    const bool in_check = king_in_check(state.turn, state);
+    board.undo_move();
+    return in_check;
+  };
+
+  const BitBoard &all_pieces = state.pieces[kAllPieces];
+
+  MoveList filtered;
+
+  for (int i = 0; i < moves.size(); i++) {
+    auto &move = moves[i];
+
+    if (type == MoveType::kCaptures) {
+      if (all_pieces.is_set(move.get_to())) {
+        filtered.push(move);
+      }
+    } else if (type == MoveType::kQuiet) {
+      if (!all_pieces.is_set(move.get_to()) && !causes_check(move)
+          && move.get_promotion_type() == PromotionType::kNone) {
+        filtered.push(move);
+      }
+    }
+  }
+
+  return filtered;
 }

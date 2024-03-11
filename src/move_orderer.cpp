@@ -69,12 +69,12 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_entry = board_.get_transpo_table().probe(state.zobrist_key);
   bool tt_move_exists = false;
 
-  if (tt_entry->key == state.zobrist_key) {
+  if (tt_entry.key == state.zobrist_key) {
     const bool is_capture_move =
-        state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(tt_entry->best_move.get_to());
+        state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(tt_entry.best_move.get_to());
 
     if (move_type_ != MoveType::kCaptures || is_capture_move) {
-      moves_.push_back(tt_entry->best_move);
+      moves_.push({tt_entry.best_move});
       tt_move_exists = true;
     }
   }

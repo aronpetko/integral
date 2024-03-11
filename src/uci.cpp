@@ -59,6 +59,9 @@ void go(Board &board, std::stringstream &input_stream) {
       input_stream >> time_config.depth;
     } else if (option == "infinite") {
       time_config.depth = 20;
+    } else if (option == "perft") {
+      perft(board, input_stream);
+      return;
     }
   }
 
@@ -75,11 +78,13 @@ int perft_internal(Board &board, int depth) {
   if (depth == 0)
     return 1;
 
-  int positions = 0;
   auto &state = board.get_state();
 
-  for (const auto &move : generate_moves(board)) {
-    board.make_move(move);
+  int positions = 0;
+  auto moves = generate_moves(board);
+
+  for (int i = 0; i < moves.size(); i++) {
+    board.make_move(moves[i]);
     if (!king_in_check(flip_color(state.turn), state)) {
       positions += perft_internal(board, depth - 1);
     }
@@ -136,8 +141,6 @@ void accept_commands() {
       }
     } else if (command == "go") {
       go(board.value(), input_stream);
-    } else if (command == "perft") {
-      perft(board.value(), input_stream);
     }
   }
 

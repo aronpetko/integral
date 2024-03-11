@@ -3,26 +3,23 @@
 
 #include <cstring>
 
-TranspositionTable::TranspositionTable(std::size_t mb_size) : table_(nullptr), table_size_(mb_size) {
+TranspositionTable::TranspositionTable(std::size_t mb_size) : table_size_(mb_size) {
   resize(mb_size);
 }
 
 void TranspositionTable::resize(std::size_t mb_size) {
   assert(mb_size > 0);
 
-  std::free(table_);
-
   const std::size_t kBytesInMegabyte = 1024 * 1024;
-  const std::size_t table_byte_size = mb_size * kBytesInMegabyte * sizeof(Entry);
 
-  table_ = reinterpret_cast<Entry*>(std::malloc(table_byte_size));
-  table_size_ = table_byte_size / sizeof(Entry) - 1;
+  table_size_ = mb_size * kBytesInMegabyte / sizeof(Entry);
+  table_.resize(table_size_);
 
   clear();
 }
 
 void TranspositionTable::clear() {
-  std::memset(table_, 0, (table_size_ + 1) * sizeof(Entry));
+  std::fill(table_.begin(), table_.end(), Entry{});
 }
 
 void TranspositionTable::save(const Entry &entry, int ply) {
@@ -37,6 +34,6 @@ void TranspositionTable::save(const Entry &entry, int ply) {
   }
 }
 
-const TranspositionTable::Entry *TranspositionTable::probe(U64 key) const {
-  return &table_[key % table_size_];
+const TranspositionTable::Entry &TranspositionTable::probe(U64 key) const {
+  return table_[key % table_size_];
 }
