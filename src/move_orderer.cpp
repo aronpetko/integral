@@ -10,7 +10,7 @@ std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, Search::kMaxSearchDep
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
 
 MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type) noexcept
-    : board_(board), moves_(std::move(moves)), move_type_(move_type) {
+    : board_(board), moves_(moves), move_type_(move_type) {
   score_moves();
 }
 
@@ -61,8 +61,6 @@ void MoveOrderer::reset_move_history() {
 }
 
 void MoveOrderer::score_moves() noexcept {
-  std::vector<std::pair<int, Move>> valued_moves;
-
   auto &state = board_.get_state();
 
   // we always want to get the stored best move for this position first if available
@@ -101,9 +99,6 @@ int MoveOrderer::calculate_move_score(const Move &move) {
   const auto to = move.get_to();
 
   int score = 0;
-
-  // will be +0 if move isn't a promotion move
-  score += eval::kPieceValues[static_cast<int>(move.get_promotion_type())];
 
   const auto move_piece_type = move.get_piece_type();
   const bool is_capture_move = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(to)

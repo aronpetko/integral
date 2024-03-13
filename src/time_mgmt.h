@@ -15,7 +15,7 @@ class TimeManagement {
     std::array<int, 2> increment{};
   };
 
-  explicit TimeManagement(Config &config, BoardState &state);
+  explicit TimeManagement(Config &config, Board &board);
 
   Config &get_config();
 
@@ -34,7 +34,7 @@ class TimeManagement {
  private:
   Config &config_;
 
-  BoardState &state_;
+  Board &board_;
 
   std::chrono::steady_clock::time_point start_time_;
 

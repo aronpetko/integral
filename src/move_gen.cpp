@@ -127,7 +127,7 @@ BitBoard generate_king_moves(U8 pos, const BoardState &state, bool include_castl
 
   if (include_castling) {
     const auto color = state.get_piece_color(pos);
-    if (!king_in_check(color, state))
+    if ((state.castle.can_queenside_castle(color) || state.castle.can_kingside_castle(color)) && !king_in_check(color, state))
       moves |= generate_castling_moves(state, color);
   }
 
@@ -230,56 +230,7 @@ BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool incl
   return attacked;
 }
 
-bool is_square_attacked(U8 pos, Color attacker, const BoardState &state) {
-  // offset for white and black pieces
-  const int offset = attacker == Color::kBlack ? kBlackPawns : kWhitePawns;
-
-  BitBoard queens = state.pieces[offset + 4];
-  while (queens) {
-    U8 from_square = queens.pop_lsb();
-    if ((generate_rook_moves(from_square, state) | generate_bishop_moves(from_square, state)).is_set(pos))
-      return true;
-  }
-
-  BitBoard rooks = state.pieces[offset + 3];
-  while (rooks) {
-    U8 from_square = rooks.pop_lsb();
-    if (generate_rook_moves(from_square, state).is_set(pos))
-      return true;
-  }
-
-  BitBoard bishops = state.pieces[offset + 2];
-  while (bishops) {
-    U8 from_square = bishops.pop_lsb();
-    if (generate_bishop_moves(from_square, state).is_set(pos))
-      return true;
-  }
-
-  BitBoard knights = state.pieces[offset + 1];
-  while (knights) {
-    U8 from_square = knights.pop_lsb();
-    if (generate_knight_moves(from_square, state).is_set(pos))
-      return true;
-  }
-
-  BitBoard pawns = state.pieces[offset + 0];
-  while (pawns) {
-    U8 from_square = pawns.pop_lsb();
-    if (generate_pawn_attacks(from_square, state).is_set(pos))
-      return true;
-  }
-
-  BitBoard king = state.pieces[offset + 5];
-  if (king) {
-    U8 king_square = king.pop_lsb(); // king is only in one position
-    if (generate_king_attacks(king_square, state).is_set(pos))
-      return true;
-  }
-
-  return false;
-}
-
-bool is_square_attacked_by_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
+bool is_square_attacked_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
   BitBoard rook_attacks = generate_rook_moves(pos, state);
   BitBoard bishop_attacks = generate_bishop_moves(pos, state);
 
@@ -306,12 +257,16 @@ bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, const BoardSt
       (attacker_king & king_attacks) != 0;
 }
 
+bool is_square_attacked(U8 pos, Color attacker, const BoardState &state) {
+  return is_square_attacked_sliding_pieces(pos, attacker, state) || is_square_attacked_non_sliding_pieces(pos, attacker, state);
+}
+
 bool king_in_check(Color color, const BoardState &state) {
   const BitBoard &king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
   const U8 king_pos = king_bb.get_lsb_pos();
 
   return is_square_attacked_non_sliding_pieces(king_pos, flip_color(color), state)
-      || is_square_attacked_by_sliding_pieces(king_pos, flip_color(color), state);
+      || is_square_attacked_sliding_pieces(king_pos, flip_color(color), state);
 }
 
 MoveList generate_moves(Board &board) {
@@ -363,10 +318,10 @@ MoveList generate_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
         move_list.push({from, to, PieceType::kPawn, PromotionType::kKnight});
         move_list.push({from, to, PieceType::kPawn, PromotionType::kBishop});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
         continue;
       } else {
         move_list.push({from, to, PieceType::kPawn});
@@ -440,7 +395,7 @@ MoveList generate_moves(Board &board) {
 MoveList generate_legal_moves(Board &board) {
   auto &state = board.get_state();
 
-  const auto quick_is_legal_move = [&board, &state](const Move &move) {
+  const auto is_legal_move = [&board, &state](const Move &move) {
     board.make_move(move);
     const bool in_check = king_in_check(flip_color(state.turn), state);
     board.undo_move();
@@ -450,7 +405,7 @@ MoveList generate_legal_moves(Board &board) {
   MoveList pseudo_legal_moves = generate_moves(board), legal_moves;
 
   for (int i = 0; i < pseudo_legal_moves.size(); i++) {
-    if (quick_is_legal_move(pseudo_legal_moves[i])) {
+    if (is_legal_move(pseudo_legal_moves[i])) {
       legal_moves.push(pseudo_legal_moves[i]);
     }
   }
@@ -508,10 +463,10 @@ MoveList generate_capture_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
+        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
         move_list.push({from, to, PieceType::kPawn, PromotionType::kKnight});
         move_list.push({from, to, PieceType::kPawn, PromotionType::kBishop});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
         continue;
       } else {
         move_list.push({from, to, PieceType::kPawn});

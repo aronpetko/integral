@@ -2,7 +2,6 @@
 
 namespace fen {
 
-// the bit boards will get populated when fen is parsed
 char get_piece_char(BitBoards &pieces, U8 pos) {
   if (pieces[kWhitePieces].is_set(pos)) {
     if (pieces[kWhitePawns].is_set(pos)) return 'P';
@@ -166,7 +165,7 @@ std::string board_to_string(BoardState& state) {
   output.append(std::to_string(state.fifty_moves_clock));
   output.push_back(' ');
 
-  const int full_moves = state.half_moves / 2;
+  const U32 full_moves = state.half_moves / 2;
   output.append(std::to_string(full_moves));
 
   return output;

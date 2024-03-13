@@ -76,6 +76,21 @@ const std::vector<std::vector<int>> kPieceSquareTables = {
     }
 };
 
+// idea: instead of returning true/false have an end game factor that is some interpolation of the material and game phase
+//       this would be valuable for variable evaluation bonuses/penalties
+bool is_end_game(BoardState &state) {
+  const int white_material = state.pieces[kWhitePawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
+      + state.pieces[kWhiteKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
+      + state.pieces[kWhiteBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
+      + state.pieces[kWhiteQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
+  const int black_material = state.pieces[kBlackPawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
+      + state.pieces[kBlackKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
+      + state.pieces[kBlackBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
+      + state.pieces[kBlackQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
+
+  return white_material + black_material <= 2700;
+}
+
 int material_difference(BoardState &state) {
   int material = 0;
 
@@ -126,13 +141,11 @@ int positional_difference(int material_diff, BoardState &state) {
 int stacked_pawns_difference(BoardState &state) {
   int stacked_pawns = 0;
 
-  auto pawns = &state.pieces[kWhitePawns];
-  for (const auto& file_mask : kFileMasks)
-    stacked_pawns += std::max(0, ((*pawns & file_mask).pop_count() - 1));
-
-  pawns = &state.pieces[kBlackPawns];
-  for (const auto& file_mask : kFileMasks)
-    stacked_pawns -= std::max(0, ((*pawns & file_mask).pop_count() - 1));
+  for (const auto& file_mask : kFileMasks) {
+    const BitBoard white_pawns_on_file = state.pieces[kWhitePawns] & file_mask;
+    const BitBoard black_pawns_on_file = state.pieces[kBlackPawns] & file_mask;
+    stacked_pawns += (white_pawns_on_file.pop_count() > 1) - (black_pawns_on_file.pop_count() > 1);
+  }
 
   const int kStackedPawnPenalty = -12;
   const int penalty = stacked_pawns * kStackedPawnPenalty;
@@ -267,19 +280,8 @@ int king_safety_difference(BoardState &state) {
   return state.turn == Color::kWhite ? score : -score;
 }
 
-// idea: instead of returning true/false have an end game factor that is some interpolation of the material and game phase
-//       this would be valuable for variable evaluation bonuses/penalties
-bool is_end_game(BoardState &state) {
-  const int white_material = state.pieces[kWhitePawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
-      + state.pieces[kWhiteKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
-      + state.pieces[kWhiteBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
-      + state.pieces[kWhiteQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
-  const int black_material = state.pieces[kBlackPawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
-      + state.pieces[kBlackKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
-      + state.pieces[kBlackBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
-      + state.pieces[kBlackQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
-
-  return white_material + black_material <= 2700;
+int square_control_difference(BoardState &state) {
+  return get_attacked_squares(state, state.turn).pop_count() - get_attacked_squares(state, flip_color(state.turn)).pop_count();
 }
 
 int evaluate(BoardState &state) {
@@ -287,10 +289,11 @@ int evaluate(BoardState &state) {
   const int position_value = positional_difference(material_diff, state);
   const int stacked_pawns = stacked_pawns_difference(state);
   const int mobility = mobility_difference(state);
-  const int passed_pawns = passed_pawns_score(state);
+  // const int passed_pawns = passed_pawns_score(state);
   const int king_safety = king_safety_difference(state);
+  const int square_control = square_control_difference(state);
 
-  return material_diff + position_value + king_safety + mobility + stacked_pawns;
+  return material_diff + position_value + king_safety + mobility + stacked_pawns + square_control;
 }
 
 }

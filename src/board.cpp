@@ -57,8 +57,8 @@ bool Board::is_legal_move(const Move &move) {
     bool in_check = king_in_check(Color(!state_.turn), state_);
     undo_move();
 
-    //if (in_check)
-    //  std::cerr << "this move places you in check" << std::endl;
+    if (in_check)
+      std::cerr << "this move places you in check" << std::endl;
     return !in_check;
   }
 
@@ -133,8 +133,6 @@ void Board::make_move(const Move &move) {
         // reset fifty moves clock since this move was a capture
         state_.fifty_moves_clock = 0;
       } else {
-        print_pieces(state_.pieces);
-        std::cerr << move.to_string() << std::endl;
         std::cerr << "en passant pawn does not exist" << std::endl;
         return;
       }
@@ -176,13 +174,13 @@ void Board::make_move(const Move &move) {
   state_.piece_types[from] = PieceType::kNone;
   state_.piece_types[to] = piece_type;
 
-  // xor in the moved piece
-  state_.zobrist_key ^= zobrist::hash_square(to, state_);
-
   handle_castling(move);
 
   if (piece_type == PieceType::kPawn)
     handle_promotions(move);
+
+  // xor in the moved piece
+  state_.zobrist_key ^= zobrist::hash_square(to, state_);
 
   // set the new board state data
   state_.pieces[kAllPieces] = state_.pieces[kWhitePieces] | state_.pieces[kBlackPieces];
@@ -234,9 +232,11 @@ void Board::undo_move() {
 
 bool Board::has_repeated(U8 times) const {
   // we know that the position can be repeated if no moves were captured, hence we only search until the fifty moves clock was reset
-  for (int i = state_.half_moves; i >= state_.half_moves - state_.fifty_moves_clock && i >= 0; i -= 2)
-    if (key_history_[i] == state_.zobrist_key && --times == 0)
+  for (int i = state_.half_moves - 1; i >= state_.half_moves - state_.fifty_moves_clock && i >= 0; i--) {
+    if (key_history_[i] == state_.zobrist_key && --times == 0) {
       return true;
+    }
+  }
   return false;
 }
 

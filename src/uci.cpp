@@ -36,7 +36,10 @@ void position(Board &board, std::stringstream &input_stream) {
 
     // we now have the last move sent in the position
     const auto move = Move::from_str(board.get_state(), move_input);
-    if (move.has_value()) {
+    std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
+    log << move_input << std::endl;
+    log.close();
+    if (move.has_value() && board.is_legal_move(move.value())) {
       board.make_move(move.value());
     } else {
       std::cerr << std::format("invalid move: {}\n", move_input);
@@ -74,7 +77,9 @@ void go(Board &board, std::stringstream &input_stream) {
     time_config.depth = 13;
 
   const Move best_move = Search(time_config, board).find_best_move();
-  board.make_move(best_move);
+  if (best_move != Move::null_move()) {
+    board.make_move(best_move);
+  }
 
   std::cout << std::format("bestmove {}", best_move.to_string()) << std::endl;
 }
@@ -121,17 +126,12 @@ void accept_commands() {
   // initialize ray attacks for sliding pieces and knight attacks
   initialize_attacks();
 
-  std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
-  log << "new process" << std::endl;
-
   Board board;
 
   std::string input_line;
   while (input_line != "quit") {
     std::getline(std::cin, input_line);
     std::stringstream input_stream(input_line);
-
-    log << input_line << std::endl;
 
     std::string command;
     input_stream >> command;
@@ -148,8 +148,6 @@ void accept_commands() {
       go(board, input_stream);
     }
   }
-
-  log.close();
 }
 
 }
