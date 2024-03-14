@@ -2,19 +2,18 @@
 #include "eval.h"
 
 const int kMVVLVAScore = std::numeric_limits<int>::max() - 256;
-
-const int kTTMoveSortValue = 60;
-
+const int kTTMoveScore = std::numeric_limits<int>::max();
 const int kKillerMoveValue = 10;
 
-// Define the MVV-LVA table using std::array
+// credits: rustic chess engine
 const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
-  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
-  {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
-  {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
-  {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
+  {{0, 0, 0, 0, 0, 0}},       // victim none, attacker K, Q, R, B, N, P
+  {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
   {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
-  {{10, 11, 12, 13, 14, 15}}  // victim P, attacker K, Q, R, B, N, P
+  {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
+  {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
+  {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
+  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
 }};
 
 std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, Search::kMaxSearchDepth> MoveOrderer::killer_moves{};
@@ -75,7 +74,7 @@ void MoveOrderer::reset_move_history() {
   }
 
   for (auto &row : MoveOrderer::killer_moves) {
-    // std::fill(row.begin(), row.end(), Move::null_move());
+    std::fill(row.begin(), row.end(), Move::null_move());
   }
 }
 
@@ -112,9 +111,9 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
       || (state.en_passant.has_value() && state.en_passant == to);
 
   if (move == tt_move) {
-    return kMVVLVAScore + kTTMoveSortValue;
+    return kTTMoveScore;
   } else if (is_capture_move) {
-    return kMVVLVAScore + kMVVLVATable[state.get_piece_type(to) - 1][move_piece_type - 1];
+    return kMVVLVAScore + kMVVLVATable[state.get_piece_type(to)][move_piece_type];
   } else {
     for (int i = 0; i < kNumKillerMoves; i++) {
       for (const auto &killer_move : MoveOrderer::killer_moves[i]) {
