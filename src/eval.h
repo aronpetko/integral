@@ -11,8 +11,8 @@ const int kMateScore = 1e9;
 const std::vector<int> kPieceValues = {
     0, // none
     100, // pawn
-    310, // knight
-    325, // bishop
+    300, // knight
+    305, // bishop
     500, // rook
     900, // queen
     20000, // king

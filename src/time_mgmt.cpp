@@ -51,9 +51,9 @@ void TimeManagement::update_move_time() {
     current_move_time_ += time_left / moves_to_go;
   }
 
-  const int increment = config_.increment[state.turn];
-  if (increment > 0)
-    current_move_time_ += increment / 2;
+  //const int increment = config_.increment[state.turn];
+  //if (increment > 0)
+  //  current_move_time_ += increment / 2;
 
   current_move_time_ = std::max(0, current_move_time_ - kTimeBuffer);
 }

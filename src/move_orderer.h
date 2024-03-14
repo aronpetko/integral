@@ -21,7 +21,7 @@ class MoveOrderer {
  private:
   void score_moves() noexcept;
 
-  int calculate_move_score(const Move &move);
+  int calculate_move_score(const Move &move, const Move &tt_move);
 
  private:
   Board &board_;

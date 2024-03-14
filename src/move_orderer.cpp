@@ -1,9 +1,21 @@
 #include "move_orderer.h"
 #include "eval.h"
 
-const int kTranspoTableMoveScore = 30000;
-const int kCaptureMoveScore = 10000;
-const int kKillerMoveScore = 5000;
+const int kMVVLVAScore = std::numeric_limits<int>::max() - 256;
+
+const int kTTMoveSortValue = 60;
+
+const int kKillerMoveValue = 10;
+
+// Define the MVV-LVA table using std::array
+const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
+  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
+  {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
+  {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
+  {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
+  {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
+  {{10, 11, 12, 13, 14, 15}}  // victim P, attacker K, Q, R, B, N, P
+}};
 
 std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, Search::kMaxSearchDepth> MoveOrderer::killer_moves{};
 
@@ -37,8 +49,11 @@ const Move &MoveOrderer::get_move(int start) noexcept {
 }
 
 void MoveOrderer::update_killer_move(const Move &move, int ply) {
+  if (move == MoveOrderer::killer_moves[ply][0])
+    return;
+
   // shift killer moves right one
-  for (std::size_t i = 1; i < MoveOrderer::killer_moves[ply].size(); i++)
+  for (std::size_t i = 1; i < kNumKillerMoves; i++)
     MoveOrderer::killer_moves[ply][i] = MoveOrderer::killer_moves[ply][i - 1];
 
   // insert at the beginning
@@ -58,6 +73,10 @@ void MoveOrderer::reset_move_history() {
       std::fill(row.begin(), row.end(), 0);
     }
   }
+
+  for (auto &row : MoveOrderer::killer_moves) {
+    // std::fill(row.begin(), row.end(), Move::null_move());
+  }
 }
 
 void MoveOrderer::score_moves() noexcept {
@@ -65,7 +84,7 @@ void MoveOrderer::score_moves() noexcept {
 
   // we always want to get the stored best move for this position first if available
   auto tt_entry = board_.get_transpo_table().probe(state.zobrist_key);
-  bool tt_move_exists = false;
+  auto tt_move = Move::null_move();
 
   if (tt_entry.key == state.zobrist_key && tt_entry.best_move != Move::null_move()) {
     const auto to = tt_entry.best_move.get_to();
@@ -73,46 +92,38 @@ void MoveOrderer::score_moves() noexcept {
         || (state.en_passant.has_value() && state.en_passant == to);
 
     if (move_type_ != MoveType::kCaptures || is_capture_move) {
-      moves_.push({tt_entry.best_move});
-      tt_move_exists = true;
+      tt_move = tt_entry.best_move;
     }
   }
 
   move_scores_.resize(moves_.size());
-  for (int i = 0; i < moves_.size(); i++) {
-    move_scores_[i] = i == moves_.size() - 1 && tt_move_exists ? kTranspoTableMoveScore : calculate_move_score(moves_[i]);
-  }
+  for (int i = 0; i < moves_.size(); i++)
+    move_scores_[i] = calculate_move_score(moves_[i], tt_move);
 }
 
-int MoveOrderer::calculate_move_score(const Move &move) {
+int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
   auto &state = board_.get_state();
-
-  for (int i = 0; i < kNumKillerMoves; i++) {
-    for (const auto &killer_move : MoveOrderer::killer_moves[i]) {
-      if (killer_move == move) {
-        return kKillerMoveScore;
-      }
-    }
-  }
 
   const auto from = move.get_from();
   const auto to = move.get_to();
-
-  int score = 0;
 
   const auto move_piece_type = move.get_piece_type();
   const bool is_capture_move = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(to)
       || (state.en_passant.has_value() && state.en_passant == to);
 
-  // MVV-LVA
-  if (is_capture_move) {
-    const int aggressor_piece_value = eval::kPieceValues[move_piece_type];
-    const int victim_piece_value = eval::kPieceValues[state.get_piece_type(to)];
-
-    score += kCaptureMoveScore + victim_piece_value * 10 - aggressor_piece_value;
+  if (move == tt_move) {
+    return kMVVLVAScore + kTTMoveSortValue;
+  } else if (is_capture_move) {
+    return kMVVLVAScore + kMVVLVATable[state.get_piece_type(to) - 1][move_piece_type - 1];
   } else {
-    score += MoveOrderer::move_history[state.turn][from][to];
-  }
+    for (int i = 0; i < kNumKillerMoves; i++) {
+      for (const auto &killer_move : MoveOrderer::killer_moves[i]) {
+        if (killer_move == move) {
+          return kMVVLVAScore - (i + 1) * kKillerMoveValue;
+        }
+      }
+    }
 
-  return score;
+    return MoveOrderer::move_history[state.turn][from][to];
+  }
 }

@@ -263,10 +263,7 @@ bool is_square_attacked(U8 pos, Color attacker, const BoardState &state) {
 
 bool king_in_check(Color color, const BoardState &state) {
   const BitBoard &king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
-  const U8 king_pos = king_bb.get_lsb_pos();
-
-  return is_square_attacked_non_sliding_pieces(king_pos, flip_color(color), state)
-      || is_square_attacked_sliding_pieces(king_pos, flip_color(color), state);
+  return is_square_attacked(king_bb.get_lsb_pos(), flip_color(color), state);
 }
 
 MoveList generate_moves(Board &board) {

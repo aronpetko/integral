@@ -94,7 +94,7 @@ bool is_end_game(BoardState &state) {
 int material_difference(BoardState &state) {
   int material = 0;
 
-  for (int i = 1; i < kPieceValues.size(); i++) {
+  for (int i = 1; i < kPieceValues.size() - 1; i++) {
     const int white_piece_idx = kWhitePawns + i - 1;
     const int black_piece_idx = kBlackPawns + i - 1;
 
@@ -293,7 +293,7 @@ int evaluate(BoardState &state) {
   const int king_safety = king_safety_difference(state);
   const int square_control = square_control_difference(state);
 
-  return material_diff + position_value + king_safety + mobility + stacked_pawns + square_control;
+  return material_diff + position_value + stacked_pawns + mobility + king_safety + square_control;
 }
 
 }
