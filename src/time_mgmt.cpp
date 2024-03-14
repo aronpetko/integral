@@ -4,10 +4,10 @@
 const int kMovesToGo = 24;
 const int kTimeBuffer = 50;
 
-TimeManagement::TimeManagement(TimeManagement::Config &config, Board &board)
+TimeManagement::TimeManagement(const TimeManagement::Config &config, Board &board)
     : config_(config), board_(board), current_move_time_(0), times_up_(false), nodes_searched_(0) {}
 
-TimeManagement::Config &TimeManagement::get_config() {
+const TimeManagement::Config &TimeManagement::get_config() {
   return config_;
 }
 

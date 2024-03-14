@@ -8,7 +8,7 @@ namespace eval {
 const int kDrawScore = 0;
 const int kMateScore = 1e9;
 
-const std::vector<int> kPieceValues = {
+const std::array<int, PieceType::kNumPieceTypes> kPieceValues = {
     0, // none
     100, // pawn
     300, // knight

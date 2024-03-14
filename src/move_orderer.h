@@ -30,7 +30,7 @@ class MoveOrderer {
 
   MoveType move_type_;
 
-  std::vector<int> move_scores_;
+  std::array<int, 256> move_scores_;
 
   static const int kNumKillerMoves = 2;
 

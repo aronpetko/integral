@@ -15,9 +15,9 @@ class TimeManagement {
     std::array<int, 2> increment{};
   };
 
-  explicit TimeManagement(Config &config, Board &board);
+  explicit TimeManagement(const Config &config, Board &board);
 
-  Config &get_config();
+  const Config &get_config();
 
   void start();
 
@@ -32,7 +32,7 @@ class TimeManagement {
   [[nodiscard]] int get_move_time() const;
 
  private:
-  Config &config_;
+  const Config &config_;
 
   Board &board_;
 

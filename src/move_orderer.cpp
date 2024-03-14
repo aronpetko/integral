@@ -95,7 +95,6 @@ void MoveOrderer::score_moves() noexcept {
     }
   }
 
-  move_scores_.resize(moves_.size());
   for (int i = 0; i < moves_.size(); i++)
     move_scores_[i] = calculate_move_score(moves_[i], tt_move);
 }
