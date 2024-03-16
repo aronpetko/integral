@@ -88,7 +88,7 @@ class BitBoard {
  public:
   constexpr BitBoard() : bitboard_(0ULL) {}
 
-  explicit BitBoard(U64 bitboard) : bitboard_(bitboard) {}
+  BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
   static BitBoard from_square(U8 pos) {
     return BitBoard(1ULL << pos);
@@ -128,7 +128,7 @@ class BitBoard {
     return lsb_pos;
   }
 
-  [[nodiscard]] U8 pop_count() const {
+  [[nodiscard]] int pop_count() const {
     return std::popcount(bitboard_);
   }
 
@@ -198,8 +198,47 @@ class BitBoard {
     return *this;
   }
 
+  BitBoard &operator*=(const BitBoard &other) {
+    bitboard_ *= other.as_u64();
+    return *this;
+  }
+
+  BitBoard &operator>>=(const BitBoard &other) {
+    bitboard_ >>= other.as_u64();
+    return *this;
+  }
+
+  BitBoard &operator<<=(const BitBoard &other) {
+    bitboard_ <<= other.as_u64();
+    return *this;
+  }
+
   BitBoard operator~() const {
     return BitBoard(~bitboard_);
+  }
+
+  BitBoard operator-(const BitBoard &other) const {
+    return BitBoard(bitboard_ - other.bitboard_);
+  }
+
+  BitBoard operator-(int num) const {
+    return BitBoard(bitboard_ - num);
+  }
+
+  BitBoard operator-() const {
+    return BitBoard(~bitboard_ + 1);
+  }
+
+  BitBoard operator+(const BitBoard &other) const {
+    return BitBoard(bitboard_ + other.bitboard_);
+  }
+
+  BitBoard operator/(const BitBoard &other) const {
+    return BitBoard(bitboard_ / other.bitboard_);
+  }
+
+  BitBoard operator*(const BitBoard &other) const {
+    return BitBoard(bitboard_ * other.bitboard_);
   }
 
   bool operator==(const BitBoard &other) const {
@@ -240,6 +279,18 @@ constexpr inline BitBoard shift(const BitBoard& bitboard) {
     return BitBoard((bitboard >> 9) & ~FileMask::kFileH);
   else
     return BitBoard(0); // default case to avoid compiler warnings, should not be reached
+}
+
+inline int rank(U8 square) {
+  return square / kBoardRanks;
+}
+
+inline int file(U8 square) {
+  return square % kBoardFiles;
+}
+
+static U8 rank_file_to_pos(int rank, int file) {
+  return rank * kBoardLength + file;
 }
 
 static void print_bb(BitBoard board) {

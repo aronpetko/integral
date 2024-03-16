@@ -84,7 +84,7 @@ void go(Board &board, std::stringstream &input_stream) {
   std::cout << std::format("bestmove {}", best_move.to_string()) << std::endl;
 }
 
-int perft_internal(Board &board, int depth) {
+int perft_internal(Board &board, int depth, int start_depth) {
   if (depth == 0)
     return 1;
 
@@ -96,7 +96,12 @@ int perft_internal(Board &board, int depth) {
   for (int i = 0; i < moves.size(); i++) {
     board.make_move(moves[i]);
     if (!king_in_check(flip_color(state.turn), state)) {
-      nodes += perft_internal(board, depth - 1);
+      const int pos_nodes = perft_internal(board, depth - 1, start_depth);
+      nodes += pos_nodes;
+
+      if (depth == start_depth) {
+        std::cout << std::format("{}: {}\n", moves[i].to_string(), pos_nodes);
+      }
     }
     board.undo_move();
   }
@@ -113,7 +118,7 @@ void perft(Board &board, std::stringstream &input_stream) {
     assert(depth >= 0);
 
     const auto start_time = std::chrono::steady_clock::now();
-    const int nodes = perft_internal(board, depth);
+    const int nodes = perft_internal(board, depth, depth);
     const auto elapsed = duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
 
     std::cout << std::format("perft({}): {}\ntook: {:.2f}s\nnps: {}", depth, nodes, elapsed, nodes / elapsed) << std::endl;

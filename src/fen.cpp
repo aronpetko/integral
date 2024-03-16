@@ -68,7 +68,7 @@ BoardState string_to_board(const std::string &fen_str) {
       case PieceType::kKing:
         target = is_black_piece ? &pieces[kBlackKing] : &pieces[kWhiteKing];
         break;
-      case PieceType::kNone:
+      default:
         break;
     }
 

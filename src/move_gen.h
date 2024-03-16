@@ -40,6 +40,7 @@ class MoveList {
   int count_;
 };
 
+// initializes piece attack lookups and magics
 void initialize_attacks();
 
 BitBoard generate_pawn_attacks(U8 pos, const BoardState &state);

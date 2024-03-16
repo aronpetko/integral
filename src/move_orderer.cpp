@@ -105,7 +105,7 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
   const auto from = move.get_from();
   const auto to = move.get_to();
 
-  const auto move_piece_type = move.get_piece_type();
+  const auto move_piece_type = state.piece_types[from];
   const bool is_capture_move = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(to)
       || (state.en_passant.has_value() && state.en_passant == to);
 

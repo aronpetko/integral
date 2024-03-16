@@ -11,16 +11,16 @@ const int kMateScore = 1e9;
 const std::array<int, PieceType::kNumPieceTypes> kPieceValues = {
     0, // none
     100, // pawn
-    300, // knight
-    305, // bishop
+    305, // knight
+    315, // bishop
     500, // rook
     900, // queen
     20000, // king
 };
 
-bool is_end_game(BoardState &state);
+bool is_end_game(const BoardState &state);
 
-int evaluate(BoardState &state);
+int evaluate(const BoardState &state);
 
 }
 

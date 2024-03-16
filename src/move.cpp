@@ -5,11 +5,7 @@ Move::Move(U8 from, U8 to) : data_(0) {
   set_to(to);
 }
 
-Move::Move(U8 from, U8 to, PieceType piece_type) : Move(from, to) {
-  set_piece_type(piece_type);
-}
-
-Move::Move(U8 from, U8 to, PieceType piece_type, PromotionType promotion_type) : Move(from, to, piece_type) {
+Move::Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {
   set_promotion_type(promotion_type);
 }
 
@@ -35,10 +31,9 @@ std::optional<Move> Move::from_str(BoardState &state, std::string_view str) {
 
   const auto from = rank_file_to_pos(from_rank, from_file);
   const auto to = rank_file_to_pos(to_rank, to_file);
-  const auto piece_type = state.get_piece_type(from);
 
   if (str.length() < kMaxMoveLen)
-    return Move(from, to, piece_type);
+    return Move(from, to);
 
   PromotionType promotion_type;
   switch (str[4]) {
@@ -62,7 +57,7 @@ std::optional<Move> Move::from_str(BoardState &state, std::string_view str) {
       return std::nullopt;
   }
 
-  return Move(from, to, piece_type, promotion_type);
+  return Move(from, to, promotion_type);
 }
 
 [[nodiscard]] U8 Move::get_from() const {

@@ -26,7 +26,7 @@ bool Board::is_legal_move(const Move &move) {
   BitBoard &their_pieces = state_.pieces[is_white ? kBlackPieces : kWhitePieces];
   BitBoard possible_moves;
 
-  switch (move.get_piece_type()) {
+  switch (state_.piece_types[from]) {
     case PieceType::kPawn: {
       const BitBoard en_passant_mask = state_.en_passant.has_value() ? BitBoard::from_square(state_.en_passant.value()) : BitBoard(0);
       possible_moves = generate_pawn_moves(from, state_) | (generate_pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
@@ -73,7 +73,7 @@ void Board::make_move(const Move &move) {
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto from = move.get_from(), to = move.get_to();
-  const auto piece_type = move.get_piece_type();
+  const auto piece_type = state_.piece_types[from];
 
   // xor out the previous turn hash and moved piece
   state_.zobrist_key ^= zobrist::hash_square(from, state_) ^ zobrist::hash_turn(state_);
@@ -244,7 +244,7 @@ void Board::handle_castling(const Move &move) {
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto from = move.get_from(), to = move.get_to();
-  const auto piece_type = move.get_piece_type();
+  const auto piece_type = state_.piece_types[from];
 
   if (piece_type == PieceType::kKing) {
     if (state_.castle.can_kingside_castle(state_.turn) || state_.castle.can_queenside_castle(state_.turn)) {

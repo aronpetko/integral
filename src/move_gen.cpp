@@ -1,36 +1,18 @@
 #include "move_gen.h"
 #include "board.h"
+#include "magics/precomputed.h"
+#include "magics/attacks.h"
+#include "magics/magic_finder.h"
+#include "fen.h"
 
-std::array<std::array<BitBoard, 64>, 8> ray_attacks;
 std::array<BitBoard, 64> knight_attacks;
 
+std::array<BitBoard, 64> king_attacks;
+
 void initialize_attacks() {
-  const auto generate_moves_in_direction = [](auto &shift_fn, U8 from) {
-    BitBoard moves;
-    BitBoard current = BitBoard::from_square(from);
-
-    while (current) {
-      current = shift_fn(current);
-      moves |= current;
-    }
-
-    return moves;
-  };
-
   for (int square = 0; square < Square::kSquareCount; square++) {
-    // ray attacks (i.e. bishop, rooks, and queens)
-    ray_attacks[Direction::kNorth][square] = generate_moves_in_direction(shift<Direction::kNorth>, square);
-    ray_attacks[Direction::kEast][square] = generate_moves_in_direction(shift<Direction::kEast>, square);
-    ray_attacks[Direction::kSouth][square] = generate_moves_in_direction(shift<Direction::kSouth>, square);
-    ray_attacks[Direction::kWest][square] = generate_moves_in_direction(shift<Direction::kWest>, square);
-    ray_attacks[Direction::kNorthEast][square] = generate_moves_in_direction(shift<Direction::kNorthEast>, square);
-    ray_attacks[Direction::kNorthWest][square] = generate_moves_in_direction(shift<Direction::kNorthWest>, square);
-    ray_attacks[Direction::kSouthEast][square] = generate_moves_in_direction(shift<Direction::kSouthEast>, square);
-    ray_attacks[Direction::kSouthWest][square] = generate_moves_in_direction(shift<Direction::kSouthWest>, square);
+    const BitBoard bb_pos = BitBoard::from_square(square);
     
-    // knight attacks
-    BitBoard bb_pos = BitBoard::from_square(square);
-
     knight_attacks[square] |= (bb_pos & ~FileMask::kFileH) << 17;
     knight_attacks[square] |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) << 10;
     knight_attacks[square] |= (bb_pos & ~(FileMask::kFileH | FileMask::kFileG)) >> 6;
@@ -39,21 +21,20 @@ void initialize_attacks() {
     knight_attacks[square] |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) << 6;
     knight_attacks[square] |= (bb_pos & ~(FileMask::kFileA | FileMask::kFileB)) >> 10;
     knight_attacks[square] |= (bb_pos & ~FileMask::kFileA) >> 17;
+    
+    king_attacks[square] |= shift<Direction::kNorth>(bb_pos);
+    king_attacks[square] |= shift<Direction::kSouth>(bb_pos);
+    king_attacks[square] |= shift<Direction::kEast>(bb_pos);
+    king_attacks[square] |= shift<Direction::kWest>(bb_pos);
+    king_attacks[square] |= shift<Direction::kNorthEast>(bb_pos);
+    king_attacks[square] |= shift<Direction::kNorthWest>(bb_pos);
+    king_attacks[square] |= shift<Direction::kSouthEast>(bb_pos);
+    king_attacks[square] |= shift<Direction::kSouthWest>(bb_pos);
   }
-}
 
-inline BitBoard get_positive_ray_attacks(BitBoard occupied, Direction dir, U8 square) {
-  BitBoard attacks = ray_attacks[dir][square];
-  BitBoard blocker = attacks & occupied;
-  square = std::countr_zero((blocker | U64(0x8000000000000000ULL)).as_u64());
-  return attacks ^ ray_attacks[dir][square];
-}
+  magics::attacks::initialize();
 
-inline BitBoard get_negative_ray_attacks(BitBoard occupied, Direction dir, U8 square) {
-  BitBoard attacks = ray_attacks[dir][square];
-  BitBoard blocker = attacks & occupied;
-  square = (Square::kSquareCount - 1) - std::countl_zero((blocker | 1).as_u64());
-  return attacks ^ ray_attacks[dir][square];
+  // magics::finder::generate_magics();
 }
 
 BitBoard generate_pawn_attacks(U8 pos, const BoardState &state) {
@@ -107,19 +88,21 @@ BitBoard generate_knight_moves(U8 pos, const BoardState &state) {
 }
 
 BitBoard generate_bishop_moves(U8 pos, const BoardState &state) {
-  const BitBoard &occupied = state.pieces[kAllPieces];
-  return get_positive_ray_attacks(occupied, Direction::kNorthEast, pos) |
-      get_positive_ray_attacks(occupied, Direction::kNorthWest, pos) |
-      get_negative_ray_attacks(occupied, Direction::kSouthEast, pos) |
-      get_negative_ray_attacks(occupied, Direction::kSouthWest, pos);
+  const auto &entry = magics::kBishopMagics[pos];
+  const U64 magic_index = ((entry.mask & state.pieces[kAllPieces].as_u64()) * entry.magic) >> entry.shift;
+  if (pos == Square::kA3) {
+    //auto ret = magics::attacks::bishop_attacks[pos][magic_index];
+    //print_bb(BitBoard(entry.mask));
+    //std::cout << "\n";
+    //print_bb(state.pieces[kAllPieces]);
+  }
+  return magics::attacks::bishop_attacks[pos][magic_index];
 }
 
 BitBoard generate_rook_moves(U8 pos, const BoardState &state) {
-  const BitBoard &occupied = state.pieces[kAllPieces];
-  return get_positive_ray_attacks(occupied, Direction::kNorth, pos) |
-      get_negative_ray_attacks(occupied, Direction::kSouth, pos) |
-      get_positive_ray_attacks(occupied, Direction::kEast, pos) |
-      get_negative_ray_attacks(occupied, Direction::kWest, pos);
+  const auto &entry = magics::kRookMagics[pos];
+  const U64 magic_index = ((entry.mask & state.pieces[kAllPieces].as_u64()) * entry.magic) >> entry.shift;
+  return magics::attacks::rook_attacks[pos][magic_index];
 }
 
 BitBoard generate_king_moves(U8 pos, const BoardState &state, bool include_castling) {
@@ -135,18 +118,7 @@ BitBoard generate_king_moves(U8 pos, const BoardState &state, bool include_castl
 }
 
 BitBoard generate_king_attacks(U8 pos, const BoardState &state) {
-  BitBoard attacks, bb_pos = BitBoard::from_square(pos);
-
-  attacks |= shift<Direction::kNorth>(bb_pos);
-  attacks |= shift<Direction::kSouth>(bb_pos);
-  attacks |= shift<Direction::kEast>(bb_pos);
-  attacks |= shift<Direction::kWest>(bb_pos);
-  attacks |= shift<Direction::kNorthEast>(bb_pos);
-  attacks |= shift<Direction::kNorthWest>(bb_pos);
-  attacks |= shift<Direction::kSouthEast>(bb_pos);
-  attacks |= shift<Direction::kSouthWest>(bb_pos);
-
-  return attacks;
+  return king_attacks[pos];
 }
 
 BitBoard generate_castling_moves(const BoardState &state, Color which) {
@@ -230,7 +202,7 @@ BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool incl
   return attacked;
 }
 
-bool is_square_attacked_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
+__attribute((noinline)) bool is_square_attacked_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
   BitBoard rook_attacks = generate_rook_moves(pos, state);
   BitBoard bishop_attacks = generate_bishop_moves(pos, state);
 
@@ -243,7 +215,7 @@ bool is_square_attacked_sliding_pieces(U8 pos, Color attacker, const BoardState 
       (attacker_bishops & bishop_attacks) != 0;
 }
 
-bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
+__attribute((noinline)) bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
   BitBoard pawn_attacks = generate_pawn_attacks(pos, state);
   BitBoard knight_attacks = generate_knight_moves(pos, state);
   BitBoard king_attacks = generate_king_attacks(pos, state);
@@ -315,13 +287,13 @@ MoveList generate_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kKnight});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kBishop});
+        move_list.push({from, to, PromotionType::kQueen});
+        move_list.push({from, to, PromotionType::kRook});
+        move_list.push({from, to, PromotionType::kKnight});
+        move_list.push({from, to, PromotionType::kBishop});
         continue;
       } else {
-        move_list.push({from, to, PieceType::kPawn});
+        move_list.push({from, to});
       }
     }
   }
@@ -334,7 +306,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kKnight});
+      move_list.push({from, to});
     }
   }
 
@@ -346,7 +318,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kBishop});
+      move_list.push({from, to});
     }
   }
 
@@ -358,7 +330,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kRook});
+      move_list.push({from, to});
     }
   }
 
@@ -370,7 +342,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kQueen});
+      move_list.push({from, to});
     }
   }
 
@@ -382,7 +354,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kKing});
+      move_list.push({from, to});
     }
   }
 
@@ -460,13 +432,13 @@ MoveList generate_capture_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kQueen});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kRook});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kKnight});
-        move_list.push({from, to, PieceType::kPawn, PromotionType::kBishop});
+        move_list.push({from, to, PromotionType::kQueen});
+        move_list.push({from, to, PromotionType::kRook});
+        move_list.push({from, to, PromotionType::kKnight});
+        move_list.push({from, to, PromotionType::kBishop});
         continue;
       } else {
-        move_list.push({from, to, PieceType::kPawn});
+        move_list.push({from, to});
       }
     }
   }
@@ -479,7 +451,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kKnight});
+      move_list.push({from, to});
     }
   }
 
@@ -491,7 +463,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kBishop});
+      move_list.push({from, to});
     }
   }
 
@@ -503,7 +475,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kRook});
+      move_list.push({from, to});
     }
   }
 
@@ -515,7 +487,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kQueen});
+      move_list.push({from, to});
     }
   }
 
@@ -527,7 +499,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to, PieceType::kKing});
+      move_list.push({from, to});
     }
   }
 

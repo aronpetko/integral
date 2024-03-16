@@ -77,7 +77,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     return eval::kDrawScore;
   }
 
-  auto &state = board_.get_state();
+  const auto &state = board_.get_state();
   auto &transpo = board_.get_transpo_table();
 
   const int original_alpha = alpha;
@@ -111,7 +111,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
   }
 
   if (time_mgmt_.times_up()) {
-    return generate_legal_moves(board_).empty() ? -eval::kMateScore : eval::kDrawScore;
+    return eval::kDrawScore;
   }
 
   // ensure we never run quiesce when in check
@@ -149,7 +149,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     can_do_null_move = true;
 
     if (time_mgmt_.times_up()) {
-      return generate_legal_moves(board_).empty() ? -eval::kMateScore : eval::kDrawScore;
+      return eval::kDrawScore;
     } else if (null_move_score >= beta) {
       return beta;
     }
@@ -195,7 +195,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
       following_pv_ = old_following_pv;
 
       // if the move looks promising from null window search, research
-      if (score > alpha) {
+      if (score > alpha || score < beta) {
         score = -negamax(depth - 1 - reduction, ply + 1, -beta, -alpha);
       }
     }
@@ -205,7 +205,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     board_.undo_move();
 
     if (time_mgmt_.times_up()) {
-      return generate_legal_moves(board_).empty() ? -eval::kMateScore + ply : eval::kDrawScore;
+      return eval::kDrawScore;
     }
 
     if (score > best_eval) {
@@ -263,6 +263,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
 }
 
 Move Search::find_best_move() {
+  std::cout << "static eval: " << eval::evaluate(board_.get_state()) << std::endl;
+
   MoveOrderer::reset_move_history();
 
   time_mgmt_.start();

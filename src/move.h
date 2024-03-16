@@ -14,17 +14,14 @@ const U32 kPromotionTypeMask = 0b111000000000000000;
 
 // bits 0-5: from
 // bits 6-11: to
-// bits 12-14: piece type
-// bits 15-17: promotion type
+// bits 12-14: promotion piece type
 class Move {
  public:
   Move() = default;
 
   Move(U8 from, U8 to);
 
-  Move(U8 from, U8 to, PieceType piece_type);
-
-  Move(U8 from, U8 to, PieceType piece_type, PromotionType promotion_type);
+  Move(U8 from, U8 to, PromotionType promotion_type);
 
   [[nodiscard]] static Move null_move();
 
@@ -51,11 +48,7 @@ class Move {
   [[nodiscard]] std::string to_string() const;
 
  private:
-  U32 data_;
+  U16 data_;
 };
-
-static U8 rank_file_to_pos(U8 rank, U8 file) {
-  return rank * kBoardLength + file;
-}
 
 #endif // INTEGRAL_MOVE_H_
