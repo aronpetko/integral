@@ -73,26 +73,22 @@ std::vector<BitBoard> create_blockers(BitBoard moves) {
   }
 
   std::vector<BitBoard> blockers;
-  blockers.push_back(BitBoard(0)); // Explicitly add 0 occupancy configuration
+  BitBoard subset = moves;
 
-  if (!set_bits.empty()) {
-    BitBoard subset = moves;
-
-    do {
-      BitBoard blocker;
-      for (const U8 &set_bit : set_bits) {
-        // Check if the bit is set in subset, not in the index
-        if (subset.is_set(set_bit)) {
-          blocker.set_bit(set_bit);
-        }
+  const U64 num_permutations = 1ULL << set_bits.size();
+  for (int i = 0; i <= num_permutations; i++) {
+    BitBoard blocker;
+    for (const U8 &set_bit : set_bits) {
+      // check if the bit is set in subset, not in the index
+      if (subset.is_set(set_bit)) {
+        blocker.set_bit(set_bit);
       }
+    }
 
-      if (blocker.as_u64() != 0) {  // Avoid adding 0 occupancy again
-        blockers.push_back(blocker);
-      }
+    blockers.push_back(blocker);
 
-      subset = (subset - 1) & moves;  // Carey-Ripley method to get next blocker subset
-    } while (subset);
+    // carey-ripley method to get next blocker subset
+    subset = (subset - 1) & moves;
   }
 
   return blockers;
@@ -148,7 +144,7 @@ void initialize() {
     rook_attacks[square] = square_rook_attacks;
   }
 
-  // finder::generate_magics();
+  finder::generate_magics();
 }
 
 }

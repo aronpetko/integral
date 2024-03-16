@@ -90,12 +90,6 @@ BitBoard generate_knight_moves(U8 pos, const BoardState &state) {
 BitBoard generate_bishop_moves(U8 pos, const BoardState &state) {
   const auto &entry = magics::kBishopMagics[pos];
   const U64 magic_index = ((entry.mask & state.pieces[kAllPieces].as_u64()) * entry.magic) >> entry.shift;
-  if (pos == Square::kA3) {
-    //auto ret = magics::attacks::bishop_attacks[pos][magic_index];
-    //print_bb(BitBoard(entry.mask));
-    //std::cout << "\n";
-    //print_bb(state.pieces[kAllPieces]);
-  }
   return magics::attacks::bishop_attacks[pos][magic_index];
 }
 
