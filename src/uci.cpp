@@ -77,12 +77,12 @@ void go(Board &board, std::stringstream &input_stream) {
   if (option.empty())
     time_config.depth = 13;
 
-  const Move best_move = Search(time_config, board).find_best_move();
-  if (best_move != Move::null_move()) {
-    board.make_move(best_move);
+  const auto search_result = Search(time_config, board).go();
+  if (search_result.best_move != Move::null_move()) {
+    board.make_move(search_result.best_move);
   }
 
-  std::cout << std::format("bestmove {}", best_move.to_string()) << std::endl;
+  std::cout << std::format("bestmove {}", search_result.best_move.to_string()) << std::endl;
 }
 
 int perft_internal(Board &board, int depth, int start_depth) {

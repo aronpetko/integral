@@ -91,6 +91,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
           best_eval_this_iteration_ = corrected_tt_eval;
         }
 
+        // this move caused a beta cutoff, so it is considered a pv move
+        pv_line_this_iteration_.update(ply, tt_entry.best_move);
+
         return corrected_tt_eval;
       case TranspositionTable::Entry::kLowerBound:
         alpha = std::max(alpha, corrected_tt_eval);
@@ -101,6 +104,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     }
 
     if (alpha >= beta) {
+      // this move caused a beta cutoff, so it is considered a pv move
+      pv_line_this_iteration_.update(ply, tt_entry.best_move);
+
       if (ply == 0) {
         best_move_this_iteration_ = tt_entry.best_move;
         best_eval_this_iteration_ = corrected_tt_eval;
@@ -178,8 +184,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
 
     int score;
 
+    // search the first move to full depth without reduction
     if (moves_tried == 0) {
-      // search the first move to full depth without reduction
       score = -negamax(depth - 1, ply + 1, -beta, -alpha);
     } else {
       // apply LMR conditions to subsequent moves
@@ -208,7 +214,10 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
       return eval::kDrawScore;
     }
 
+    // alpha is raised, therefore this move is the new pv node for this depth
     if (score > best_eval) {
+      pv_line_this_iteration_.update(ply, move);
+
       best_eval = score;
       best_move = move;
 
@@ -262,7 +271,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
   return best_eval;
 }
 
-Move Search::find_best_move() {
+Search::Result Search::go() {
   std::cout << "static eval: " << eval::evaluate(board_.get_state()) << std::endl;
 
   MoveOrderer::reset_move_history();
@@ -272,8 +281,7 @@ Move Search::find_best_move() {
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
-  Move best_move = Move::null_move();
-  int best_eval;
+  Result result;
 
   // iterative deepening
   for (int depth = 1; depth <= max_search_depth; depth++) {
@@ -282,8 +290,8 @@ Move Search::find_best_move() {
     // save time by playing the only legal move
     auto legal_moves = generate_legal_moves(board_);
     if (legal_moves.size() == 1) {
-      best_move = legal_moves[0];
-      best_eval = best_eval_this_iteration_;
+      result.best_move = legal_moves[0];
+      result.evaluation = best_eval_this_iteration_;
       break;
     }
 
@@ -295,26 +303,31 @@ Move Search::find_best_move() {
     if (best_move_this_iteration_ != Move::null_move()) {
       if (eval::is_mate_score(best_eval_this_iteration_)) {
         if (best_eval_this_iteration_ < 0) {
-          std::cout << std::format("best move: {}  eval: losing mate in {}  depth: {}\n",
+          std::cout << std::format("best move: {}  eval: losing mate in {}  depth: {}  seldepth: {}\n",
                                    best_move_this_iteration_.to_string(),
                                    eval::mate_in(best_eval_this_iteration_) / 2,
-                                   depth);
+                                   depth,
+                                   pv_line_this_iteration_.length());
         } else {
-          std::cout << std::format("best move: {}  eval: winning mate in {}  depth: {}\n",
+          std::cout << std::format("best move: {}  eval: winning mate in {}  depth: {}  seldepth: {}\n",
                                    best_move_this_iteration_.to_string(),
                                    eval::mate_in(best_eval_this_iteration_) / 2,
-                                   depth);
+                                   depth,
+                                   pv_line_this_iteration_.length());
         }
       } else {
-        std::cout << std::format("best move: {}  eval: {}  depth: {}\n",
+        std::cout << std::format("best move: {}  eval: {}  depth: {}  seldepth: {}\n",
                                  best_move_this_iteration_.to_string(),
                                  best_eval_this_iteration_ / 100.0,
-                                 depth);
+                                 depth,
+                                 pv_line_this_iteration_.length());
       }
 
+      result.pv_line = pv_line_this_iteration_;
+      result.best_move = best_move_this_iteration_;
+      result.evaluation = best_eval_this_iteration_;
 
-      best_move = best_move_this_iteration_;
-      best_eval = best_eval_this_iteration_;
+      std::cout << "pv: " << result.pv_line << std::endl;
     }
 
     if (time_mgmt_.times_up()) {
@@ -322,11 +335,11 @@ Move Search::find_best_move() {
     }
   }
 
-  std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << best_eval / 100.0 << std::endl;
+  std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << result.evaluation / 100.0 << std::endl;
   std::cout << "took: " << time_mgmt_.get_move_time() / 1000.0 << "s" << std::endl << std::endl;
   std::cout << "nodes searched: " << time_mgmt_.get_nodes_searched() << std::endl;
   std::cout << "nps: " << std::fixed << std::setprecision(2) << time_mgmt_.get_nodes_searched() / (time_mgmt_.get_move_time() / 1000.0) << std::endl;
   std::cout << "bf: " << branching_factor_ / total_bfs_ << std::endl;
 
-  return best_move;
+  return result;
 }

@@ -141,16 +141,11 @@ class Board {
 
  private:
   BoardState state_;
-
-  std::array<BoardState, kMaxGameMoves> history_;
-
-  int history_count_;
-
-  std::array<U64, kHalfMoveLimit> key_history_;
-
-  TranspositionTable transpo_table_;
-
   bool initialized_;
+  std::array<BoardState, kMaxGameMoves> history_;
+  int history_count_;
+  std::array<U64, kHalfMoveLimit> key_history_;
+  TranspositionTable transpo_table_;
 };
 
 #endif // INTEGRAL_BOARD_H_

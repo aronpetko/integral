@@ -33,15 +33,10 @@ class TimeManagement {
 
  private:
   const Config &config_;
-
   Board &board_;
-
   std::chrono::steady_clock::time_point start_time_;
-
   int current_move_time_;
-
   int nodes_searched_;
-
   bool times_up_;
 };
 

@@ -10,7 +10,7 @@ namespace magics::finder {
 bool try_magic(const U64 &magic, int shift, int size, const std::vector<BitBoard> &blockers, const std::vector<BitBoard> &moves) {
   std::vector<BitBoard> move_table(1ULL << size);
 
-  for (size_t i = 0; i < moves.size(); i++) {
+  for (std::size_t i = 0; i < moves.size(); i++) {
     const U64 magic_index = (blockers[i].as_u64() * magic) >> shift;
     if (move_table[magic_index] != 0ULL && move_table[magic_index] != moves[i]) {
       return false;

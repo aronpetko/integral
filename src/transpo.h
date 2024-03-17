@@ -41,7 +41,6 @@ class TranspositionTable {
 
  private:
   std::vector<Entry> table_;
-
   std::size_t table_size_;
 };
 
