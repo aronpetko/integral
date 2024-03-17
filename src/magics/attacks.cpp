@@ -144,7 +144,7 @@ void initialize() {
     rook_attacks[square] = square_rook_attacks;
   }
 
-  finder::generate_magics();
+  // finder::generate_magics();
 }
 
 }

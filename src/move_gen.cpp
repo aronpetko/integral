@@ -2,12 +2,10 @@
 #include "board.h"
 #include "magics/precomputed.h"
 #include "magics/attacks.h"
-#include "magics/magic_finder.h"
-#include "fen.h"
 
-std::array<BitBoard, 64> knight_attacks;
-
-std::array<BitBoard, 64> king_attacks;
+inline std::array<BitBoard, 64> knight_attacks;
+inline std::array<BitBoard, 64> king_attacks;
+inline std::array<std::array<BitBoard, 64>, 2> pawn_attacks;
 
 void initialize_attacks() {
   for (int square = 0; square < Square::kSquareCount; square++) {
@@ -30,6 +28,11 @@ void initialize_attacks() {
     king_attacks[square] |= shift<Direction::kNorthWest>(bb_pos);
     king_attacks[square] |= shift<Direction::kSouthEast>(bb_pos);
     king_attacks[square] |= shift<Direction::kSouthWest>(bb_pos);
+
+    pawn_attacks[Color::kWhite][square] |= shift<Direction::kNorthEast>(bb_pos);
+    pawn_attacks[Color::kWhite][square] |= shift<Direction::kNorthWest>(bb_pos);
+    pawn_attacks[Color::kBlack][square] |= shift<Direction::kSouthEast>(bb_pos);
+    pawn_attacks[Color::kBlack][square] |= shift<Direction::kSouthWest>(bb_pos);
   }
 
   magics::attacks::initialize();
@@ -38,28 +41,17 @@ void initialize_attacks() {
 }
 
 BitBoard generate_pawn_attacks(U8 pos, const BoardState &state) {
-  BitBoard moves, bb_pos = BitBoard::from_square(pos);
-
-  const auto color = state.get_piece_color(pos);
-  if (color == Color::kWhite) {
-    BitBoard up_left = shift<Direction::kNorthWest>(bb_pos);
-    BitBoard up_right = shift<Direction::kNorthEast>(bb_pos);
-    moves |= up_left | up_right;
-  } else {
-    BitBoard down_left = shift<Direction::kSouthWest>(bb_pos);
-    BitBoard down_right = shift<Direction::kSouthEast>(bb_pos);
-    moves |= down_left | down_right;
-  }
+  BitBoard attacks = pawn_attacks[state.get_piece_color(pos)][pos];
 
   // allow en passant attack
-  if (state.en_passant.has_value() && moves.is_set(state.en_passant.value()))
-    moves.set_bit(state.en_passant.value());
+  if (state.en_passant.has_value() && attacks.is_set(state.en_passant.value()))
+    attacks.set_bit(state.en_passant.value());
 
-  return moves;
+  return attacks;
 }
 
 BitBoard generate_pawn_moves(U8 pos, const BoardState &state) {
-  BitBoard moves, bb_pos = BitBoard::from_square(pos), occupied = state.pieces[kAllPieces];
+  BitBoard moves, bb_pos = BitBoard::from_square(pos), occupied = state.occupied();
 
   const auto color = state.get_piece_color(pos);
   if (color == Color::kWhite) {
@@ -89,13 +81,13 @@ BitBoard generate_knight_moves(U8 pos, const BoardState &state) {
 
 BitBoard generate_bishop_moves(U8 pos, const BoardState &state) {
   const auto &entry = magics::kBishopMagics[pos];
-  const U64 magic_index = ((entry.mask & state.pieces[kAllPieces].as_u64()) * entry.magic) >> entry.shift;
+  const U64 magic_index = ((entry.mask & state.occupied().as_u64()) * entry.magic) >> entry.shift;
   return magics::attacks::bishop_attacks[pos][magic_index];
 }
 
 BitBoard generate_rook_moves(U8 pos, const BoardState &state) {
   const auto &entry = magics::kRookMagics[pos];
-  const U64 magic_index = ((entry.mask & state.pieces[kAllPieces].as_u64()) * entry.magic) >> entry.shift;
+  const U64 magic_index = ((entry.mask & state.occupied().as_u64()) * entry.magic) >> entry.shift;
   return magics::attacks::rook_attacks[pos][magic_index];
 }
 
@@ -116,7 +108,7 @@ BitBoard generate_king_attacks(U8 pos, const BoardState &state) {
 }
 
 BitBoard generate_castling_moves(const BoardState &state, Color which) {
-  BitBoard moves, attacked = get_attacked_squares(state, Color(!which), true), occupied = state.pieces[kAllPieces];
+  BitBoard moves, attacked = get_attacked_squares(state, Color(!which), true), occupied = state.occupied();
 
   if (which == Color::kWhite) {
     if (state.castle.can_kingside_castle(Color::kWhite)) {
@@ -152,41 +144,38 @@ BitBoard generate_castling_moves(const BoardState &state, Color which) {
 BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool include_king_attacks) {
   BitBoard attacked;
 
-  // offset for white and black pieces
-  const int offset = attacker == Color::kBlack ? kBlackPawns : kWhitePawns;
-
-  BitBoard pawns = state.pieces[offset + 0];
+  BitBoard pawns = state.pieces[attacker][kPawns];
   while (pawns) {
     U8 from_square = pawns.pop_lsb();
     attacked |= generate_pawn_attacks(from_square, state);
   }
 
-  BitBoard knights = state.pieces[offset + 1];
+  BitBoard knights = state.pieces[attacker][kKnights];
   while (knights) {
     U8 from_square = knights.pop_lsb();
     attacked |= generate_knight_moves(from_square, state);
   }
 
-  BitBoard bishops = state.pieces[offset + 2];
+  BitBoard bishops = state.pieces[attacker][kBishops];
   while (bishops) {
     U8 from_square = bishops.pop_lsb();
     attacked |= generate_bishop_moves(from_square, state);
   }
 
-  BitBoard rooks = state.pieces[offset + 3];
+  BitBoard rooks = state.pieces[attacker][kRooks];
   while (rooks) {
     U8 from_square = rooks.pop_lsb();
     attacked |= generate_rook_moves(from_square, state);
   }
 
-  BitBoard queens = state.pieces[offset + 4];
+  BitBoard queens = state.pieces[attacker][kQueens];
   while (queens) {
     U8 from_square = queens.pop_lsb();
     attacked |= generate_rook_moves(from_square, state) | generate_bishop_moves(from_square, state);
   }
 
   if (include_king_attacks) {
-    BitBoard king = state.pieces[offset + 5];
+    BitBoard king = state.pieces[attacker][kKings];
     if (king) {
       U8 king_square = king.pop_lsb(); // king is only in one position
       attacked |= generate_king_attacks(king_square, state);
@@ -196,73 +185,55 @@ BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool incl
   return attacked;
 }
 
-__attribute((noinline)) bool is_square_attacked_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
-  BitBoard rook_attacks = generate_rook_moves(pos, state);
-  BitBoard bishop_attacks = generate_bishop_moves(pos, state);
+inline bool is_square_attacked_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
+  const BitBoard rook_attacks = generate_rook_moves(pos, state);
+  const BitBoard bishop_attacks = generate_bishop_moves(pos, state);
 
-  const BitBoard &attacker_rooks = state.pieces[attacker == Color::kWhite ? kWhiteRooks : kBlackRooks];
-  const BitBoard &attacker_bishops = state.pieces[attacker == Color::kWhite ? kWhiteBishops : kBlackBishops];
-  const BitBoard &attacker_queens = state.pieces[attacker == Color::kWhite ? kWhiteQueens : kBlackQueens];
+  const BitBoard &attacker_rooks = state.pieces[attacker][kRooks];
+  const BitBoard &attacker_bishops = state.pieces[attacker][kBishops];
+  const BitBoard &attacker_queens = state.pieces[attacker][kQueens];
 
   return (attacker_queens & (rook_attacks | bishop_attacks)) != 0 ||
       (attacker_rooks & rook_attacks) != 0 ||
       (attacker_bishops & bishop_attacks) != 0;
 }
 
-__attribute((noinline)) bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
-  BitBoard pawn_attacks = generate_pawn_attacks(pos, state);
-  BitBoard knight_attacks = generate_knight_moves(pos, state);
-  BitBoard king_attacks = generate_king_attacks(pos, state);
+inline bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
+  const BitBoard pawn_attacks = generate_pawn_attacks(pos, state);
+  const BitBoard knight_attacks = generate_knight_moves(pos, state);
+  const BitBoard king_attacks = generate_king_attacks(pos, state);
 
-  const BitBoard &attacker_pawns = state.pieces[attacker == Color::kWhite ? kWhitePawns : kBlackPawns];
-  const BitBoard &attacker_knights = state.pieces[attacker == Color::kWhite ? kWhiteKnights : kBlackKnights];
-  const BitBoard &attacker_king = state.pieces[attacker == Color::kWhite ? kWhiteKing : kBlackKing];
+  const BitBoard &attacker_pawns = state.pieces[attacker][kPawns];
+  const BitBoard &attacker_knights = state.pieces[attacker][kKnights];
+  const BitBoard &attacker_king = state.pieces[attacker][kKings];
 
   return (attacker_pawns & pawn_attacks) != 0 ||
       (attacker_knights & knight_attacks) != 0 ||
       (attacker_king & king_attacks) != 0;
 }
 
-bool is_square_attacked(U8 pos, Color attacker, const BoardState &state) {
-  return is_square_attacked_sliding_pieces(pos, attacker, state) || is_square_attacked_non_sliding_pieces(pos, attacker, state);
-}
-
 bool king_in_check(Color color, const BoardState &state) {
-  const BitBoard &king_bb = color == Color::kWhite ? state.pieces[kWhiteKing] : state.pieces[kBlackKing];
-  return is_square_attacked(king_bb.get_lsb_pos(), flip_color(color), state);
+  const auto &king_bb = state.pieces[color][kKings];
+  const auto pos = king_bb.get_lsb_pos();
+  const auto attacker = flip_color(color);
+
+  return is_square_attacked_non_sliding_pieces(pos, attacker, state) || is_square_attacked_sliding_pieces(pos, attacker, state);
 }
 
 MoveList generate_moves(Board &board) {
   MoveList move_list;
 
   auto &state = board.get_state();
-  const bool is_white = state.turn == Color::kWhite;
 
-  BitBoard pawns;
-  BitBoard knights;
-  BitBoard bishops;
-  BitBoard rooks;
-  BitBoard queens;
-  BitBoard king;
+  BitBoard pawns = state.pieces[state.turn][kPawns];
+  BitBoard knights = state.pieces[state.turn][kKnights];
+  BitBoard bishops = state.pieces[state.turn][kBishops];
+  BitBoard rooks = state.pieces[state.turn][kRooks];
+  BitBoard queens = state.pieces[state.turn][kQueens];
+  BitBoard king = state.pieces[state.turn][kKings];
 
-  if (is_white) {
-    pawns = state.pieces[kWhitePawns];
-    knights = state.pieces[kWhiteKnights];
-    bishops = state.pieces[kWhiteBishops];
-    rooks = state.pieces[kWhiteRooks];
-    queens = state.pieces[kWhiteQueens];
-    king = state.pieces[kWhiteKing];
-  } else  {
-    pawns = state.pieces[kBlackPawns];
-    knights = state.pieces[kBlackKnights];
-    bishops = state.pieces[kBlackBishops];
-    rooks = state.pieces[kBlackRooks];
-    queens = state.pieces[kBlackQueens];
-    king = state.pieces[kBlackKing];
-  }
-
-  BitBoard &our_pieces = state.pieces[is_white ? kWhitePieces : kBlackPieces];
-  BitBoard &their_pieces = state.pieces[is_white ? kBlackPieces : kWhitePieces];
+  BitBoard &our_pieces = state.pieces[state.turn][kAllPieces];
+  BitBoard &their_pieces = state.pieces[flip_color(state.turn)][kAllPieces];
 
   while (pawns) {
     U8 from = pawns.pop_lsb();
@@ -382,32 +353,16 @@ MoveList generate_capture_moves(Board &board) {
   auto &state = board.get_state();
   const bool is_white = state.turn == Color::kWhite;
 
-  BitBoard pawns;
-  BitBoard knights;
-  BitBoard bishops;
-  BitBoard rooks;
-  BitBoard queens;
-  BitBoard king;
+  BitBoard pawns = state.pieces[state.turn][kPawns];
+  BitBoard knights = state.pieces[state.turn][kKnights];
+  BitBoard bishops = state.pieces[state.turn][kBishops];
+  BitBoard rooks = state.pieces[state.turn][kRooks];
+  BitBoard queens = state.pieces[state.turn][kQueens];
+  BitBoard king = state.pieces[state.turn][kKings];
 
-  if (is_white) {
-    pawns = state.pieces[kWhitePawns];
-    knights = state.pieces[kWhiteKnights];
-    bishops = state.pieces[kWhiteBishops];
-    rooks = state.pieces[kWhiteRooks];
-    queens = state.pieces[kWhiteQueens];
-    king = state.pieces[kWhiteKing];
-  } else  {
-    pawns = state.pieces[kBlackPawns];
-    knights = state.pieces[kBlackKnights];
-    bishops = state.pieces[kBlackBishops];
-    rooks = state.pieces[kBlackRooks];
-    queens = state.pieces[kBlackQueens];
-    king = state.pieces[kBlackKing];
-  }
-
-  BitBoard &our_pieces = state.pieces[is_white ? kWhitePieces : kBlackPieces];
-  BitBoard &their_pieces = state.pieces[is_white ? kBlackPieces : kWhitePieces];
-  BitBoard &their_king = state.pieces[is_white ? kBlackKing : kWhiteKing];
+  BitBoard &our_pieces = state.pieces[state.turn][kAllPieces];
+  BitBoard &their_pieces = state.pieces[flip_color(state.turn)][kAllPieces];
+  BitBoard &their_king = state.pieces[flip_color(state.turn)][kKings];
 
   while (pawns) {
     U8 from = pawns.pop_lsb();
@@ -513,7 +468,7 @@ MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
     return in_check;
   };
 
-  const BitBoard &all_pieces = state.pieces[kAllPieces];
+  const BitBoard &all_pieces = state.occupied();
 
   MoveList filtered;
 

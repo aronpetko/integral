@@ -32,7 +32,7 @@ class MoveOrderer {
 
   std::array<int, 256> move_scores_;
 
-  static const int kNumKillerMoves = 2;
+  static constexpr int kNumKillerMoves = 2;
 
   static std::array<std::array<Move, kNumKillerMoves>, Search::kMaxSearchDepth> killer_moves;
 

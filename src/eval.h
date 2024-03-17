@@ -6,7 +6,7 @@
 namespace eval {
 
 const int kDrawScore = 0;
-const int kMateScore = 1e9;
+const int kMateScore = 1e8;
 
 const std::array<int, PieceType::kNumPieceTypes> kPieceValues = {
     0, // none
@@ -17,6 +17,10 @@ const std::array<int, PieceType::kNumPieceTypes> kPieceValues = {
     900, // queen
     20000, // king
 };
+
+bool is_mate_score(int evaluation);
+
+int mate_in(int evaluation);
 
 bool is_end_game(const BoardState &state);
 

@@ -35,7 +35,9 @@ class TranspositionTable {
 
   void save(const Entry &entry, int ply);
 
-  [[nodiscard]] const Entry &probe(U64 key) const;
+  [[nodiscard]] const Entry &probe(const U64 &key) const;
+
+  [[nodiscard]] int correct_eval(int evaluation, int ply);
 
  private:
   std::vector<Entry> table_;

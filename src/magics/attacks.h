@@ -6,11 +6,9 @@
 namespace magics::attacks {
 
 const int kBishopBlockerCombinations = 512;
-
 const int kRookBlockerCombinations = 4096;
 
 extern std::array<std::array<BitBoard, kBishopBlockerCombinations>, Square::kSquareCount> bishop_attacks;
-
 extern std::array<std::array<BitBoard, kRookBlockerCombinations>, Square::kSquareCount> rook_attacks;
 
 BitBoard generate_bishop_mask(U8 pos);

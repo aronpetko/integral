@@ -12,7 +12,6 @@
 #include "transpo.h"
 
 const int kMaxGameMoves = 2048;
-
 const int kHalfMoveLimit = 1024;
 
 class CastleData {
@@ -73,15 +72,31 @@ class CastleData {
 struct BoardState {
   BoardState() : half_moves(0), fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt), piece_types({}) {}
 
-  [[nodiscard]] Color get_piece_color(U8 pos) const;
+  [[nodiscard]] constexpr inline Color get_piece_color(U8 pos) const {
+    if (pieces[Color::kWhite][kAllPieces].is_set(pos)) return Color::kWhite;
+    if (pieces[Color::kBlack][kAllPieces].is_set(pos)) return Color::kBlack;
+    return Color::kNoColor;
+  }
 
-  [[nodiscard]] Color get_piece_color(const BitBoard &bb) const;
+  [[nodiscard]] constexpr inline Color get_piece_color(const BitBoard &bb) const {
+    if (pieces[Color::kWhite][kAllPieces] & bb) return Color::kWhite;
+    if (pieces[Color::kBlack][kAllPieces] & bb) return Color::kBlack;
+    return Color::kNoColor;
+  }
 
-  [[nodiscard]] PieceType get_piece_type(U8 pos) const;
+  [[nodiscard]] constexpr inline PieceType get_piece_type(U8 pos) const {
+    return piece_types[pos];
+  }
 
-  [[nodiscard]] PieceType get_piece_type(const BitBoard &bb) const;
+  [[nodiscard]] constexpr inline PieceType get_piece_type(const BitBoard &bb) const {
+    return piece_types[bb.get_lsb_pos()];
+  }
 
-  BitBoards pieces;
+  [[nodiscard]] constexpr inline BitBoard occupied() const {
+    return pieces[Color::kWhite][kAllPieces] | pieces[Color::kBlack][kAllPieces];
+  }
+
+  std::array<std::array<BitBoard, kNumBitBoards>, 2> pieces;
   std::array<PieceType, Square::kSquareCount> piece_types;
   Color turn;
   U32 half_moves;
@@ -105,7 +120,7 @@ class Board {
     return transpo_table_;
   }
 
-  bool initialized() const {
+  [[nodiscard]] bool initialized() const {
     return initialized_;
   }
 
@@ -127,7 +142,7 @@ class Board {
  private:
   BoardState state_;
 
-  std::array<BoardState, kMaxGameMoves>  history_;
+  std::array<BoardState, kMaxGameMoves> history_;
 
   int history_count_;
 

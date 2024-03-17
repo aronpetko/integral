@@ -60,40 +60,6 @@ std::optional<Move> Move::from_str(BoardState &state, std::string_view str) {
   return Move(from, to, promotion_type);
 }
 
-[[nodiscard]] U8 Move::get_from() const {
-  return data_ & kFromMask;
-}
-
-[[nodiscard]] U8 Move::get_to() const {
-  return (data_ & kToMask) >> 6;
-}
-
-[[nodiscard]] PieceType Move::get_piece_type() const {
-  return PieceType((data_ & kPieceTypeMask) >> 12);
-}
-
-[[nodiscard]] PromotionType Move::get_promotion_type() const {
-  return PromotionType((data_ & kPromotionTypeMask) >> 15);
-}
-
-void Move::set_from(U8 from) {
-  data_ &= ~kFromMask;
-  data_ |= static_cast<U32>(from) & kFromMask;
-}
-
-void Move::set_to(U8 to) {
-  data_ &= ~kToMask;
-  data_ |= (static_cast<U32>(to) << 6) & kToMask;
-}
-
-void Move::set_piece_type(PieceType piece_type) {
-  data_ = (data_ & ~kPieceTypeMask) | (static_cast<U8>(piece_type) << 12);
-}
-
-void Move::set_promotion_type(PromotionType promotion_type) {
-  data_ = (data_ & ~kPromotionTypeMask) | (static_cast<U8>(promotion_type) << 15);
-}
-
 [[nodiscard]] std::string Move::to_string() const {
   if (*this == null_move())
     return "null";

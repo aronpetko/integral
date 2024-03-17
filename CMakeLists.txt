@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(integral)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -DNDEBUG -flto")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 
 file(GLOB SOURCES "src/*.cpp")

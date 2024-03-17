@@ -10,7 +10,7 @@ U64 hash_turn(BoardState &state) {
 U64 hash_square(U8 square, BoardState &state) {
   const BitBoard bb_pos = BitBoard::from_square(square);
 
-  if (!(state.pieces[kAllPieces] & bb_pos))
+  if (!state.occupied().is_set(square))
     return 0ULL;
 
   const auto color = state.get_piece_color(bb_pos);
@@ -52,17 +52,17 @@ U64 hash_en_passant(BoardState &state) {
   if (!state.en_passant.has_value())
     return 0ULL;
 
-  const auto ep_square = state.en_passant.value();
+  const auto ep_square = state.en_passant;
 
   // if our pawn can capture the en passant
-  const BitBoard &our_pawns = state.pieces[state.turn == kWhite ? kWhitePawns : kBlackPawns];
+  const BitBoard &our_pawns = state.pieces[state.turn][kPawns];
 
-  BitBoard en_passant_bb = BitBoard::from_square(ep_square);
+  BitBoard en_passant_bb = BitBoard::from_square(ep_square.value());
   en_passant_bb = state.turn == Color::kWhite ? shift<Direction::kSouth>(en_passant_bb) : shift<Direction::kNorth>(en_passant_bb);
   en_passant_bb = shift<Direction::kEast>(en_passant_bb) | shift<Direction::kWest>(en_passant_bb);
 
   if (en_passant_bb & our_pawns) {
-    const int en_passant_file = ep_square % kBoardFiles;
+    const int en_passant_file = file(ep_square.value());
     return kRandomsArray[Indices::kEnPassantFileA + en_passant_file];
   }
 

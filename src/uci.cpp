@@ -39,6 +39,7 @@ void position(Board &board, std::stringstream &input_stream) {
     std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
     log << move_input << std::endl;
     log.close();
+
     if (move.has_value() && board.is_legal_move(move.value())) {
       board.make_move(move.value());
     } else {

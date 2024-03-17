@@ -64,39 +64,7 @@ const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kPieceSquareTab
       20, 20, 0, 0, 0, 0, 20, 20,
       20, 30, 10, 0, 0, 10, 30, 20
     },
-    { // king end game
-      -50, -40, -30, -20, -20, -30, -40, -50,
-      -30, -20, -10, 0, 0, -10, -20, -30,
-      -30, -10, 20, 30, 30, 20, -10, -30,
-      -30, -10, 30, 40, 40, 30, -10, -30,
-      -30, -10, 30, 40, 40, 30, -10, -30,
-      -30, -10, 20, 30, 30, 20, -10, -30,
-      -30, -30, 0, 0, 0, 0, -30, -30,
-      -50, -30, -30, -30, -30, -30, -30, -50
-    }
 }};
-
-const std::array<int, 64> kCentralizationScores = {
-    0, 0, 0, 0, 0, 0, 0, 0,
-    0, 2, 2, 2, 2, 2, 2, 0,
-    0, 2, 4, 4, 4, 4, 2, 0,
-    0, 2, 5, 12, 12, 5, 2, 0,
-    0, 2, 5, 12, 12, 5, 2, 0,
-    0, 2, 4, 4, 4, 4, 2, 0,
-    0, 2, 2, 2, 2, 2, 2, 0,
-    0, 0, 0, 0, 0, 0, 0, 0
-};
-
-const std::array<int, 64> kPawnScores = {
-    0, 0, 0, 0, 0, 0, 0, 0,
-    50, 50, 50, 50, 50, 50, 50, 50,
-    10, 10, 20, 30, 30, 20, 10, 10,
-    5, 5, 10, 25, 25, 10, 5, 5,
-    0, 0, 0, 20, 20, 0, 0, 0,
-    5, -5, -10, 0, 0, -10, -5, 5,
-    5, 10, 10, -20, -20, 10, 10, 5,
-    0, 0, 0, 0, 0, 0, 0, 0
-};
 
 const std::array<int, 64> kKingEndgameScores = {
     -50, -40, -30, -20, -20, -30, -40, -50,
@@ -109,98 +77,77 @@ const std::array<int, 64> kKingEndgameScores = {
     -50, -30, -30, -30, -30, -30, -30, -50
 };
 
+bool is_mate_score(int evaluation) {
+  const int kThreshold = 1048;
+  return kMateScore - abs(evaluation) <= kThreshold;
+}
+
+int mate_in(int evaluation) {
+  if (evaluation > 0 && evaluation < kMateScore) { // mate in favor
+    return kMateScore - evaluation;
+  } else if (evaluation < 0 && evaluation > -kMateScore) { // mate against
+    return -kMateScore - evaluation;
+  }
+
+  // not a mate score
+  return evaluation;
+}
+
 // idea: instead of returning true/false have an end game factor that is some interpolation of the material and game phase
 //       this would be valuable for variable evaluation bonuses/penalties
 bool is_end_game(const BoardState &state) {
-  const int white_material = state.pieces[kWhitePawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
-      + state.pieces[kWhiteKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
-      + state.pieces[kWhiteBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
-      + state.pieces[kWhiteQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
-  const int black_material = state.pieces[kBlackPawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
-      + state.pieces[kBlackKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
-      + state.pieces[kBlackBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
-      + state.pieces[kBlackQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
+  const int white_material = state.pieces[Color::kWhite][kPawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
+      + state.pieces[Color::kWhite][kKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
+      + state.pieces[Color::kWhite][kBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
+      + state.pieces[Color::kWhite][kQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
+  const int black_material = state.pieces[Color::kBlack][kPawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
+      + state.pieces[Color::kBlack][kKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
+      + state.pieces[Color::kBlack][kBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
+      + state.pieces[Color::kBlack][kQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
 
-  return white_material + black_material <= 2700;
+  return white_material + black_material <= 1600;
 }
 
 int material_difference(const BoardState &state) {
   int material = 0;
 
-  material += state.pieces[kWhitePawns].pop_count() * kPieceValues[PieceType::kPawn];
-  material += state.pieces[kWhiteKnights].pop_count() * kPieceValues[PieceType::kKnight];
-  material += state.pieces[kWhiteBishops].pop_count() * kPieceValues[PieceType::kBishop];
-  material += state.pieces[kWhiteRooks].pop_count() * kPieceValues[PieceType::kRook];
-  material += state.pieces[kWhiteQueens].pop_count() * kPieceValues[PieceType::kQueen];
+  material += state.pieces[Color::kWhite][kPawns].pop_count() * kPieceValues[PieceType::kPawn];
+  material += state.pieces[Color::kWhite][kKnights].pop_count() * kPieceValues[PieceType::kKnight];
+  material += state.pieces[Color::kWhite][kBishops].pop_count() * kPieceValues[PieceType::kBishop];
+  material += state.pieces[Color::kWhite][kRooks].pop_count() * kPieceValues[PieceType::kRook];
+  material += state.pieces[Color::kWhite][kQueens].pop_count() * kPieceValues[PieceType::kQueen];
 
-  material -= state.pieces[kBlackPawns].pop_count() * kPieceValues[PieceType::kPawn];
-  material -= state.pieces[kBlackKnights].pop_count() * kPieceValues[PieceType::kKnight];
-  material -= state.pieces[kBlackBishops].pop_count() * kPieceValues[PieceType::kBishop];
-  material -= state.pieces[kBlackRooks].pop_count() * kPieceValues[PieceType::kRook];
-  material -= state.pieces[kBlackQueens].pop_count() * kPieceValues[PieceType::kQueen];
+  material -= state.pieces[Color::kBlack][kPawns].pop_count() * kPieceValues[PieceType::kPawn];
+  material -= state.pieces[Color::kBlack][kKnights].pop_count() * kPieceValues[PieceType::kKnight];
+  material -= state.pieces[Color::kBlack][kBishops].pop_count() * kPieceValues[PieceType::kBishop];
+  material -= state.pieces[Color::kBlack][kRooks].pop_count() * kPieceValues[PieceType::kRook];
+  material -= state.pieces[Color::kBlack][kQueens].pop_count() * kPieceValues[PieceType::kQueen];
 
   return state.turn == Color::kWhite ? material : -material;
 }
 
 int positional_difference(int material_diff, const BoardState &state) {
   int position_value = 0;
-  
-  const auto centralization_score = [](BitBoard bb) {
-    int score = 0;
-    while (bb) score += kCentralizationScores[bb.pop_lsb()];
-    return score;
-  };
 
   const bool is_white = state.turn == Color::kWhite;
   const bool end_game = is_end_game(state);
 
-  const auto end_game_pawn_score = [&end_game](BitBoard bb, Color side) {
-    int score = 0;
-    while (bb && end_game) score += kPawnScores[side == Color::kWhite ? bb.pop_lsb() ^ 56 : bb.pop_lsb()];
-    return score;
-  };
-
-  position_value += centralization_score(state.pieces[kWhitePawns]) + end_game_pawn_score(state.pieces[kWhitePawns], Color::kWhite);
-  position_value += centralization_score(state.pieces[kWhiteKnights]);
-  position_value += centralization_score(state.pieces[kWhiteBishops]);
-  position_value += centralization_score(state.pieces[kWhiteRooks]);
-  position_value += centralization_score(state.pieces[kWhiteQueens]);
-
-  position_value -= centralization_score(state.pieces[kBlackPawns]) + end_game_pawn_score(state.pieces[kBlackPawns], Color::kBlack);;
-  position_value -= centralization_score(state.pieces[kBlackKnights]);
-  position_value -= centralization_score(state.pieces[kBlackBishops]);
-  position_value -= centralization_score(state.pieces[kBlackRooks]);
-  position_value -= centralization_score(state.pieces[kBlackQueens]);
-
-  const bool less_or_equal_material = material_diff <= 0;
-  if (less_or_equal_material && end_game) {
-    const int king_pos = state.pieces[is_white ? kWhiteKing : kBlackKing].get_lsb_pos();
+  if (end_game) {
+    const int king_pos = state.pieces[state.turn][kKings].get_lsb_pos();
     position_value += kKingEndgameScores[is_white ? king_pos ^ 56 : king_pos];
   }
 
-  /*const bool less_or_equal_material = material_diff <= 0;
-  const bool end_game = is_end_game(state);
-
-  for (int i = 0; i < kPieceSquareTables.size() - 1; i++) {
-    const int white_piece_idx = kWhitePawns + i;
-    const int black_piece_idx = kBlackPawns + i;
-
-    BitBoard white_pieces = state.pieces[white_piece_idx];
+  for (int i = 0; i < kPieceSquareTables.size(); i++) {
+    BitBoard white_pieces = state.pieces[Color::kWhite][i];
     while (white_pieces) {
-      U8 pos = white_pieces.pop_lsb();
-
-      const bool use_end_game_table = white_piece_idx == kWhiteKing && end_game && less_or_equal_material;
-      position_value += kPieceSquareTables[i + use_end_game_table][pos ^ 56];
+      position_value += kPieceSquareTables[i][white_pieces.pop_lsb() ^ 56];
     }
 
-    BitBoard black_pieces = state.pieces[black_piece_idx];
+    BitBoard black_pieces = state.pieces[Color::kBlack][i];
     while (black_pieces) {
-      U8 pos = black_pieces.pop_lsb();
-
-      const bool use_end_game_table = black_piece_idx == kBlackKing && end_game && less_or_equal_material;
-      position_value -= kPieceSquareTables[i + use_end_game_table][pos];
+      position_value -= kPieceSquareTables[i][black_pieces.pop_lsb()];
     }
-  }*/
+  }
 
   return state.turn == Color::kWhite ? position_value : -position_value;
 }
@@ -209,8 +156,8 @@ int stacked_pawns_difference(const BoardState &state) {
   int stacked_pawns = 0;
 
   for (const auto& file_mask : kFileMasks) {
-    const BitBoard white_pawns_on_file = state.pieces[kWhitePawns] & file_mask;
-    const BitBoard black_pawns_on_file = state.pieces[kBlackPawns] & file_mask;
+    const BitBoard white_pawns_on_file = state.pieces[Color::kWhite][kPawns] & file_mask;
+    const BitBoard black_pawns_on_file = state.pieces[Color::kBlack][kPawns] & file_mask;
     stacked_pawns += (white_pawns_on_file.pop_count() > 1) - (black_pawns_on_file.pop_count() > 1);
   }
 
@@ -227,10 +174,10 @@ int passed_pawns_score(const BoardState &state) {
   int passed_pawns = 0;
   int rooks_behind_passers = 0;
 
-  const BitBoard &white_pawns = state.pieces[kWhitePawns];
-  const BitBoard &white_rooks = state.pieces[kWhiteRooks];
-  const BitBoard &black_pawns = state.pieces[kBlackPawns];
-  const BitBoard &black_rooks = state.pieces[kBlackRooks];
+  const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
+  const BitBoard &white_rooks = state.pieces[Color::kWhite][kRooks];
+  const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
+  const BitBoard &black_rooks = state.pieces[Color::kBlack][kRooks];
 
   for (const auto& file_mask : kFileMasks) {
     const BitBoard black_pawns_on_file = black_pawns & file_mask;
@@ -267,11 +214,11 @@ int passed_pawns_score(const BoardState &state) {
 int mobility_difference(const BoardState &state) {
   int mobility = 0;
 
-  const BitBoard &all_pieces = state.pieces[kAllPieces];
-  const BitBoard &white_pawns = state.pieces[kWhitePawns];
-  const BitBoard &white_rooks = state.pieces[kWhiteRooks];
-  const BitBoard &black_pawns = state.pieces[kBlackPawns];
-  const BitBoard &black_rooks = state.pieces[kBlackRooks];
+  const BitBoard &all_pieces = state.occupied();
+  const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
+  const BitBoard &white_rooks = state.pieces[Color::kWhite][kRooks];
+  const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
+  const BitBoard &black_rooks = state.pieces[Color::kBlack][kRooks];
 
   const int kOpenFileBonus = 20;
   const int kSemiOpenFileBonus = 15;
@@ -316,10 +263,10 @@ int mobility_difference(const BoardState &state) {
 int king_safety_difference(const BoardState &state) {
   int score = 0;
 
-  const BitBoard &white_pawns = state.pieces[kWhitePawns];
-  const BitBoard &white_king = state.pieces[kWhiteKing];
-  const BitBoard &black_pawns = state.pieces[kBlackPawns];
-  const BitBoard &black_king = state.pieces[kBlackKing];
+  const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
+  const BitBoard &white_king = state.pieces[Color::kWhite][kKings];
+  const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
+  const BitBoard &black_king = state.pieces[Color::kBlack][kKings];
 
   const int kPawnProtectionBonus = 5;
   const int kDoublePawnProtectionBonus = 4;

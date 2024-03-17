@@ -9,8 +9,7 @@ class BoardState;
 
 const U32 kFromMask = 0b000000000000111111;
 const U32 kToMask = 0b000000111111000000;
-const U32 kPieceTypeMask = 0b000111000000000000;
-const U32 kPromotionTypeMask = 0b111000000000000000;
+const U32 kPromotionTypeMask = 0b000111000000000000;
 
 // bits 0-5: from
 // bits 6-11: to
@@ -29,21 +28,31 @@ class Move {
 
   static std::optional<Move> from_str(BoardState &board, std::string_view str);
 
-  [[nodiscard]] U8 get_from() const;
+  [[nodiscard]] constexpr inline U8 get_from() const {
+    return data_ & kFromMask;
+  }
 
-  [[nodiscard]] U8 get_to() const;
+  [[nodiscard]] constexpr inline U8 get_to() const {
+    return (data_ & kToMask) >> 6;
+  }
 
-  [[nodiscard]] PieceType get_piece_type() const;
+  [[nodiscard]] constexpr inline PromotionType get_promotion_type() const {
+    return PromotionType((data_ & kPromotionTypeMask) >> 12);
+  }
 
-  [[nodiscard]] PromotionType get_promotion_type() const;
+  constexpr inline void set_from(U8 from) {
+    data_ &= ~kFromMask;
+    data_ |= static_cast<U32>(from) & kFromMask;
+  }
 
-  void set_from(U8 from);
+  constexpr inline void set_to(U8 to) {
+    data_ &= ~kToMask;
+    data_ |= (static_cast<U32>(to) << 6) & kToMask;
+  }
 
-  void set_to(U8 to);
-
-  void set_piece_type(PieceType piece_type);
-
-  void set_promotion_type(PromotionType promotion_type);
+  constexpr inline void set_promotion_type(PromotionType promotion_type) {
+    data_ = (data_ & ~kPromotionTypeMask) | (static_cast<U8>(promotion_type) << 12);
+  }
 
   [[nodiscard]] std::string to_string() const;
 

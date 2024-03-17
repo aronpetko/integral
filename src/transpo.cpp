@@ -32,6 +32,17 @@ void TranspositionTable::save(const Entry &entry, int ply) {
   }
 }
 
-const TranspositionTable::Entry &TranspositionTable::probe(U64 key) const {
+int TranspositionTable::correct_eval(int evaluation, int ply) {
+  const int kRoughlyMate = -eval::kMateScore + 1000;
+  if (evaluation <= kRoughlyMate) {
+    evaluation -= ply;
+  } else if (evaluation >= -kRoughlyMate) {
+    evaluation += ply;
+  }
+
+  return evaluation;
+}
+
+const TranspositionTable::Entry &TranspositionTable::probe(const U64 &key) const {
   return table_[key % table_size_];
 }

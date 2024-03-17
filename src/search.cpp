@@ -5,6 +5,7 @@
 #include "time_mgmt.h"
 
 #include <iomanip>
+#include <format>
 
 Search::Search(TimeManagement::Config &time_config, Board &board)
     : board_(board),
@@ -32,9 +33,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
   if (alpha < stand_pat)
     alpha = stand_pat;
 
-  // the game is over if we couldn't try a move
   auto legal_moves = generate_legal_moves(board_);
-
   if (legal_moves.empty()) {
     return king_in_check(flip_color(state.turn), state) ? -eval::kMateScore + ply : eval::kDrawScore;
   } else if (state.fifty_moves_clock >= 100) {
@@ -46,8 +45,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
   for (int i = 0; i < move_orderer.size(); i++) {
     board_.make_move(move_orderer.get_move(i));
 
-    const bool in_check = state.pieces[state.turn == Color::kWhite ? kBlackKing : kWhiteKing] == 0ULL
-                          || king_in_check(flip_color(state.turn), state);
+    const bool in_check = king_in_check(flip_color(state.turn), state);
     if (in_check) {
       board_.undo_move();
       continue;
@@ -83,30 +81,32 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
   const int original_alpha = alpha;
 
   const auto &tt_entry = transpo.probe(state.zobrist_key);
+  const auto corrected_tt_eval = transpo.correct_eval(tt_entry.evaluation, ply);
+
   if (tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
     switch (tt_entry.flag) {
       case TranspositionTable::Entry::kExact:
         if (ply == 0) {
           best_move_this_iteration_ = tt_entry.best_move;
-          best_eval_this_iteration_ = tt_entry.evaluation;
+          best_eval_this_iteration_ = corrected_tt_eval;
         }
 
-        return tt_entry.evaluation;
+        return corrected_tt_eval;
       case TranspositionTable::Entry::kLowerBound:
-        alpha = std::max(alpha, tt_entry.evaluation);
+        alpha = std::max(alpha, corrected_tt_eval);
         break;
       case TranspositionTable::Entry::kUpperBound:
-        beta = std::min(beta, tt_entry.evaluation);
+        beta = std::min(beta, corrected_tt_eval);
         break;
     }
 
     if (alpha >= beta) {
       if (ply == 0) {
         best_move_this_iteration_ = tt_entry.best_move;
-        best_eval_this_iteration_ = tt_entry.evaluation;
+        best_eval_this_iteration_ = corrected_tt_eval;
       }
 
-      return tt_entry.evaluation;
+      return corrected_tt_eval;
     }
   }
 
@@ -127,12 +127,12 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     return quiesce(ply, alpha, beta);
   }
 
-  const int cur_eval = eval::evaluate(state);
+  const int static_eval = eval::evaluate(state);
   const int kReverseFutilityDepthLimit = 6;
 
   if (depth <= kReverseFutilityDepthLimit && !following_pv_ && !in_check) {
-    if (cur_eval - futility_margin(depth) >= beta)
-      return cur_eval;
+    if (static_eval - futility_margin(depth) >= beta)
+      return static_eval;
   }
 
   // null move pruning
@@ -142,7 +142,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     can_do_null_move = false;
     board_.make_null_move();
 
-    const int reduction = depth / 4 + 3;
+    const int reduction = depth >= 6 ? 3 : 2;
     const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -beta + 1);
 
     board_.undo_move();
@@ -165,7 +165,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
-    const bool is_capture = state.pieces[state.turn == Color::kWhite ? kBlackPieces : kWhitePieces].is_set(move.get_to());
+    const bool is_capture = state.piece_types[move.get_to()] != PieceType::kNone;
     const bool is_promotion = move.get_promotion_type() != PromotionType::kNone;
 
     board_.make_move(move);
@@ -185,7 +185,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
       // apply LMR conditions to subsequent moves
       int reduction = 0;
       if (depth >= 3 && moves_tried >= 2 && !following_pv_ && !is_promotion && !is_capture && !in_check) {
-        reduction = depth <= 5 ? 1 : depth / 3;
+        reduction = depth <= 5 ? 1 : std::min(depth / 3, 3);
       }
 
       // null window search for a quick refutation or indication of a potentially good move
@@ -293,9 +293,25 @@ Move Search::find_best_move() {
     negamax(depth, 0, -std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
 
     if (best_move_this_iteration_ != Move::null_move()) {
-       std::cout << "best move: " << best_move_this_iteration_.to_string() << " | evaluation: " << std::fixed
-                << std::setprecision(2) << best_eval_this_iteration_ / 100.0 << " | depth: " << depth
-                << std::endl;
+      if (eval::is_mate_score(best_eval_this_iteration_)) {
+        if (best_eval_this_iteration_ < 0) {
+          std::cout << std::format("best move: {}  eval: losing mate in {}  depth: {}\n",
+                                   best_move_this_iteration_.to_string(),
+                                   eval::mate_in(best_eval_this_iteration_) / 2,
+                                   depth);
+        } else {
+          std::cout << std::format("best move: {}  eval: winning mate in {}  depth: {}\n",
+                                   best_move_this_iteration_.to_string(),
+                                   eval::mate_in(best_eval_this_iteration_) / 2,
+                                   depth);
+        }
+      } else {
+        std::cout << std::format("best move: {}  eval: {}  depth: {}\n",
+                                 best_move_this_iteration_.to_string(),
+                                 best_eval_this_iteration_ / 100.0,
+                                 depth);
+      }
+
 
       best_move = best_move_this_iteration_;
       best_eval = best_eval_this_iteration_;

@@ -2,21 +2,21 @@
 
 namespace fen {
 
-char get_piece_char(BitBoards &pieces, U8 pos) {
-  if (pieces[kWhitePieces].is_set(pos)) {
-    if (pieces[kWhitePawns].is_set(pos)) return 'P';
-    if (pieces[kWhiteKnights].is_set(pos)) return 'N';
-    if (pieces[kWhiteBishops].is_set(pos)) return 'B';
-    if (pieces[kWhiteRooks].is_set(pos)) return 'R';
-    if (pieces[kWhiteQueens].is_set(pos)) return 'Q';
-    if (pieces[kWhiteKing].is_set(pos)) return 'K';
-  } else if (pieces[kBlackPieces].is_set(pos)) {
-    if (pieces[kBlackPawns].is_set(pos)) return 'p';
-    if (pieces[kBlackKnights].is_set(pos)) return 'n';
-    if (pieces[kBlackBishops].is_set(pos)) return 'b';
-    if (pieces[kBlackRooks].is_set(pos)) return 'r';
-    if (pieces[kBlackQueens].is_set(pos)) return 'q';
-    if (pieces[kBlackKing].is_set(pos)) return 'k';
+char get_piece_char(const std::array<std::array<BitBoard, kNumBitBoards>, 2> &pieces, U8 pos) {
+  if (pieces[Color::kWhite][kAllPieces].is_set(pos)) {
+    if (pieces[Color::kWhite][kPawns].is_set(pos)) return 'P';
+    if (pieces[Color::kWhite][kKnights].is_set(pos)) return 'N';
+    if (pieces[Color::kWhite][kBishops].is_set(pos)) return 'B';
+    if (pieces[Color::kWhite][kRooks].is_set(pos)) return 'R';
+    if (pieces[Color::kWhite][kQueens].is_set(pos)) return 'Q';
+    if (pieces[Color::kWhite][kKings].is_set(pos)) return 'K';
+  } else if (pieces[Color::kBlack][kAllPieces].is_set(pos)) {
+    if (pieces[Color::kBlack][kPawns].is_set(pos)) return 'p';
+    if (pieces[Color::kBlack][kKnights].is_set(pos)) return 'n';
+    if (pieces[Color::kBlack][kBishops].is_set(pos)) return 'b';
+    if (pieces[Color::kBlack][kRooks].is_set(pos)) return 'r';
+    if (pieces[Color::kBlack][kQueens].is_set(pos)) return 'q';
+    if (pieces[Color::kBlack][kKings].is_set(pos)) return 'k';
   }
   return ' ';
 }
@@ -43,46 +43,18 @@ BoardState string_to_board(const std::string &fen_str) {
       square += ch - '0';
       continue;
     }
-
-    BitBoard *target = nullptr;
-
-    const bool is_black_piece = std::islower(ch);
+    
+    const Color piece_color = std::islower(ch) ? Color::kBlack : Color::kWhite;
     const auto piece_type = kCharToPieceType.at(std::tolower(ch));
 
-    switch (piece_type) {
-      case PieceType::kPawn:
-        target = is_black_piece ? &pieces[kBlackPawns] : &pieces[kWhitePawns];
-        break;
-      case PieceType::kKnight:
-        target = is_black_piece ? &pieces[kBlackKnights] : &pieces[kWhiteKnights];
-        break;
-      case PieceType::kBishop:
-        target = is_black_piece ? &pieces[kBlackBishops] : &pieces[kWhiteBishops];
-        break;
-      case PieceType::kRook:
-        target = is_black_piece ? &pieces[kBlackRooks] : &pieces[kWhiteRooks];
-        break;
-      case PieceType::kQueen:
-        target = is_black_piece ? &pieces[kBlackQueens] : &pieces[kWhiteQueens];
-        break;
-      case PieceType::kKing:
-        target = is_black_piece ? &pieces[kBlackKing] : &pieces[kWhiteKing];
-        break;
-      default:
-        break;
-    }
-
-    if (target) {
-      target->set_bit(square);
-      state.piece_types[square] = piece_type;
-    }
+    pieces[piece_color][piece_type - 1].set_bit(square);
+    state.piece_types[square] = piece_type;
 
     square++;
   }
 
-  pieces[kWhitePieces] = pieces[kWhitePawns] | pieces[kWhiteKnights] | pieces[kWhiteBishops] | pieces[kWhiteRooks] | pieces[kWhiteQueens] | pieces[kWhiteKing];
-  pieces[kBlackPieces] = pieces[kBlackPawns] | pieces[kBlackKnights] | pieces[kBlackBishops] | pieces[kBlackRooks] | pieces[kBlackQueens] | pieces[kBlackKing];
-  pieces[kAllPieces] = pieces[kWhitePieces] | pieces[kBlackPieces];
+  pieces[Color::kWhite][kAllPieces] = pieces[Color::kWhite][kPawns] | pieces[Color::kWhite][kKnights] | pieces[Color::kWhite][kBishops] | pieces[Color::kWhite][kRooks] | pieces[Color::kWhite][kQueens] | pieces[Color::kWhite][kKings];
+  pieces[Color::kBlack][kAllPieces] = pieces[Color::kBlack][kPawns] | pieces[Color::kBlack][kKnights] | pieces[Color::kBlack][kBishops] | pieces[Color::kBlack][kRooks] | pieces[Color::kBlack][kQueens] | pieces[Color::kBlack][kKings];
 
   char turn;
   stream >> turn;
@@ -101,9 +73,12 @@ BoardState string_to_board(const std::string &fen_str) {
       state.castle.set_can_queenside_castle(Color::kBlack, true);
   }
 
-  // todo: implement this
-  char en_passant;
+  std::string en_passant;
   stream >> en_passant;
+
+  if (en_passant != "-") {
+    state.en_passant = Square(rank_file_to_pos(en_passant[1] - '1', en_passant[0] - 'a'));
+  }
 
   stream >> state.fifty_moves_clock;
   stream >> state.half_moves;
@@ -128,7 +103,7 @@ std::string board_to_string(BoardState& state) {
     for (int file = 0; file < 8; file++) {
       U8 square = rank_file_to_pos(rank, file);
 
-      if (state.pieces[kAllPieces].is_set(square))
+      if (state.occupied().is_set(square))
         output.push_back(get_piece_char(state.pieces, square));
       else
         empty++;
