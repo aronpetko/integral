@@ -14,6 +14,8 @@ void TranspositionTable::resize(std::size_t mb_size) {
 
   table_size_ = (mb_size * kBytesInMegabyte) / sizeof(Entry);
   table_.resize(table_size_);
+
+  clear();
 }
 
 void TranspositionTable::clear() {
@@ -26,18 +28,18 @@ void TranspositionTable::save(const Entry &entry, int ply) {
 
   const int kRoughlyMate = -eval::kMateScore + 1000;
   if (entry.evaluation <= kRoughlyMate) {
-    table_entry.evaluation += ply;
-  } else if (entry.evaluation >= -kRoughlyMate) {
     table_entry.evaluation -= ply;
+  } else if (entry.evaluation >= -kRoughlyMate) {
+    table_entry.evaluation += ply;
   }
 }
 
 int TranspositionTable::correct_eval(int evaluation, int ply) {
   const int kRoughlyMate = -eval::kMateScore + 1000;
   if (evaluation <= kRoughlyMate) {
-    evaluation -= ply;
-  } else if (evaluation >= -kRoughlyMate) {
     evaluation += ply;
+  } else if (evaluation >= -kRoughlyMate) {
+    evaluation -= ply;
   }
 
   return evaluation;

@@ -44,13 +44,6 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
   for (int i = 0; i < move_orderer.size(); i++) {
     board_.make_move(move_orderer.get_move(i));
-
-    const bool in_check = king_in_check(flip_color(state.turn), state);
-    if (in_check) {
-      board_.undo_move();
-      continue;
-    }
-
     const int score = -quiesce(ply + 1, -beta, -alpha);
     board_.undo_move();
 
@@ -70,7 +63,7 @@ int futility_margin(int depth) {
   return kBaseMargin + depth * kMarginIncrement;
 }
 
-int Search::negamax(int depth, int ply, int alpha, int beta) {
+int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   if (board_.has_repeated(1)) {
     return eval::kDrawScore;
   }
@@ -79,11 +72,11 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
   auto &transpo = board_.get_transpo_table();
 
   const int original_alpha = alpha;
-
   const auto &tt_entry = transpo.probe(state.zobrist_key);
-  const auto corrected_tt_eval = transpo.correct_eval(tt_entry.evaluation, ply);
 
   if (tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
+    const auto corrected_tt_eval = transpo.correct_eval(tt_entry.evaluation, ply);
+
     switch (tt_entry.flag) {
       case TranspositionTable::Entry::kExact:
         if (ply == 0) {
@@ -91,8 +84,11 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
           best_eval_this_iteration_ = corrected_tt_eval;
         }
 
-        // this move caused a beta cutoff, so it is considered a pv move
-        pv_line_this_iteration_.update(ply, tt_entry.best_move);
+        if (!following_pv_) {
+          // this move caused a beta cutoff, so it is considered a pv move
+          pv_line.clear();
+          pv_line.push(tt_entry.best_move);
+        }
 
         return corrected_tt_eval;
       case TranspositionTable::Entry::kLowerBound:
@@ -104,12 +100,15 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     }
 
     if (alpha >= beta) {
-      // this move caused a beta cutoff, so it is considered a pv move
-      pv_line_this_iteration_.update(ply, tt_entry.best_move);
-
       if (ply == 0) {
         best_move_this_iteration_ = tt_entry.best_move;
         best_eval_this_iteration_ = corrected_tt_eval;
+      }
+
+      if (!following_pv_) {
+        // this move caused a beta cutoff, so it is considered a pv move
+        pv_line.clear();
+        pv_line.push(tt_entry.best_move);
       }
 
       return corrected_tt_eval;
@@ -149,7 +148,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
     board_.make_null_move();
 
     const int reduction = depth >= 6 ? 3 : 2;
-    const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -beta + 1);
+    const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -beta + 1, pv_line);
 
     board_.undo_move();
     can_do_null_move = true;
@@ -167,6 +166,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
 
   Move best_move = Move::null_move();
   int best_eval = std::numeric_limits<int>::min();
+  PVLine child_pv_line;
 
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
@@ -186,23 +186,23 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
 
     // search the first move to full depth without reduction
     if (moves_tried == 0) {
-      score = -negamax(depth - 1, ply + 1, -beta, -alpha);
+      score = -negamax(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
     } else {
       // apply LMR conditions to subsequent moves
       int reduction = 0;
-      if (depth >= 3 && moves_tried >= 2 && !following_pv_ && !is_promotion && !is_capture && !in_check) {
+      if (depth >= 3 && moves_tried >= 2 && !is_promotion && !is_capture && !in_check) {
         reduction = depth <= 5 ? 1 : std::min(depth / 3, 3);
       }
 
       // null window search for a quick refutation or indication of a potentially good move
       const bool old_following_pv = following_pv_;
       following_pv_ = false;
-      score = -negamax(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha);
+      score = -negamax(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
       following_pv_ = old_following_pv;
 
       // if the move looks promising from null window search, research
-      if (score > alpha || score < beta) {
-        score = -negamax(depth - 1 - reduction, ply + 1, -beta, -alpha);
+      if (score > alpha && score < beta) {
+        score = -negamax(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
 
@@ -216,7 +216,11 @@ int Search::negamax(int depth, int ply, int alpha, int beta) {
 
     // alpha is raised, therefore this move is the new pv node for this depth
     if (score > best_eval) {
-      pv_line_this_iteration_.update(ply, move);
+      pv_line.clear();
+      pv_line.push(move);
+
+      for (int child_pv_move = 0; child_pv_move < child_pv_line.length(); child_pv_move++)
+        pv_line.push(child_pv_line[child_pv_move]);
 
       best_eval = score;
       best_move = move;
@@ -295,23 +299,25 @@ Search::Result Search::go() {
       break;
     }
 
+    pv_line_this_iteration_.clear();
     best_move_this_iteration_ = Move::null_move();
     best_eval_this_iteration_ = std::numeric_limits<int>::min();
+    following_pv_ = true;
 
-    negamax(depth, 0, -std::numeric_limits<int>::max(), std::numeric_limits<int>::max());
+    negamax(depth, 0, -std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), pv_line_this_iteration_);
 
     if (best_move_this_iteration_ != Move::null_move()) {
       if (eval::is_mate_score(best_eval_this_iteration_)) {
         if (best_eval_this_iteration_ < 0) {
           std::cout << std::format("best move: {}  eval: losing mate in {}  depth: {}  seldepth: {}\n",
                                    best_move_this_iteration_.to_string(),
-                                   eval::mate_in(best_eval_this_iteration_) / 2,
+                                   best_eval_this_iteration_,
                                    depth,
                                    pv_line_this_iteration_.length());
         } else {
           std::cout << std::format("best move: {}  eval: winning mate in {}  depth: {}  seldepth: {}\n",
                                    best_move_this_iteration_.to_string(),
-                                   eval::mate_in(best_eval_this_iteration_) / 2,
+                                   best_eval_this_iteration_,
                                    depth,
                                    pv_line_this_iteration_.length());
         }

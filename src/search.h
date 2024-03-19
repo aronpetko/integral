@@ -14,31 +14,33 @@ class Search {
   // principal variation (PV) line of the search
   struct PVLine {
    public:
-    PVLine() : moves_({}) {
-      std::fill(moves_.begin(), moves_.end(), Move::null_move());
+    PVLine() : moves_({}), move_count_(0) {
+      clear();
     }
 
     PVLine &operator=(const PVLine &other) = default;
 
-    const Move &operator[](int ply) const {
-      assert(ply < moves_.size() && ply >= 0);
-      return moves_[ply];
+    Move &operator[](int i) {
+      return moves_[i];
     }
 
-    void update(int ply, const Move& move) {
-      assert(ply >= 0);
-      moves_[ply] = move;
-      move_count_ = std::max(move_count_, ply + 1);
+    void clear() {
+      std::fill(moves_.begin(), moves_.end(), Move::null_move());
+      move_count_ = 0;
+    }
+
+    void push(const Move& move) {
+      moves_[move_count_++] = move;
     }
 
     [[nodiscard]] std::size_t length() const {
       return move_count_;
     }
 
-    friend std::ostream& operator<<(std::ostream& stream, const PVLine& pv_line) {
+    friend std::ostream& operator<<(std::ostream& stream, PVLine& pv_line) {
       for (int i = 0; i < pv_line.move_count_; i++) {
         stream << pv_line[i].to_string();
-        if (pv_line[i] != pv_line[pv_line.move_count_ - 1])
+        if (i < pv_line.move_count_ - 1)
           stream << ' ';
       }
       return stream;
@@ -60,7 +62,7 @@ class Search {
  private:
   int quiesce(int ply, int alpha, int beta);
 
-  int negamax(int depth, int ply, int alpha, int beta);
+  int negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line);
 
  private:
   Board &board_;

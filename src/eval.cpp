@@ -84,9 +84,9 @@ bool is_mate_score(int evaluation) {
 
 int mate_in(int evaluation) {
   if (evaluation > 0 && evaluation < kMateScore) { // mate in favor
-    return kMateScore - evaluation;
+    return (kMateScore - evaluation);
   } else if (evaluation < 0 && evaluation > -kMateScore) { // mate against
-    return -kMateScore - evaluation;
+    return (-kMateScore - evaluation + 1);
   }
 
   // not a mate score
