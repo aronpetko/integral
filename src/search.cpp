@@ -9,7 +9,7 @@
 
 Search::Search(TimeManagement::Config &time_config, Board &board)
     : board_(board),
-      best_eval_this_iteration_(0),
+      best_score_this_iteration_(0),
       following_pv_(false),
       time_mgmt_(time_config, board),
       branching_factor_(0.0),
@@ -75,17 +75,31 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   const auto &tt_entry = transpo.probe(state.zobrist_key);
 
   if (tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
-    const auto tt_score = transpo.correct_score(tt_entry.score, ply);
+    const auto corrected_tt_eval = transpo.correct_score(tt_entry.score, ply);
 
-    if (tt_entry.flag == TranspositionTable::Entry::kExact ||
-        tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_score <= alpha ||
-        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_score >= beta) {
+    switch (tt_entry.flag) {
+      case TranspositionTable::Entry::kExact:
+        if (ply == 0 && board_.is_legal_move(tt_entry.move)) {
+          best_move_this_iteration_ = tt_entry.move;
+          best_score_this_iteration_ = corrected_tt_eval;
+        }
+
+        return corrected_tt_eval;
+      case TranspositionTable::Entry::kLowerBound:
+        alpha = std::max(alpha, corrected_tt_eval);
+        break;
+      case TranspositionTable::Entry::kUpperBound:
+        beta = std::min(beta, corrected_tt_eval);
+        break;
+    }
+
+    if (alpha >= beta) {
       if (ply == 0 && board_.is_legal_move(tt_entry.move)) {
         best_move_this_iteration_ = tt_entry.move;
-        best_eval_this_iteration_ = tt_score;
+        best_score_this_iteration_ = corrected_tt_eval;
       }
 
-      return tt_score;
+      return corrected_tt_eval;
     }
   }
 
@@ -135,11 +149,10 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     }
   }
 
-  auto score_flag = TranspositionTable::Entry::kUpperBound;
   int moves_tried = 0;
 
   Move best_move = Move::null_move();
-  int best_eval = std::numeric_limits<int>::min();
+  int best_score = std::numeric_limits<int>::min();
   PVLine temp_pv_line;
 
   MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
@@ -180,7 +193,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       following_pv_ = old_following_pv;
 
       // if the move looks promising from null window search, research
-      if (score > alpha && score < beta) {
+      if (score > alpha) {
         score = -negamax(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
@@ -188,68 +201,76 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     board_.undo_move();
     moves_tried++;
 
-    if (ply == 0) {
+    if (ply == 0)
       time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
-    }
 
-    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
+    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null())
       return eval::kDrawScore;
-    }
-
-    // this opponent has a better move, so we prune this branch
-    if (score >= beta) {
-      if (!is_capture) {
-        MoveOrderer::update_killer_move(move, depth);
-        MoveOrderer::update_move_history(move, state.turn, depth);
-      }
-      transpo.save(TranspositionTable::Entry(state.zobrist_key, depth, TranspositionTable::Entry::kLowerBound, beta, move), ply);
-      return beta;
-    }
 
     // alpha is raised, therefore this move is the new pv node for this depth
-    if (score > alpha) {
+    if (score > best_score) {
+      best_score = score;
+      best_move = move;
+
+      if (ply == 0) {
+        best_move_this_iteration_ = best_move;
+        best_score_this_iteration_ = best_score;
+      }
+
       temp_pv_line.clear();
       temp_pv_line.push(move);
 
       for (int child_pv_move = 0; child_pv_move < child_pv_line.length(); child_pv_move++)
         temp_pv_line.push(child_pv_line[child_pv_move]);
+    }
 
-      alpha = score;
-      best_move = move;
+    alpha = std::max(alpha, best_score);
 
-      if (ply == 0) {
-        best_move_this_iteration_ = best_move;
-        best_eval_this_iteration_ = best_eval;
+    // this opponent has a better move, so we prune this branch
+    if (alpha >= beta) {
+      if (!is_capture) {
+        MoveOrderer::update_killer_move(move, depth);
+        MoveOrderer::update_move_history(move, state.turn, depth);
       }
-
-      score_flag = TranspositionTable::Entry::kExact;
+      break;
     }
   }
+
+  pv_line = temp_pv_line;
 
   // the game is over if we couldn't try a move
   if (moves_tried == 0) {
     return in_check ? -eval::kMateScore + ply : eval::kDrawScore;
   } else {
     if (state.fifty_moves_clock >= 100) {
-      best_eval = eval::kDrawScore;
+      best_score = eval::kDrawScore;
       best_move = Move::null_move();
     }
-
-    branching_factor_ += pow(moves_tried, 1.0 / depth);
-    total_bfs_++;
   }
 
-  pv_line = temp_pv_line;
-  transpo.save(TranspositionTable::Entry(state.zobrist_key, depth, score_flag, alpha, best_move), ply);
+  TranspositionTable::Entry entry;
+  entry.key = state.zobrist_key;
+  entry.score = best_score;
+  entry.depth = depth;
+  entry.move = best_move;
 
-  return alpha;
+  if (best_score <= original_alpha)
+    entry.flag = TranspositionTable::Entry::kUpperBound;
+  else if (best_score >= beta)
+    entry.flag = TranspositionTable::Entry::kLowerBound;
+  else
+    entry.flag = TranspositionTable::Entry::kExact;
+
+  transpo.save(entry, ply);
+
+  return best_score;
 }
 
 Search::Result Search::go() {
   MoveOrderer::reset_move_history();
 
   time_mgmt_.start();
-  time_mgmt_.calculate_hard_limit();
+  time_mgmt_.estimate_move_time();
 
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
@@ -260,17 +281,17 @@ Search::Result Search::go() {
   for (int depth = 1; depth <= max_search_depth; depth++) {
     pv_line_this_iteration_.clear();
     best_move_this_iteration_ = Move::null_move();
-    best_eval_this_iteration_ = std::numeric_limits<int>::min();
+    best_score_this_iteration_ = std::numeric_limits<int>::min();
     following_pv_ = true;
 
     negamax(depth, 0, -std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), pv_line_this_iteration_);
 
     if (best_move_this_iteration_ != Move::null_move()) {
       std::string info;
-      if (eval::is_mate_score(best_eval_this_iteration_)) {
+      if (eval::is_mate_score(best_score_this_iteration_)) {
         info = std::format("info depth {} score mate {} nodes {} nps {} time {} seldepth {} pv {}",
                            depth,
-                           eval::mate_in(best_eval_this_iteration_),
+                           eval::mate_in(best_score_this_iteration_),
                            time_mgmt_.get_nodes_searched(),
                            static_cast<int>(time_mgmt_.get_nodes_searched() / std::max(1.0, time_mgmt_.time_elapsed() / 1000.0)),
                            time_mgmt_.time_elapsed(),
@@ -279,7 +300,7 @@ Search::Result Search::go() {
       } else {
         info = std::format("info depth {} score cp {} nodes {} nps {} time {} seldepth {} pv {}",
                            depth,
-                           best_eval_this_iteration_,
+                           best_score_this_iteration_,
                            time_mgmt_.get_nodes_searched(),
                            static_cast<int>(time_mgmt_.get_nodes_searched() / std::max(1.0, time_mgmt_.time_elapsed() / 1000.0)),
                            time_mgmt_.time_elapsed(),
@@ -291,7 +312,7 @@ Search::Result Search::go() {
 
       result.pv_line = pv_line_this_iteration_;
       result.best_move = best_move_this_iteration_;
-      result.evaluation = best_eval_this_iteration_;
+      result.score = best_score_this_iteration_;
     }
 
     if (time_mgmt_.root_times_up(result.best_move)) {

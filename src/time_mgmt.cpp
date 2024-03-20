@@ -15,18 +15,19 @@ void TimeManagement::start() {
   std::fill(node_spent_table_.begin(), node_spent_table_.end(), 0);
 }
 
-void TimeManagement::update_move_time(const Move &pv_move) {
+void TimeManagement::estimate_move_time() {
+  current_move_time_ = calculate_hard_limit();
 }
 
 [[nodiscard]] long long TimeManagement::calculate_hard_limit() {
   const auto &state = board_.get_state();
-  return current_move_time_ = config_.move_time ? config_.move_time : config_.time[state.turn] / 20 + config_.increment[state.turn]  / 2;
+  return config_.move_time ? config_.move_time : config_.time[state.turn] / 20 + config_.increment[state.turn]  / 2;
 }
 
 [[nodiscard]] long long TimeManagement::calculate_soft_limit(const Move &pv_move) {
   // taken from chessatron
   const auto best_move_fraction =
-      static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF]) / std::max(1, nodes_searched_);
+      static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF]) / std::max(1LL, nodes_searched_);
   const auto hard_limit = calculate_hard_limit();
   return hard_limit / 10 * 3 * (1.6 - best_move_fraction) * 1.5;
 }
@@ -35,8 +36,8 @@ void TimeManagement::update_nodes_searched() {
   ++nodes_searched_;
 }
 
-void TimeManagement::update_node_spent_table(const Move &move, int prev_nodes_searched) {
-  const int nodes_spent = nodes_searched_ - prev_nodes_searched;
+void TimeManagement::update_node_spent_table(const Move &move, long long prev_nodes_searched) {
+  const long long nodes_spent = nodes_searched_ - prev_nodes_searched;
   node_spent_table_[move.get_data() & 0x0FFF] += nodes_spent;
 }
 
@@ -52,11 +53,11 @@ bool TimeManagement::root_times_up(const Move &pv_move) {
   return time_elapsed() >= calculate_soft_limit(pv_move);
 }
 
-int TimeManagement::get_nodes_searched() const {
+long long TimeManagement::get_nodes_searched() const {
   return nodes_searched_;
 }
 
-int TimeManagement::get_move_time() const {
+long long TimeManagement::get_move_time() const {
   return current_move_time_;
 }
 

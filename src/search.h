@@ -59,7 +59,7 @@ class Search {
   struct Result {
     Move best_move; // always the first move in the PV
     PVLine pv_line;
-    int evaluation;
+    int score;
   };
 
   Result go();
@@ -74,7 +74,7 @@ class Search {
   TimeManagement time_mgmt_;
   PVLine pv_line_this_iteration_;
   Move best_move_this_iteration_;
-  int best_eval_this_iteration_;
+  int best_score_this_iteration_;
   double branching_factor_;
   int total_bfs_;
   bool following_pv_;
