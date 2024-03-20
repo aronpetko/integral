@@ -82,6 +82,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   if (board_.has_repeated(2))
     return eval::kDrawScore;
 
+  const bool is_root = ply == 0;
+
   const auto &state = board_.get_state();
   auto &transpo = board_.get_transpo_table();
 
@@ -93,7 +95,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
     switch (tt_entry.flag) {
       case TranspositionTable::Entry::kExact:
-        if (ply == 0 && board_.is_legal_move(tt_entry.move)) {
+        if (is_root && board_.is_legal_move(tt_entry.move)) {
           best_move_this_iteration_ = tt_entry.move;
           best_score_this_iteration_ = corrected_tt_eval;
         }
@@ -108,7 +110,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     }
 
     if (alpha >= beta) {
-      if (ply == 0 && board_.is_legal_move(tt_entry.move)) {
+      if (is_root && board_.is_legal_move(tt_entry.move)) {
         best_move_this_iteration_ = tt_entry.move;
         best_score_this_iteration_ = corrected_tt_eval;
       }
@@ -190,16 +192,17 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     PVLine child_pv_line;
     int score;
 
-    // search the first move to full depth without reduction
-    if (moves_tried == 0) {
-      score = -negamax(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
-    } else {
-      // apply LMR conditions to subsequent moves
-      int reduction = 0;
-      if (depth >= 2 && !is_promotion && !is_capture && !in_check) {
-        reduction = kLateMoveReductionTable[depth][moves_tried];
-      }
+    // apply LMR conditions to subsequent moves
+    int reduction = 0;
+    if (depth >= 2 && moves_tried > 1 + 3 * is_root && !is_promotion && !is_capture && !in_check) {
+      reduction = std::max(1, std::min(depth / 3, 3));
+      // reduction = kLateMoveReductionTable[depth][moves_tried];
+    }
 
+    // search the first move with a normal window
+    if (moves_tried == 0) {
+      score = -negamax(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
+    } else {
       // null window search for a quick refutation or indication of a potentially good move
       const bool old_following_pv = following_pv_;
       following_pv_ = false;
@@ -215,7 +218,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     board_.undo_move();
     moves_tried++;
 
-    if (ply == 0)
+    if (is_root)
       time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
 
     if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null())
@@ -226,7 +229,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       best_score = score;
       best_move = move;
 
-      if (ply == 0) {
+      if (is_root) {
         best_move_this_iteration_ = best_move;
         best_score_this_iteration_ = best_score;
       }
