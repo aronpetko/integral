@@ -16,9 +16,8 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
       total_bfs_(0) {}
 
 int Search::quiesce(int ply, int alpha, int beta) {
-  if (board_.has_repeated(1)) {
+  if (board_.has_repeated(1))
     return eval::kDrawScore;
-  }
 
   auto &state = board_.get_state();
 
@@ -47,6 +46,8 @@ int Search::quiesce(int ply, int alpha, int beta) {
     const int score = -quiesce(ply + 1, -beta, -alpha);
     board_.undo_move();
 
+    time_mgmt_.update_nodes_searched();
+
     if (score >= beta)
       return beta;
 
@@ -64,9 +65,8 @@ int futility_margin(int depth) {
 }
 
 int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
-  if (board_.has_repeated(1)) {
+  if (board_.has_repeated(1))
     return eval::kDrawScore;
-  }
 
   const auto &state = board_.get_state();
   auto &transpo = board_.get_transpo_table();
@@ -79,7 +79,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
     switch (tt_entry.flag) {
       case TranspositionTable::Entry::kExact:
-        if (ply == 0) {
+        if (ply == 0 && board_.is_legal_move(tt_entry.best_move)) {
           best_move_this_iteration_ = tt_entry.best_move;
           best_eval_this_iteration_ = corrected_tt_eval;
         }
@@ -115,7 +115,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     }
   }
 
-  if (time_mgmt_.times_up()) {
+  if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
     return eval::kDrawScore;
   }
 
@@ -127,7 +127,6 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
   // search until we've found a "quiet" position to evaluate
   if (depth <= 0) {
-    time_mgmt_.update_nodes_searched();
     following_pv_ = false;
     return quiesce(ply, alpha, beta);
   }
@@ -153,14 +152,12 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     board_.undo_move();
     can_do_null_move = true;
 
-    if (time_mgmt_.times_up()) {
+    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
       return eval::kDrawScore;
     } else if (null_move_score >= beta) {
       return beta;
     }
   }
-
-  MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
 
   int moves_tried = 0;
 
@@ -168,6 +165,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   int best_eval = std::numeric_limits<int>::min();
   PVLine child_pv_line;
 
+  MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
@@ -181,6 +179,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       board_.undo_move();
       continue;
     }
+
+    time_mgmt_.update_nodes_searched();
+    const int prev_nodes_searched = time_mgmt_.get_nodes_searched();
 
     int score;
 
@@ -206,11 +207,14 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       }
     }
 
+    board_.undo_move();
     moves_tried++;
 
-    board_.undo_move();
+    if (ply == 0) {
+      time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
+    }
 
-    if (time_mgmt_.times_up()) {
+    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
       return eval::kDrawScore;
     }
 
@@ -239,7 +243,6 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
         MoveOrderer::update_killer_move(move, depth);
         MoveOrderer::update_move_history(move, state.turn, depth);
       }
-
       break;
     }
   }
@@ -271,13 +274,10 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     entry.flag = TranspositionTable::Entry::kExact;
 
   transpo.save(entry, ply);
-
   return best_eval;
 }
 
 Search::Result Search::go() {
-  std::cout << "static eval: " << eval::evaluate(board_.get_state()) << std::endl;
-
   MoveOrderer::reset_move_history();
 
   time_mgmt_.start();
@@ -287,18 +287,10 @@ Search::Result Search::go() {
 
   Result result;
 
+  time_mgmt_.update_move_time(Move::null_move());
+
   // iterative deepening
   for (int depth = 1; depth <= max_search_depth; depth++) {
-    time_mgmt_.update_move_time();
-
-    // save time by playing the only legal move
-    auto legal_moves = generate_legal_moves(board_);
-    if (legal_moves.size() == 1) {
-      result.best_move = legal_moves[0];
-      result.evaluation = best_eval_this_iteration_;
-      break;
-    }
-
     pv_line_this_iteration_.clear();
     best_move_this_iteration_ = Move::null_move();
     best_eval_this_iteration_ = std::numeric_limits<int>::min();
@@ -307,45 +299,39 @@ Search::Result Search::go() {
     negamax(depth, 0, -std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), pv_line_this_iteration_);
 
     if (best_move_this_iteration_ != Move::null_move()) {
+      std::string info;
       if (eval::is_mate_score(best_eval_this_iteration_)) {
-        if (best_eval_this_iteration_ < 0) {
-          std::cout << std::format("best move: {}  eval: losing mate in {}  depth: {}  seldepth: {}\n",
-                                   best_move_this_iteration_.to_string(),
-                                   best_eval_this_iteration_,
-                                   depth,
-                                   pv_line_this_iteration_.length());
-        } else {
-          std::cout << std::format("best move: {}  eval: winning mate in {}  depth: {}  seldepth: {}\n",
-                                   best_move_this_iteration_.to_string(),
-                                   best_eval_this_iteration_,
-                                   depth,
-                                   pv_line_this_iteration_.length());
-        }
+        info = std::format("info depth {} score mate {} nodes {} nps {} time {} seldepth {} pv {}",
+                           depth,
+                           eval::mate_in(best_eval_this_iteration_),
+                           time_mgmt_.get_nodes_searched(),
+                           static_cast<int>(time_mgmt_.get_nodes_searched() / (time_mgmt_.time_elapsed() / 1000.0)),
+                           time_mgmt_.time_elapsed(),
+                           pv_line_this_iteration_.length(),
+                           pv_line_this_iteration_.to_string());
       } else {
-        std::cout << std::format("best move: {}  eval: {}  depth: {}  seldepth: {}\n",
-                                 best_move_this_iteration_.to_string(),
-                                 best_eval_this_iteration_ / 100.0,
-                                 depth,
-                                 pv_line_this_iteration_.length());
+        info = std::format("info depth {} score cp {} nodes {} nps {} time {} seldepth {} pv {}",
+                           depth,
+                           best_eval_this_iteration_,
+                           time_mgmt_.get_nodes_searched(),
+                           static_cast<int>(time_mgmt_.get_nodes_searched() / (time_mgmt_.time_elapsed() / 1000.0)),
+                           time_mgmt_.time_elapsed(),
+                           pv_line_this_iteration_.length(),
+                           pv_line_this_iteration_.to_string());
       }
+
+      std::cout << info << std::endl;
 
       result.pv_line = pv_line_this_iteration_;
       result.best_move = best_move_this_iteration_;
       result.evaluation = best_eval_this_iteration_;
-
-      std::cout << "pv: " << result.pv_line << std::endl;
     }
 
+    time_mgmt_.update_move_time(result.best_move);
     if (time_mgmt_.times_up()) {
       break;
     }
   }
-
-  std::cout << "game evaluation: " << std::fixed << std::setprecision(2) << result.evaluation / 100.0 << std::endl;
-  std::cout << "took: " << time_mgmt_.get_move_time() / 1000.0 << "s" << std::endl << std::endl;
-  std::cout << "nodes searched: " << time_mgmt_.get_nodes_searched() << std::endl;
-  std::cout << "nps: " << std::fixed << std::setprecision(2) << time_mgmt_.get_nodes_searched() / (time_mgmt_.get_move_time() / 1000.0) << std::endl;
-  std::cout << "bf: " << branching_factor_ / total_bfs_ << std::endl;
 
   return result;
 }

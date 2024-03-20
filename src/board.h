@@ -108,7 +108,7 @@ struct BoardState {
 
 class Board {
  public:
-  explicit Board(BoardState state, std::size_t transpo_table_size);
+  explicit Board(std::size_t transpo_table_size);
 
   Board();
 
@@ -123,6 +123,8 @@ class Board {
   [[nodiscard]] bool initialized() const {
     return initialized_;
   }
+
+  void set_from_fen(const std::string &fen_str);
 
   bool is_legal_move(const Move &move);
 

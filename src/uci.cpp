@@ -11,48 +11,44 @@ void position(Board &board, std::stringstream &input_stream) {
   std::string position_type;
   input_stream >> position_type;
 
-  std::string position;
+  std::string position_fen;
   if (position_type == "fen") {
-    position = input_stream.str().substr(static_cast<int>(input_stream.tellg()) + 1);
+    position_fen = input_stream.str().substr(static_cast<int>(input_stream.tellg()) + 1);
   } else if (position_type == "startpos") {
-    position = fen::kStartFen;
+    position_fen = fen::kStartFen;
   }
+
+  const int kTranspositionTableMbSize = 64;
+  if (!board.initialized())
+    board = Board(kTranspositionTableMbSize);
+
+  board.set_from_fen(position_fen);
 
   std::string dummy;
   while (input_stream >> dummy && dummy != "moves");
 
+  std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
+
   std::string move_input;
-  while (input_stream >> move_input);
-
-  const int kTranspositionTableMbSize = 64;
-
-  // if no moves were given then this command wants to set a new position
-  if (move_input.empty()) {
-    board = Board(fen::string_to_board(position), kTranspositionTableMbSize);
-  } else {
-    if (!board.initialized()) {
-      board = Board(fen::string_to_board(position), kTranspositionTableMbSize);
-    }
-
-    // we now have the last move sent in the position
+  while (input_stream >> move_input) {
     const auto move = Move::from_str(board.get_state(), move_input);
-    std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
-    log << move_input << std::endl;
-    log.close();
 
     if (move.has_value() && board.is_legal_move(move.value())) {
       board.make_move(move.value());
     } else {
       std::cerr << std::format("invalid move: {}\n", move_input);
     }
+
+    log << move->to_string();
   }
+
+  log.close();
 }
 
 void go(Board &board, std::stringstream &input_stream) {
   TimeManagement::Config time_config{};
 
   std::string option;
-
   while (input_stream >> option) {
     if (option == "wtime") {
       input_stream >> time_config.time[Color::kWhite];
@@ -78,10 +74,6 @@ void go(Board &board, std::stringstream &input_stream) {
     time_config.depth = 13;
 
   const auto search_result = Search(time_config, board).go();
-  if (search_result.best_move != Move::null_move()) {
-    board.make_move(search_result.best_move);
-  }
-
   std::cout << std::format("bestmove {}", search_result.best_move.to_string()) << std::endl;
 }
 

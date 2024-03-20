@@ -28,6 +28,14 @@ class Move {
 
   static std::optional<Move> from_str(BoardState &board, std::string_view str);
 
+  [[nodiscard]] constexpr inline bool is_null() const {
+    return data_ == 0;
+  }
+
+  [[nodiscard]] constexpr inline U16 get_data() const {
+    return data_;
+  }
+
   [[nodiscard]] constexpr inline U8 get_from() const {
     return data_ & kFromMask;
   }

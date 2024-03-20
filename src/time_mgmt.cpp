@@ -1,11 +1,10 @@
 #include "time_mgmt.h"
 #include <format>
 
-const int kMovesToGo = 24;
-const int kTimeBuffer = 50;
+const int kTimeBuffer = 100;
 
 TimeManagement::TimeManagement(const TimeManagement::Config &config, Board &board)
-    : config_(config), board_(board), current_move_time_(0), times_up_(false), nodes_searched_(0) {}
+    : config_(config), board_(board), current_move_time_(0), times_up_(false), nodes_searched_(0), node_spent_table_({}) {}
 
 const TimeManagement::Config &TimeManagement::get_config() {
   return config_;
@@ -13,66 +12,43 @@ const TimeManagement::Config &TimeManagement::get_config() {
 
 void TimeManagement::start() {
   start_time_ = std::chrono::steady_clock::now();
+  std::fill(node_spent_table_.begin(), node_spent_table_.end(), 0);
 }
 
-void TimeManagement::update_move_time() {
+void TimeManagement::update_move_time(const Move &pv_move) {
+  const auto &state = board_.get_state();
+
   if (config_.move_time) {
     current_move_time_ = config_.move_time;
     return;
-  };
-
-  current_move_time_ = 0;
-  
-  const auto &state = board_.get_state();
-
-  const int moves_played = state.half_moves;
-  int expected_moves;
-
-  if (moves_played <= 10) {
-    expected_moves = 50;
-  } else if (moves_played <= 30) {
-    expected_moves = 60;
-  } else if (moves_played <= 40) {
-    expected_moves = 70;
-  } else if (moves_played <= 50) {
-    expected_moves = 80;
-  } else if (moves_played <= 70) {
-    expected_moves = 100;
-  } else if (moves_played <= 100) {
-    expected_moves = 120;
-  } else {
-    expected_moves = moves_played + 40;
   }
 
-  const int time_left = config_.time[state.turn];
-  if (time_left > 0) {
-    // the division by 2 here converts plies into moves
-    const int moves_to_go = (expected_moves - moves_played) / 2;
-    current_move_time_ += time_left / moves_to_go;
+  const int hard_limit = config_.time[state.turn] / 20 + config_.increment[state.turn]  / 2;
+  current_move_time_ = hard_limit;
+
+  if (!pv_move.is_null()) {
+    // taken from chessatron
+    const auto best_move_fraction =
+        static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF]) / nodes_searched_;
+    const int soft_limit = hard_limit / 10 * 3 * (1.6 - best_move_fraction) * 1.5;
+    current_move_time_ = std::min(hard_limit, soft_limit);
   }
-
-  //const int increment = config_.increment[state.turn];
-  //if (increment > 0)
-  //  current_move_time_ += increment / 2;
-
-  current_move_time_ = std::max(0, current_move_time_ - kTimeBuffer);
 }
 
 void TimeManagement::update_nodes_searched() {
   ++nodes_searched_;
 }
 
+void TimeManagement::update_node_spent_table(const Move &move, int prev_nodes_searched) {
+  const int nodes_spent = nodes_searched_ - prev_nodes_searched;
+  node_spent_table_[move.get_data() & 0x0FFF] += nodes_spent;
+}
+
 bool TimeManagement::times_up() {
-  if (times_up_) {
+  if (times_up_)
     return true;
-  }
-
-  if (nodes_searched_ % 75000) {
-    const auto elapsed = duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - start_time_).count();
-    return times_up_ = elapsed >= current_move_time_;
-  }
-
+  if (nodes_searched_ % 75000)
+    return times_up_ = time_elapsed() >= current_move_time_;
   return false;
 }
 
@@ -82,4 +58,9 @@ int TimeManagement::get_nodes_searched() const {
 
 int TimeManagement::get_move_time() const {
   return current_move_time_;
+}
+
+long long TimeManagement::time_elapsed() const {
+  return duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start_time_).count();
 }

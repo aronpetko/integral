@@ -21,15 +21,19 @@ class TimeManagement {
 
   void start();
 
-  void update_move_time();
+  void update_move_time(const Move &pv_move);
 
   void update_nodes_searched();
+
+  void update_node_spent_table(const Move &move, int prev_nodes_searched);
 
   [[nodiscard]] bool times_up();
 
   [[nodiscard]] int get_nodes_searched() const;
 
   [[nodiscard]] int get_move_time() const;
+
+  [[nodiscard]] long long time_elapsed() const;
 
  private:
   const Config &config_;
@@ -38,6 +42,7 @@ class TimeManagement {
   int current_move_time_;
   int nodes_searched_;
   bool times_up_;
+  std::array<U64, 4096> node_spent_table_;
 };
 
 #endif // INTEGRAL_TIME_MGMT_H_

@@ -37,7 +37,7 @@ class TranspositionTable {
 
   [[nodiscard]] const Entry &probe(const U64 &key) const;
 
-  [[nodiscard]] int correct_eval(int evaluation, int ply);
+  [[nodiscard]] int correct_eval(int evaluation, int ply) const;
 
  private:
   std::vector<Entry> table_;

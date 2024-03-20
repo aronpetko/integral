@@ -37,13 +37,18 @@ class Search {
       return move_count_;
     }
 
-    friend std::ostream& operator<<(std::ostream& stream, PVLine& pv_line) {
-      for (int i = 0; i < pv_line.move_count_; i++) {
-        stream << pv_line[i].to_string();
-        if (i < pv_line.move_count_ - 1)
-          stream << ' ';
+    [[nodiscard]] std::string to_string() const {
+      std::string str;
+      for (int i = 0; i < move_count_; i++) {
+        str += moves_[i].to_string();
+        if (i < move_count_ - 1)
+          str += ' ';
       }
-      return stream;
+      return str;
+    }
+
+    friend std::ostream& operator<<(std::ostream& stream, PVLine& pv_line) {
+      return stream << pv_line.to_string();
     }
 
    private:

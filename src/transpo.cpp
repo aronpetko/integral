@@ -24,17 +24,20 @@ void TranspositionTable::clear() {
 
 void TranspositionTable::save(const Entry &entry, int ply) {
   auto &table_entry = table_[entry.key % table_size_];
-  table_entry = entry;
 
-  const int kRoughlyMate = -eval::kMateScore + 1000;
-  if (entry.evaluation <= kRoughlyMate) {
-    table_entry.evaluation -= ply;
-  } else if (entry.evaluation >= -kRoughlyMate) {
-    table_entry.evaluation += ply;
+  if (table_entry.depth <= entry.depth) {
+    table_entry = entry;
+
+    const int kRoughlyMate = -eval::kMateScore + 1000;
+    if (entry.evaluation <= kRoughlyMate) {
+      table_entry.evaluation -= ply;
+    } else if (entry.evaluation >= -kRoughlyMate) {
+      table_entry.evaluation += ply;
+    }
   }
 }
 
-int TranspositionTable::correct_eval(int evaluation, int ply) {
+int TranspositionTable::correct_eval(int evaluation, int ply) const {
   const int kRoughlyMate = -eval::kMateScore + 1000;
   if (evaluation <= kRoughlyMate) {
     evaluation += ply;

@@ -31,7 +31,7 @@ BoardState string_to_board(const std::string &fen_str) {
   stream >> position;
 
   // from 63 to 0, starting from a8 to h1
-  U8 square = 56;
+  U8 square = Square::kA8;
 
   for (const char &ch : position) {
     if (ch == '/') {

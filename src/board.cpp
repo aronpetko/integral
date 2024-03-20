@@ -1,16 +1,20 @@
 #include "board.h"
 #include "move.h"
 #include "move_gen.h"
+#include "fen.h"
 
-Board::Board(BoardState state, std::size_t transpo_table_size)
-    : state_(std::move(state)),
-      transpo_table_(transpo_table_size),
+Board::Board(std::size_t transpo_table_size)
+    : transpo_table_(transpo_table_size),
       history_count_(0),
       history_({}),
       key_history_({}),
       initialized_(true) {}
 
 Board::Board() : history_count_(0), history_({}), key_history_({}), initialized_(false) {}
+
+void Board::set_from_fen(const std::string &fen_str) {
+  state_ = fen::string_to_board(fen_str);
+}
 
 bool Board::is_legal_move(const Move &move) {
   const auto from = move.get_from(), to = move.get_to();
