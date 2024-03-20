@@ -21,7 +21,7 @@ char get_piece_char(const std::array<std::array<BitBoard, kNumBitBoards>, 2> &pi
   return ' ';
 }
 
-BoardState string_to_board(const std::string &fen_str) {
+BoardState string_to_board(std::string fen_str) {
   BoardState state;
   auto &pieces = state.pieces;
 

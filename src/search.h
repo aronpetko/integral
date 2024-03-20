@@ -52,7 +52,7 @@ class Search {
     }
 
    private:
-    std::array<Move, Search::kMaxSearchDepth> moves_;
+    std::array<Move, 1024> moves_;
     int move_count_;
   };
 

@@ -16,7 +16,7 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
       total_bfs_(0) {}
 
 int Search::quiesce(int ply, int alpha, int beta) {
-  if (board_.has_repeated(1))
+  if (board_.has_repeated(2))
     return eval::kDrawScore;
 
   auto &state = board_.get_state();
@@ -65,7 +65,7 @@ int futility_margin(int depth) {
 }
 
 int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
-  if (board_.has_repeated(1))
+  if (board_.has_repeated(2))
     return eval::kDrawScore;
 
   const auto &state = board_.get_state();
@@ -75,37 +75,17 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   const auto &tt_entry = transpo.probe(state.zobrist_key);
 
   if (tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
-    const auto corrected_tt_eval = transpo.correct_eval(tt_entry.evaluation, ply);
+    const auto tt_score = transpo.correct_score(tt_entry.score, ply);
 
-    switch (tt_entry.flag) {
-      case TranspositionTable::Entry::kExact:
-        if (ply == 0 && board_.is_legal_move(tt_entry.best_move)) {
-          best_move_this_iteration_ = tt_entry.best_move;
-          best_eval_this_iteration_ = corrected_tt_eval;
-
-          //pv_line.clear();
-          //pv_line.push(best_move_this_iteration_);
-        }
-
-        return corrected_tt_eval;
-      case TranspositionTable::Entry::kLowerBound:
-        alpha = std::max(alpha, corrected_tt_eval);
-        break;
-      case TranspositionTable::Entry::kUpperBound:
-        beta = std::min(beta, corrected_tt_eval);
-        break;
-    }
-
-    if (alpha >= beta) {
-      if (ply == 0 && board_.is_legal_move(tt_entry.best_move)) {
-        best_move_this_iteration_ = tt_entry.best_move;
-        best_eval_this_iteration_ = corrected_tt_eval;
-
-        //pv_line.clear();
-        //pv_line.push(best_move_this_iteration_);
+    if (tt_entry.flag == TranspositionTable::Entry::kExact ||
+        tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_score <= alpha ||
+        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_score >= beta) {
+      if (ply == 0 && board_.is_legal_move(tt_entry.move)) {
+        best_move_this_iteration_ = tt_entry.move;
+        best_eval_this_iteration_ = tt_score;
       }
 
-      return corrected_tt_eval;
+      return tt_score;
     }
   }
 
@@ -155,6 +135,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     }
   }
 
+  auto score_flag = TranspositionTable::Entry::kUpperBound;
   int moves_tried = 0;
 
   Move best_move = Move::null_move();
@@ -215,32 +196,33 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       return eval::kDrawScore;
     }
 
+    // this opponent has a better move, so we prune this branch
+    if (score >= beta) {
+      if (!is_capture) {
+        MoveOrderer::update_killer_move(move, depth);
+        MoveOrderer::update_move_history(move, state.turn, depth);
+      }
+      transpo.save(TranspositionTable::Entry(state.zobrist_key, depth, TranspositionTable::Entry::kLowerBound, beta, move), ply);
+      return beta;
+    }
+
     // alpha is raised, therefore this move is the new pv node for this depth
-    if (score > best_eval) {
+    if (score > alpha) {
       temp_pv_line.clear();
       temp_pv_line.push(move);
 
       for (int child_pv_move = 0; child_pv_move < child_pv_line.length(); child_pv_move++)
         temp_pv_line.push(child_pv_line[child_pv_move]);
 
-      best_eval = score;
+      alpha = score;
       best_move = move;
 
       if (ply == 0) {
         best_move_this_iteration_ = best_move;
         best_eval_this_iteration_ = best_eval;
       }
-    }
 
-    alpha = std::max(alpha, best_eval);
-
-    // this opponent has a better move, so we prune this branch
-    if (alpha >= beta) {
-      if (!is_capture) {
-        MoveOrderer::update_killer_move(move, depth);
-        MoveOrderer::update_move_history(move, state.turn, depth);
-      }
-      break;
+      score_flag = TranspositionTable::Entry::kExact;
     }
   }
 
@@ -257,31 +239,17 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     total_bfs_++;
   }
 
-  // update pv line
   pv_line = temp_pv_line;
+  transpo.save(TranspositionTable::Entry(state.zobrist_key, depth, score_flag, alpha, best_move), ply);
 
-  TranspositionTable::Entry entry;
-  entry.key = state.zobrist_key;
-  entry.evaluation = best_eval;
-  entry.depth = depth;
-  entry.best_move = best_move;
-
-  if (best_eval <= original_alpha)
-    entry.flag = TranspositionTable::Entry::kUpperBound;
-  else if (best_eval >= beta)
-    entry.flag = TranspositionTable::Entry::kLowerBound;
-  else
-    entry.flag = TranspositionTable::Entry::kExact;
-
-  transpo.save(entry, ply);
-  return best_eval;
+  return alpha;
 }
 
 Search::Result Search::go() {
   MoveOrderer::reset_move_history();
 
   time_mgmt_.start();
-  time_mgmt_.update_move_time(Move::null_move());
+  time_mgmt_.calculate_hard_limit();
 
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
@@ -304,7 +272,7 @@ Search::Result Search::go() {
                            depth,
                            eval::mate_in(best_eval_this_iteration_),
                            time_mgmt_.get_nodes_searched(),
-                           static_cast<int>(time_mgmt_.get_nodes_searched() / (time_mgmt_.time_elapsed() / 1000.0)),
+                           static_cast<int>(time_mgmt_.get_nodes_searched() / std::max(1.0, time_mgmt_.time_elapsed() / 1000.0)),
                            time_mgmt_.time_elapsed(),
                            pv_line_this_iteration_.length(),
                            pv_line_this_iteration_.to_string());
@@ -313,7 +281,7 @@ Search::Result Search::go() {
                            depth,
                            best_eval_this_iteration_,
                            time_mgmt_.get_nodes_searched(),
-                           static_cast<int>(time_mgmt_.get_nodes_searched() / (time_mgmt_.time_elapsed() / 1000.0)),
+                           static_cast<int>(time_mgmt_.get_nodes_searched() / std::max(1.0, time_mgmt_.time_elapsed() / 1000.0)),
                            time_mgmt_.time_elapsed(),
                            pv_line_this_iteration_.length(),
                            pv_line_this_iteration_.to_string());
@@ -326,8 +294,7 @@ Search::Result Search::go() {
       result.evaluation = best_eval_this_iteration_;
     }
 
-    time_mgmt_.update_move_time(result.best_move);
-    if (time_mgmt_.times_up()) {
+    if (time_mgmt_.root_times_up(result.best_move)) {
       break;
     }
   }

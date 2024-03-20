@@ -85,13 +85,13 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_entry = board_.get_transpo_table().probe(state.zobrist_key);
   auto tt_move = Move::null_move();
 
-  if (tt_entry.key == state.zobrist_key && tt_entry.best_move != Move::null_move()) {
-    const auto to = tt_entry.best_move.get_to();
+  if (tt_entry.key == state.zobrist_key && tt_entry.move != Move::null_move()) {
+    const auto to = tt_entry.move.get_to();
     const bool is_capture_move = state.piece_types[to] != PieceType::kNone ||
         (state.en_passant.has_value() && state.en_passant == to);
 
     if (move_type_ != MoveType::kCaptures || is_capture_move) {
-      tt_move = tt_entry.best_move;
+      tt_move = tt_entry.move;
     }
   }
 

@@ -124,7 +124,7 @@ class Board {
     return initialized_;
   }
 
-  void set_from_fen(const std::string &fen_str);
+  void set_from_fen(std::string fen_str);
 
   bool is_legal_move(const Move &move);
 
@@ -147,6 +147,7 @@ class Board {
   std::array<BoardState, kMaxGameMoves> history_;
   int history_count_;
   std::array<U64, kHalfMoveLimit> key_history_;
+  int key_history_count_;
   TranspositionTable transpo_table_;
 };
 

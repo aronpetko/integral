@@ -6,14 +6,22 @@
 Board::Board(std::size_t transpo_table_size)
     : transpo_table_(transpo_table_size),
       history_count_(0),
+      key_history_count_(0),
       history_({}),
-      key_history_({}),
-      initialized_(true) {}
+      key_history_({}) {}
 
-Board::Board() : history_count_(0), history_({}), key_history_({}), initialized_(false) {}
+Board::Board() : key_history_count_(0), history_count_(0), history_({}), key_history_({}), initialized_(false) {}
 
-void Board::set_from_fen(const std::string &fen_str) {
+void Board::set_from_fen(std::string fen_str) {
+  // reset history everytime we parse from fen, since they will be re-applied when the moves are made
+  key_history_count_ = 0;
+  history_count_ = 0;
+
+  std::fill(key_history_.begin(), key_history_.end(), 0);
+  std::fill(history_.begin(), history_.end(), BoardState{});
+
   state_ = fen::string_to_board(fen_str);
+  initialized_ = true;
 }
 
 bool Board::is_legal_move(const Move &move) {
@@ -73,6 +81,9 @@ bool Board::is_legal_move(const Move &move) {
 void Board::make_move(const Move &move) {
   // save previous board state
   history_[history_count_++] = state_;
+
+  // update key history for repetition check
+  key_history_[key_history_count_++] = state_.zobrist_key;
 
   const bool is_white = state_.turn == Color::kWhite;
   const Color other_side = flip_color(state_.turn);
@@ -189,14 +200,19 @@ void Board::make_move(const Move &move) {
 
   ++state_.half_moves;
   ++state_.fifty_moves_clock;
+}
 
-  // update key history for repetition check
-  key_history_[state_.half_moves] = state_.zobrist_key;
+void Board::undo_move() {
+  state_ = history_[--history_count_];
+  key_history_count_--;
 }
 
 void Board::make_null_move() {
   // save previous board state
   history_[history_count_++] = state_;
+
+  // save previous board state
+  key_history_[key_history_count_++] = state_.zobrist_key;
 
   // xor out the previous turn hash
   state_.zobrist_key ^= zobrist::hash_turn(state_);
@@ -212,14 +228,9 @@ void Board::make_null_move() {
   state_.zobrist_key ^= zobrist::hash_turn(state_);
 }
 
-void Board::undo_move() {
-  state_ = history_[--history_count_];
-  key_history_[state_.half_moves] = 0;
-}
-
 bool Board::has_repeated(U8 times) const {
   // we know that the position can be repeated if no moves were captured, hence we only search until the fifty moves clock was reset
-  for (int i = state_.half_moves - 1; i >= state_.half_moves - state_.fifty_moves_clock && i >= 0; i--) {
+  for (int i = key_history_count_ - 1; i >= key_history_count_ - state_.fifty_moves_clock && i >= 0; i--) {
     if (key_history_[i] == state_.zobrist_key && --times == 0) {
       return true;
     }

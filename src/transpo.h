@@ -16,13 +16,15 @@ class TranspositionTable {
       kUpperBound
     };
 
-    explicit Entry() : key(0), depth(0), flag(kExact), evaluation(0), best_move({}) {}
+    Entry() : key(0), depth(0), flag(kExact), score(0), move({}) {}
+
+    explicit Entry(U64 key, U8 depth, Flag flag, int score, const Move &move) : key(key), depth(depth), flag(flag), score(score), move(move) {}
 
     U64 key;
     U8 depth;
     Flag flag;
-    int evaluation;
-    Move best_move;
+    int score;
+    Move move;
   };
 
   explicit TranspositionTable(std::size_t mb_size);
@@ -37,7 +39,7 @@ class TranspositionTable {
 
   [[nodiscard]] const Entry &probe(const U64 &key) const;
 
-  [[nodiscard]] int correct_eval(int evaluation, int ply) const;
+  [[nodiscard]] int correct_score(int evaluation, int ply) const;
 
  private:
   std::vector<Entry> table_;

@@ -27,6 +27,8 @@ class TimeManagement {
 
   void update_node_spent_table(const Move &move, int prev_nodes_searched);
 
+  [[nodiscard]] bool root_times_up(const Move &pv_move);
+
   [[nodiscard]] bool times_up();
 
   [[nodiscard]] int get_nodes_searched() const;
@@ -34,6 +36,10 @@ class TimeManagement {
   [[nodiscard]] int get_move_time() const;
 
   [[nodiscard]] long long time_elapsed() const;
+
+  [[nodiscard]] long long calculate_hard_limit();
+
+  [[nodiscard]] long long calculate_soft_limit(const Move &pv_move);
 
  private:
   const Config &config_;

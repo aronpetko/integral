@@ -19,15 +19,16 @@ void position(Board &board, std::stringstream &input_stream) {
   }
 
   const int kTranspositionTableMbSize = 64;
-  if (!board.initialized())
+  if (!board.initialized()) {
     board = Board(kTranspositionTableMbSize);
+  }
 
   board.set_from_fen(position_fen);
 
   std::string dummy;
   while (input_stream >> dummy && dummy != "moves");
 
-  std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
+  // std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -37,12 +38,13 @@ void position(Board &board, std::stringstream &input_stream) {
       board.make_move(move.value());
     } else {
       std::cerr << std::format("invalid move: {}\n", move_input);
+      std::cout << position_fen << std::endl;
     }
 
-    log << move->to_string();
+    // log << move->to_string();
   }
 
-  log.close();
+  // log.close();
 }
 
 void go(Board &board, std::stringstream &input_stream) {
@@ -144,6 +146,8 @@ void accept_commands() {
       position(board, input_stream);
     } else if (command == "go") {
       go(board, input_stream);
+    } else if (command == "ucinewgame") {
+      board.get_transpo_table().clear();
     }
   }
 }
