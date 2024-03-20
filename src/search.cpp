@@ -83,8 +83,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
           best_move_this_iteration_ = tt_entry.best_move;
           best_eval_this_iteration_ = corrected_tt_eval;
 
-          pv_line.clear();
-          pv_line.push(best_move_this_iteration_);
+          //pv_line.clear();
+          //pv_line.push(best_move_this_iteration_);
         }
 
         return corrected_tt_eval;
@@ -101,8 +101,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
         best_move_this_iteration_ = tt_entry.best_move;
         best_eval_this_iteration_ = corrected_tt_eval;
 
-        pv_line.clear();
-        pv_line.push(best_move_this_iteration_);
+        //pv_line.clear();
+        //pv_line.push(best_move_this_iteration_);
       }
 
       return corrected_tt_eval;
@@ -140,8 +140,10 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     can_do_null_move = false;
     board_.make_null_move();
 
+    PVLine dummy_pv;
+
     const int reduction = depth >= 6 ? 3 : 2;
-    const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -beta + 1, pv_line);
+    const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -beta + 1, dummy_pv);
 
     board_.undo_move();
     can_do_null_move = true;
@@ -157,7 +159,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
   Move best_move = Move::null_move();
   int best_eval = std::numeric_limits<int>::min();
-  PVLine child_pv_line;
+  PVLine temp_pv_line;
 
   MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
   for (int i = 0; i < move_orderer.size(); i++) {
@@ -177,6 +179,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     time_mgmt_.update_nodes_searched();
     const int prev_nodes_searched = time_mgmt_.get_nodes_searched();
 
+    PVLine child_pv_line;
     int score;
 
     // search the first move to full depth without reduction
@@ -214,11 +217,11 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
     // alpha is raised, therefore this move is the new pv node for this depth
     if (score > best_eval) {
-      pv_line.clear();
-      pv_line.push(move);
+      temp_pv_line.clear();
+      temp_pv_line.push(move);
 
       for (int child_pv_move = 0; child_pv_move < child_pv_line.length(); child_pv_move++)
-        pv_line.push(child_pv_line[child_pv_move]);
+        temp_pv_line.push(child_pv_line[child_pv_move]);
 
       best_eval = score;
       best_move = move;
@@ -254,6 +257,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     total_bfs_++;
   }
 
+  // update pv line
+  pv_line = temp_pv_line;
+
   TranspositionTable::Entry entry;
   entry.key = state.zobrist_key;
   entry.evaluation = best_eval;
@@ -275,13 +281,12 @@ Search::Result Search::go() {
   MoveOrderer::reset_move_history();
 
   time_mgmt_.start();
+  time_mgmt_.update_move_time(Move::null_move());
 
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
   Result result;
-
-  time_mgmt_.update_move_time(Move::null_move());
 
   // iterative deepening
   for (int depth = 1; depth <= max_search_depth; depth++) {
