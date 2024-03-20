@@ -10,6 +10,9 @@ class Search {
   explicit Search(TimeManagement::Config &time_config, Board &board);
 
   static constexpr int kMaxSearchDepth = 100;
+  static std::array<std::array<int, 512>, kMaxSearchDepth> kLateMoveReductionTable;
+
+  static void init_tables();
 
   // principal variation (PV) line of the search
   struct PVLine {

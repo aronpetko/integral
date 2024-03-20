@@ -15,6 +15,20 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
       branching_factor_(0.0),
       total_bfs_(0) {}
 
+
+std::array<std::array<int, 512>, Search::kMaxSearchDepth> Search::kLateMoveReductionTable;
+
+void Search::init_tables() {
+  const double kBaseReduction = 0.39;
+  const double kDivisor = 2.11;
+
+  for (int depth = 1; depth < kMaxSearchDepth; depth++) {
+    for (int move = 1; move < 512; move++) {
+      Search::kLateMoveReductionTable[depth][move] = kBaseReduction + log(depth) + log(move) / kDivisor;
+    }
+  }
+}
+
 int Search::quiesce(int ply, int alpha, int beta) {
   if (board_.has_repeated(2))
     return eval::kDrawScore;
@@ -182,8 +196,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     } else {
       // apply LMR conditions to subsequent moves
       int reduction = 0;
-      if (depth >= 3 && moves_tried >= 2 && !is_promotion && !is_capture && !in_check) {
-        reduction = depth <= 5 ? 1 : std::min(depth / 3, 3);
+      if (depth >= 2 && !is_promotion && !is_capture && !in_check) {
+        reduction = kLateMoveReductionTable[depth][moves_tried];
       }
 
       // null window search for a quick refutation or indication of a potentially good move

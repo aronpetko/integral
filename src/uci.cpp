@@ -123,8 +123,11 @@ void perft(Board &board, std::stringstream &input_stream) {
 void accept_commands() {
   std::cout << std::format("Integral v{}", kEngineVersion) << std::endl;
 
-  // initialize ray attacks for sliding pieces and knight attacks
+  // init attack lookups
   initialize_attacks();
+
+  // init table lookups that the search will do
+  Search::init_tables();
 
   Board board;
 
