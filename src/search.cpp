@@ -82,12 +82,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
         if (ply == 0 && board_.is_legal_move(tt_entry.best_move)) {
           best_move_this_iteration_ = tt_entry.best_move;
           best_eval_this_iteration_ = corrected_tt_eval;
-        }
 
-        if (!following_pv_) {
-          // this move caused a beta cutoff, so it is considered a pv move
           pv_line.clear();
-          pv_line.push(tt_entry.best_move);
+          pv_line.push(best_move_this_iteration_);
         }
 
         return corrected_tt_eval;
@@ -100,15 +97,12 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     }
 
     if (alpha >= beta) {
-      if (ply == 0) {
+      if (ply == 0 && board_.is_legal_move(tt_entry.best_move)) {
         best_move_this_iteration_ = tt_entry.best_move;
         best_eval_this_iteration_ = corrected_tt_eval;
-      }
 
-      if (!following_pv_) {
-        // this move caused a beta cutoff, so it is considered a pv move
         pv_line.clear();
-        pv_line.push(tt_entry.best_move);
+        pv_line.push(best_move_this_iteration_);
       }
 
       return corrected_tt_eval;
