@@ -89,11 +89,11 @@ void MoveOrderer::score_moves() noexcept {
     const auto from = tt_entry.move.get_from();
     const auto to = tt_entry.move.get_to();
 
-    const bool is_capture_move = state.piece_types[to] != PieceType::kNone
+    const bool is_capture = state.piece_types[to] != PieceType::kNone
         || (state.piece_types[from] == PieceType::kPawn && state.en_passant.has_value()
             && state.en_passant == to);
 
-    if (move_type_ != MoveType::kCaptures || is_capture_move) {
+    if (move_type_ != MoveType::kCaptures || is_capture) {
       tt_move = tt_entry.move;
     }
   }
@@ -109,12 +109,13 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
   const auto to = move.get_to();
 
   const auto move_piece_type = state.piece_types[from];
-  const bool is_capture_move = state.piece_types[to] != PieceType::kNone ||
-      (state.en_passant.has_value() && state.en_passant == to);
+  const bool is_capture = (state.piece_types[move.get_to()] != PieceType::kNone) ||
+      (state.piece_types[move.get_from()] == PieceType::kPawn && state.en_passant.has_value() &&
+      (state.en_passant == move.get_to()));
 
   if (move == tt_move) {
     return kTTMoveScore;
-  } else if (is_capture_move) {
+  } else if (is_capture) {
     return kMVVLVAScore + kMVVLVATable[state.get_piece_type(to)][move_piece_type];
   } else {
     for (int i = 0; i < kNumKillerMoves; i++) {

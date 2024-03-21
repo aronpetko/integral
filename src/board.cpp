@@ -137,11 +137,6 @@ void Board::make_move(const Move &move) {
         // xor out the en passant pos
         state_.zobrist_key ^= zobrist::hash_en_passant(state_);
         state_.en_passant.reset();
-      } else {
-        std::cout << move.to_string() << std::endl;
-        print_pieces(state_.pieces);
-        std::cerr << "en passant pawn does not exist" << std::endl;
-        return;
       }
     } else {
       const int from_rank = rank(from);
@@ -199,6 +194,10 @@ void Board::make_move(const Move &move) {
 
   ++state_.half_moves;
   ++state_.fifty_moves_clock;
+
+  if (state_.zobrist_key != zobrist::generate_key(state_)) {
+    printf("bro");
+  }
 }
 
 void Board::undo_move() {
@@ -386,14 +385,8 @@ void Board::handle_promotions(const Move &move) {
         break;
     }
 
-    // xor out the promoted pawn
-    state_.zobrist_key ^= zobrist::hash_square(to, state_);
-
+    state_.piece_types[to] = promoted_piece_type;
     state_.pieces[state_.turn][kPawns].clear_bit(to);
     state_.pieces[state_.turn][kAllPieces].set_bit(to);
-    state_.piece_types[to] = promoted_piece_type;
-
-    // xor in the promoted piece
-    state_.zobrist_key ^= zobrist::hash_square(to, state_);
   }
 }

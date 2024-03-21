@@ -41,8 +41,8 @@ int Search::quiesce(int ply, int alpha, int beta) {
     return beta;
 
   // delta pruning
-  //if (stand_pat + eval::kPieceValues[PieceType::kQueen] < alpha)
-  //  return alpha;
+  if (stand_pat + eval::kPieceValues[PieceType::kQueen] < alpha)
+    return alpha;
 
   if (alpha < stand_pat)
     alpha = stand_pat;
@@ -75,7 +75,6 @@ int Search::quiesce(int ply, int alpha, int beta) {
 int futility_margin(int depth) {
   const int kMarginIncrement = 120;
   const int kBaseMargin = 100;
-
   return kBaseMargin + depth * kMarginIncrement;
 }
 
@@ -191,7 +190,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
-    const bool is_capture = state.piece_types[move.get_to()] != PieceType::kNone;
+    const bool is_capture = (state.piece_types[move.get_to()] != PieceType::kNone) ||
+        (state.piece_types[move.get_from()] == PieceType::kPawn && state.en_passant.has_value() &&
+        (state.en_passant == move.get_to()));
     const bool is_promotion = move.get_promotion_type() != PromotionType::kNone;
 
     board_.make_move(move);
@@ -212,6 +213,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     int reduction = 0;
     if (depth >= 2 && moves_tried > 1 + 3 * is_root && !is_promotion && !is_capture && !in_check) {
       reduction = kLateMoveReductionTable[depth][moves_tried];
+      // reduction = std::max(1, std::min(3, depth / 3));
     }
 
     // search the first move with a normal window

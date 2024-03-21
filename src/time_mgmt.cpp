@@ -21,7 +21,7 @@ void TimeManagement::estimate_move_time() {
 
 [[nodiscard]] long long TimeManagement::calculate_hard_limit() {
   const auto &state = board_.get_state();
-  return config_.move_time ? config_.move_time : config_.time[state.turn] / 20 + config_.increment[state.turn]  / 2;
+  return config_.move_time ? config_.move_time : config_.time[state.turn] / 20 + config_.increment[state.turn] / 2;
 }
 
 [[nodiscard]] long long TimeManagement::calculate_soft_limit(const Move &pv_move) {
