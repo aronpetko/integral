@@ -13,7 +13,8 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
       following_pv_(false),
       time_mgmt_(time_config, board),
       branching_factor_(0.0),
-      total_bfs_(0) {}
+      total_bfs_(0),
+      can_do_null_move_(true) {}
 
 
 std::array<std::array<int, 512>, Search::kMaxSearchDepth> Search::kLateMoveReductionTable;
@@ -40,8 +41,8 @@ int Search::quiesce(int ply, int alpha, int beta) {
     return beta;
 
   // delta pruning
-  if (stand_pat + eval::kPieceValues[PieceType::kQueen] < alpha)
-    return alpha;
+  //if (stand_pat + eval::kPieceValues[PieceType::kQueen] < alpha)
+  //  return alpha;
 
   if (alpha < stand_pat)
     alpha = stand_pat;
@@ -91,7 +92,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   const int original_alpha = alpha;
   const auto &tt_entry = transpo.probe(state.zobrist_key);
 
-  if (tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
+  if (!following_pv_ && tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
     const auto corrected_tt_eval = transpo.correct_score(tt_entry.score, ply);
 
     switch (tt_entry.flag) {
@@ -99,6 +100,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
         if (is_root && board_.is_legal_move(tt_entry.move)) {
           best_move_this_iteration_ = tt_entry.move;
           best_score_this_iteration_ = corrected_tt_eval;
+
+          pv_line.clear();
+          pv_line.push(tt_entry.move);
         }
 
         return corrected_tt_eval;
@@ -114,6 +118,9 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       if (is_root && board_.is_legal_move(tt_entry.move)) {
         best_move_this_iteration_ = tt_entry.move;
         best_score_this_iteration_ = corrected_tt_eval;
+
+        pv_line.clear();
+        pv_line.push(tt_entry.move);
       }
 
       return corrected_tt_eval;
@@ -136,49 +143,44 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     return quiesce(ply, alpha, beta);
   }
 
-  /*const int static_eval = eval::evaluate(state);
+  const int static_eval = eval::evaluate(state);
   const int kReverseFutilityDepthLimit = 6;
-
   if (depth <= kReverseFutilityDepthLimit && !following_pv_ && !in_check) {
     if (static_eval - futility_margin(depth) >= beta)
       return static_eval;
-  }*/
+  }
 
   // null move pruning
-  static bool can_do_null_move = true;
-
-  if (can_do_null_move && depth > 2 && !in_check && !following_pv_) {
-    bool possible_zugzwang = true;
+  if (can_do_null_move_ && depth > 2 && !in_check && !following_pv_) {
+    // possible zugwang detection
     for (int color = Color::kBlack; color <= Color::kWhite; color++) {
       for (int piece = PieceBitBoard::kKnights; piece <= PieceBitBoard::kQueens; piece++) {
         if (state.pieces[color][piece].pop_count()) {
-          possible_zugzwang = false;
-          goto nmp;
+          goto move_loop;
         }
       }
     }
 
-    nmp:
-    if (!possible_zugzwang) {
-      can_do_null_move = false;
-      board_.make_null_move();
+    can_do_null_move_ = false;
+    board_.make_null_move();
 
-      PVLine dummy_pv;
+    PVLine dummy_pv;
 
-      const int reduction = depth >= 6 ? 3 : 2;
-      const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -alpha, dummy_pv);
+    const int reduction = depth >= 6 ? 3 : 2;
+    const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -alpha, dummy_pv);
 
-      board_.undo_move();
-      can_do_null_move = true;
+    board_.undo_move();
+    can_do_null_move_ = true;
 
-      if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
-        return eval::kDrawScore;
-      } else if (null_move_score >= beta) {
-        return beta;
-      }
+    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
+      return eval::kDrawScore;
+    } else if (null_move_score >= beta) {
+      return beta;
     }
   }
+  can_do_null_move_ = true;
 
+  move_loop:
   int moves_tried = 0;
 
   Move best_move = Move::null_move();
@@ -209,8 +211,7 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     // apply LMR conditions to subsequent moves
     int reduction = 0;
     if (depth >= 2 && moves_tried > 1 + 3 * is_root && !is_promotion && !is_capture && !in_check) {
-      reduction = std::max(1, std::min(depth / 3, 3));
-      // reduction = kLateMoveReductionTable[depth][moves_tried];
+      reduction = kLateMoveReductionTable[depth][moves_tried];
     }
 
     // search the first move with a normal window
@@ -224,8 +225,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       following_pv_ = old_following_pv;
 
       // if the move looks promising from null window search, research
-      if (score > alpha) {
-        score = -negamax(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
+      if (score > alpha && (following_pv_ || reduction > 0)) {
+        score = -negamax(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
 
@@ -233,12 +234,12 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     moves_tried++;
 
     if (is_root) {
-      std::cout << move.to_string() << " " << score << std::endl;
       time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
     }
 
-    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null())
+    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
       return eval::kDrawScore;
+    }
 
     // alpha is raised, therefore this move is the new pv node for this depth
     if (score > best_score) {
@@ -313,6 +314,7 @@ Search::Result Search::go() {
     best_move_this_iteration_ = Move::null_move();
     best_score_this_iteration_ = std::numeric_limits<int>::min();
     following_pv_ = true;
+    can_do_null_move_ = true;
 
     negamax(depth, 0, -std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), pv_line_this_iteration_);
 

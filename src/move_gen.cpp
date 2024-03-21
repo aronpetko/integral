@@ -471,7 +471,9 @@ MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
   MoveList filtered;
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
-    const bool is_capture = state.occupied().is_set(move.get_to()) || (state.en_passant.has_value() && state.en_passant == move.get_to());
+    const bool is_capture = state.piece_types[move.get_to()] != PieceType::kNone
+        || (state.piece_types[move.get_from()] == PieceType::kPawn && state.en_passant.has_value()
+            && state.en_passant == move.get_to());
 
     if (type == MoveType::kCaptures) {
       if (is_capture) {

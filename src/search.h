@@ -83,6 +83,7 @@ class Search {
   double branching_factor_;
   int total_bfs_;
   bool following_pv_;
+  bool can_do_null_move_;
 };
 
 #endif // INTEGRAL_SEARCH_H_

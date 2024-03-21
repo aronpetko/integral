@@ -86,9 +86,12 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_move = Move::null_move();
 
   if (tt_entry.key == state.zobrist_key && tt_entry.move != Move::null_move()) {
+    const auto from = tt_entry.move.get_from();
     const auto to = tt_entry.move.get_to();
-    const bool is_capture_move = state.piece_types[to] != PieceType::kNone ||
-        (state.en_passant.has_value() && state.en_passant == to);
+
+    const bool is_capture_move = state.piece_types[to] != PieceType::kNone
+        || (state.piece_types[from] == PieceType::kPawn && state.en_passant.has_value()
+            && state.en_passant == to);
 
     if (move_type_ != MoveType::kCaptures || is_capture_move) {
       tt_move = tt_entry.move;

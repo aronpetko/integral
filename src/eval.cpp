@@ -126,7 +126,7 @@ int material_difference(const BoardState &state) {
   return state.turn == Color::kWhite ? material : -material;
 }
 
-int positional_difference(int material_diff, const BoardState &state) {
+int positional_difference(const BoardState &state) {
   int position_value = 0;
 
   const bool is_white = state.turn == Color::kWhite;
@@ -168,16 +168,10 @@ int stacked_pawns_difference(const BoardState &state) {
 }
 
 int passed_pawns_score(const BoardState &state) {
-  if (!is_end_game(state))
-    return 0;
-
   int passed_pawns = 0;
-  int rooks_behind_passers = 0;
 
   const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
-  const BitBoard &white_rooks = state.pieces[Color::kWhite][kRooks];
   const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
-  const BitBoard &black_rooks = state.pieces[Color::kBlack][kRooks];
 
   for (int file = 0; file < kBoardFiles; file++) {
     const int left_side = std::max(0, file - 1), right_side = std::min(kBoardFiles - 1, file + 1);
@@ -319,35 +313,6 @@ int king_safety_difference(const BoardState &state) {
   }
 
   return state.turn == Color::kWhite ? score : -score;
-
-  /* const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
-  const BitBoard &white_king = state.pieces[Color::kWhite][kKings];
-  const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
-  const BitBoard &black_king = state.pieces[Color::kBlack][kKings];
-
-
-
-  const BitBoard white_left_protection = shift<Direction::kNorthWest>(white_king);
-  const BitBoard white_right_protection = shift<Direction::kNorthEast>(white_king);
-  const BitBoard white_front_protection = shift<Direction::kNorth>(white_king);
-
-  BitBoard white_protection_squares = white_left_protection | white_front_protection | white_right_protection;
-  score += kPawnProtectionBonus * (white_protection_squares & white_pawns).pop_count();
-
-  white_protection_squares = shift<Direction::kNorth>(white_protection_squares);
-  score += kDoublePawnProtectionBonus * (white_protection_squares & white_pawns).pop_count();
-
-  const BitBoard black_left_protection = shift<Direction::kSouthWest>(black_king);
-  const BitBoard black_right_protection = shift<Direction::kSouthEast>(black_king);
-  const BitBoard black_front_protection = shift<Direction::kSouth>(black_king);
-
-  BitBoard black_protection_squares = black_left_protection | black_front_protection | black_right_protection;
-  score -= kPawnProtectionBonus * (black_protection_squares & black_pawns).pop_count();
-
-  black_protection_squares = shift<Direction::kSouth>(black_protection_squares);
-  score -= kDoublePawnProtectionBonus * (black_protection_squares & black_pawns).pop_count();
-
-  return state.turn == Color::kWhite ? score : -score; */
 }
 
 int square_control_difference(const BoardState &state) {
@@ -356,13 +321,13 @@ int square_control_difference(const BoardState &state) {
 
 int evaluate(const BoardState &state) {
   const int material_diff = material_difference(state);
-  const int position_value = positional_difference(material_diff, state);
+  const int position_value = positional_difference(state);
   const int stacked_pawns = stacked_pawns_difference(state);
   const int mobility = mobility_difference(state);
   const int passed_pawns = passed_pawns_score(state);
   const int king_safety = king_safety_difference(state);
   const int square_control = square_control_difference(state);
-  return material_diff + position_value;
+  return material_diff + position_value + stacked_pawns + mobility + king_safety + passed_pawns + square_control;
 }
 
 }

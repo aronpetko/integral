@@ -356,30 +356,33 @@ void Board::handle_promotions(const Move &move) {
   const auto to = move.get_to();
   const auto to_rank = rank(to);
 
+  PieceType promoted_piece_type;
+
   if ((is_white && to_rank == kBoardRanks - 1) || (!is_white && to_rank == 0)) {
     switch (move.get_promotion_type()) {
       case PromotionType::kKnight: {
         state_.pieces[state_.turn][kKnights].set_bit(to);
-        state_.piece_types[to] = PieceType::kKnight;
+        promoted_piece_type = PieceType::kKnight;
         break;
       }
       case PromotionType::kBishop: {
         state_.pieces[state_.turn][kBishops].set_bit(to);
-        state_.piece_types[to] = PieceType::kBishop;
+        promoted_piece_type = PieceType::kBishop;
         break;
       }
       case PromotionType::kRook: {
         state_.pieces[state_.turn][kRooks].set_bit(to);
-        state_.piece_types[to] = PieceType::kRook;
+        promoted_piece_type = PieceType::kRook;
         break;
       }
       case PromotionType::kAny: // just choose a queen
       case PromotionType::kQueen: {
         state_.pieces[state_.turn][kQueens].set_bit(to);
-        state_.piece_types[to] = PieceType::kQueen;
+        promoted_piece_type = PieceType::kQueen;
         break;
       }
       default:
+        promoted_piece_type = PieceType::kPawn;
         break;
     }
 
@@ -388,6 +391,7 @@ void Board::handle_promotions(const Move &move) {
 
     state_.pieces[state_.turn][kPawns].clear_bit(to);
     state_.pieces[state_.turn][kAllPieces].set_bit(to);
+    state_.piece_types[to] = promoted_piece_type;
 
     // xor in the promoted piece
     state_.zobrist_key ^= zobrist::hash_square(to, state_);
