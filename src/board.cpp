@@ -12,7 +12,7 @@ Board::Board(std::size_t transpo_table_size)
 
 Board::Board() : key_history_count_(0), history_count_(0), history_({}), key_history_({}), initialized_(false) {}
 
-void Board::set_from_fen(std::string fen_str) {
+void Board::set_from_fen(const std::string &fen_str) {
   // reset history everytime we parse from fen, since they will be re-applied when the moves are made
   key_history_count_ = 0;
   history_count_ = 0;
@@ -118,6 +118,8 @@ void Board::make_move(const Move &move) {
   bool move_is_double_push = false;
 
   if (piece_type == PieceType::kPawn) {
+    state_.fifty_moves_clock = 0;
+
     // check if this was an en passant capture
     if (to == state_.en_passant) {
       // pawn must be directly behind/in front of the attack square
@@ -135,9 +137,6 @@ void Board::make_move(const Move &move) {
         // xor out the en passant pos
         state_.zobrist_key ^= zobrist::hash_en_passant(state_);
         state_.en_passant.reset();
-
-        // reset fifty moves clock since this move was a capture
-        state_.fifty_moves_clock = 0;
       } else {
         std::cout << move.to_string() << std::endl;
         print_pieces(state_.pieces);
@@ -236,6 +235,43 @@ bool Board::has_repeated(U8 times) const {
     }
   }
   return false;
+}
+
+bool Board::is_draw() const {
+  if (state_.fifty_moves_clock >= 100 || has_repeated(2)) {
+    return true;
+  }
+
+  // insufficient material
+  const int white_pawns = state_.pieces[Color::kWhite][kPawns].pop_count();
+  const int white_knights = state_.pieces[Color::kWhite][kKnights].pop_count();
+  const int white_bishops = state_.pieces[Color::kWhite][kBishops].pop_count();
+  const int white_rooks = state_.pieces[Color::kWhite][kRooks].pop_count();
+  const int white_queens = state_.pieces[Color::kWhite][kQueens].pop_count();
+
+  const int black_pawns = state_.pieces[Color::kBlack][kPawns].pop_count();
+  const int black_knights = state_.pieces[Color::kBlack][kKnights].pop_count();
+  const int black_bishops = state_.pieces[Color::kBlack][kBishops].pop_count();
+  const int black_rooks = state_.pieces[Color::kBlack][kRooks].pop_count();
+  const int black_queens = state_.pieces[Color::kBlack][kQueens].pop_count();
+
+  bool white_insufficient = false;
+  if (white_pawns == 0 && white_rooks == 0 && white_queens == 0) {
+    if ((white_bishops == 0 && white_knights <= 1) ||
+        (white_knights == 0 && white_bishops <= 1)) {
+      white_insufficient = true;
+    }
+  }
+
+  bool black_insufficient = false;
+  if (black_pawns == 0 && black_rooks == 0 && black_queens == 0) {
+    if ((black_bishops == 0 && black_knights <= 1) ||
+        (black_knights == 0 && black_bishops <= 1)) {
+      black_insufficient = true;
+    }
+  }
+
+  return white_insufficient && black_insufficient;
 }
 
 void Board::handle_castling(const Move &move) {

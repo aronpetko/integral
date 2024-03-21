@@ -63,6 +63,8 @@ class Search {
     Move best_move; // always the first move in the PV
     PVLine pv_line;
     int score;
+
+    Result() : best_move(Move::null_move()), pv_line(), score(0) {}
   };
 
   Result go();

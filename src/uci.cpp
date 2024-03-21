@@ -75,6 +75,7 @@ void go(Board &board, std::stringstream &input_stream) {
   if (option.empty())
     time_config.depth = 13;
 
+  std::cout << eval::evaluate(board.get_state()) << std::endl;
   const auto search_result = Search(time_config, board).go();
   std::cout << std::format("bestmove {}", search_result.best_move.to_string()) << std::endl;
 }

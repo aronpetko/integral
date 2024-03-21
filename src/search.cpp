@@ -19,8 +19,8 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
 std::array<std::array<int, 512>, Search::kMaxSearchDepth> Search::kLateMoveReductionTable;
 
 void Search::init_tables() {
-  const double kBaseReduction = 0.39;
-  const double kDivisor = 2.11;
+  const double kBaseReduction = 0.77;
+  const double kDivisor = 2.36;
 
   for (int depth = 1; depth < kMaxSearchDepth; depth++) {
     for (int move = 1; move < 512; move++) {
@@ -30,10 +30,10 @@ void Search::init_tables() {
 }
 
 int Search::quiesce(int ply, int alpha, int beta) {
-  if (board_.has_repeated(2))
-    return eval::kDrawScore;
-
   auto &state = board_.get_state();
+
+  if (board_.is_draw())
+    return eval::kDrawScore;
 
   int stand_pat = eval::evaluate(state);
   if (stand_pat >= beta)
@@ -49,7 +49,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
   auto legal_moves = generate_legal_moves(board_);
   if (legal_moves.empty()) {
     return king_in_check(flip_color(state.turn), state) ? -eval::kMateScore + ply : eval::kDrawScore;
-  } else if (state.fifty_moves_clock >= 100) {
+  } else if (board_.is_draw()) {
     return eval::kDrawScore;
   }
 
@@ -79,12 +79,13 @@ int futility_margin(int depth) {
 }
 
 int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
-  if (board_.has_repeated(2))
+  const auto &state = board_.get_state();
+
+  if (board_.is_draw())
     return eval::kDrawScore;
 
   const bool is_root = ply == 0;
 
-  const auto &state = board_.get_state();
   auto &transpo = board_.get_transpo_table();
 
   const int original_alpha = alpha;
@@ -135,33 +136,46 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     return quiesce(ply, alpha, beta);
   }
 
-  const int static_eval = eval::evaluate(state);
+  /*const int static_eval = eval::evaluate(state);
   const int kReverseFutilityDepthLimit = 6;
 
   if (depth <= kReverseFutilityDepthLimit && !following_pv_ && !in_check) {
     if (static_eval - futility_margin(depth) >= beta)
       return static_eval;
-  }
+  }*/
 
   // null move pruning
   static bool can_do_null_move = true;
 
   if (can_do_null_move && depth > 2 && !in_check && !following_pv_) {
-    can_do_null_move = false;
-    board_.make_null_move();
+    bool possible_zugzwang = true;
+    for (int color = Color::kBlack; color <= Color::kWhite; color++) {
+      for (int piece = PieceBitBoard::kKnights; piece <= PieceBitBoard::kQueens; piece++) {
+        if (state.pieces[color][piece].pop_count()) {
+          possible_zugzwang = false;
+          goto nmp;
+        }
+      }
+    }
 
-    PVLine dummy_pv;
+    nmp:
+    if (!possible_zugzwang) {
+      can_do_null_move = false;
+      board_.make_null_move();
 
-    const int reduction = depth >= 6 ? 3 : 2;
-    const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -beta + 1, dummy_pv);
+      PVLine dummy_pv;
 
-    board_.undo_move();
-    can_do_null_move = true;
+      const int reduction = depth >= 6 ? 3 : 2;
+      const int null_move_score = -negamax(depth - reduction, ply + 1, -beta, -alpha, dummy_pv);
 
-    if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
-      return eval::kDrawScore;
-    } else if (null_move_score >= beta) {
-      return beta;
+      board_.undo_move();
+      can_do_null_move = true;
+
+      if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null()) {
+        return eval::kDrawScore;
+      } else if (null_move_score >= beta) {
+        return beta;
+      }
     }
   }
 
@@ -218,8 +232,10 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     board_.undo_move();
     moves_tried++;
 
-    if (is_root)
+    if (is_root) {
+      std::cout << move.to_string() << " " << score << std::endl;
       time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
+    }
 
     if (time_mgmt_.times_up() && !best_move_this_iteration_.is_null())
       return eval::kDrawScore;
@@ -258,11 +274,8 @@ int Search::negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   // the game is over if we couldn't try a move
   if (moves_tried == 0) {
     return in_check ? -eval::kMateScore + ply : eval::kDrawScore;
-  } else {
-    if (state.fifty_moves_clock >= 100) {
-      best_score = eval::kDrawScore;
-      best_move = Move::null_move();
-    }
+  } else if (board_.is_draw()) {
+    return eval::kDrawScore;
   }
 
   TranspositionTable::Entry entry;

@@ -32,7 +32,6 @@ BoardState string_to_board(std::string fen_str) {
 
   // from 63 to 0, starting from a8 to h1
   U8 square = Square::kA8;
-
   for (const char &ch : position) {
     if (ch == '/') {
       square = square - 16 + (square % kBoardFiles);

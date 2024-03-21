@@ -124,9 +124,9 @@ class Board {
     return initialized_;
   }
 
-  void set_from_fen(std::string fen_str);
+  void set_from_fen(const std::string &fen_str);
 
-  bool is_legal_move(const Move &move);
+  [[nodiscard]] bool is_legal_move(const Move &move);
 
   void make_move(const Move &move);
 
@@ -135,6 +135,8 @@ class Board {
   void undo_move();
 
   [[nodiscard]] bool has_repeated(U8 times) const;
+
+  [[nodiscard]] bool is_draw() const;
 
  private:
   void handle_castling(const Move &move);

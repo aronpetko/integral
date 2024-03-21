@@ -179,34 +179,42 @@ int passed_pawns_score(const BoardState &state) {
   const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
   const BitBoard &black_rooks = state.pieces[Color::kBlack][kRooks];
 
-  for (const auto& file_mask : kFileMasks) {
-    const BitBoard black_pawns_on_file = black_pawns & file_mask;
-    const BitBoard white_pawns_on_file = white_pawns & file_mask;
+  for (int file = 0; file < kBoardFiles; file++) {
+    const int left_side = std::max(0, file - 1), right_side = std::min(kBoardFiles - 1, file + 1);
 
-    if (black_pawns_on_file == 0 && white_pawns_on_file) {
-      passed_pawns++;
+    const auto white_pawns_on_file = white_pawns & kFileMasks[file];
+    if (white_pawns_on_file) {
+      const auto white_pawn_rank = rank(white_pawns_on_file.get_msb_pos());
+      
+      const auto black_pawns_left = black_pawns & kFileMasks[left_side];
+      const auto black_pawns_middle = black_pawns & kFileMasks[file];
+      const auto black_pawns_right = black_pawns & kFileMasks[right_side];
 
-      const BitBoard white_rooks_on_file = white_rooks & file_mask;
-      if (white_rooks_on_file && white_pawns_on_file.get_lsb_pos() / kBoardRanks >= 5) {
-        if (white_pawns_on_file.get_lsb_pos() < white_rooks_on_file.get_msb_pos()) {
-          rooks_behind_passers++;
-        }
+      if ((!black_pawns_left || rank(black_pawns_left.get_msb_pos()) <= white_pawn_rank) &&
+          (!black_pawns_middle || rank(black_pawns_middle.get_msb_pos()) <= white_pawn_rank) &&
+          (!black_pawns_right || rank(black_pawns_right.get_msb_pos()) <= white_pawn_rank)) {
+        passed_pawns++;
       }
-    } else if (white_pawns_on_file == 0 && black_pawns_on_file) {
-      passed_pawns--;
+    }
 
-      const BitBoard black_rooks_on_file = black_rooks & file_mask;
-      if (black_rooks_on_file && black_pawns_on_file.get_lsb_pos() / kBoardRanks <= 4) {
-        if (black_pawns_on_file.get_msb_pos() < black_rooks_on_file.get_lsb_pos()) {
-          rooks_behind_passers++;
-        }
+    const auto black_pawns_on_file = black_pawns & kFileMasks[file];
+    if (black_pawns_on_file) {
+      const auto black_pawn_rank = rank(black_pawns_on_file.get_lsb_pos());
+
+      const auto white_pawns_left = white_pawns & kFileMasks[left_side];
+      const auto white_pawns_middle = white_pawns & kFileMasks[file];
+      const auto white_pawns_right = white_pawns & kFileMasks[right_side];
+
+      if ((!white_pawns_left || rank(white_pawns_left.get_lsb_pos()) >= black_pawn_rank) &&
+          (!white_pawns_middle || rank(white_pawns_middle.get_lsb_pos()) >= black_pawn_rank) &&
+          (!white_pawns_right || rank(white_pawns_right.get_lsb_pos()) >= black_pawn_rank)) {
+        passed_pawns--;
       }
     }
   }
 
   const int kPassedPawnBonus = 30;
-  const int kRooksBehindPassersBonus = 5;
-  const int score = passed_pawns * kPassedPawnBonus + rooks_behind_passers * kRooksBehindPassersBonus;
+  const int score = passed_pawns * kPassedPawnBonus;
 
   return state.turn == Color::kWhite ? score : -score;
 }
@@ -263,13 +271,61 @@ int mobility_difference(const BoardState &state) {
 int king_safety_difference(const BoardState &state) {
   int score = 0;
 
-  const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
+  const int kPawnProtectionBonus = 5;
+  const int kDoublePawnProtectionBonus = 1;
+  const int kNoPawnProtectionPenalty = -12;
+
+  for (int color = Color::kBlack; color <= Color::kWhite; color++) {
+    const auto king_pos = state.pieces[color][kKings].get_lsb_pos();
+    const auto pawns = state.pieces[color][kPawns];
+
+    const int king_file = file(king_pos);
+    const int king_rank = rank(king_pos);
+
+    for (int pawn_file = king_file - 1; pawn_file <= king_file + 1; pawn_file++) {
+      // check if we're in bounds
+      if (pawn_file >= 0 && pawn_file < kBoardFiles) {
+        const int rank_shift = color == Color::kWhite ? 1 : -1;
+        const int pawn_rank = king_rank + rank_shift;
+
+        int black_protecting_pawns = 0, white_protecting_pawns = 0;
+
+        if (pawns.is_set(rank_file_to_pos(pawn_rank, pawn_file))) {
+          if (color == Color::kWhite) {
+            score += kPawnProtectionBonus;
+            ++white_protecting_pawns;
+          } else {
+            score -= kPawnProtectionBonus;
+            ++black_protecting_pawns;
+          }
+        }
+
+        const int pawn_two_ahead_rank = king_rank + rank_shift * 2;
+        if (pawns.is_set(rank_file_to_pos(pawn_two_ahead_rank, pawn_file))) {
+          if (color == Color::kWhite) {
+            score += kDoublePawnProtectionBonus;
+            ++white_protecting_pawns;
+          } else {
+            score -= kDoublePawnProtectionBonus;
+            ++black_protecting_pawns;
+          }
+        }
+
+        const int kIdealProtectingPawnsCount = 3;
+        score += (kIdealProtectingPawnsCount - std::min(white_protecting_pawns, 3)) * kNoPawnProtectionPenalty;
+        score -= (kIdealProtectingPawnsCount - std::min(black_protecting_pawns, 3)) * kNoPawnProtectionPenalty;
+      }
+    }
+  }
+
+  return state.turn == Color::kWhite ? score : -score;
+
+  /* const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
   const BitBoard &white_king = state.pieces[Color::kWhite][kKings];
   const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
   const BitBoard &black_king = state.pieces[Color::kBlack][kKings];
 
-  const int kPawnProtectionBonus = 5;
-  const int kDoublePawnProtectionBonus = 4;
+
 
   const BitBoard white_left_protection = shift<Direction::kNorthWest>(white_king);
   const BitBoard white_right_protection = shift<Direction::kNorthEast>(white_king);
@@ -291,7 +347,7 @@ int king_safety_difference(const BoardState &state) {
   black_protection_squares = shift<Direction::kSouth>(black_protection_squares);
   score -= kDoublePawnProtectionBonus * (black_protection_squares & black_pawns).pop_count();
 
-  return state.turn == Color::kWhite ? score : -score;
+  return state.turn == Color::kWhite ? score : -score; */
 }
 
 int square_control_difference(const BoardState &state) {
@@ -303,11 +359,10 @@ int evaluate(const BoardState &state) {
   const int position_value = positional_difference(material_diff, state);
   const int stacked_pawns = stacked_pawns_difference(state);
   const int mobility = mobility_difference(state);
-  // const int passed_pawns = passed_pawns_score(state);
+  const int passed_pawns = passed_pawns_score(state);
   const int king_safety = king_safety_difference(state);
   const int square_control = square_control_difference(state);
-
-  return material_diff + position_value + stacked_pawns + mobility + king_safety + square_control;
+  return material_diff + position_value;
 }
 
 }
