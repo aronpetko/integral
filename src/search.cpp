@@ -90,6 +90,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     return eval::kDrawScore;
   }
 
+  bool following_pv_ = (beta - alpha) > 1;
+
   const auto &state = board_.get_state();
   auto &transpo = board_.get_transpo_table();
 
@@ -272,6 +274,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
 Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   Search::Result result;
+
+  const bool is_pv_node = (beta - alpha) > 1;
 
   const auto &state = board_.get_state();
   const bool in_check = king_in_check(state.turn, state);
