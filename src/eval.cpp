@@ -207,9 +207,8 @@ int passed_pawns_score(const BoardState &state) {
     }
   }
 
-  const int kPassedPawnBonus = 30;
-  const int score = passed_pawns * kPassedPawnBonus;
-
+  const int passed_pawn_bonus = is_end_game(state) ? 30 : 5;
+  const int score = passed_pawns * passed_pawn_bonus;
   return state.turn == Color::kWhite ? score : -score;
 }
 
@@ -327,7 +326,7 @@ int evaluate(const BoardState &state) {
   const int passed_pawns = passed_pawns_score(state);
   const int king_safety = king_safety_difference(state);
   const int square_control = square_control_difference(state);
-  return material_diff + position_value + stacked_pawns + mobility + king_safety + passed_pawns + square_control;
+  return material_diff + position_value + stacked_pawns + mobility + king_safety + square_control;
 }
 
 }

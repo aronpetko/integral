@@ -38,7 +38,7 @@ bool Board::is_legal_move(const Move &move) {
 
   BitBoard possible_moves;
 
-  switch (state_.piece_types[from]) {
+  switch (state_.get_piece_type(from)) {
     case PieceType::kPawn: {
       const BitBoard en_passant_mask = state_.en_passant.has_value() ? BitBoard::from_square(state_.en_passant.value()) : BitBoard(0);
       possible_moves = generate_pawn_moves(from, state_) | (generate_pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
@@ -194,10 +194,6 @@ void Board::make_move(const Move &move) {
 
   ++state_.half_moves;
   ++state_.fifty_moves_clock;
-
-  if (state_.zobrist_key != zobrist::generate_key(state_)) {
-    printf("bro");
-  }
 }
 
 void Board::undo_move() {
@@ -280,7 +276,7 @@ void Board::handle_castling(const Move &move) {
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto from = move.get_from(), to = move.get_to();
-  const auto piece_type = state_.piece_types[from];
+  const auto piece_type = state_.get_piece_type(from);
 
   if (piece_type == PieceType::kKing) {
     if (state_.castle.can_kingside_castle(state_.turn) || state_.castle.can_queenside_castle(state_.turn)) {
@@ -333,16 +329,15 @@ void Board::handle_castling(const Move &move) {
       }
     }
   }
-  // handle rook getting captured changing castle rights
-  else {
-    auto their_kingside_rook = state_.castle.get_kingside_rook(flip_color(state_.turn));
-    auto their_queenside_rook = state_.castle.get_queenside_rook(flip_color(state_.turn));
 
-    if (to == their_kingside_rook) {
-      state_.castle.set_can_kingside_castle(flip_color(state_.turn), false);
-    } else if (to == their_queenside_rook) {
-      state_.castle.set_can_queenside_castle(flip_color(state_.turn), false);
-    }
+  // handle rook getting captured changing castle rights
+  auto their_kingside_rook = state_.castle.get_kingside_rook(flip_color(state_.turn));
+  auto their_queenside_rook = state_.castle.get_queenside_rook(flip_color(state_.turn));
+
+  if (to == their_kingside_rook) {
+    state_.castle.set_can_kingside_castle(flip_color(state_.turn), false);
+  } else if (to == their_queenside_rook) {
+    state_.castle.set_can_queenside_castle(flip_color(state_.turn), false);
   }
 
   // xor in new castle rights

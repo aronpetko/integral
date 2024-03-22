@@ -29,7 +29,6 @@ enum Square : int {
   kA7, kB7, kC7, kD7, kE7, kF7, kG7, kH7,
   kA8, kB8, kC8, kD8, kE8, kF8, kG8, kH8,
   kSquareCount = 64,
-  kNoSquare = 0
 };
 
 enum RankMask : U64 {

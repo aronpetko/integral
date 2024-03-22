@@ -29,7 +29,7 @@ void TimeManagement::estimate_move_time() {
   const auto best_move_fraction =
       static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF]) / std::max(1LL, nodes_searched_);
   const auto hard_limit = calculate_hard_limit();
-  return hard_limit / 10 * 3 * (1.6 - best_move_fraction) * 1.5;
+  return (hard_limit / 10) * 3 * (1.6 - best_move_fraction) * 1.5;
 }
 
 void TimeManagement::update_nodes_searched() {
@@ -38,7 +38,7 @@ void TimeManagement::update_nodes_searched() {
 
 void TimeManagement::update_node_spent_table(const Move &move, long long prev_nodes_searched) {
   const long long nodes_spent = nodes_searched_ - prev_nodes_searched;
-  node_spent_table_[move.get_data() & 0x0FFF] += nodes_spent;
+  node_spent_table_[move.get_data() & 0xFFF] += nodes_spent;
 }
 
 bool TimeManagement::times_up() {

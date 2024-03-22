@@ -16,16 +16,14 @@ const int kHalfMoveLimit = 1024;
 
 class CastleData {
  public:
-  CastleData() : rights(0) {
+  static constexpr int kKingsideRookIndex = 0;
+  static constexpr int kQueensideRookIndex = 1;
+
+  CastleData() : rooks({}), rights(0) {
     set_kingside_rook(Color::kWhite, Square::kH1);
     set_queenside_rook(Color::kWhite, Square::kA1);
     set_kingside_rook(Color::kBlack, Square::kH8);
     set_queenside_rook(Color::kBlack, Square::kA8);
-  }
-
-  CastleData(const CastleData &other) {
-    rooks = other.rooks;
-    rights = other.rights;
   }
 
   [[nodiscard]] bool can_kingside_castle(Color turn) const {
@@ -49,19 +47,19 @@ class CastleData {
   }
 
   [[nodiscard]] Square get_kingside_rook(Color turn) const {
-    return rooks[turn][0];
+    return rooks[turn][kKingsideRookIndex];
   }
 
   [[nodiscard]] Square get_queenside_rook(Color turn) const {
-    return rooks[turn][1];
+    return rooks[turn][kQueensideRookIndex];
   }
 
   void set_kingside_rook(Color turn, Square square) {
-    rooks[turn][0] = square;
+    rooks[turn][kKingsideRookIndex] = square;
   }
 
   void set_queenside_rook(Color turn, Square square) {
-    rooks[turn][1] = square;
+    rooks[turn][kQueensideRookIndex] = square;
   }
 
  private:

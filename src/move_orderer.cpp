@@ -89,7 +89,7 @@ void MoveOrderer::score_moves() noexcept {
     const auto from = tt_entry.move.get_from();
     const auto to = tt_entry.move.get_to();
 
-    const bool is_capture = state.piece_types[to] != PieceType::kNone
+    const bool is_capture = state.get_piece_type(to) != PieceType::kNone
         || (state.piece_types[from] == PieceType::kPawn && state.en_passant.has_value()
             && state.en_passant == to);
 
@@ -108,10 +108,10 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
   const auto from = move.get_from();
   const auto to = move.get_to();
 
-  const auto move_piece_type = state.piece_types[from];
-  const bool is_capture = (state.piece_types[move.get_to()] != PieceType::kNone) ||
-      (state.piece_types[move.get_from()] == PieceType::kPawn && state.en_passant.has_value() &&
-      (state.en_passant == move.get_to()));
+  const auto move_piece_type = state.get_piece_type(from);
+  const bool is_capture = (state.get_piece_type(to) != PieceType::kNone) ||
+      (move_piece_type == PieceType::kPawn && state.en_passant.has_value() &&
+      (state.en_passant == to));
 
   if (move == tt_move) {
     return kTTMoveScore;

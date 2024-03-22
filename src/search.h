@@ -60,11 +60,11 @@ class Search {
   };
 
   struct Result {
-    Move best_move; // always the first move in the PV
+    Move best_move;
     PVLine pv_line;
     int score;
 
-    Result() : best_move(Move::null_move()), pv_line(), score(0) {}
+    Result() : best_move(Move::null_move()), pv_line(), score(std::numeric_limits<int>::min()) {}
   };
 
   Result go();
@@ -72,14 +72,15 @@ class Search {
  private:
   int quiesce(int ply, int alpha, int beta);
 
-  int negamax(int depth, int ply, int alpha, int beta, PVLine &pv_line);
+  [[nodiscard]] int search(int depth, int ply, int alpha, int beta, PVLine &pv_line);
+
+  [[nodiscard]] Result search_root(int depth, int ply, int alpha, int beta);
+
+  Result iterative_deepening();
 
  private:
   Board &board_;
   TimeManagement time_mgmt_;
-  PVLine pv_line_this_iteration_;
-  Move best_move_this_iteration_;
-  int best_score_this_iteration_;
   double branching_factor_;
   int total_bfs_;
   bool following_pv_;
