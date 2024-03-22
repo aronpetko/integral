@@ -11,7 +11,7 @@
 #include "zobrist.h"
 #include "transpo.h"
 
-const int kMaxGameMoves = 2048;
+const int kMaxGameMoves = 258;
 const int kHalfMoveLimit = 1024;
 
 class CastleData {

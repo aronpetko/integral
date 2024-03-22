@@ -34,43 +34,49 @@ int Search::quiesce(int ply, int alpha, int beta) {
   if (board_.is_draw())
     return eval::kDrawScore;
 
-  int stand_pat = eval::evaluate(state);
-  if (stand_pat >= beta)
-    return beta;
+  int static_eval = eval::evaluate(state);
+  if (static_eval >= beta || ply >= kMaxGameMoves)
+    return static_eval;
 
   // delta pruning
-  if (stand_pat + eval::kPieceValues[PieceType::kQueen] < alpha)
+  if (static_eval + eval::kPieceValues[PieceType::kQueen] < alpha)
     return alpha;
 
-  if (alpha < stand_pat)
-    alpha = stand_pat;
+  alpha = std::max(alpha, static_eval);
 
-  auto legal_moves = generate_legal_moves(board_);
-  if (legal_moves.empty()) {
-    return king_in_check(flip_color(state.turn), state) ? -eval::kMateScore + ply : eval::kDrawScore;
-  } else if (board_.is_draw()) {
-    return eval::kDrawScore;
-  }
+  int best_score = static_eval;
 
-  MoveOrderer move_orderer(board_, filter_moves(legal_moves, MoveType::kCaptures, board_), MoveType::kCaptures);
-
+  MoveOrderer move_orderer(board_, generate_capture_moves(board_), MoveType::kCaptures);
   for (int i = 0; i < move_orderer.size(); i++) {
-    board_.make_move(move_orderer.get_move(i));
-    const int score = -quiesce(ply + 1, -beta, -alpha);
-    board_.undo_move();
-
-    time_mgmt_.update_nodes_searched();
     if (time_mgmt_.times_up()) {
       break;
     }
 
-    if (score >= beta)
-      return beta;
+    const auto &move = move_orderer.get_move(i);
 
-    alpha = std::max(alpha, score);
+    board_.make_move(move);
+    // since the move generator is pseudo-legal, we must verify legality here
+    if (king_in_check(flip_color(state.turn), state)) {
+      board_.undo_move();
+      continue;
+    }
+
+    const int score = -quiesce(ply + 1, -beta, -alpha);
+    board_.undo_move();
+
+    if (score > best_score) {
+      best_score = score;
+
+      if (score >= beta) {
+        MoveOrderer::update_killer_move(move, ply);
+        break;
+      }
+
+      alpha = std::max(alpha, score);
+    }
   }
 
-  return alpha;
+  return best_score;
 }
 
 int futility_margin(int depth) {
@@ -150,7 +156,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     can_do_null_move_ = true;
 
     if (null_move_score >= beta) {
-      return beta;
+      return null_move_score > eval::kMateScore - kMaxGameMoves ? beta : null_move_score;
     }
   }
   can_do_null_move_ = true;
@@ -368,7 +374,6 @@ Search::Result Search::iterative_deepening() {
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
-  // iterative deepening
   for (int depth = 1; depth <= max_search_depth; depth++) {
     following_pv_ = true;
     can_do_null_move_ = true;

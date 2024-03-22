@@ -42,6 +42,8 @@ void TimeManagement::update_node_spent_table(const Move &move, long long prev_no
 }
 
 bool TimeManagement::times_up() {
+  if (config_.depth)
+    return false;
   if (times_up_)
     return true;
   if (nodes_searched_ % 75000)
@@ -50,7 +52,7 @@ bool TimeManagement::times_up() {
 }
 
 bool TimeManagement::root_times_up(const Move &pv_move) {
-  return time_elapsed() >= calculate_soft_limit(pv_move);
+  return config_.depth == 0 && time_elapsed() >= calculate_soft_limit(pv_move);
 }
 
 long long TimeManagement::get_nodes_searched() const {

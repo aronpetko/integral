@@ -351,7 +351,6 @@ MoveList generate_capture_moves(Board &board) {
   MoveList move_list;
 
   auto &state = board.get_state();
-  const bool is_white = state.turn == Color::kWhite;
 
   BitBoard pawns = state.pieces[state.turn][kPawns];
   BitBoard knights = state.pieces[state.turn][kKnights];

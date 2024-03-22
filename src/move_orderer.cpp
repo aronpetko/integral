@@ -21,7 +21,7 @@ std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, Search::kMaxSearchDep
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
 
 MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type) noexcept
-    : board_(board), moves_(moves), move_type_(move_type) {
+    : board_(board), moves_(moves), move_type_(move_type), move_scores_({}) {
   score_moves();
 }
 
@@ -67,14 +67,14 @@ void MoveOrderer::update_move_history(const Move &move, Color turn, int depth) {
 }
 
 void MoveOrderer::reset_move_history() {
-  for (auto &plane : MoveOrderer::move_history) {
-    for (auto &row : plane) {
-      std::fill(row.begin(), row.end(), 0);
+  for (auto &sides : MoveOrderer::move_history) {
+    for (auto &moves : sides) {
+      std::fill(moves.begin(), moves.end(), 0);
     }
   }
 
-  for (auto &row : MoveOrderer::killer_moves) {
-    std::fill(row.begin(), row.end(), Move::null_move());
+  for (auto &killers : MoveOrderer::killer_moves) {
+    std::fill(killers.begin(), killers.end(), Move::null_move());
   }
 }
 
@@ -85,7 +85,7 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_entry = board_.get_transpo_table().probe(state.zobrist_key);
   auto tt_move = Move::null_move();
 
-  if (tt_entry.key == state.zobrist_key && tt_entry.move != Move::null_move()) {
+  if (tt_entry.key == state.zobrist_key && !tt_entry.move.is_null()) {
     const auto from = tt_entry.move.get_from();
     const auto to = tt_entry.move.get_to();
 
