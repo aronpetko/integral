@@ -5,6 +5,7 @@
 #include "board.h"
 
 #include <array>
+#include <chrono>
 
 class TimeManagement {
  public:
@@ -21,7 +22,7 @@ class TimeManagement {
 
   void start();
 
-  void estimate_move_time();
+  void stop();
 
   void update_nodes_searched();
 
@@ -29,7 +30,7 @@ class TimeManagement {
 
   [[nodiscard]] bool root_times_up(const Move &pv_move);
 
-  [[nodiscard]] bool times_up();
+  [[nodiscard]] bool times_up() const;
 
   [[nodiscard]] long long get_nodes_searched() const;
 

@@ -3,6 +3,7 @@
 Move::Move(U8 from, U8 to) : data_(0) {
   set_from(from);
   set_to(to);
+  set_promotion_type(PromotionType::kNone);
 }
 
 Move::Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {
@@ -10,14 +11,14 @@ Move::Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {
 }
 
 Move Move::null_move() {
-  return {0, 0};
+  return Move(0, 0);
 }
 
 bool Move::operator==(const Move& other) const {
   return data_ == other.data_;
 }
 
-std::optional<Move> Move::from_str(BoardState &state, std::string_view str) {
+std::optional<Move> Move::from_str(const BoardState &state, std::string_view str) {
   const int kMinMoveLen = 4, kMaxMoveLen = 5;
   if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)
     return std::nullopt;
@@ -60,7 +61,14 @@ std::optional<Move> Move::from_str(BoardState &state, std::string_view str) {
   return Move(from, to, promotion_type);
 }
 
-[[nodiscard]] std::string Move::to_string() const {
+bool Move::is_capture(const BoardState &state) const {
+  const auto from = get_from();
+  const auto to = get_to();
+  return (state.get_piece_type(to) != PieceType::kNone) ||
+      (state.get_piece_type(from) == PieceType::kPawn && state.en_passant.has_value() && (state.en_passant == to));
+}
+
+std::string Move::to_string() const {
   if (*this == null_move())
     return "null";
 

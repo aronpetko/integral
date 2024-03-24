@@ -252,13 +252,13 @@ MoveList generate_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
-        move_list.push({from, to, PromotionType::kQueen});
-        move_list.push({from, to, PromotionType::kRook});
-        move_list.push({from, to, PromotionType::kKnight});
-        move_list.push({from, to, PromotionType::kBishop});
+        move_list.push(Move(from, to, PromotionType::kQueen));
+        move_list.push(Move(from, to, PromotionType::kRook));
+        move_list.push(Move(from, to, PromotionType::kKnight));
+        move_list.push(Move(from, to, PromotionType::kBishop));
         continue;
       } else {
-        move_list.push({from, to});
+        move_list.push(Move(from, to));
       }
     }
   }
@@ -271,7 +271,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -283,7 +283,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -295,7 +295,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -307,7 +307,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -319,7 +319,7 @@ MoveList generate_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -380,13 +380,13 @@ MoveList generate_capture_moves(Board &board) {
       // add the different promotion moves if possible
       if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1)
           || (state.turn == Color::kBlack && to_rank == 0))) {
-        move_list.push({from, to, PromotionType::kQueen});
-        move_list.push({from, to, PromotionType::kRook});
-        move_list.push({from, to, PromotionType::kKnight});
-        move_list.push({from, to, PromotionType::kBishop});
+        move_list.push(Move(from, to, PromotionType::kQueen));
+        move_list.push(Move(from, to, PromotionType::kRook));
+        move_list.push(Move(from, to, PromotionType::kKnight));
+        move_list.push(Move(from, to, PromotionType::kBishop));
         continue;
       } else {
-        move_list.push({from, to});
+        move_list.push(Move(from, to));
       }
     }
   }
@@ -399,7 +399,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -411,7 +411,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -423,7 +423,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -435,7 +435,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -447,7 +447,7 @@ MoveList generate_capture_moves(Board &board) {
 
     while (possible_moves) {
       U8 to = possible_moves.pop_lsb();
-      move_list.push({from, to});
+      move_list.push(Move(from, to));
     }
   }
 
@@ -470,9 +470,7 @@ MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
   MoveList filtered;
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
-    const bool is_capture = state.get_piece_type(move.get_to()) != PieceType::kNone
-        || (state.get_piece_type(move.get_from()) == PieceType::kPawn && state.en_passant.has_value()
-            && state.en_passant == move.get_to());
+    const bool is_capture = move.is_capture(state);
 
     if (type == MoveType::kCaptures) {
       if (is_capture) {

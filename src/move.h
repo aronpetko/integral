@@ -16,17 +16,19 @@ const U32 kPromotionTypeMask = 0b000111000000000000;
 // bits 12-14: promotion piece type
 class Move {
  public:
-  Move() = default;
+  Move() : data_(0) {}
 
-  Move(U8 from, U8 to);
+  explicit Move(U8 from, U8 to);
 
-  Move(U8 from, U8 to, PromotionType promotion_type);
+  explicit Move(U8 from, U8 to, PromotionType promotion_type);
 
   [[nodiscard]] static Move null_move();
 
   bool operator==(const Move &other) const;
 
-  static std::optional<Move> from_str(BoardState &board, std::string_view str);
+  static std::optional<Move> from_str(const BoardState &state, std::string_view str);
+
+  [[nodiscard]] bool is_capture(const BoardState &state) const;
 
   [[nodiscard]] constexpr inline bool is_null() const {
     return data_ == 0;

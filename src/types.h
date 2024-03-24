@@ -13,23 +13,23 @@ const U8 kBoardRanks = 8;
 const U8 kBoardLength = 8;
 
 enum PieceType : U8 {
-  kNone,
   kPawn,
   kKnight,
   kBishop,
   kRook,
   kQueen,
   kKing,
-  kNumPieceTypes
+  kNone,
+  kNumPieceTypes = kNone
 };
 
 enum class PromotionType : U8 {
-  kNone,
   kKnight,
   kBishop,
   kRook,
   kQueen,
-  kAny
+  kAny,
+  kNone,
 };
 
 enum class MoveType {

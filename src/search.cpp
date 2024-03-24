@@ -9,7 +9,6 @@
 
 Search::Search(TimeManagement::Config &time_config, Board &board)
     : board_(board),
-      following_pv_(false),
       time_mgmt_(time_config, board),
       branching_factor_(0.0),
       total_bfs_(0),
@@ -23,7 +22,8 @@ void Search::init_tables() {
 
   for (int depth = 1; depth < kMaxSearchDepth; depth++) {
     for (int move = 1; move < 512; move++) {
-      Search::kLateMoveReductionTable[depth][move] = kBaseReduction + log(depth) + log(move) / kDivisor;
+      Search::kLateMoveReductionTable[depth][move] =
+          static_cast<int>(kBaseReduction + log(depth) + log(move) / kDivisor);
     }
   }
 }
@@ -90,23 +90,20 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     return eval::kDrawScore;
   }
 
-  bool following_pv_ = (beta - alpha) > 1;
+  const bool in_pv_node = (beta - alpha) > 1;
 
   const auto &state = board_.get_state();
   auto &transpo = board_.get_transpo_table();
 
   const int original_alpha = alpha;
   const auto &tt_entry = transpo.probe(state.zobrist_key);
-  if (!following_pv_ && tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
+  if (!in_pv_node && tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
     const auto corrected_tt_eval = transpo.correct_score(tt_entry.score, ply);
     switch (tt_entry.flag) {
-      case TranspositionTable::Entry::kExact:
-        return corrected_tt_eval;
-      case TranspositionTable::Entry::kLowerBound:
-        alpha = std::max(alpha, corrected_tt_eval);
+      case TranspositionTable::Entry::kExact:return corrected_tt_eval;
+      case TranspositionTable::Entry::kLowerBound:alpha = std::max(alpha, corrected_tt_eval);
         break;
-      case TranspositionTable::Entry::kUpperBound:
-        beta = std::min(beta, corrected_tt_eval);
+      case TranspositionTable::Entry::kUpperBound:beta = std::min(beta, corrected_tt_eval);
         break;
     }
 
@@ -115,28 +112,29 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     }
   }
 
+  int extensions = 0;
+
   // ensure we never run quiesce when in check
   const bool in_check = king_in_check(state.turn, state);
   if (in_check) {
-    depth++;
+    extensions++;
   }
 
   // search until we've found a "quiet" position to evaluate
   if (depth <= 0) {
-    following_pv_ = false;
     return quiesce(ply, alpha, beta);
   }
 
   const int static_eval = eval::evaluate(state);
   const int kReverseFutilityDepthLimit = 6;
-  if (depth <= kReverseFutilityDepthLimit && !following_pv_ && !in_check) {
+  if (depth <= kReverseFutilityDepthLimit && !in_pv_node && !in_check) {
     if (static_eval - futility_margin(depth) >= beta) {
       return static_eval;
     }
   }
 
   // null move pruning
-  if (can_do_null_move_ && depth > 2 && !in_check && !following_pv_) {
+  if (can_do_null_move_ && depth > 2 && !in_check && !in_pv_node) {
     // possible zugwang detection
     for (int color = Color::kBlack; color <= Color::kWhite; color++) {
       for (int piece = PieceBitBoard::kKnights; piece <= PieceBitBoard::kQueens; piece++) {
@@ -174,9 +172,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
-    const bool is_capture = (state.get_piece_type(move.get_to()) != PieceType::kNone) ||
-        (state.get_piece_type(move.get_from()) == PieceType::kPawn && state.en_passant.has_value() &&
-        (state.en_passant == move.get_to()));
+    const bool is_capture = move.is_capture(state);
     const bool is_promotion = move.get_promotion_type() != PromotionType::kNone;
 
     board_.make_move(move);
@@ -187,8 +183,6 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       continue;
     }
 
-    time_mgmt_.update_nodes_searched();
-
     PVLine child_pv_line;
     int score;
 
@@ -198,23 +192,22 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       reduction = kLateMoveReductionTable[depth][moves_tried];
     }
 
-    // search the first move with a normal window
+    // pvs: search the first move with a normal window
     if (moves_tried == 0) {
       score = -search(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
     } else {
       // null window search for a quick refutation or indication of a potentially good move
-      const bool old_following_pv = following_pv_;
-      following_pv_ = false;
       score = -search(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
-      following_pv_ = old_following_pv;
 
       // if the move looks promising from null window search, research
-      if (score > alpha && (following_pv_ || reduction > 0)) {
-        score = -search(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
+      if (score > alpha && (in_pv_node || reduction > 0)) {
+        score = -search(depth - 1 + extensions, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
 
     board_.undo_move();
+
+    time_mgmt_.update_nodes_searched();
     moves_tried++;
 
     if (time_mgmt_.times_up() && !best_move.is_null()) {
@@ -275,7 +268,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   Search::Result result;
 
-  const bool is_pv_node = (beta - alpha) > 1;
+  const bool in_pv_node = (beta - alpha) > 1;
 
   const auto &state = board_.get_state();
   const bool in_check = king_in_check(state.turn, state);
@@ -287,9 +280,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
-    const bool is_capture = (state.get_piece_type(move.get_to()) != PieceType::kNone) ||
-        (state.get_piece_type(move.get_from()) == PieceType::kPawn && state.en_passant.has_value() &&
-        (state.en_passant == move.get_to()));
+    const bool is_capture = move.is_capture(state);
     const bool is_promotion = move.get_promotion_type() != PromotionType::kNone;
 
     board_.make_move(move);
@@ -317,13 +308,10 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
       score = -search(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
     } else {
       // null window search for a quick refutation or indication of a potentially good move
-      const bool old_following_pv = following_pv_;
-      following_pv_ = false;
       score = -search(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
-      following_pv_ = old_following_pv;
 
       // if the move looks promising from null window search, research
-      if (score > alpha && (following_pv_ || reduction > 0)) {
+      if (score > alpha && (in_pv_node || reduction > 0)) {
         score = -search(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
@@ -379,7 +367,6 @@ Search::Result Search::iterative_deepening() {
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
   for (int depth = 1; depth <= max_search_depth; depth++) {
-    following_pv_ = true;
     can_do_null_move_ = true;
 
     const int kAspirationWindow = 75;
@@ -395,7 +382,7 @@ Search::Result Search::iterative_deepening() {
       new_result = search_root(depth, 0, alpha, beta);
     }
 
-    if (!new_result.best_move.is_null() && !time_mgmt_.times_up()) {
+    if (!new_result.best_move.is_null()) {
       result = new_result;
     }
 
@@ -410,7 +397,7 @@ Search::Result Search::iterative_deepening() {
                              result.pv_line.length(),
                              result.pv_line.to_string()) << std::endl;
 
-    if (time_mgmt_.root_times_up(result.best_move)) {
+    if (time_mgmt_.times_up() || time_mgmt_.root_times_up(result.best_move)) {
       break;
     }
   }
@@ -420,6 +407,5 @@ Search::Result Search::iterative_deepening() {
 
 Search::Result Search::go() {
   time_mgmt_.start();
-  time_mgmt_.estimate_move_time();
   return iterative_deepening();
 }

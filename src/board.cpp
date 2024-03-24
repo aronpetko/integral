@@ -2,6 +2,7 @@
 #include "move.h"
 #include "move_gen.h"
 #include "fen.h"
+#include "eval.h"
 
 Board::Board(std::size_t transpo_table_size)
     : transpo_table_(transpo_table_size),
@@ -22,6 +23,8 @@ void Board::set_from_fen(const std::string &fen_str) {
 
   state_ = fen::string_to_board(fen_str);
   initialized_ = true;
+
+  std::cout << eval::evaluate(state_) << std::endl;
 }
 
 bool Board::is_legal_move(const Move &move) {
@@ -91,6 +94,8 @@ void Board::make_move(const Move &move) {
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.piece_types[from];
 
+  int new_fity_move_clock = state_.fifty_moves_clock + 1;
+
   // xor out the previous turn hash and moved piece
   state_.zobrist_key ^= zobrist::hash_square(from, state_) ^ zobrist::hash_turn(state_);
 
@@ -111,14 +116,14 @@ void Board::make_move(const Move &move) {
     state_.piece_types[to] = PieceType::kNone;
 
     // reset fifty moves clock since this move was a capture
-    state_.fifty_moves_clock = 0;
+    new_fity_move_clock = 0;
   }
 
   // used for zobrist hashing later
   bool move_is_double_push = false;
 
   if (piece_type == PieceType::kPawn) {
-    state_.fifty_moves_clock = 0;
+    new_fity_move_clock = 0;
 
     // check if this was an en passant capture
     if (to == state_.en_passant) {
@@ -168,7 +173,7 @@ void Board::make_move(const Move &move) {
   }
 
   // move the piece
-  BitBoard &piece_bb = state_.pieces[state_.turn][piece_type - 1];
+  BitBoard &piece_bb = state_.pieces[state_.turn][piece_type];
   piece_bb.move(from, to);
   our_pieces.move(from, to);
 
@@ -193,12 +198,13 @@ void Board::make_move(const Move &move) {
     state_.zobrist_key ^= zobrist::hash_en_passant(state_);
 
   ++state_.half_moves;
-  ++state_.fifty_moves_clock;
+  state_.fifty_moves_clock = new_fity_move_clock;
 }
 
 void Board::undo_move() {
   state_ = history_[--history_count_];
   key_history_count_--;
+  state_.half_moves--;
 }
 
 void Board::make_null_move() {
@@ -233,7 +239,7 @@ bool Board::has_repeated(U8 times) const {
 }
 
 bool Board::is_draw() const {
-  if (state_.fifty_moves_clock >= 100 || has_repeated(2)) {
+  if (state_.fifty_moves_clock >= 100 || has_repeated(1)) {
     return true;
   }
 

@@ -11,7 +11,7 @@
 #include "zobrist.h"
 #include "transpo.h"
 
-const int kMaxGameMoves = 258;
+const int kMaxGameMoves = 1024;
 const int kHalfMoveLimit = 1024;
 
 class CastleData {
@@ -98,7 +98,7 @@ struct BoardState {
   std::array<PieceType, Square::kSquareCount> piece_types;
   Color turn;
   U32 half_moves;
-  U32 fifty_moves_clock;
+  U16 fifty_moves_clock;
   std::optional<Square> en_passant;
   CastleData castle;
   U64 zobrist_key;

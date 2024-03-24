@@ -2,12 +2,12 @@
 #include "eval.h"
 
 const int kMVVLVAScore = std::numeric_limits<int>::max() - 256;
-const int kTTMoveScore = std::numeric_limits<int>::max();
-const int kKillerMoveValue = 10;
+const int kMaxMoveScore = std::numeric_limits<int>::max();
+const int kPromotionScore = 10;
+const int kKillerMoveScore = 15;
 
 // credits: rustic chess engine
 const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
-  {{0, 0, 0, 0, 0, 0}},       // victim none, attacker K, Q, R, B, N, P
   {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
   {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
   {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
@@ -16,7 +16,7 @@ const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPiec
   {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
 }};
 
-std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, Search::kMaxSearchDepth> MoveOrderer::killer_moves{};
+std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxGameMoves> MoveOrderer::killer_moves{};
 
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
 
@@ -86,13 +86,7 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_move = Move::null_move();
 
   if (tt_entry.key == state.zobrist_key && !tt_entry.move.is_null()) {
-    const auto from = tt_entry.move.get_from();
-    const auto to = tt_entry.move.get_to();
-
-    const bool is_capture = state.get_piece_type(to) != PieceType::kNone
-        || (state.piece_types[from] == PieceType::kPawn && state.en_passant.has_value()
-            && state.en_passant == to);
-
+    const bool is_capture = tt_entry.move.is_capture(state);
     if (move_type_ != MoveType::kCaptures || is_capture) {
       tt_move = tt_entry.move;
     }
@@ -108,24 +102,42 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
   const auto from = move.get_from();
   const auto to = move.get_to();
 
-  const auto move_piece_type = state.get_piece_type(from);
-  const bool is_capture = (state.get_piece_type(to) != PieceType::kNone) ||
-      (move_piece_type == PieceType::kPawn && state.en_passant.has_value() &&
-      (state.en_passant == to));
+  const bool is_capture = move.is_capture(state);
 
+  int score = 0;
+
+  // tt move get priority since it's the current stored best move
   if (move == tt_move) {
-    return kTTMoveScore;
-  } else if (is_capture) {
-    return kMVVLVAScore + kMVVLVATable[state.get_piece_type(to)][move_piece_type];
-  } else {
-    for (int i = 0; i < kNumKillerMoves; i++) {
-      for (const auto &killer_move : MoveOrderer::killer_moves[i]) {
-        if (killer_move == move) {
-          return kMVVLVAScore - (i + 1) * kKillerMoveValue;
-        }
+    return kMaxMoveScore;
+  }
+
+  // moves that caused a beta cutoff
+  bool is_killer = false;
+  for (int i = 0; i < kNumKillerMoves; i++) {
+    // if we've already found a killer (avoiding goto)
+    if (is_killer) break;
+
+    for (const auto &killer_move : MoveOrderer::killer_moves[i]) {
+      if (killer_move == move) {
+        // killer moves should get higher priority than bad captures
+        score = kMVVLVAScore + (kNumKillerMoves - 1 - i) * kKillerMoveScore;
+        is_killer = true;
+        break;
       }
     }
-
-    return MoveOrderer::move_history[state.turn][from][to];
   }
+
+  if (is_capture) {
+    // killer moves are already close to the base MVV-LVA score
+    // therefore, if this move wasn't a killer, we set it to the base MVV-LVA score
+    if (!is_killer) {
+      score = kMVVLVAScore;
+    }
+
+    score += kMVVLVATable[state.get_piece_type(to)][state.get_piece_type(from)];
+  } else if (!is_killer) {
+    score += MoveOrderer::move_history[state.turn][from][to];
+  }
+
+  return score;
 }

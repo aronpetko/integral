@@ -46,7 +46,7 @@ BoardState string_to_board(std::string fen_str) {
     const Color piece_color = std::islower(ch) ? Color::kBlack : Color::kWhite;
     const auto piece_type = kCharToPieceType.at(std::tolower(ch));
 
-    pieces[piece_color][piece_type - 1].set_bit(square);
+    pieces[piece_color][piece_type].set_bit(square);
     state.piece_types[square] = piece_type;
 
     square++;
@@ -83,7 +83,7 @@ BoardState string_to_board(std::string fen_str) {
   stream >> state.half_moves;
 
   // adjust the full moves to half moves
-  state.half_moves *= 2;
+  state.half_moves /= 2;
   if (state.turn == Color::kWhite)
     state.half_moves++;
 

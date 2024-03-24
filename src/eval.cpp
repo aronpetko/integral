@@ -167,48 +167,52 @@ int stacked_pawns_difference(const BoardState &state) {
   return state.turn == Color::kWhite ? penalty : -penalty;
 }
 
-int passed_pawns_score(const BoardState &state) {
-  int passed_pawns = 0;
+int pawns_score(const BoardState &state) {
+  return 0;
+  const std::array<int, 7> kPassedPawnBonuses = {0, 100, 80, 55, 30, 15, 10}; // indexed by # of squares from promotion
+  const std::array<int, 4> kIsolatedPawnPenalties = {-5, -30, -70, -110}; // indexed by # of isolated pawns (should never exceed 4)
 
   const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
   const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
+
+  int white_isolated_pawns = 0, black_isolated_pawns = 0;
+  int score = 0;
 
   for (int file = 0; file < kBoardFiles; file++) {
     const int left_side = std::max(0, file - 1), right_side = std::min(kBoardFiles - 1, file + 1);
 
     const auto white_pawns_on_file = white_pawns & kFileMasks[file];
+    const auto black_pawns_on_file = black_pawns & kFileMasks[file];
+
     if (white_pawns_on_file) {
       const auto white_pawn_rank = rank(white_pawns_on_file.get_msb_pos());
-      
-      const auto black_pawns_left = black_pawns & kFileMasks[left_side];
-      const auto black_pawns_middle = black_pawns & kFileMasks[file];
-      const auto black_pawns_right = black_pawns & kFileMasks[right_side];
+      if (!black_pawns_on_file || (black_pawns_on_file && black_pawns_on_file.get_lsb_pos() >= white_pawn_rank)) {
+        score += kPassedPawnBonuses[kBoardRanks - 1 - white_pawn_rank];
+      }
 
-      if ((!black_pawns_left || rank(black_pawns_left.get_msb_pos()) <= white_pawn_rank) &&
-          (!black_pawns_middle || rank(black_pawns_middle.get_msb_pos()) <= white_pawn_rank) &&
-          (!black_pawns_right || rank(black_pawns_right.get_msb_pos()) <= white_pawn_rank)) {
-        passed_pawns++;
+      const auto white_pawns_left = white_pawns & kFileMasks[left_side];
+      const auto white_pawns_right = white_pawns & kFileMasks[right_side];
+      if (!white_pawns_left && !white_pawns_right) {
+        white_isolated_pawns++;
       }
     }
 
-    const auto black_pawns_on_file = black_pawns & kFileMasks[file];
     if (black_pawns_on_file) {
       const auto black_pawn_rank = rank(black_pawns_on_file.get_lsb_pos());
+      if (!white_pawns_on_file || (white_pawns_on_file && white_pawns_on_file.get_msb_pos() <= black_pawn_rank)) {
+        score -= kPassedPawnBonuses[kBoardRanks - 1 - black_pawn_rank];
+      }
 
-      const auto white_pawns_left = white_pawns & kFileMasks[left_side];
-      const auto white_pawns_middle = white_pawns & kFileMasks[file];
-      const auto white_pawns_right = white_pawns & kFileMasks[right_side];
-
-      if ((!white_pawns_left || rank(white_pawns_left.get_lsb_pos()) >= black_pawn_rank) &&
-          (!white_pawns_middle || rank(white_pawns_middle.get_lsb_pos()) >= black_pawn_rank) &&
-          (!white_pawns_right || rank(white_pawns_right.get_lsb_pos()) >= black_pawn_rank)) {
-        passed_pawns--;
+      const auto black_pawns_left = black_pawns & kFileMasks[left_side];
+      const auto black_pawns_right = black_pawns & kFileMasks[right_side];
+      if (!black_pawns_left && !black_pawns_right) {
+        black_isolated_pawns++;
       }
     }
   }
 
-  const int passed_pawn_bonus = is_end_game(state) ? 30 : 5;
-  const int score = passed_pawns * passed_pawn_bonus;
+  score += kIsolatedPawnPenalties[white_isolated_pawns];
+  score -= kIsolatedPawnPenalties[black_isolated_pawns];
   return state.turn == Color::kWhite ? score : -score;
 }
 
@@ -323,10 +327,10 @@ int evaluate(const BoardState &state) {
   const int position_value = positional_difference(state);
   const int stacked_pawns = stacked_pawns_difference(state);
   const int mobility = mobility_difference(state);
-  const int passed_pawns = passed_pawns_score(state);
+  const int passed_pawns = pawns_score(state);
   const int king_safety = king_safety_difference(state);
   const int square_control = square_control_difference(state);
-  return material_diff + position_value + stacked_pawns + mobility + king_safety + square_control;
+  return material_diff + position_value;
 }
 
 }

@@ -9,7 +9,6 @@ const int kDrawScore = 0;
 const int kMateScore = 1e8;
 
 const std::array<int, PieceType::kNumPieceTypes> kPieceValues = {
-    0, // none
     100, // pawn
     305, // knight
     315, // bishop
