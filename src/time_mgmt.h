@@ -6,6 +6,7 @@
 
 #include <array>
 #include <chrono>
+#include <thread>
 
 class TimeManagement {
  public:
@@ -50,6 +51,9 @@ class TimeManagement {
   long long nodes_searched_;
   bool times_up_;
   std::array<long long, 4096> node_spent_table_;
+  std::mutex mutex_;
+  std::condition_variable times_up_cv_;
+  std::thread worker;
 };
 
 #endif // INTEGRAL_TIME_MGMT_H_

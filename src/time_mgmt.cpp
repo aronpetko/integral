@@ -13,14 +13,23 @@ void TimeManagement::start() {
   std::fill(node_spent_table_.begin(), node_spent_table_.end(), 0);
 
   // stop after the hard limit has been passed
-  std::thread([this]{
-    std::this_thread::sleep_for(std::chrono::milliseconds(calculate_hard_limit()));
-    stop();
-  }).detach();
+  worker = std::thread([this]{
+    std::unique_lock<std::mutex> lock(mutex_);
+    times_up_cv_.wait_for(lock, std::chrono::milliseconds(calculate_hard_limit()), [this]{
+      return times_up_;
+    });
+
+    times_up_ = true;
+  });
 }
 
 void TimeManagement::stop() {
-  times_up_ = true;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    times_up_ = true;
+  }
+  times_up_cv_.notify_one();
+  worker.join();
 }
 
 [[nodiscard]] long long TimeManagement::calculate_hard_limit() {

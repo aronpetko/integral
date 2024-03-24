@@ -23,8 +23,6 @@ void Board::set_from_fen(const std::string &fen_str) {
 
   state_ = fen::string_to_board(fen_str);
   initialized_ = true;
-
-  std::cout << eval::evaluate(state_) << std::endl;
 }
 
 bool Board::is_legal_move(const Move &move) {

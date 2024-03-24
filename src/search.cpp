@@ -268,8 +268,6 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   Search::Result result;
 
-  const bool in_pv_node = (beta - alpha) > 1;
-
   const auto &state = board_.get_state();
   const bool in_check = king_in_check(state.turn, state);
 
@@ -311,7 +309,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
       score = -search(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
 
       // if the move looks promising from null window search, research
-      if (score > alpha && (in_pv_node || reduction > 0)) {
+      if (score > alpha) {
         score = -search(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
@@ -401,11 +399,12 @@ Search::Result Search::iterative_deepening() {
       break;
     }
   }
-
   return result;
 }
 
 Search::Result Search::go() {
   time_mgmt_.start();
-  return iterative_deepening();
+  const auto result = iterative_deepening();
+  time_mgmt_.stop();
+  return result;
 }

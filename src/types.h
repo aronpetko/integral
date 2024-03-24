@@ -24,12 +24,12 @@ enum PieceType : U8 {
 };
 
 enum class PromotionType : U8 {
+  kNone,
   kKnight,
   kBishop,
   kRook,
   kQueen,
   kAny,
-  kNone,
 };
 
 enum class MoveType {

@@ -107,9 +107,7 @@ int perft_internal(Board &board, int depth, int start_depth) {
 void perft(Board &board, std::stringstream &input_stream) {
   int depth;
 
-  std::string option;
-  if (input_stream >> option && option == "depth") {
-    input_stream >> depth;
+  if (input_stream >> depth) {
     assert(depth >= 0);
 
     const auto start_time = std::chrono::steady_clock::now();

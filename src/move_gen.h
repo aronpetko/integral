@@ -61,8 +61,6 @@ BitBoard generate_castling_moves(const BoardState &state, Color which);
 
 BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool include_king_attacks = true);
 
-bool is_square_attacked(U8 pos, Color attacker, const BoardState &state);
-
 bool king_in_check(Color color, const BoardState &state);
 
 MoveList generate_moves(Board &board);

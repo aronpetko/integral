@@ -4,67 +4,103 @@
 namespace eval {
 
 const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kPieceSquareTables = {{
-    { // pawns
-      0, 0, 0, 0, 0, 0, 0, 0,
-      50, 50, 50, 50, 50, 50, 50, 50,
-      10, 10, 20, 30, 30, 20, 10, 10,
-      5, 5, 10, 25, 25, 10, 5, 5,
-      0, 0, 0, 20, 20, 0, 0, 0,
-      5, -5, -10, 0, 0, -10, -5, 5,
-      5, 10, 10, -20, -20, 10, 10, 5,
-      0, 0, 0, 0, 0, 0, 0, 0
-    },
-    { // knights
-      -50, -40, -30, -30, -30, -30, -40, -50,
-      -40, -20, 0, 0, 0, 0, -20, -40,
-      -30, 0, 10, 15, 15, 10, 0, -30,
-      -30, 5, 15, 20, 20, 15, 5, -30,
-      -30, 0, 15, 20, 20, 15, 0, -30,
-      -30, 5, 10, 15, 15, 10, 5, -30,
-      -40, -20, 0, 5, 5, 0, -20, -40,
-      -50, -40, -30, -30, -30, -30, -40, -50,
-    },
-    { // bishops
-      -20, -10, -10, -10, -10, -10, -10, -20,
-      -10, 0, 0, 0, 0, 0, 0, -10,
-      -10, 0, 5, 10, 10, 5, 0, -10,
-      -10, 5, 5, 10, 10, 5, 5, -10,
-      -10, 0, 10, 10, 10, 10, 0, -10,
-      -10, 10, 10, 10, 10, 10, 10, -10,
-      -10, 5, 0, 0, 0, 0, 5, -10,
-      -20, -10, -10, -10, -10, -10, -10, -20,
-    },
-    { // rooks
-      0, 0, 0, 0, 0, 0, 0, 0,
-      5, 10, 10, 10, 10, 10, 10, 5,
-      -5, 0, 0, 0, 0, 0, 0, -5,
-      -5, 0, 0, 0, 0, 0, 0, -5,
-      -5, 0, 0, 0, 0, 0, 0, -5,
-      -5, 0, 0, 0, 0, 0, 0, -5,
-      -5, 0, 0, 0, 0, 0, 0, -5,
-      0, 0, 0, 5, 5, 0, 0, 0
-    },
-    { // queens
-      -20, -10, -10, -5, -5, -10, -10, -20,
-      -10, 0, 0, 0, 0, 0, 0, -10,
-      -10, 0, 5, 5, 5, 5, 0, -10,
-      -5, 0, 5, 5, 5, 5, 0, -5,
-      0, 0, 5, 5, 5, 5, 0, -5,
-      -10, 5, 5, 5, 5, 5, 0, -10,
-      -10, 0, 5, 0, 0, 0, 0, -10,
-      -20, -10, -10, -5, -5, -10, -10, -20
-    },
-    { // king middle game
-      -30, -40, -40, -50, -50, -40, -40, -30,
-      -30, -40, -40, -50, -50, -40, -40, -30,
-      -30, -40, -40, -50, -50, -40, -40, -30,
-      -30, -40, -40, -50, -50, -40, -40, -30,
-      -20, -30, -30, -40, -40, -30, -30, -20,
-      -10, -20, -20, -20, -20, -20, -20, -10,
-      20, 20, 0, 0, 0, 0, 20, 20,
-      20, 30, 10, 0, 0, 10, 30, 20
-    },
-}};
+                                                                                           { // pawns
+                                                                                               0, 0, 0, 0, 0, 0, 0, 0,
+                                                                                               50, 50, 50, 50, 50, 50,
+                                                                                               50, 50,
+                                                                                               10, 10, 20, 30, 30, 20,
+                                                                                               10, 10,
+                                                                                               5, 5, 10, 25, 25, 10, 5,
+                                                                                               5,
+                                                                                               0, 0, 0, 20, 20, 0, 0, 0,
+                                                                                               5, -5, -10, 0, 0, -10,
+                                                                                               -5, 5,
+                                                                                               5, 10, 10, -20, -20, 10,
+                                                                                               10, 5,
+                                                                                               0, 0, 0, 0, 0, 0, 0, 0
+                                                                                           },
+                                                                                           { // knights
+                                                                                               -50, -40, -30, -30, -30,
+                                                                                               -30, -40, -50,
+                                                                                               -40, -20, 0, 0, 0, 0,
+                                                                                               -20, -40,
+                                                                                               -30, 0, 10, 15, 15, 10,
+                                                                                               0, -30,
+                                                                                               -30, 5, 15, 20, 20, 15,
+                                                                                               5, -30,
+                                                                                               -30, 0, 15, 20, 20, 15,
+                                                                                               0, -30,
+                                                                                               -30, 5, 10, 15, 15, 10,
+                                                                                               5, -30,
+                                                                                               -40, -20, 0, 5, 5, 0,
+                                                                                               -20, -40,
+                                                                                               -50, -40, -30, -30, -30,
+                                                                                               -30, -40, -50,
+                                                                                           },
+                                                                                           { // bishops
+                                                                                               -20, -10, -10, -10, -10,
+                                                                                               -10, -10, -20,
+                                                                                               -10, 0, 0, 0, 0, 0, 0,
+                                                                                               -10,
+                                                                                               -10, 0, 5, 10, 10, 5, 0,
+                                                                                               -10,
+                                                                                               -10, 5, 5, 10, 10, 5, 5,
+                                                                                               -10,
+                                                                                               -10, 0, 10, 10, 10, 10,
+                                                                                               0, -10,
+                                                                                               -10, 10, 10, 10, 10, 10,
+                                                                                               10, -10,
+                                                                                               -10, 5, 0, 0, 0, 0, 5,
+                                                                                               -10,
+                                                                                               -20, -10, -10, -10, -10,
+                                                                                               -10, -10, -20,
+                                                                                           },
+                                                                                           { // rooks
+                                                                                               0, 0, 0, 0, 0, 0, 0, 0,
+                                                                                               5, 10, 10, 10, 10, 10,
+                                                                                               10, 5,
+                                                                                               -5, 0, 0, 0, 0, 0, 0, -5,
+                                                                                               -5, 0, 0, 0, 0, 0, 0, -5,
+                                                                                               -5, 0, 0, 0, 0, 0, 0, -5,
+                                                                                               -5, 0, 0, 0, 0, 0, 0, -5,
+                                                                                               -5, 0, 0, 0, 0, 0, 0, -5,
+                                                                                               0, 0, 0, 5, 5, 0, 0, 0
+                                                                                           },
+                                                                                           { // queens
+                                                                                               -20, -10, -10, -5, -5,
+                                                                                               -10, -10, -20,
+                                                                                               -10, 0, 0, 0, 0, 0, 0,
+                                                                                               -10,
+                                                                                               -10, 0, 5, 5, 5, 5, 0,
+                                                                                               -10,
+                                                                                               -5, 0, 5, 5, 5, 5, 0, -5,
+                                                                                               0, 0, 5, 5, 5, 5, 0, -5,
+                                                                                               -10, 5, 5, 5, 5, 5, 0,
+                                                                                               -10,
+                                                                                               -10, 0, 5, 0, 0, 0, 0,
+                                                                                               -10,
+                                                                                               -20, -10, -10, -5, -5,
+                                                                                               -10, -10, -20
+                                                                                           },
+                                                                                           { // king middle game
+                                                                                               -30, -40, -40, -50, -50,
+                                                                                               -40, -40, -30,
+                                                                                               -30, -40, -40, -50, -50,
+                                                                                               -40, -40, -30,
+                                                                                               -30, -40, -40, -50, -50,
+                                                                                               -40, -40, -30,
+                                                                                               -30, -40, -40, -50, -50,
+                                                                                               -40, -40, -30,
+                                                                                               -20, -30, -30, -40, -40,
+                                                                                               -30, -30, -20,
+                                                                                               -10, -20, -20, -20, -20,
+                                                                                               -20, -20, -10,
+                                                                                               20, 20, 0, 0, 0, 0, 20,
+                                                                                               20,
+                                                                                               20, 30, 10, 0, 0, 10, 30,
+                                                                                               20
+                                                                                           },
+                                                                                       }};
 
 const std::array<int, 64> kKingEndgameScores = {
     -50, -40, -30, -20, -20, -30, -40, -50,
@@ -98,11 +134,11 @@ int mate_in(int evaluation) {
 bool is_end_game(const BoardState &state) {
   const int white_material = state.pieces[Color::kWhite][kPawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
       + state.pieces[Color::kWhite][kKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
-      + state.pieces[Color::kWhite][kBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
+      +state.pieces[Color::kWhite][kBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
       + state.pieces[Color::kWhite][kQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
   const int black_material = state.pieces[Color::kBlack][kPawns].pop_count() * eval::kPieceValues[PieceType::kPawn]
       + state.pieces[Color::kBlack][kKnights].pop_count() * eval::kPieceValues[PieceType::kKnight] +
-      + state.pieces[Color::kBlack][kBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
+      +state.pieces[Color::kBlack][kBishops].pop_count() * eval::kPieceValues[PieceType::kBishop]
       + state.pieces[Color::kBlack][kQueens].pop_count() * eval::kPieceValues[PieceType::kQueen];
 
   return white_material + black_material <= 1600;
@@ -155,7 +191,7 @@ int positional_difference(const BoardState &state) {
 int stacked_pawns_difference(const BoardState &state) {
   int stacked_pawns = 0;
 
-  for (const auto& file_mask : kFileMasks) {
+  for (const auto &file_mask : kFileMasks) {
     const BitBoard white_pawns_on_file = state.pieces[Color::kWhite][kPawns] & file_mask;
     const BitBoard black_pawns_on_file = state.pieces[Color::kBlack][kPawns] & file_mask;
     stacked_pawns += (white_pawns_on_file.pop_count() > 1) - (black_pawns_on_file.pop_count() > 1);
@@ -168,9 +204,10 @@ int stacked_pawns_difference(const BoardState &state) {
 }
 
 int pawns_score(const BoardState &state) {
-  return 0;
-  const std::array<int, 7> kPassedPawnBonuses = {0, 100, 80, 55, 30, 15, 10}; // indexed by # of squares from promotion
-  const std::array<int, 4> kIsolatedPawnPenalties = {-5, -30, -70, -110}; // indexed by # of isolated pawns (should never exceed 4)
+  // indexed by # of squares from promotion
+  const std::array<int, 8> kPassedPawnBonuses = {0, 100, 80, 55, 30, 15, 10, 5};
+  // indexed by # of isolated pawns (should never exceed 4)
+  const std::array<int, 8> kIsolatedPawnPenalties = {-5, -30, -70, -110, -110, -110, -110, -110};
 
   const BitBoard &white_pawns = state.pieces[Color::kWhite][kPawns];
   const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
@@ -186,7 +223,7 @@ int pawns_score(const BoardState &state) {
 
     if (white_pawns_on_file) {
       const auto white_pawn_rank = rank(white_pawns_on_file.get_msb_pos());
-      if (!black_pawns_on_file || (black_pawns_on_file && black_pawns_on_file.get_lsb_pos() >= white_pawn_rank)) {
+      if (!black_pawns_on_file || (black_pawns_on_file && rank(black_pawns_on_file.get_lsb_pos()) <= white_pawn_rank)) {
         score += kPassedPawnBonuses[kBoardRanks - 1 - white_pawn_rank];
       }
 
@@ -199,8 +236,8 @@ int pawns_score(const BoardState &state) {
 
     if (black_pawns_on_file) {
       const auto black_pawn_rank = rank(black_pawns_on_file.get_lsb_pos());
-      if (!white_pawns_on_file || (white_pawns_on_file && white_pawns_on_file.get_msb_pos() <= black_pawn_rank)) {
-        score -= kPassedPawnBonuses[kBoardRanks - 1 - black_pawn_rank];
+      if (!white_pawns_on_file || (white_pawns_on_file && rank(white_pawns_on_file.get_msb_pos()) >= black_pawn_rank)) {
+        score -= kPassedPawnBonuses[black_pawn_rank];
       }
 
       const auto black_pawns_left = black_pawns & kFileMasks[left_side];
@@ -256,7 +293,7 @@ int mobility_difference(const BoardState &state) {
         mobility -= kOpenFileBonus;
       }
       // rook is on a semi-open file (a file with only opposing pawns), so it gains half a pawn worth
-      else if (pieces_on_file == (white_pawns & kFileMasks[rook_file])){
+      else if (pieces_on_file == (white_pawns & kFileMasks[rook_file])) {
         mobility -= kSemiOpenFileBonus;
       }
     }
@@ -319,7 +356,8 @@ int king_safety_difference(const BoardState &state) {
 }
 
 int square_control_difference(const BoardState &state) {
-  return get_attacked_squares(state, state.turn).pop_count() - get_attacked_squares(state, flip_color(state.turn)).pop_count();
+  return get_attacked_squares(state, state.turn).pop_count()
+      - get_attacked_squares(state, flip_color(state.turn)).pop_count();
 }
 
 int evaluate(const BoardState &state) {
@@ -327,10 +365,9 @@ int evaluate(const BoardState &state) {
   const int position_value = positional_difference(state);
   const int stacked_pawns = stacked_pawns_difference(state);
   const int mobility = mobility_difference(state);
-  const int passed_pawns = pawns_score(state);
   const int king_safety = king_safety_difference(state);
   const int square_control = square_control_difference(state);
-  return material_diff + position_value;
+  return material_diff + position_value + stacked_pawns + mobility + king_safety + square_control;
 }
 
 }

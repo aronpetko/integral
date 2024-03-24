@@ -68,7 +68,9 @@ class CastleData {
 };
 
 struct BoardState {
-  BoardState() : half_moves(0), fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt), piece_types({}) {}
+  BoardState() : half_moves(0), fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt), piece_types({}) {
+    piece_types.fill(PieceType::kNone);
+  }
 
   [[nodiscard]] constexpr inline Color get_piece_color(U8 pos) const {
     if (pieces[Color::kWhite][kAllPieces].is_set(pos)) return Color::kWhite;
