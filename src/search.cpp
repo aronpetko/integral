@@ -162,6 +162,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   can_do_null_move_ = true;
 
   move_loop:
+  MoveList quiet_non_cutoffs;
   int moves_tried = 0;
 
   Move best_move = Move::null_move();
@@ -182,6 +183,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       board_.undo_move();
       continue;
     }
+
+    const bool is_quiet = !is_capture && !is_promotion;
 
     PVLine child_pv_line;
     int score;
@@ -232,11 +235,15 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
     // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
-      if (!is_capture) {
+      if (is_quiet) {
         MoveOrderer::update_killer_move(move, depth);
         MoveOrderer::update_move_history(move, state.turn, depth);
+        MoveOrderer::penalize_move_history(quiet_non_cutoffs, state.turn, depth);
       }
       break;
+    }
+    else if (is_quiet) {
+      quiet_non_cutoffs.push(move);
     }
   }
 
@@ -274,6 +281,8 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   int moves_tried = 0;
   PVLine temp_pv_line;
 
+  MoveList quiet_non_cutoffs;
+
   MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
@@ -288,6 +297,8 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
       board_.undo_move();
       continue;
     }
+
+    const bool is_quiet = !is_capture && !is_promotion;
 
     time_mgmt_.update_nodes_searched();
     const auto prev_nodes_searched = time_mgmt_.get_nodes_searched();
@@ -338,11 +349,15 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
 
     // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
-      if (!is_capture) {
+      if (is_quiet) {
         MoveOrderer::update_killer_move(move, depth);
         MoveOrderer::update_move_history(move, state.turn, depth);
+        MoveOrderer::penalize_move_history(quiet_non_cutoffs, state.turn, depth);
       }
       break;
+    }
+    else if (is_quiet) {
+      quiet_non_cutoffs.push(move);
     }
   }
 
@@ -364,7 +379,7 @@ Search::Result Search::iterative_deepening() {
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
-  for (int depth = 1; depth <= max_search_depth; depth++) {
+  for (int depth = 1; depth < max_search_depth; depth++) {
     can_do_null_move_ = true;
 
     const int kAspirationWindow = 75;
@@ -399,6 +414,7 @@ Search::Result Search::iterative_deepening() {
       break;
     }
   }
+
   return result;
 }
 

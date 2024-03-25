@@ -1,12 +1,5 @@
 #include "move_orderer.h"
-#include "eval.h"
 
-const int kMVVLVAScore = std::numeric_limits<int>::max() - 256;
-const int kMaxMoveScore = std::numeric_limits<int>::max();
-const int kPromotionScore = 10;
-const int kKillerMoveScore = 15;
-
-// credits: rustic chess engine
 const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
   {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
   {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
@@ -59,22 +52,38 @@ void MoveOrderer::update_killer_move(const Move &move, int ply) {
   MoveOrderer::killer_moves[ply][0] = move;
 }
 
-void MoveOrderer::update_move_history(const Move &move, Color turn, int depth) {
-  const int from = move.get_from();
-  const int to = move.get_to();
+const int kHistoryClamp = 8192;
 
-  MoveOrderer::move_history[turn][from][to] += depth * depth;
+void MoveOrderer::update_move_history(const Move &move, Color turn, int depth) {
+  auto &move_history_score = MoveOrderer::move_history[turn][move.get_from()][move.get_to()];
+
+  const int bonus = depth * depth;
+  const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryClamp;
+
+  move_history_score += scaled_bonus;
+}
+
+void MoveOrderer::penalize_move_history(MoveList& moves, Color turn, int depth) {
+  const int bonus = depth * depth;
+  for (int i = 0; i < moves.size(); i++) {
+    const auto &move = moves[i];
+
+    auto &move_history_score = MoveOrderer::move_history[turn][move.get_from()][move.get_to()];
+    const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryClamp;
+
+    move_history_score -= scaled_bonus;
+  }
 }
 
 void MoveOrderer::reset_move_history() {
   for (auto &sides : MoveOrderer::move_history) {
     for (auto &moves : sides) {
-      std::fill(moves.begin(), moves.end(), 0);
+      moves.fill(0);
     }
   }
 
   for (auto &killers : MoveOrderer::killer_moves) {
-    std::fill(killers.begin(), killers.end(), Move::null_move());
+    killers.fill(Move::null_move());
   }
 }
 
@@ -97,6 +106,10 @@ void MoveOrderer::score_moves() noexcept {
 }
 
 int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
+  const int kMVVLVAScore = std::numeric_limits<int>::max() - 256;
+  const int kMaxMoveScore = std::numeric_limits<int>::max();
+  const int kKillerMoveScore = 15;
+
   auto &state = board_.get_state();
 
   const auto from = move.get_from();

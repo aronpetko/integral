@@ -21,14 +21,12 @@ class Search {
       clear();
     }
 
-    PVLine &operator=(const PVLine &other) = default;
-
     Move &operator[](int i) {
       return moves_[i];
     }
 
     void clear() {
-      std::fill(moves_.begin(), moves_.end(), Move::null_move());
+      moves_.fill(Move::null_move());
       move_count_ = 0;
     }
 

@@ -10,16 +10,18 @@ const TimeManagement::Config &TimeManagement::get_config() {
 
 void TimeManagement::start() {
   start_time_ = std::chrono::steady_clock::now();
-  std::fill(node_spent_table_.begin(), node_spent_table_.end(), 0);
+  node_spent_table_.fill(0ULL);
 
   // stop after the hard limit has been passed
   worker = std::thread([this]{
     std::unique_lock<std::mutex> lock(mutex_);
-    times_up_cv_.wait_for(lock, std::chrono::milliseconds(calculate_hard_limit()), [this]{
-      return times_up_;
-    });
+    if (!times_up_.load()) {
+      times_up_cv_.wait_for(lock, std::chrono::milliseconds(calculate_hard_limit()), [this] {
+        return times_up_.load();
+      });
 
-    times_up_ = true;
+      times_up_ = true;
+    }
   });
 }
 
@@ -29,7 +31,10 @@ void TimeManagement::stop() {
     times_up_ = true;
   }
   times_up_cv_.notify_one();
-  worker.join();
+
+  if (worker.joinable()) {
+    worker.join();
+  }
 }
 
 [[nodiscard]] long long TimeManagement::calculate_hard_limit() {
@@ -55,7 +60,7 @@ void TimeManagement::update_node_spent_table(const Move &move, long long prev_no
 }
 
 bool TimeManagement::times_up() const {
-  return !config_.depth && times_up_;
+  return !config_.depth && times_up_.load();
 }
 
 bool TimeManagement::root_times_up(const Move &pv_move) {

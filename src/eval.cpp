@@ -7,8 +7,8 @@ const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kPieceSquareTab
                                                                                            { // pawns
                                                                                                0, 0, 0, 0, 0, 0, 0, 0,
                                                                                                50, 50, 50, 50, 50, 50,
-                                                                                               50, 50,
-                                                                                               10, 10, 20, 30, 30, 20,
+                                                                                               50, 50, 10, 10, 20, 30,
+                                                                                               30, 20,
                                                                                                10, 10,
                                                                                                5, 5, 10, 25, 25, 10, 5,
                                                                                                5,
@@ -188,22 +188,8 @@ int positional_difference(const BoardState &state) {
   return state.turn == Color::kWhite ? position_value : -position_value;
 }
 
-int stacked_pawns_difference(const BoardState &state) {
-  int stacked_pawns = 0;
-
-  for (const auto &file_mask : kFileMasks) {
-    const BitBoard white_pawns_on_file = state.pieces[Color::kWhite][kPawns] & file_mask;
-    const BitBoard black_pawns_on_file = state.pieces[Color::kBlack][kPawns] & file_mask;
-    stacked_pawns += (white_pawns_on_file.pop_count() > 1) - (black_pawns_on_file.pop_count() > 1);
-  }
-
-  const int kStackedPawnPenalty = -12;
-  const int penalty = stacked_pawns * kStackedPawnPenalty;
-
-  return state.turn == Color::kWhite ? penalty : -penalty;
-}
-
 int pawns_score(const BoardState &state) {
+  const int kStackedPawnPenalty = -9;
   // indexed by # of squares from promotion
   const std::array<int, 8> kPassedPawnBonuses = {0, 100, 80, 55, 30, 15, 10, 5};
   // indexed by # of isolated pawns (should never exceed 4)
@@ -213,6 +199,8 @@ int pawns_score(const BoardState &state) {
   const BitBoard &black_pawns = state.pieces[Color::kBlack][kPawns];
 
   int white_isolated_pawns = 0, black_isolated_pawns = 0;
+  int stacked_pawns = 0;
+
   int score = 0;
 
   for (int file = 0; file < kBoardFiles; file++) {
@@ -246,8 +234,11 @@ int pawns_score(const BoardState &state) {
         black_isolated_pawns++;
       }
     }
+
+    stacked_pawns += (white_pawns_on_file.pop_count() > 1) - (black_pawns_on_file.pop_count() > 1);
   }
 
+  score += stacked_pawns * kStackedPawnPenalty;
   score += kIsolatedPawnPenalties[white_isolated_pawns];
   score -= kIsolatedPawnPenalties[black_isolated_pawns];
   return state.turn == Color::kWhite ? score : -score;
@@ -275,7 +266,7 @@ int mobility_difference(const BoardState &state) {
       if (pieces_on_file == (white_rooks & kFileMasks[rook_file])) {
         mobility += kOpenFileBonus;
       }
-      // rook is on a semi-open file (a file with only opposing pawns), so it gains half a pawn worth
+        // rook is on a semi-open file (a file with only opposing pawns), so it gains half a pawn worth
       else if (pieces_on_file == (black_pawns & kFileMasks[rook_file])) {
         mobility += kSemiOpenFileBonus;
       }
@@ -292,7 +283,7 @@ int mobility_difference(const BoardState &state) {
       if (pieces_on_file == (black_rooks & kFileMasks[rook_file])) {
         mobility -= kOpenFileBonus;
       }
-      // rook is on a semi-open file (a file with only opposing pawns), so it gains half a pawn worth
+        // rook is on a semi-open file (a file with only opposing pawns), so it gains half a pawn worth
       else if (pieces_on_file == (white_pawns & kFileMasks[rook_file])) {
         mobility -= kSemiOpenFileBonus;
       }
@@ -363,11 +354,11 @@ int square_control_difference(const BoardState &state) {
 int evaluate(const BoardState &state) {
   const int material_diff = material_difference(state);
   const int position_value = positional_difference(state);
-  const int stacked_pawns = stacked_pawns_difference(state);
+  const int pawns_structure = pawns_score(state);
   const int mobility = mobility_difference(state);
   const int king_safety = king_safety_difference(state);
   const int square_control = square_control_difference(state);
-  return material_diff + position_value + stacked_pawns + mobility + king_safety + square_control;
+  return material_diff + position_value + mobility + king_safety + square_control + pawns_structure;
 }
 
 }

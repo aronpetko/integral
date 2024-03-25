@@ -18,8 +18,8 @@ void Board::set_from_fen(const std::string &fen_str) {
   key_history_count_ = 0;
   history_count_ = 0;
 
-  std::fill(key_history_.begin(), key_history_.end(), 0);
-  std::fill(history_.begin(), history_.end(), BoardState{});
+  key_history_.fill(0);
+  history_.fill(BoardState{});
 
   state_ = fen::string_to_board(fen_str);
   initialized_ = true;
@@ -148,7 +148,7 @@ void Board::make_move(const Move &move) {
       // setting en passant target if pawn moved two squares
       const int kDoublePushDist = 2;
 
-      if (abs(from_rank - to_rank) == kDoublePushDist) {
+      if (std::abs(from_rank - to_rank) == kDoublePushDist) {
         // xor out previous en passant square (if it exists)
         // we will xor in new en passant square after the turn has been updated
         state_.zobrist_key ^= zobrist::hash_en_passant(state_);

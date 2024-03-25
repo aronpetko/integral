@@ -3,7 +3,6 @@
 Move::Move(U8 from, U8 to) : data_(0) {
   set_from(from);
   set_to(to);
-  set_promotion_type(PromotionType::kNone);
 }
 
 Move::Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {

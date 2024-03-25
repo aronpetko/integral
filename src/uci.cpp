@@ -26,9 +26,7 @@ void position(Board &board, std::stringstream &input_stream) {
   board.set_from_fen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves");
-
-  // std::ofstream log("/Users/aron/Desktop/log.txt", std::ios_base::out | std::ios_base::app);
+  input_stream >> dummy;
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -38,13 +36,8 @@ void position(Board &board, std::stringstream &input_stream) {
       board.make_move(move.value());
     } else {
       std::cerr << std::format("invalid move: {}\n", move_input);
-      std::cout << position_fen << std::endl;
     }
-
-    // log << move->to_string();
   }
-
-  // log.close();
 }
 
 void go(Board &board, std::stringstream &input_stream) {

@@ -16,6 +16,8 @@ class MoveOrderer {
 
   static void update_move_history(const Move &move, Color turn, int depth);
 
+  static void penalize_move_history(MoveList& moves, Color turn, int depth);
+
   static void reset_move_history();
 
  private:
