@@ -8,17 +8,6 @@
 #include "types.h"
 #include "move.h"
 
-enum PieceBitBoard {
-  kPawns,
-  kKnights,
-  kBishops,
-  kRooks,
-  kQueens,
-  kKings,
-  kAllPieces,
-  kNumBitBoards,
-};
-
 enum Square : int {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
   kA2, kB2, kC2, kD2, kE2, kF2, kG2, kH2,
@@ -82,7 +71,7 @@ class BitBoard {
   constexpr BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
   static BitBoard from_square(U8 pos) {
-    return {1ULL << pos};
+    return BitBoard(1ULL << pos);
   }
 
   [[nodiscard]] constexpr inline U64 as_u64() const {
@@ -123,13 +112,13 @@ class BitBoard {
     return std::popcount(bitboard_);
   }
 
-  constexpr inline BitBoard &operator=(U64 bitboard) {
+  constexpr inline BitBoard &operator=(const U64 &bitboard) {
     bitboard_ = bitboard;
     return *this;
   }
 
-  constexpr inline BitBoard &operator=(BitBoard other) {
-    bitboard_ = other.as_u64();
+  constexpr inline BitBoard &operator=(const BitBoard &other) {
+    bitboard_ = other.bitboard_;
     return *this;
   }
 
@@ -138,11 +127,11 @@ class BitBoard {
   }
 
   constexpr inline BitBoard operator&(const BitBoard &other) const {
-    return BitBoard(bitboard_ & other.as_u64());
+    return BitBoard(bitboard_ & other.bitboard_);
   }
 
   constexpr inline BitBoard operator|(const BitBoard &other) const {
-    return BitBoard(bitboard_ | other.as_u64());
+    return BitBoard(bitboard_ | other.bitboard_);
   }
 
   constexpr inline BitBoard operator|(U64 other) const {
@@ -158,7 +147,7 @@ class BitBoard {
   }
 
   constexpr inline BitBoard operator^(const BitBoard &other) const {
-    return BitBoard(bitboard_ ^ other.as_u64());
+    return BitBoard(bitboard_ ^ other.bitboard_);
   }
 
   constexpr inline BitBoard operator<<(U8 shift) const {
@@ -170,12 +159,12 @@ class BitBoard {
   }
 
   constexpr inline BitBoard &operator|=(const BitBoard &other) {
-    bitboard_ |= other.as_u64();
+    bitboard_ |= other.bitboard_;
     return *this;
   }
 
   constexpr inline BitBoard &operator&=(const BitBoard &other) {
-    bitboard_ &= other.as_u64();
+    bitboard_ &= other.bitboard_;
     return *this;
   }
 
@@ -185,22 +174,22 @@ class BitBoard {
   }
 
   constexpr inline BitBoard &operator^=(const BitBoard &other) {
-    bitboard_ ^= other.as_u64();
+    bitboard_ ^= other.bitboard_;
     return *this;
   }
 
   constexpr inline BitBoard &operator*=(const BitBoard &other) {
-    bitboard_ *= other.as_u64();
+    bitboard_ *= other.bitboard_;
     return *this;
   }
 
   constexpr inline BitBoard &operator>>=(const BitBoard &other) {
-    bitboard_ >>= other.as_u64();
+    bitboard_ >>= other.bitboard_;
     return *this;
   }
 
   constexpr inline BitBoard &operator<<=(const BitBoard &other) {
-    bitboard_ <<= other.as_u64();
+    bitboard_ <<= other.bitboard_;
     return *this;
   }
 
@@ -292,42 +281,6 @@ static void print_bb(BitBoard board) {
     }
     std::cout << std::endl;
   }
-}
-
-static std::string get_piece_unicode(const std::array<std::array<BitBoard, kNumBitBoards>, 2> &pieces, U8 pos) {
-  if (pieces[Color::kWhite][kAllPieces].is_set(pos)) {
-    if (pieces[Color::kWhite][kPawns].is_set(pos)) return "♙";
-    if (pieces[Color::kWhite][kKnights].is_set(pos)) return "♘";
-    if (pieces[Color::kWhite][kBishops].is_set(pos)) return "♗";
-    if (pieces[Color::kWhite][kRooks].is_set(pos)) return "♖";
-    if (pieces[Color::kWhite][kQueens].is_set(pos)) return "♕";
-    if (pieces[Color::kWhite][kKings].is_set(pos)) return "♔";
-  } else if (pieces[Color::kBlack][kAllPieces].is_set(pos)) {
-    if (pieces[Color::kBlack][kPawns].is_set(pos)) return "♟";
-    if (pieces[Color::kBlack][kKnights].is_set(pos)) return "♞";
-    if (pieces[Color::kBlack][kBishops].is_set(pos)) return "♝";
-    if (pieces[Color::kBlack][kRooks].is_set(pos)) return "♜";
-    if (pieces[Color::kBlack][kQueens].is_set(pos)) return "♛";
-    if (pieces[Color::kBlack][kKings].is_set(pos)) return "♚";
-  }
-  return " ";
-}
-
-static void print_pieces(const std::array<std::array<BitBoard, kNumBitBoards>, 2> &pieces) {
-  for (int rank = kBoardRanks - 1; rank >= 0; rank--) {
-    std::cout << rank + 1 << ' ';
-    for (int file = 0; file < kBoardFiles; file++) {
-      U8 square = rank_file_to_pos(rank, file);
-      std::cout << get_piece_unicode(pieces, square);
-      if (file < kBoardFiles - 1)
-        std::cout << " ";  // space separator for clarity
-    }
-    std::cout << std::endl;
-  }
-  std::cout << "  ";
-  for (int file = 0; file < kBoardFiles; file++)
-    std::cout << static_cast<char>('a' + file) << ' ';
-  std::cout << std::endl;
 }
 
 #endif // INTEGRAL_BITBOARD_H_

@@ -137,8 +137,9 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   if (can_do_null_move_ && depth > 2 && !in_check && !in_pv_node) {
     // possible zugwang detection
     for (int color = Color::kBlack; color <= Color::kWhite; color++) {
-      for (int piece = PieceBitBoard::kKnights; piece <= PieceBitBoard::kQueens; piece++) {
-        if (state.pieces[color][piece].pop_count()) {
+      for (int piece = PieceType::kKnight; piece <= PieceType::kQueen; piece++) {
+        const auto piece_bb = state.piece_bbs[piece] & state.side_bbs[color];
+        if (piece_bb.pop_count()) {
           goto move_loop;
         }
       }

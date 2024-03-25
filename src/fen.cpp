@@ -2,28 +2,22 @@
 
 namespace fen {
 
-char get_piece_char(const std::array<std::array<BitBoard, kNumBitBoards>, 2> &pieces, U8 pos) {
-  if (pieces[Color::kWhite][kAllPieces].is_set(pos)) {
-    if (pieces[Color::kWhite][kPawns].is_set(pos)) return 'P';
-    if (pieces[Color::kWhite][kKnights].is_set(pos)) return 'N';
-    if (pieces[Color::kWhite][kBishops].is_set(pos)) return 'B';
-    if (pieces[Color::kWhite][kRooks].is_set(pos)) return 'R';
-    if (pieces[Color::kWhite][kQueens].is_set(pos)) return 'Q';
-    if (pieces[Color::kWhite][kKings].is_set(pos)) return 'K';
-  } else if (pieces[Color::kBlack][kAllPieces].is_set(pos)) {
-    if (pieces[Color::kBlack][kPawns].is_set(pos)) return 'p';
-    if (pieces[Color::kBlack][kKnights].is_set(pos)) return 'n';
-    if (pieces[Color::kBlack][kBishops].is_set(pos)) return 'b';
-    if (pieces[Color::kBlack][kRooks].is_set(pos)) return 'r';
-    if (pieces[Color::kBlack][kQueens].is_set(pos)) return 'q';
-    if (pieces[Color::kBlack][kKings].is_set(pos)) return 'k';
+constexpr std::array<std::array<char, PieceType::kNumPieceTypes>, 2> piece_to_char = {{
+  {'p', 'n', 'b', 'r', 'q', 'k'},
+  {'P', 'N', 'B', 'Q', 'K'}
+}};
+
+char get_piece_char(BoardState &state, U8 pos) {
+  if (!state.occupied().is_set(pos)) {
+    return ' ';
   }
-  return ' ';
+
+  return piece_to_char[state.get_piece_color(pos)][state.get_piece_type(pos)];
 }
 
 BoardState string_to_board(std::string fen_str) {
   BoardState state;
-  auto &pieces = state.pieces;
+  auto &pieces = state.piece_bbs;
 
   std::istringstream stream(fen_str);
   
@@ -42,18 +36,15 @@ BoardState string_to_board(std::string fen_str) {
       square += ch - '0';
       continue;
     }
-    
-    const Color piece_color = std::islower(ch) ? Color::kBlack : Color::kWhite;
+
+    const auto piece_color = std::islower(ch) ? Color::kBlack : Color::kWhite;
     const auto piece_type = kCharToPieceType.at(std::tolower(ch));
 
-    pieces[piece_color][piece_type].set_bit(square);
-    state.piece_types[square] = piece_type;
+    state.piece_bbs[piece_type].set_bit(square);
+    state.side_bbs[piece_color].set_bit(square);
 
     square++;
   }
-
-  pieces[Color::kWhite][kAllPieces] = pieces[Color::kWhite][kPawns] | pieces[Color::kWhite][kKnights] | pieces[Color::kWhite][kBishops] | pieces[Color::kWhite][kRooks] | pieces[Color::kWhite][kQueens] | pieces[Color::kWhite][kKings];
-  pieces[Color::kBlack][kAllPieces] = pieces[Color::kBlack][kPawns] | pieces[Color::kBlack][kKnights] | pieces[Color::kBlack][kBishops] | pieces[Color::kBlack][kRooks] | pieces[Color::kBlack][kQueens] | pieces[Color::kBlack][kKings];
 
   char turn;
   stream >> turn;
@@ -80,12 +71,6 @@ BoardState string_to_board(std::string fen_str) {
   }
 
   stream >> state.fifty_moves_clock;
-  stream >> state.half_moves;
-
-  // adjust the full moves to half moves
-  state.half_moves /= 2;
-  if (state.turn == Color::kWhite)
-    state.half_moves++;
 
   state.zobrist_key = zobrist::generate_key(state);
 
@@ -103,7 +88,7 @@ std::string board_to_string(BoardState& state) {
       U8 square = rank_file_to_pos(rank, file);
 
       if (state.occupied().is_set(square))
-        output.push_back(get_piece_char(state.pieces, square));
+        output.push_back(get_piece_char(state, square));
       else
         empty++;
     }
@@ -139,8 +124,9 @@ std::string board_to_string(BoardState& state) {
   output.append(std::to_string(state.fifty_moves_clock));
   output.push_back(' ');
 
-  const U32 full_moves = state.half_moves / 2;
-  output.append(std::to_string(full_moves));
+  // todo: implement half moves
+  // const U32 full_moves = state.half_moves / 2;
+  // output.append(std::to_string(full_moves));
 
   return output;
 }

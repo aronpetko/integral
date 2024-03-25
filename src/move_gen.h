@@ -9,41 +9,40 @@ class MoveList {
  public:
   explicit MoveList(const std::array<Move, 256> &moves, int count) : moves_(moves), count_(count) {}
 
-  MoveList() : moves_({}), count_(0) {}
+  MoveList() : count_(0) {}
 
-  Move &operator[](int i) {
+  inline Move &operator[](int i) {
     assert(i >= 0 && i < count_);
     return moves_[i];
   }
 
-  void push(const Move &move) {
+  inline void push(const Move &move) {
     assert(count_ < moves_.size());
     moves_[count_++] = move;
   }
 
-  void pop_back() {
+  inline void pop_back() {
     assert(count_ > 0);
     --count_;
   }
 
-  [[nodiscard]] int size() const {
+  [[nodiscard]] inline int size() const {
     return count_;
   }
 
-  [[nodiscard]] int empty() const {
+  [[nodiscard]] inline int empty() const {
     return count_ == 0;
   }
 
  private:
   std::array<Move, 256> moves_;
-
   int count_;
 };
 
 // initializes piece attack lookups and magics
 void initialize_attacks();
 
-BitBoard generate_pawn_attacks(U8 pos, const BoardState &state);
+BitBoard generate_pawn_attacks(U8 pos, const BoardState &state, Color which = Color::kNoColor);
 
 BitBoard generate_pawn_moves(U8 pos, const BoardState &state);
 

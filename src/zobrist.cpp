@@ -7,12 +7,12 @@ U64 hash_turn(BoardState &state) {
   return state.turn == Color::kWhite ? kRandomsArray[Indices::kTurn] : 0ULL;
 }
 
-U64 hash_square(U8 square, BoardState &state) {
-  const BitBoard bb_pos = BitBoard::from_square(square);
-  if (state.piece_types[square] == PieceType::kNone)
-    return 0ULL;
-
-  const auto color = state.get_piece_color(bb_pos);
+U64 hash_square(U8 square, BoardState &state, Color color, PieceType piece) {
+  if (color == Color::kNoColor || piece == PieceType::kNone) {
+    const BitBoard bb_pos = BitBoard::from_square(square);
+    color = state.get_piece_color(bb_pos);
+    piece = state.get_piece_type(bb_pos);
+  }
 
   /*
    * http://hgm.nubati.net/book_format.html
@@ -29,12 +29,8 @@ U64 hash_square(U8 square, BoardState &state) {
    * black king   10
    * white king   11
    */
-  const int rank = square / kBoardRanks;
-  const int file = square % kBoardFiles;
 
-  const int piece_kind = state.get_piece_type(bb_pos) * 2 + color;
-  const int piece_idx = Square::kSquareCount * piece_kind + kBoardRanks * rank + file;
-
+  const int piece_idx = Square::kSquareCount * (static_cast<int>(piece) * 2 + color) + kBoardRanks * rank(square) + file(square);
   return kRandomsArray[piece_idx];
 }
 
@@ -54,7 +50,7 @@ U64 hash_en_passant(BoardState &state) {
   const auto ep_square = state.en_passant;
 
   // if our pawn can capture the en passant
-  const BitBoard &our_pawns = state.pieces[state.turn][kPawns];
+  const BitBoard &our_pawns = state.pawns(state.turn);
 
   BitBoard en_passant_bb = BitBoard::from_square(ep_square.value());
   en_passant_bb = state.turn == Color::kWhite ? shift<Direction::kSouth>(en_passant_bb) : shift<Direction::kNorth>(en_passant_bb);
@@ -71,7 +67,8 @@ U64 hash_en_passant(BoardState &state) {
 U64 generate_key(BoardState &state) {
   U64 pieces = 0;
   for (int square = 0; square < Square::kSquareCount; square++)
-    pieces ^= hash_square(square, state);
+    if (state.occupied().is_set(square))
+      pieces ^= hash_square(square, state);
 
   return pieces ^ hash_castle_rights(state) ^ hash_en_passant(state) ^ hash_turn(state);
 }

@@ -38,7 +38,7 @@ enum class MoveType {
   kQuiet
 };
 
-enum Color {
+enum Color : U8 {
   kBlack,
   kWhite,
   kNoColor
@@ -48,7 +48,7 @@ static Color flip_color(const Color &color) {
   return Color(!color);
 }
 
-enum CastleRights : U8 {
+enum CastleRightMasks : U8 {
   kWhiteKingside = 0b0001,
   kWhiteQueenside = 0b0010,
   kBlackKingside = 0b0100,

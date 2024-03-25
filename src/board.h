@@ -14,95 +14,149 @@
 const int kMaxGameMoves = 1024;
 const int kHalfMoveLimit = 1024;
 
-class CastleData {
+class CastleRights {
  public:
   static constexpr int kKingsideRookIndex = 0;
   static constexpr int kQueensideRookIndex = 1;
 
-  CastleData() : rooks({}), rights(0) {
-    set_kingside_rook(Color::kWhite, Square::kH1);
-    set_queenside_rook(Color::kWhite, Square::kA1);
-    set_kingside_rook(Color::kBlack, Square::kH8);
-    set_queenside_rook(Color::kBlack, Square::kA8);
-  }
+  static constexpr std::array<std::array<Square, 2>, 2> kRookSquares = {{
+    {Square::kH8, Square::kA8},
+    {Square::kH1, Square::kA1}
+  }};
 
-  [[nodiscard]] bool can_kingside_castle(Color turn) const {
-    U8 mask = turn == Color::kWhite ? CastleRights::kWhiteKingside : CastleRights::kBlackKingside;
+  CastleRights() : rights(0) {}
+
+  [[nodiscard]] inline bool can_kingside_castle(Color turn) const {
+    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteKingside : CastleRightMasks::kBlackKingside;
     return rights & mask;
   }
 
-  [[nodiscard]] bool can_queenside_castle(Color turn) const {
-    U8 mask = turn == Color::kWhite ? CastleRights::kWhiteQueenside : CastleRights::kBlackQueenside;
+  [[nodiscard]] inline bool can_queenside_castle(Color turn) const {
+    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside : CastleRightMasks::kBlackQueenside;
     return rights & mask;
   }
 
-  void set_can_kingside_castle(Color turn, bool value) {
-    U8 mask = turn == Color::kWhite ? CastleRights::kWhiteKingside : CastleRights::kBlackKingside;
+  inline void set_can_kingside_castle(Color turn, bool value) {
+    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteKingside : CastleRightMasks::kBlackKingside;
     value ? rights |= mask : rights &= ~mask;
   }
 
-  void set_can_queenside_castle(Color turn, bool value) {
-    U8 mask = turn == Color::kWhite ? CastleRights::kWhiteQueenside : CastleRights::kBlackQueenside;
+  inline void set_can_queenside_castle(Color turn, bool value) {
+    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside : CastleRightMasks::kBlackQueenside;
     value ? rights |= mask : rights &= ~mask;
   }
 
-  [[nodiscard]] Square get_kingside_rook(Color turn) const {
-    return rooks[turn][kKingsideRookIndex];
+  [[nodiscard]] inline Square get_kingside_rook(Color turn) const {
+    return kRookSquares[turn][kKingsideRookIndex];
   }
 
-  [[nodiscard]] Square get_queenside_rook(Color turn) const {
-    return rooks[turn][kQueensideRookIndex];
-  }
-
-  void set_kingside_rook(Color turn, Square square) {
-    rooks[turn][kKingsideRookIndex] = square;
-  }
-
-  void set_queenside_rook(Color turn, Square square) {
-    rooks[turn][kQueensideRookIndex] = square;
+  [[nodiscard]] inline Square get_queenside_rook(Color turn) const {
+    return kRookSquares[turn][kQueensideRookIndex];
   }
 
  private:
   U8 rights;
-  std::array<std::array<Square, 2>, 2> rooks; // 2 rooks for each side
 };
 
 struct BoardState {
-  BoardState() : half_moves(0), fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt), piece_types({}) {
-    piece_types.fill(PieceType::kNone);
-  }
+  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {}
 
   [[nodiscard]] constexpr inline Color get_piece_color(U8 pos) const {
-    if (pieces[Color::kWhite][kAllPieces].is_set(pos)) return Color::kWhite;
-    if (pieces[Color::kBlack][kAllPieces].is_set(pos)) return Color::kBlack;
+    if (side_bbs[Color::kWhite].is_set(pos)) return Color::kWhite;
+    if (side_bbs[Color::kBlack].is_set(pos)) return Color::kBlack;
     return Color::kNoColor;
   }
 
   [[nodiscard]] constexpr inline Color get_piece_color(const BitBoard &bb) const {
-    if (pieces[Color::kWhite][kAllPieces] & bb) return Color::kWhite;
-    if (pieces[Color::kBlack][kAllPieces] & bb) return Color::kBlack;
+    if (side_bbs[Color::kWhite] & bb) return Color::kWhite;
+    if (side_bbs[Color::kBlack] & bb) return Color::kBlack;
     return Color::kNoColor;
   }
 
   [[nodiscard]] constexpr inline PieceType get_piece_type(U8 pos) const {
-    return piece_types[pos];
+    if (!occupied().is_set(pos))
+      return PieceType::kNone;
+
+    for (int type = 0; type < PieceType::kNumPieceTypes; type++) {
+      if (piece_bbs[type].is_set(pos)) {
+        return PieceType(type);
+      }
+    }
+
+    // should never reach here
+    return PieceType::kNone;
   }
 
   [[nodiscard]] constexpr inline PieceType get_piece_type(const BitBoard &bb) const {
-    return piece_types[bb.get_lsb_pos()];
+    return get_piece_type(bb.get_lsb_pos());
+  }
+
+  [[nodiscard]] constexpr inline bool piece_exists(U8 pos) const {
+    return occupied().is_set(pos);
   }
 
   [[nodiscard]] constexpr inline BitBoard occupied() const {
-    return pieces[Color::kWhite][kAllPieces] | pieces[Color::kBlack][kAllPieces];
+    return side_bbs[Color::kWhite] | side_bbs[Color::kBlack];
   }
 
-  std::array<std::array<BitBoard, kNumBitBoards>, 2> pieces;
-  std::array<PieceType, Square::kSquareCount> piece_types;
+  [[nodiscard]] constexpr inline BitBoard &occupied(Color side) {
+    return side_bbs[side];
+  }
+
+  [[nodiscard]] inline BitBoard pawns(Color side) const {
+    return piece_bbs[PieceType::kPawn] & side_bbs[side];
+  }
+
+  [[nodiscard]] inline BitBoard &pawns() {
+    return piece_bbs[PieceType::kPawn];
+  }
+
+  [[nodiscard]] inline BitBoard knights(Color side) const {
+    return piece_bbs[PieceType::kKnight] & side_bbs[side];
+  }
+
+  [[nodiscard]] inline BitBoard &knights() {
+    return piece_bbs[PieceType::kKnight];
+  }
+
+  [[nodiscard]] inline BitBoard bishops(Color side) const {
+    return piece_bbs[PieceType::kBishop] & side_bbs[side];
+  }
+
+  [[nodiscard]] inline BitBoard &bishops() {
+    return piece_bbs[PieceType::kBishop];
+  }
+
+  [[nodiscard]] inline BitBoard rooks(Color side) const {
+    return piece_bbs[PieceType::kRook] & side_bbs[side];
+  }
+
+  [[nodiscard]] inline BitBoard &rooks() {
+    return piece_bbs[PieceType::kRook];
+  }
+
+  [[nodiscard]] inline BitBoard queens(Color side) const {
+    return piece_bbs[PieceType::kQueen] & side_bbs[side];
+  }
+
+  [[nodiscard]] inline BitBoard &queens() {
+    return piece_bbs[PieceType::kQueen];
+  }
+
+  [[nodiscard]] inline BitBoard king(Color side) const {
+    return piece_bbs[PieceType::kKing] & side_bbs[side];
+  }
+
+  [[nodiscard]] inline BitBoard &king() {
+    return piece_bbs[PieceType::kKing];
+  }
+
+  std::array<BitBoard, PieceType::kNumPieceTypes> piece_bbs;
+  std::array<BitBoard, 2> side_bbs;
   Color turn;
-  U32 half_moves;
   U16 fifty_moves_clock;
   std::optional<Square> en_passant;
-  CastleData castle;
+  CastleRights castle;
   U64 zobrist_key;
 };
 

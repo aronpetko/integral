@@ -225,7 +225,7 @@ enum Indices : int {
 
 U64 hash_turn(BoardState &state);
 
-U64 hash_square(U8 square, BoardState &state);
+U64 hash_square(U8 square, BoardState &state, Color color = Color::kNoColor, PieceType piece = PieceType::kNone);
 
 U64 hash_castle_rights(BoardState &state);
 

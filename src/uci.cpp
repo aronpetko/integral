@@ -26,7 +26,7 @@ void position(Board &board, std::stringstream &input_stream) {
   board.set_from_fen(position_fen);
 
   std::string dummy;
-  input_stream >> dummy;
+  while (input_stream >> dummy && dummy != "moves");
 
   std::string move_input;
   while (input_stream >> move_input) {
