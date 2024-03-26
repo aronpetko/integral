@@ -24,26 +24,30 @@ class CastleRights {
     {Square::kH1, Square::kA1}
   }};
 
-  CastleRights() : rights(0) {}
+  CastleRights() : rights_(0) {}
+
+  bool operator==(const CastleRights &other) const {
+    return rights_ == other.rights_;
+  }
 
   [[nodiscard]] inline bool can_kingside_castle(Color turn) const {
     U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteKingside : CastleRightMasks::kBlackKingside;
-    return rights & mask;
+    return rights_ & mask;
   }
 
   [[nodiscard]] inline bool can_queenside_castle(Color turn) const {
     U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside : CastleRightMasks::kBlackQueenside;
-    return rights & mask;
+    return rights_ & mask;
   }
 
   inline void set_can_kingside_castle(Color turn, bool value) {
     U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteKingside : CastleRightMasks::kBlackKingside;
-    value ? rights |= mask : rights &= ~mask;
+    value ? rights_ |= mask : rights_ &= ~mask;
   }
 
   inline void set_can_queenside_castle(Color turn, bool value) {
     U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside : CastleRightMasks::kBlackQueenside;
-    value ? rights |= mask : rights &= ~mask;
+    value ? rights_ |= mask : rights_ &= ~mask;
   }
 
   [[nodiscard]] inline Square get_kingside_rook(Color turn) const {
@@ -54,45 +58,47 @@ class CastleRights {
     return kRookSquares[turn][kQueensideRookIndex];
   }
 
+  inline U8 get_rights() const {
+    return rights_;
+  }
+
  private:
-  U8 rights;
+  U8 rights_;
 };
 
 struct BoardState {
-  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {}
-
-  [[nodiscard]] constexpr inline Color get_piece_color(U8 pos) const {
-    if (side_bbs[Color::kWhite].is_set(pos)) return Color::kWhite;
-    if (side_bbs[Color::kBlack].is_set(pos)) return Color::kBlack;
-    return Color::kNoColor;
+  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {
+    piece_on_square.fill(PieceType::kNone);
   }
 
-  [[nodiscard]] constexpr inline Color get_piece_color(const BitBoard &bb) const {
-    if (side_bbs[Color::kWhite] & bb) return Color::kWhite;
-    if (side_bbs[Color::kBlack] & bb) return Color::kBlack;
-    return Color::kNoColor;
+  void place_piece(const U8 &square, const PieceType &piece_type, const Color &color) {
+    piece_on_square[square] = piece_type;
+    piece_bbs[piece_type].set_bit(square);
+    side_bbs[color].set_bit(square);
   }
 
-  [[nodiscard]] constexpr inline PieceType get_piece_type(U8 pos) const {
-    if (!occupied().is_set(pos))
-      return PieceType::kNone;
-
-    for (int type = 0; type < PieceType::kNumPieceTypes; type++) {
-      if (piece_bbs[type].is_set(pos)) {
-        return PieceType(type);
-      }
+  void remove_piece(const U8 &square) {
+    auto &piece_type = piece_on_square[square];
+    if (piece_type != PieceType::kNone) {
+      piece_bbs[piece_type].clear_bit(square);
+      side_bbs[Color::kBlack].clear_bit(square);
+      side_bbs[Color::kWhite].clear_bit(square);
+      piece_type = PieceType::kNone;
     }
-
-    // should never reach here
-    return PieceType::kNone;
   }
 
-  [[nodiscard]] constexpr inline PieceType get_piece_type(const BitBoard &bb) const {
-    return get_piece_type(bb.get_lsb_pos());
+  [[nodiscard]] constexpr inline Color get_piece_color(const U8 &square) const {
+    if (side_bbs[Color::kWhite].is_set(square)) return Color::kWhite;
+    if (side_bbs[Color::kBlack].is_set(square)) return Color::kBlack;
+    return Color::kNoColor;
   }
 
-  [[nodiscard]] constexpr inline bool piece_exists(U8 pos) const {
-    return occupied().is_set(pos);
+  [[nodiscard]] constexpr inline PieceType get_piece_type(const U8 &square) const {
+    return piece_on_square[square];
+  }
+
+  [[nodiscard]] constexpr inline bool piece_exists(U8 square) const {
+    return get_piece_type(square) != PieceType::kNone;
   }
 
   [[nodiscard]] constexpr inline BitBoard occupied() const {
@@ -153,11 +159,13 @@ struct BoardState {
 
   std::array<BitBoard, PieceType::kNumPieceTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
+  std::array<PieceType, Square::kSquareCount> piece_on_square;
   Color turn;
   U16 fifty_moves_clock;
   std::optional<Square> en_passant;
-  CastleRights castle;
+  CastleRights castle_rights;
   U64 zobrist_key;
+  Move move_played;
 };
 
 class Board {
@@ -168,6 +176,10 @@ class Board {
 
   BoardState &get_state() {
     return state_;
+  }
+
+  [[nodiscard]] BoardState &get_prev_state() {
+    return history_count_ == 0 ? state_ : history_[history_count_ - 1];
   }
 
   TranspositionTable &get_transpo_table() {
@@ -199,12 +211,12 @@ class Board {
 
  private:
   BoardState state_;
+  TranspositionTable transpo_table_;
   bool initialized_;
   std::array<BoardState, kMaxGameMoves> history_;
   int history_count_;
   std::array<U64, kHalfMoveLimit> key_history_;
   int key_history_count_;
-  TranspositionTable transpo_table_;
 };
 
 #endif // INTEGRAL_BOARD_H_

@@ -14,7 +14,9 @@ class MoveOrderer {
 
   static void update_killer_move(const Move &move, int ply);
 
-  static void update_move_history(const Move &move, Color turn, int depth);
+  static void update_counter_move_history(const Move &prev_move, const Move &counter);
+
+  static void update_move_history(const Move &move, MoveList& quiet_non_cutoffs, Color turn, int depth);
 
   static void penalize_move_history(MoveList& moves, Color turn, int depth);
 
@@ -34,6 +36,7 @@ class MoveOrderer {
   static constexpr int kNumKillerMoves = 2;
   static std::array<std::array<Move, kNumKillerMoves>, kMaxGameMoves> killer_moves;
   static std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> move_history;
+  static std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> counter_move_history;
 };
 
 #endif // INTEGRAL_MOVE_ORDERER_H_

@@ -3,15 +3,14 @@
 
 namespace zobrist {
 
-U64 hash_turn(BoardState &state) {
+U64 hash_turn(const BoardState &state) {
   return state.turn == Color::kWhite ? kRandomsArray[Indices::kTurn] : 0ULL;
 }
 
-U64 hash_square(U8 square, BoardState &state, Color color, PieceType piece) {
+U64 hash_square(U8 square, const BoardState &state, Color color, PieceType piece) {
   if (color == Color::kNoColor || piece == PieceType::kNone) {
-    const BitBoard bb_pos = BitBoard::from_square(square);
-    color = state.get_piece_color(bb_pos);
-    piece = state.get_piece_type(bb_pos);
+    color = state.get_piece_color(square);
+    piece = state.get_piece_type(square);
   }
 
   /*
@@ -30,30 +29,32 @@ U64 hash_square(U8 square, BoardState &state, Color color, PieceType piece) {
    * white king   11
    */
 
-  const int piece_idx = Square::kSquareCount * (static_cast<int>(piece) * 2 + color) + kBoardRanks * rank(square) + file(square);
+  const int piece_idx =
+      Square::kSquareCount * (static_cast<int>(piece) * 2 + color) + kBoardRanks * rank(square) + file(square);
   return kRandomsArray[piece_idx];
 }
 
-U64 hash_castle_rights(BoardState &state) {
+U64 hash_castle_rights(const CastleRights &rights) {
   U64 hash = 0;
-  if (state.castle.can_kingside_castle(Color::kWhite)) hash ^= kRandomsArray[Indices::kWhiteKingside];
-  if (state.castle.can_queenside_castle(Color::kWhite)) hash ^= kRandomsArray[Indices::kWhiteQueenside];
-  if (state.castle.can_kingside_castle(Color::kBlack)) hash ^= kRandomsArray[Indices::kBlackKingside];
-  if (state.castle.can_queenside_castle(Color::kBlack)) hash ^= kRandomsArray[Indices::kBlackQueenside];
+  if (rights.can_kingside_castle(Color::kWhite)) hash ^= kRandomsArray[Indices::kWhiteKingside];
+  if (rights.can_queenside_castle(Color::kWhite)) hash ^= kRandomsArray[Indices::kWhiteQueenside];
+  if (rights.can_kingside_castle(Color::kBlack)) hash ^= kRandomsArray[Indices::kBlackKingside];
+  if (rights.can_queenside_castle(Color::kBlack)) hash ^= kRandomsArray[Indices::kBlackQueenside];
   return hash;
 }
 
-U64 hash_en_passant(BoardState &state) {
+U64 hash_en_passant(const BoardState &state) {
   if (!state.en_passant.has_value())
     return 0ULL;
 
   const auto ep_square = state.en_passant;
 
   // if our pawn can capture the en passant
-  const BitBoard &our_pawns = state.pawns(state.turn);
+  const BitBoard our_pawns = state.pawns(state.turn);
 
   BitBoard en_passant_bb = BitBoard::from_square(ep_square.value());
-  en_passant_bb = state.turn == Color::kWhite ? shift<Direction::kSouth>(en_passant_bb) : shift<Direction::kNorth>(en_passant_bb);
+  en_passant_bb =
+      state.turn == Color::kWhite ? shift<Direction::kSouth>(en_passant_bb) : shift<Direction::kNorth>(en_passant_bb);
   en_passant_bb = shift<Direction::kEast>(en_passant_bb) | shift<Direction::kWest>(en_passant_bb);
 
   if (en_passant_bb & our_pawns) {
@@ -64,13 +65,13 @@ U64 hash_en_passant(BoardState &state) {
   return 0ULL;
 }
 
-U64 generate_key(BoardState &state) {
+U64 generate_key(const BoardState &state) {
   U64 pieces = 0;
   for (int square = 0; square < Square::kSquareCount; square++)
-    if (state.occupied().is_set(square))
+    if (state.piece_exists(square))
       pieces ^= hash_square(square, state);
 
-  return pieces ^ hash_castle_rights(state) ^ hash_en_passant(state) ^ hash_turn(state);
+  return pieces ^ hash_castle_rights(state.castle_rights) ^ hash_en_passant(state) ^ hash_turn(state);
 }
 
 }

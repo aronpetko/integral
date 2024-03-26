@@ -14,13 +14,13 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
       total_bfs_(0),
       can_do_null_move_(true) {}
 
-std::array<std::array<int, 512>, Search::kMaxSearchDepth> Search::kLateMoveReductionTable;
+std::array<std::array<int, 512>, Search::kMaxSearchDepth + 1> Search::kLateMoveReductionTable;
 
 void Search::init_tables() {
   const double kBaseReduction = 0.77;
   const double kDivisor = 2.36;
 
-  for (int depth = 1; depth < kMaxSearchDepth; depth++) {
+  for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < 512; move++) {
       Search::kLateMoveReductionTable[depth][move] =
           static_cast<int>(kBaseReduction + log(depth) + log(move) / kDivisor);
@@ -49,7 +49,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
   MoveOrderer move_orderer(board_, generate_capture_moves(board_), MoveType::kCaptures);
   for (int i = 0; i < move_orderer.size(); i++) {
     if (time_mgmt_.times_up()) {
-      break;
+      return 0;
     }
 
     const auto &move = move_orderer.get_move(i);
@@ -79,12 +79,6 @@ int Search::quiesce(int ply, int alpha, int beta) {
   return best_score;
 }
 
-int futility_margin(int depth) {
-  const int kMarginIncrement = 120;
-  const int kBaseMargin = 100;
-  return kBaseMargin + depth * kMarginIncrement;
-}
-
 int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   if (board_.is_draw()) {
     return eval::kDrawScore;
@@ -100,7 +94,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   if (!in_pv_node && tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
     const auto corrected_tt_eval = transpo.correct_score(tt_entry.score, ply);
     switch (tt_entry.flag) {
-      case TranspositionTable::Entry::kExact:return corrected_tt_eval;
+      case TranspositionTable::Entry::kExact:
+        return corrected_tt_eval;
       case TranspositionTable::Entry::kLowerBound:alpha = std::max(alpha, corrected_tt_eval);
         break;
       case TranspositionTable::Entry::kUpperBound:beta = std::min(beta, corrected_tt_eval);
@@ -125,10 +120,15 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     return quiesce(ply, alpha, beta);
   }
 
-  const int static_eval = eval::evaluate(state);
+  // reverse (static) futility pruning
   const int kReverseFutilityDepthLimit = 6;
   if (depth <= kReverseFutilityDepthLimit && !in_pv_node && !in_check) {
-    if (static_eval - futility_margin(depth) >= beta) {
+    const int kMarginIncrement = 120;
+    const int kBaseMargin = 100;
+
+    const int futility_margin = kBaseMargin + depth * kMarginIncrement;
+    const int static_eval = eval::evaluate(state);
+    if (static_eval - futility_margin >= beta) {
       return static_eval;
     }
   }
@@ -216,7 +216,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
     if (time_mgmt_.times_up() && !best_move.is_null()) {
       temp_pv_line.clear();
-      break;
+      return 0;
     }
 
     // alpha is raised, therefore this move is the new pv node for this depth
@@ -238,8 +238,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     if (alpha >= beta) {
       if (is_quiet) {
         MoveOrderer::update_killer_move(move, depth);
-        MoveOrderer::update_move_history(move, state.turn, depth);
-        MoveOrderer::penalize_move_history(quiet_non_cutoffs, state.turn, depth);
+        MoveOrderer::update_move_history(move, quiet_non_cutoffs, state.turn, depth);
+        MoveOrderer::update_counter_move_history(state.move_played, move);
       }
       break;
     }
@@ -313,7 +313,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
       reduction = kLateMoveReductionTable[depth][moves_tried];
     }
 
-    // search the first move with a normal window
+    // pvs: search the first move with a normal window
     if (moves_tried == 0) {
       score = -search(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
     } else {
@@ -321,7 +321,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
       score = -search(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
 
       // if the move looks promising from null window search, research
-      if (score > alpha) {
+      if (score > alpha && (in_pv_node || reduction > 0)) {
         score = -search(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
@@ -352,8 +352,8 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     if (alpha >= beta) {
       if (is_quiet) {
         MoveOrderer::update_killer_move(move, depth);
-        MoveOrderer::update_move_history(move, state.turn, depth);
-        MoveOrderer::penalize_move_history(quiet_non_cutoffs, state.turn, depth);
+        MoveOrderer::update_move_history(move, quiet_non_cutoffs, state.turn, depth);
+        MoveOrderer::update_counter_move_history(state.move_played, move);
       }
       break;
     }
@@ -380,7 +380,7 @@ Search::Result Search::iterative_deepening() {
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
-  for (int depth = 1; depth < max_search_depth; depth++) {
+  for (int depth = 1; depth <= max_search_depth; depth++) {
     can_do_null_move_ = true;
 
     const int kAspirationWindow = 75;
@@ -406,7 +406,7 @@ Search::Result Search::iterative_deepening() {
                              is_mate ? "mate" : "cp",
                              is_mate ? eval::mate_in(result.score) : result.score,
                              time_mgmt_.get_nodes_searched(),
-                             time_mgmt_.get_nodes_searched() / std::max(1.0, time_mgmt_.time_elapsed() / 1000.0),
+                             static_cast<int>(time_mgmt_.get_nodes_searched() / std::max(1.0, time_mgmt_.time_elapsed() / 1000.0)),
                              time_mgmt_.time_elapsed(),
                              result.pv_line.length(),
                              result.pv_line.to_string()) << std::endl;

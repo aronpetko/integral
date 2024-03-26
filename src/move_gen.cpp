@@ -41,21 +41,18 @@ void initialize_attacks() {
 inline bool is_square_attacked_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
   const BitBoard rook_attacks = generate_rook_moves(pos, state);
   const BitBoard bishop_attacks = generate_bishop_moves(pos, state);
-
-  const BitBoard &attacker_rooks = state.rooks(attacker);
-  const BitBoard &attacker_bishops = state.bishops(attacker);
-  const BitBoard &attacker_queens = state.queens(attacker);
-
+  const BitBoard attacker_rooks = state.rooks(attacker);
+  const BitBoard attacker_bishops = state.bishops(attacker);
+  const BitBoard attacker_queens = state.queens(attacker);
   return (attacker_queens & (rook_attacks | bishop_attacks)) != 0 ||
       (attacker_rooks & rook_attacks) != 0 ||
       (attacker_bishops & bishop_attacks) != 0;
 }
 
 inline bool is_square_attacked_non_sliding_pieces(U8 pos, Color attacker, const BoardState &state) {
-  const BitBoard &attacker_pawns = state.pawns(attacker);
-  const BitBoard &attacker_knights = state.knights(attacker);
-  const BitBoard &attacker_king = state.king(attacker);
-
+  const BitBoard attacker_pawns = state.pawns(attacker);
+  const BitBoard attacker_knights = state.knights(attacker);
+  const BitBoard attacker_king = state.king(attacker);
   return (attacker_pawns & generate_pawn_attacks(pos, state, flip_color(attacker))) != 0 ||
       (attacker_knights & generate_knight_moves(pos, state)) != 0 ||
       (attacker_king & generate_king_attacks(pos, state)) != 0;
@@ -121,7 +118,7 @@ BitBoard generate_king_moves(U8 pos, const BoardState &state, bool include_castl
 
   if (include_castling) {
     const auto color = state.get_piece_color(pos);
-    if ((state.castle.can_queenside_castle(color) || state.castle.can_kingside_castle(color)) && !king_in_check(color, state))
+    if ((state.castle_rights.can_queenside_castle(color) || state.castle_rights.can_kingside_castle(color)) && !king_in_check(color, state))
       moves |= generate_castling_moves(state, color);
   }
 
@@ -138,14 +135,14 @@ BitBoard generate_castling_moves(const BoardState &state, Color which) {
   if (which == Color::kWhite) {
     const Color attacker = flip_color(which);
 
-    if (state.castle.can_kingside_castle(Color::kWhite)) {
+    if (state.castle_rights.can_kingside_castle(Color::kWhite)) {
       if (!is_square_attacked(Square::kF1, attacker, state) && !occupied.is_set(Square::kF1) &&
           !is_square_attacked(Square::kG1, attacker, state) && !occupied.is_set(Square::kG1)) {
         moves.set_bit(Square::kG1);
       }
     }
 
-    if (state.castle.can_queenside_castle(Color::kWhite)) {
+    if (state.castle_rights.can_queenside_castle(Color::kWhite)) {
       if (!is_square_attacked(Square::kD1, attacker, state) && !occupied.is_set(Square::kD1) &&
           !is_square_attacked(Square::kC1, attacker, state) && !occupied.is_set(Square::kC1) &&
           !occupied.is_set(Square::kB1))
@@ -154,13 +151,13 @@ BitBoard generate_castling_moves(const BoardState &state, Color which) {
   } else {
     const Color attacker = flip_color(which);
 
-    if (state.castle.can_kingside_castle(Color::kBlack)) {
+    if (state.castle_rights.can_kingside_castle(Color::kBlack)) {
       if (!is_square_attacked(Square::kF8, attacker, state) && !occupied.is_set(Square::kF8) &&
           !is_square_attacked(Square::kG8, attacker, state) && !occupied.is_set(Square::kG8))
         moves.set_bit(Square::kG8);
     }
 
-    if (state.castle.can_queenside_castle(Color::kBlack)) {
+    if (state.castle_rights.can_queenside_castle(Color::kBlack)) {
       if (!is_square_attacked(Square::kD8, attacker, state) && !occupied.is_set(Square::kD8) &&
           !is_square_attacked(Square::kC8, attacker, state) && !occupied.is_set(Square::kC8) &&
           !occupied.is_set(Square::kB8))

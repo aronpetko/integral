@@ -3,9 +3,8 @@
 
 #include "types.h"
 
-#include <memory>
-
 class BoardState;
+class CastleRights;
 
 namespace zobrist {
 
@@ -211,27 +210,24 @@ const U64 kRandomsArray[781] = {
 enum Indices : int {
   kPieceStart = 0,
   kPieceEnd = 767,
-
   kWhiteKingside = 768,
   kWhiteQueenside = 769,
   kBlackKingside = 770,
   kBlackQueenside = 771,
-
   kEnPassantFileA = 772,
   kEnPassantFileH = 779,
-
   kTurn = 780,
 };
 
-U64 hash_turn(BoardState &state);
+U64 hash_turn(const BoardState &state);
 
-U64 hash_square(U8 square, BoardState &state, Color color = Color::kNoColor, PieceType piece = PieceType::kNone);
+U64 hash_square(U8 square, const BoardState &state, Color color = Color::kNoColor, PieceType piece = PieceType::kNone);
 
-U64 hash_castle_rights(BoardState &state);
+U64 hash_castle_rights(const CastleRights &rights);
 
-U64 hash_en_passant(BoardState &state);
+U64 hash_en_passant(const BoardState &state);
 
-U64 generate_key(BoardState &state);
+U64 generate_key(const BoardState &state);
 
 }
 

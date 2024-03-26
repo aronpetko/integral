@@ -50,6 +50,7 @@ class TimeManagement {
   long long current_move_time_;
   long long nodes_searched_;
   std::atomic<bool> times_up_;
+  std::atomic<bool> worker_processed_;
   std::array<long long, 4096> node_spent_table_;
   std::mutex mutex_;
   std::condition_variable times_up_cv_;

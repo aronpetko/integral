@@ -1,17 +1,17 @@
 #include "move_orderer.h"
 
 const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
-  {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
-  {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
-  {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
-  {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
-  {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
-  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
-}};
+                                                                                                            {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
+                                                                                                            {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
+                                                                                                            {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
+                                                                                                            {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
+                                                                                                            {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
+                                                                                                            {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
+                                                                                                        }};
 
 std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxGameMoves> MoveOrderer::killer_moves{};
-
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
+std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_move_history{};
 
 MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type) noexcept
     : board_(board), moves_(moves), move_type_(move_type), move_scores_({}) {
@@ -52,25 +52,35 @@ void MoveOrderer::update_killer_move(const Move &move, int ply) {
   MoveOrderer::killer_moves[ply][0] = move;
 }
 
-const int kHistoryClamp = 8192;
+void MoveOrderer::update_counter_move_history(const Move &prev_move, const Move &counter) {
+  if (prev_move != Move::null_move()) {
+    counter_move_history[prev_move.get_from()][prev_move.get_to()] = counter;
+  }
+}
 
-void MoveOrderer::update_move_history(const Move &move, Color turn, int depth) {
+const int kHistoryCap = 8192;
+
+void MoveOrderer::update_move_history(const Move &move, MoveList& quiet_non_cutoffs, Color turn, int depth) {
   auto &move_history_score = MoveOrderer::move_history[turn][move.get_from()][move.get_to()];
 
+  // apply a linear dampening to the bonus as the depth increases
   const int bonus = depth * depth;
-  const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryClamp;
-
+  const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryCap;
   move_history_score += scaled_bonus;
+
+  // lower the score of the quiet moves that did not cause a beta cutoff
+  // a good side effect of this is that moves that caused a beta cutoff earlier and were awarded a bonus but no longer cause a beta cutoff are eventually "discarded"
+  penalize_move_history(quiet_non_cutoffs, turn, depth);
 }
 
 void MoveOrderer::penalize_move_history(MoveList& moves, Color turn, int depth) {
   const int bonus = depth * depth;
   for (int i = 0; i < moves.size(); i++) {
     const auto &move = moves[i];
-
     auto &move_history_score = MoveOrderer::move_history[turn][move.get_from()][move.get_to()];
-    const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryClamp;
 
+    // apply a linear dampening to the bonus (penalty here) as the depth increases
+    const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryCap;
     move_history_score -= scaled_bonus;
   }
 }
@@ -81,7 +91,6 @@ void MoveOrderer::reset_move_history() {
       moves.fill(0);
     }
   }
-
   for (auto &killers : MoveOrderer::killer_moves) {
     killers.fill(Move::null_move());
   }
@@ -115,8 +124,6 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
   const auto from = move.get_from();
   const auto to = move.get_to();
 
-  const bool is_capture = move.is_capture(state);
-
   int score = 0;
 
   // tt move get priority since it's the current stored best move
@@ -124,7 +131,7 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
     return kMaxMoveScore;
   }
 
-  // moves that caused a beta cutoff
+  // check if this move caused a beta cutoff within the last 2 plies
   bool is_killer = false;
   for (int i = 0; i < kNumKillerMoves; i++) {
     // if we've already found a killer (avoiding goto)
@@ -140,7 +147,15 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
     }
   }
 
-  if (is_capture) {
+  // check if this move was a natural counter to the previous move (caused a beta cutoff)
+  // complimentary to killer move heuristic
+  const auto last_move = board_.get_prev_state().move_played;
+  if (move == MoveOrderer::counter_move_history[last_move.get_from()][last_move.get_to()]) {
+    // counter moves should be searched right after killer moves
+    return kMVVLVAScore - 10;
+  }
+
+  if (move.is_capture(state)) {
     // killer moves are already close to the base MVV-LVA score
     // therefore, if this move wasn't a killer, we set it to the base MVV-LVA score
     if (!is_killer) {
@@ -149,6 +164,8 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
 
     score += kMVVLVATable[state.get_piece_type(to)][state.get_piece_type(from)];
   } else if (!is_killer) {
+    // order moves that caused a beta cutoff by their history score
+    // the higher the depth this move caused a cutoff the more likely it move will be ordered first
     score += MoveOrderer::move_history[state.turn][from][to];
   }
 

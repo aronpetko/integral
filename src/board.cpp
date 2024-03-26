@@ -13,36 +13,6 @@ Board::Board(std::size_t transpo_table_size)
 
 Board::Board() : key_history_count_(0), history_count_(0), history_({}), key_history_({}), initialized_(false) {}
 
-constexpr std::array<std::array<std::string, PieceType::kNumPieceTypes>, 2> piece_to_unicode = {{
-                                                                                                    {"♟", "♞", "♝", "♜", "♛", "♚"},
-                                                                                                    {"♙", "♘", "♗", "♖", "♕", "♔"}
-                                                                                                }};
-
-std::string get_piece_unicode(BoardState &state, U8 pos) {
-  if (!state.occupied().is_set(pos)) {
-    return " ";
-  }
-
-  return piece_to_unicode[state.get_piece_color(pos)][state.get_piece_type(pos)];
-}
-
-static void print_pieces(BoardState &state) {
-  for (int rank = kBoardRanks - 1; rank >= 0; rank--) {
-    std::cout << rank + 1 << ' ';
-    for (int file = 0; file < kBoardFiles; file++) {
-      U8 square = rank_file_to_pos(rank, file);
-      std::cout << get_piece_unicode(state, square);
-      if (file < kBoardFiles - 1)
-        std::cout << " ";  // space separator for clarity
-    }
-    std::cout << std::endl;
-  }
-  std::cout << "  ";
-  for (int file = 0; file < kBoardFiles; file++)
-    std::cout << static_cast<char>('a' + file) << ' ';
-  std::cout << std::endl;
-}
-
 void Board::set_from_fen(const std::string &fen_str) {
   // reset history everytime we parse from fen, since they will be re-applied when the moves are made
   key_history_count_ = 0;
@@ -117,41 +87,28 @@ void Board::make_move(const Move &move) {
   key_history_[key_history_count_++] = state_.zobrist_key;
 
   const bool is_white = state_.turn == Color::kWhite;
-  const Color other_side = flip_color(state_.turn);
-
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
 
-  int new_fity_move_clock = state_.fifty_moves_clock + 1;
+  int new_fifty_move_clock = state_.fifty_moves_clock + 1;
 
   // xor out the previous turn hash and moved piece
   state_.zobrist_key ^= zobrist::hash_square(from, state_, state_.turn, piece_type) ^ zobrist::hash_turn(state_);
 
-  BitBoard &our_pieces = state_.occupied(state_.turn);
-  BitBoard &their_pieces = state_.occupied(other_side);
-
   const auto captured_piece = state_.get_piece_type(to);
   if (captured_piece != PieceType::kNone) {
-    // capture handling
     state_.zobrist_key ^= zobrist::hash_square(to, state_, flip_color(state_.turn), captured_piece);
-
-    state_.piece_bbs[PieceType::kPawn].clear_bit(to);
-    state_.piece_bbs[PieceType::kKnight].clear_bit(to);
-    state_.piece_bbs[PieceType::kBishop].clear_bit(to);
-    state_.piece_bbs[PieceType::kRook].clear_bit(to);
-    state_.piece_bbs[PieceType::kQueen].clear_bit(to);
-
-    their_pieces.clear_bit(to);
+    state_.remove_piece(to);
 
     // reset fifty moves clock since this move was a capture
-    new_fity_move_clock = 0;
+    new_fifty_move_clock = 0;
   }
 
   // used for zobrist hashing later
   bool move_is_double_push = false;
 
   if (piece_type == PieceType::kPawn) {
-    new_fity_move_clock = 0;
+    new_fifty_move_clock = 0;
 
     // check if this was an en passant capture
     if (to == state_.en_passant) {
@@ -162,9 +119,7 @@ void Board::make_move(const Move &move) {
       if (pawns.is_set(en_passant_pawn_pos)) {
         // xor out the en passant captured pawn
         state_.zobrist_key ^= zobrist::hash_square(en_passant_pawn_pos, state_, flip_color(state_.turn), PieceType::kPawn);
-
-        pawns.clear_bit(en_passant_pawn_pos);
-        their_pieces.clear_bit(en_passant_pawn_pos);
+        state_.remove_piece(en_passant_pawn_pos);
 
         // xor out the en passant pos
         state_.zobrist_key ^= zobrist::hash_en_passant(state_);
@@ -176,12 +131,14 @@ void Board::make_move(const Move &move) {
 
       // setting en passant target if pawn moved two squares
       const int kDoublePushDist = 2;
-
       if (std::abs(from_rank - to_rank) == kDoublePushDist) {
         // xor out previous en passant square (if it exists)
         // we will xor in new en passant square after the turn has been updated
         state_.zobrist_key ^= zobrist::hash_en_passant(state_);
-        state_.en_passant = Square(rank_file_to_pos(to_rank + ((from_rank - to_rank) > 0 ? 1 : -1), file(to)));
+
+        // pawn must be directly behind/in front of the attack square
+        const U8 en_passant_pawn_pos = is_white ? to - 8 : to + 8;
+        state_.en_passant = Square(en_passant_pawn_pos);
 
         // keep track if this was a move that caused en passant to be set (for zobrist hashing)
         move_is_double_push = true;
@@ -202,9 +159,8 @@ void Board::make_move(const Move &move) {
   handle_castling(move);
 
   // move the piece
-  BitBoard &piece_bb = state_.piece_bbs[piece_type];
-  piece_bb.move(from, to);
-  our_pieces.move(from, to);
+  state_.remove_piece(from);
+  state_.place_piece(to, piece_type, state_.turn);
 
   if (piece_type == PieceType::kPawn)
     handle_promotions(move);
@@ -221,7 +177,7 @@ void Board::make_move(const Move &move) {
   if (move_is_double_push)
     state_.zobrist_key ^= zobrist::hash_en_passant(state_);
 
-  state_.fifty_moves_clock = new_fity_move_clock;
+  state_.fifty_moves_clock = new_fifty_move_clock;
 }
 
 void Board::undo_move() {
@@ -246,7 +202,7 @@ void Board::make_null_move() {
   }
 
   // switch turn and xor in the new turn hash
-  state_.turn = Color(!state_.turn);
+  state_.turn = flip_color(state_.turn);
   state_.zobrist_key ^= zobrist::hash_turn(state_);
 }
 
@@ -298,25 +254,22 @@ bool Board::is_draw() const {
 }
 
 void Board::handle_castling(const Move &move) {
-  // xor out old castle rights
-  state_.zobrist_key ^= zobrist::hash_castle_rights(state_);
-
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
 
-  if (piece_type == PieceType::kKing) {
-    if (state_.castle.can_kingside_castle(state_.turn) || state_.castle.can_queenside_castle(state_.turn)) {
-      const auto move_rook_for_castling = [this](Square rook_from, Square rook_to) {
-        BitBoard &rooks_bb = state_.rooks();
-        BitBoard &pieces_bb = state_.occupied(state_.turn);
+  const auto old_rights = state_.castle_rights;
 
+  if (piece_type == PieceType::kKing) {
+    if (state_.castle_rights.can_kingside_castle(state_.turn) ||
+        state_.castle_rights.can_queenside_castle(state_.turn)) {
+      const auto move_rook_for_castling = [this](const Square &rook_from, const Square &rook_to) {
         // xor out the rook's previous square
         state_.zobrist_key ^= zobrist::hash_square(rook_from, state_, state_.turn, PieceType::kRook);
 
-        rooks_bb.move(rook_from, rook_to);
-        pieces_bb.move(rook_from, rook_to);
+        state_.remove_piece(rook_from);
+        state_.place_piece(rook_to, PieceType::kRook, state_.turn);
 
         // xor in the rook's new square
         state_.zobrist_key ^= zobrist::hash_square(rook_to, state_, state_.turn, PieceType::kRook);
@@ -335,39 +288,41 @@ void Board::handle_castling(const Move &move) {
                                is_white ? Square::kD1 : Square::kD8);
       }
 
-      state_.castle.set_can_kingside_castle(state_.turn, false);
-      state_.castle.set_can_queenside_castle(state_.turn, false);
+      state_.castle_rights.set_can_kingside_castle(state_.turn, false);
+      state_.castle_rights.set_can_queenside_castle(state_.turn, false);
     }
   }
   // handle rook moves changing castle rights
   else if (piece_type == PieceType::kRook) {
     if (is_white) {
       if (from == Square::kH1) {
-        state_.castle.set_can_kingside_castle(state_.turn, false);
+        state_.castle_rights.set_can_kingside_castle(state_.turn, false);
       } else if (from == Square::kA1) {
-        state_.castle.set_can_queenside_castle(state_.turn, false);
+        state_.castle_rights.set_can_queenside_castle(state_.turn, false);
       }
     } else {
       if (from == Square::kH8) {
-        state_.castle.set_can_kingside_castle(state_.turn, false);
+        state_.castle_rights.set_can_kingside_castle(state_.turn, false);
       } else if (from == Square::kA8) {
-        state_.castle.set_can_queenside_castle(state_.turn, false);
+        state_.castle_rights.set_can_queenside_castle(state_.turn, false);
       }
     }
   }
 
   // handle rook getting captured changing castle rights
-  auto their_kingside_rook = state_.castle.get_kingside_rook(flip_color(state_.turn));
-  auto their_queenside_rook = state_.castle.get_queenside_rook(flip_color(state_.turn));
+  auto their_kingside_rook = state_.castle_rights.get_kingside_rook(flip_color(state_.turn));
+  auto their_queenside_rook = state_.castle_rights.get_queenside_rook(flip_color(state_.turn));
 
   if (to == their_kingside_rook) {
-    state_.castle.set_can_kingside_castle(flip_color(state_.turn), false);
+    state_.castle_rights.set_can_kingside_castle(flip_color(state_.turn), false);
   } else if (to == their_queenside_rook) {
-    state_.castle.set_can_queenside_castle(flip_color(state_.turn), false);
+    state_.castle_rights.set_can_queenside_castle(flip_color(state_.turn), false);
   }
 
-  // xor in new castle rights
-  state_.zobrist_key ^= zobrist::hash_castle_rights(state_);
+  if (old_rights != state_.castle_rights) {
+    state_.zobrist_key ^= zobrist::hash_castle_rights(old_rights);
+    state_.zobrist_key ^= zobrist::hash_castle_rights(state_.castle_rights);
+  }
 }
 
 void Board::handle_promotions(const Move &move) {
@@ -377,29 +332,28 @@ void Board::handle_promotions(const Move &move) {
   const auto to_rank = rank(to);
 
   if ((is_white && to_rank == kBoardRanks - 1) || (!is_white && to_rank == 0)) {
+    state_.remove_piece(to);
+
     switch (move.get_promotion_type()) {
       case PromotionType::kKnight: {
-        state_.knights().set_bit(to);
+        state_.place_piece(to, PieceType::kKnight, state_.turn);
         break;
       }
       case PromotionType::kBishop: {
-        state_.bishops().set_bit(to);
+        state_.place_piece(to, PieceType::kBishop, state_.turn);
         break;
       }
       case PromotionType::kRook: {
-        state_.rooks().set_bit(to);
+        state_.place_piece(to, PieceType::kRook, state_.turn);
         break;
       }
       case PromotionType::kAny: // just choose a queen
       case PromotionType::kQueen: {
-        state_.queens().set_bit(to);
+        state_.place_piece(to, PieceType::kQueen, state_.turn);
         break;
       }
       default:
         break;
     }
-
-    state_.pawns().clear_bit(to);
-    state_.occupied(state_.turn).set_bit(to);
   }
 }

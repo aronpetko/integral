@@ -2,7 +2,13 @@
 #include <thread>
 
 TimeManagement::TimeManagement(const TimeManagement::Config &config, Board &board)
-    : config_(config), board_(board), current_move_time_(0), times_up_(false), nodes_searched_(0), node_spent_table_({}) {}
+    : config_(config),
+      board_(board),
+      current_move_time_(0),
+      times_up_(false),
+      worker_processed_(false),
+      nodes_searched_(0),
+      node_spent_table_({}) {}
 
 const TimeManagement::Config &TimeManagement::get_config() {
   return config_;
@@ -13,9 +19,11 @@ void TimeManagement::start() {
   node_spent_table_.fill(0ULL);
 
   // stop after the hard limit has been passed
-  worker = std::thread([this]{
+  worker = std::thread([this] {
     std::unique_lock<std::mutex> lock(mutex_);
     if (!times_up_.load()) {
+      worker_processed_ = true;
+
       times_up_cv_.wait_for(lock, std::chrono::milliseconds(calculate_hard_limit()), [this] {
         return times_up_.load();
       });
@@ -23,10 +31,15 @@ void TimeManagement::start() {
       times_up_ = true;
     }
   });
+
+  while (!worker_processed_.load()) {
+    std::this_thread::yield();
+  }
 }
 
 void TimeManagement::stop() {
   {
+    std::cout << "stopped\n";
     std::lock_guard<std::mutex> lock(mutex_);
     times_up_ = true;
   }
@@ -45,7 +58,8 @@ void TimeManagement::stop() {
 [[nodiscard]] long long TimeManagement::calculate_soft_limit(const Move &pv_move) {
   // taken from chessatron
   const auto best_move_fraction =
-      static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF]) / static_cast<double>(std::max(1LL, nodes_searched_));
+      static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF])
+          / static_cast<double>(std::max(1LL, nodes_searched_));
   const auto hard_limit = calculate_hard_limit();
   return ((hard_limit / 10) * 3) * (1.6 - best_move_fraction) * 1.5;
 }

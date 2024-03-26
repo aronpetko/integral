@@ -4,7 +4,7 @@ namespace fen {
 
 constexpr std::array<std::array<char, PieceType::kNumPieceTypes>, 2> piece_to_char = {{
   {'p', 'n', 'b', 'r', 'q', 'k'},
-  {'P', 'N', 'B', 'Q', 'K'}
+  {'P', 'N', 'B', 'R', 'Q', 'K'}
 }};
 
 char get_piece_char(BoardState &state, U8 pos) {
@@ -39,9 +39,7 @@ BoardState string_to_board(std::string fen_str) {
 
     const auto piece_color = std::islower(ch) ? Color::kBlack : Color::kWhite;
     const auto piece_type = kCharToPieceType.at(std::tolower(ch));
-
-    state.piece_bbs[piece_type].set_bit(square);
-    state.side_bbs[piece_color].set_bit(square);
+    state.place_piece(square, piece_type, piece_color);
 
     square++;
   }
@@ -54,13 +52,13 @@ BoardState string_to_board(std::string fen_str) {
   stream >> castle_rights;
   for (const char &ch : castle_rights) {
     if (ch == 'K')
-      state.castle.set_can_kingside_castle(Color::kWhite, true);
+      state.castle_rights.set_can_kingside_castle(Color::kWhite, true);
     else if (ch == 'Q')
-      state.castle.set_can_queenside_castle(Color::kWhite, true);
+      state.castle_rights.set_can_queenside_castle(Color::kWhite, true);
     else if (ch == 'k')
-      state.castle.set_can_kingside_castle(Color::kBlack, true);
+      state.castle_rights.set_can_kingside_castle(Color::kBlack, true);
     else if (ch == 'q')
-      state.castle.set_can_queenside_castle(Color::kBlack, true);
+      state.castle_rights.set_can_queenside_castle(Color::kBlack, true);
   }
 
   std::string en_passant;
@@ -106,13 +104,13 @@ std::string board_to_string(BoardState& state) {
 
   // castling rights
   output.push_back(' ');
-  if (state.castle.can_kingside_castle(Color::kWhite))
+  if (state.castle_rights.can_kingside_castle(Color::kWhite))
     output.push_back('K');
-  if (state.castle.can_queenside_castle(Color::kWhite))
+  if (state.castle_rights.can_queenside_castle(Color::kWhite))
     output.push_back('Q');
-  if (state.castle.can_kingside_castle(Color::kBlack))
+  if (state.castle_rights.can_kingside_castle(Color::kBlack))
     output.push_back('k');
-  if (state.castle.can_queenside_castle(Color::kBlack))
+  if (state.castle_rights.can_queenside_castle(Color::kBlack))
     output.push_back('q');
 
   // todo: implement en-passant state
