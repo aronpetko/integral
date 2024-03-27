@@ -81,8 +81,6 @@ class Search {
   TimeManagement time_mgmt_;
   double branching_factor_;
   int total_bfs_;
-  bool following_pv_;
-  bool in_pv_node;
   bool can_do_null_move_;
 };
 

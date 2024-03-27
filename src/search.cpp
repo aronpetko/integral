@@ -80,6 +80,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
 }
 
 int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
+  // check for repetitions of this position and the fifty-move rule
   if (board_.is_draw()) {
     return eval::kDrawScore;
   }
@@ -90,18 +91,27 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   auto &transpo = board_.get_transpo_table();
 
   const int original_alpha = alpha;
+
+  // probe the transposition table to see if we can:
+  // a) return an exact score for this position if it's been evaluated before
+  // b) update alpha if this position score indicates a better option us
+  // c) update beta if this position's score suggests a worse option for the opponent
   const auto &tt_entry = transpo.probe(state.zobrist_key);
   if (!in_pv_node && tt_entry.key == state.zobrist_key && tt_entry.depth >= depth) {
     const auto corrected_tt_eval = transpo.correct_score(tt_entry.score, ply);
     switch (tt_entry.flag) {
       case TranspositionTable::Entry::kExact:
         return corrected_tt_eval;
-      case TranspositionTable::Entry::kLowerBound:alpha = std::max(alpha, corrected_tt_eval);
+      case TranspositionTable::Entry::kLowerBound:
+        alpha = std::max(alpha, corrected_tt_eval);
         break;
-      case TranspositionTable::Entry::kUpperBound:beta = std::min(beta, corrected_tt_eval);
+      case TranspositionTable::Entry::kUpperBound:
+        beta = std::min(beta, corrected_tt_eval);
         break;
     }
 
+    // since alpha and beta might have been adjusted, we check if we can prune this branch early
+    // known as a "beta" cutoff
     if (alpha >= beta) {
       return corrected_tt_eval;
     }
@@ -109,18 +119,22 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
   int extensions = 0;
 
-  // ensure we never run quiesce when in check
+  // extend the main search if we're when in check to ensure we fully explore our options
+  // essentially delay entering quiescent search
   const bool in_check = king_in_check(state.turn, state);
   if (in_check) {
     extensions++;
   }
 
-  // search until we've found a "quiet" position to evaluate
+  // enter quiescent search to return a final score for the original position
+  // this ensures that we never evaluate positions where we may miss a tactic
   if (depth <= 0) {
     return quiesce(ply, alpha, beta);
   }
 
   // reverse (static) futility pruning
+  // we assume that the static evaluation of the current position can't fall below beta within the next move
+  // the margin for this comparison is scaled based on how many moves left we have to search
   const int kReverseFutilityDepthLimit = 6;
   if (depth <= kReverseFutilityDepthLimit && !in_pv_node && !in_check) {
     const int kMarginIncrement = 120;
@@ -134,42 +148,38 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   }
 
   // null move pruning
+  // forfeit a move to our opponent and perform a shallow search
+  // if the search indicates a winning position, it's safe to assume this move too good and
+  // the opponent wouldn't have allowed this position to occur, so we prune this branch
   if (can_do_null_move_ && depth > 2 && !in_check && !in_pv_node) {
-    // possible zugwang detection
-    for (int color = Color::kBlack; color <= Color::kWhite; color++) {
-      for (int piece = PieceType::kKnight; piece <= PieceType::kQueen; piece++) {
-        const auto piece_bb = state.piece_bbs[piece] & state.side_bbs[color];
-        if (piece_bb.pop_count()) {
-          goto move_loop;
-        }
+    // nmp is considered unsafe in positions that zugwang is likely to occur
+    const bool safe_to_nmp = state.knights() || state.bishops() || state.rooks() || state.queens();
+    if (safe_to_nmp) {
+      can_do_null_move_ = false;
+      board_.make_null_move();
+
+      PVLine dummy_pv;
+      const int reduction = depth / 4 + 3;
+      const int null_move_score = -search(depth - reduction, ply + 1, -beta, -alpha, dummy_pv);
+
+      board_.undo_move();
+      can_do_null_move_ = true;
+
+      if (null_move_score >= beta) {
+        return null_move_score > eval::kMateScore - kMaxGameMoves ? beta : null_move_score;
       }
-    }
-
-    can_do_null_move_ = false;
-    board_.make_null_move();
-
-    PVLine dummy_pv;
-
-    const int reduction = depth / 4 + 3;
-    const int null_move_score = -search(depth - reduction, ply + 1, -beta, -alpha, dummy_pv);
-
-    board_.undo_move();
-    can_do_null_move_ = true;
-
-    if (null_move_score >= beta) {
-      return null_move_score > eval::kMateScore - kMaxGameMoves ? beta : null_move_score;
     }
   }
   can_do_null_move_ = true;
 
-  move_loop:
+  PVLine temp_pv_line;
   MoveList quiet_non_cutoffs;
   int moves_tried = 0;
 
   Move best_move = Move::null_move();
   int best_score = std::numeric_limits<int>::min();
-  PVLine temp_pv_line;
 
+  // order the list of moves to increase the likelihood of pruning this branch
   MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
@@ -190,20 +200,22 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     PVLine child_pv_line;
     int score;
 
-    // apply LMR conditions to subsequent moves
+    // move ordering places the moves that are most likely to cause a beta cutoff first
+    // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     int reduction = 0;
-    if (depth >= 2 && moves_tried > 1 && !is_promotion && !is_capture && !in_check) {
+    if (depth >= 2 && moves_tried > 1 && is_quiet && !in_check) {
       reduction = kLateMoveReductionTable[depth][moves_tried];
     }
 
-    // pvs: search the first move with a normal window
+    // principal variation search (pvs)
+    // search the first move with a normal alpha-beta window
     if (moves_tried == 0) {
       score = -search(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
     } else {
       // null window search for a quick refutation or indication of a potentially good move
       score = -search(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
 
-      // if the move looks promising from null window search, research
+      // if the move looks promising from null window search, research to obtain a more accurate score
       if (score > alpha && (in_pv_node || reduction > 0)) {
         score = -search(depth - 1 + extensions, ply + 1, -beta, -alpha, child_pv_line);
       }
@@ -279,11 +291,11 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   const auto &state = board_.get_state();
   const bool in_check = king_in_check(state.turn, state);
 
-  int moves_tried = 0;
   PVLine temp_pv_line;
-
   MoveList quiet_non_cutoffs;
+  int moves_tried = 0;
 
+  // order the list of moves to increase the likelihood of pruning this branch
   MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
@@ -307,21 +319,23 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     PVLine child_pv_line;
     int score;
 
-    // apply LMR conditions to subsequent moves
+    // move ordering places the moves that are most likely to cause a beta cutoff first
+    // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     int reduction = 0;
-    if (depth >= 2 && moves_tried > 4 && !is_promotion && !is_capture && !in_check) {
+    if (depth >= 2 && moves_tried > 1 && is_quiet && !in_check) {
       reduction = kLateMoveReductionTable[depth][moves_tried];
     }
 
-    // pvs: search the first move with a normal window
+    // principal variation search (pvs)
+    // search the first move with a normal alpha-beta window
     if (moves_tried == 0) {
       score = -search(depth - 1 - reduction, ply + 1, -beta, -alpha, child_pv_line);
     } else {
       // null window search for a quick refutation or indication of a potentially good move
       score = -search(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
 
-      // if the move looks promising from null window search, research
-      if (score > alpha && (in_pv_node || reduction > 0)) {
+      // if the move looks promising from null window search, research to obtain a more accurate score
+      if (score > alpha) {
         score = -search(depth - 1, ply + 1, -beta, -alpha, child_pv_line);
       }
     }
@@ -334,7 +348,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
       break;
     }
 
-    // alpha is raised, therefore this move is the new pv node for this depth
+    // this opponent has a better move, so we prune this branch
     if (score > result.score) {
       result.score = score;
       result.best_move = move;

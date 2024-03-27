@@ -105,7 +105,7 @@ struct BoardState {
     return side_bbs[Color::kWhite] | side_bbs[Color::kBlack];
   }
 
-  [[nodiscard]] constexpr inline BitBoard &occupied(Color side) {
+  [[nodiscard]] constexpr inline const BitBoard &occupied(Color side) const {
     return side_bbs[side];
   }
 
@@ -113,7 +113,7 @@ struct BoardState {
     return piece_bbs[PieceType::kPawn] & side_bbs[side];
   }
 
-  [[nodiscard]] inline BitBoard &pawns() {
+  [[nodiscard]] inline const BitBoard &pawns() const {
     return piece_bbs[PieceType::kPawn];
   }
 
@@ -121,7 +121,7 @@ struct BoardState {
     return piece_bbs[PieceType::kKnight] & side_bbs[side];
   }
 
-  [[nodiscard]] inline BitBoard &knights() {
+  [[nodiscard]] inline const BitBoard &knights() const {
     return piece_bbs[PieceType::kKnight];
   }
 
@@ -129,7 +129,7 @@ struct BoardState {
     return piece_bbs[PieceType::kBishop] & side_bbs[side];
   }
 
-  [[nodiscard]] inline BitBoard &bishops() {
+  [[nodiscard]] inline const BitBoard &bishops() const {
     return piece_bbs[PieceType::kBishop];
   }
 
@@ -137,7 +137,7 @@ struct BoardState {
     return piece_bbs[PieceType::kRook] & side_bbs[side];
   }
 
-  [[nodiscard]] inline BitBoard &rooks() {
+  [[nodiscard]] inline const BitBoard &rooks() const {
     return piece_bbs[PieceType::kRook];
   }
 
@@ -145,7 +145,7 @@ struct BoardState {
     return piece_bbs[PieceType::kQueen] & side_bbs[side];
   }
 
-  [[nodiscard]] inline BitBoard &queens() {
+  [[nodiscard]] inline const BitBoard &queens() const {
     return piece_bbs[PieceType::kQueen];
   }
 

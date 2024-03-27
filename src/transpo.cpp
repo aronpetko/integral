@@ -17,7 +17,7 @@ void TranspositionTable::resize(std::size_t mb_size) {
 }
 
 void TranspositionTable::clear() {
-  std::fill(table_.begin(), table_.end(), Entry{});
+  std::ranges::fill(table_, Entry{});
 }
 
 void TranspositionTable::save(const Entry &entry, int ply) {

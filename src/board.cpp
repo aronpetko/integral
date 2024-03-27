@@ -115,7 +115,7 @@ void Board::make_move(const Move &move) {
       // pawn must be directly behind/in front of the attack square
       const U8 en_passant_pawn_pos = is_white ? to - 8 : to + 8;
 
-      BitBoard &pawns = state_.pawns();
+      const BitBoard &pawns = state_.pawns();
       if (pawns.is_set(en_passant_pawn_pos)) {
         // xor out the en passant captured pawn
         state_.zobrist_key ^= zobrist::hash_square(en_passant_pawn_pos, state_, flip_color(state_.turn), PieceType::kPawn);

@@ -31,7 +31,7 @@ enum RankMask : U64 {
   kRank8 = 0xFF00000000000000ULL
 };
 
-static const std::array<RankMask, 8> kRankMasks = {
+[[maybe_unused]] static const std::array<RankMask, 8> kRankMasks = {
     RankMask::kRank1,
     RankMask::kRank2,
     RankMask::kRank3,

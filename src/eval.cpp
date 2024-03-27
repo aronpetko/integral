@@ -355,8 +355,9 @@ int king_safety_difference(const BoardState &state) {
 }
 
 int square_control_difference(const BoardState &state) {
-  return get_attacked_squares(state, state.turn).pop_count()
-      - get_attacked_squares(state, flip_color(state.turn)).pop_count();
+  const BitBoard our_attacked_squares = get_attacked_squares(state, state.turn) & ~state.occupied(state.turn);
+  const BitBoard their_attacked_squares = get_attacked_squares(state, flip_color(state.turn)) & ~state.occupied(flip_color(state.turn));
+  return our_attacked_squares.pop_count() - their_attacked_squares.pop_count();
 }
 
 int evaluate(const BoardState &state) {

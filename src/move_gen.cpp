@@ -228,8 +228,8 @@ MoveList generate_moves(Board &board) {
   BitBoard queens = state.queens(state.turn);
   BitBoard king = state.king(state.turn);
 
-  BitBoard &our_pieces = state.occupied(state.turn);
-  BitBoard &their_pieces = state.occupied(flip_color(state.turn));
+  const BitBoard &our_pieces = state.occupied(state.turn);
+  const BitBoard &their_pieces = state.occupied(flip_color(state.turn));
 
   while (pawns) {
     U8 from = pawns.pop_lsb();
@@ -355,8 +355,8 @@ MoveList generate_capture_moves(Board &board) {
   BitBoard queens = state.queens(state.turn);
   BitBoard king = state.king(state.turn);
 
-  BitBoard &our_pieces = state.occupied(state.turn);
-  BitBoard &their_pieces = state.occupied(flip_color(state.turn));
+  const BitBoard &our_pieces = state.occupied(state.turn);
+  const BitBoard &their_pieces = state.occupied(flip_color(state.turn));
 
   while (pawns) {
     U8 from = pawns.pop_lsb();
