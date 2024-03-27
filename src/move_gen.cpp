@@ -66,8 +66,8 @@ BitBoard generate_pawn_attacks(U8 pos, const BoardState &state, Color which) {
   BitBoard attacks = pawn_attacks[which == Color::kNoColor ? state.get_piece_color(pos) : which][pos];
 
   // allow en passant attack
-  if (state.en_passant.has_value() && attacks.is_set(state.en_passant.value()))
-    attacks.set_bit(state.en_passant.value());
+  if (state.en_passant != Square::kNoSquare && attacks.is_set(state.en_passant))
+    attacks.set_bit(state.en_passant);
 
   return attacks;
 }
@@ -234,12 +234,12 @@ MoveList generate_moves(Board &board) {
   while (pawns) {
     U8 from = pawns.pop_lsb();
 
-    const BitBoard en_passant_mask = state.en_passant.has_value() ? BitBoard::from_square(state.en_passant.value()) : BitBoard(0);
+    const BitBoard en_passant_mask = state.en_passant != Square::kNoSquare ? BitBoard::from_square(state.en_passant) : BitBoard(0);
     auto possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
 
-    const bool en_passant_set = state.en_passant.has_value() && possible_moves.is_set(state.en_passant.value());
+    const bool en_passant_set = state.en_passant != Square::kNoSquare && possible_moves.is_set(state.en_passant);
     possible_moves &= ~our_pieces;
-    if (en_passant_set) possible_moves.set_bit(state.en_passant.value());
+    if (en_passant_set) possible_moves.set_bit(state.en_passant);
 
     while (possible_moves) {
       const auto to = possible_moves.pop_lsb();
@@ -361,12 +361,12 @@ MoveList generate_capture_moves(Board &board) {
   while (pawns) {
     U8 from = pawns.pop_lsb();
 
-    const BitBoard en_passant_mask = state.en_passant.has_value() ? BitBoard::from_square(state.en_passant.value()) : BitBoard(0);
+    const BitBoard en_passant_mask = state.en_passant != Square::kNoSquare ? BitBoard::from_square(state.en_passant) : BitBoard(0);
     auto possible_moves = generate_pawn_moves(from, state) | (generate_pawn_attacks(from, state) & (their_pieces | en_passant_mask));
 
-    const bool en_passant_set = state.en_passant.has_value() && possible_moves.is_set(state.en_passant.value());
+    const bool en_passant_set = state.en_passant != Square::kNoSquare && possible_moves.is_set(state.en_passant);
     possible_moves &= ~our_pieces & their_pieces;
-    if (en_passant_set) possible_moves.set_bit(state.en_passant.value());
+    if (en_passant_set) possible_moves.set_bit(state.en_passant);
 
     while (possible_moves) {
       const auto to = possible_moves.pop_lsb();

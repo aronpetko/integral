@@ -39,7 +39,6 @@ void TimeManagement::start() {
 
 void TimeManagement::stop() {
   {
-    std::cout << "stopped\n";
     std::lock_guard<std::mutex> lock(mutex_);
     times_up_ = true;
   }
@@ -58,8 +57,7 @@ void TimeManagement::stop() {
 [[nodiscard]] long long TimeManagement::calculate_soft_limit(const Move &pv_move) {
   // taken from chessatron
   const auto best_move_fraction =
-      static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF])
-          / static_cast<double>(std::max(1LL, nodes_searched_));
+      static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF]) / std::max(1LL, nodes_searched_);
   const auto hard_limit = calculate_hard_limit();
   return ((hard_limit / 10) * 3) * (1.6 - best_move_fraction) * 1.5;
 }

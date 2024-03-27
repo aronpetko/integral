@@ -85,6 +85,12 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     return eval::kDrawScore;
   }
 
+  // enter quiescent search to return a final score for the original position
+  // this ensures that we never evaluate positions where we may miss a tactic
+  if (depth <= 0) {
+    return quiesce(ply, alpha, beta);
+  }
+
   const bool in_pv_node = (beta - alpha) > 1;
 
   const auto &state = board_.get_state();
@@ -117,19 +123,11 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     }
   }
 
-  int extensions = 0;
-
   // extend the main search if we're when in check to ensure we fully explore our options
   // essentially delay entering quiescent search
   const bool in_check = king_in_check(state.turn, state);
   if (in_check) {
-    extensions++;
-  }
-
-  // enter quiescent search to return a final score for the original position
-  // this ensures that we never evaluate positions where we may miss a tactic
-  if (depth <= 0) {
-    return quiesce(ply, alpha, beta);
+    depth++;
   }
 
   // reverse (static) futility pruning
@@ -137,12 +135,9 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   // the margin for this comparison is scaled based on how many moves left we have to search
   const int kReverseFutilityDepthLimit = 6;
   if (depth <= kReverseFutilityDepthLimit && !in_pv_node && !in_check) {
-    const int kMarginIncrement = 120;
-    const int kBaseMargin = 100;
-
-    const int futility_margin = kBaseMargin + depth * kMarginIncrement;
+    const int kMarginIncrement = 100;
     const int static_eval = eval::evaluate(state);
-    if (static_eval - futility_margin >= beta) {
+    if (static_eval - (depth + 1) * kMarginIncrement >= beta) {
       return static_eval;
     }
   }
@@ -195,7 +190,15 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       continue;
     }
 
+    __builtin_prefetch(&tt_entry);
+
+    const bool move_caused_check = king_in_check(state.turn, state);
     const bool is_quiet = !is_capture && !is_promotion;
+
+    // extend the search of certain moves if they are potentially tactical
+    // idea: extend for captures as well using static exchange evaluation (SEE)
+    static int num_extensions = 0;
+    const int extensions = num_extensions <= 16 && move_caused_check;
 
     PVLine child_pv_line;
     int score;
@@ -217,7 +220,9 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
       // if the move looks promising from null window search, research to obtain a more accurate score
       if (score > alpha && (in_pv_node || reduction > 0)) {
+        num_extensions += extensions;
         score = -search(depth - 1 + extensions, ply + 1, -beta, -alpha, child_pv_line);
+        num_extensions -= extensions;
       }
     }
 
@@ -230,6 +235,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       temp_pv_line.clear();
       return 0;
     }
+
 
     // alpha is raised, therefore this move is the new pv node for this depth
     if (score > best_score) {
@@ -322,7 +328,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     // move ordering places the moves that are most likely to cause a beta cutoff first
     // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     int reduction = 0;
-    if (depth >= 2 && moves_tried > 1 && is_quiet && !in_check) {
+    if (depth >= 2 && moves_tried > 3 && is_quiet && !in_check) {
       reduction = kLateMoveReductionTable[depth][moves_tried];
     }
 

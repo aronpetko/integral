@@ -10,7 +10,7 @@ const int kMateScore = 1e8;
 
 const std::array<int, PieceType::kNumPieceTypes> kPieceValues = {
     100, // pawn
-    305, // knight
+    300, // knight
     315, // bishop
     500, // rook
     900, // queen

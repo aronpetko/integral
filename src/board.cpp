@@ -41,7 +41,7 @@ bool Board::is_legal_move(const Move &move) {
 
   switch (state_.get_piece_type(from)) {
     case PieceType::kPawn: {
-      const BitBoard en_passant_mask = state_.en_passant.has_value() ? BitBoard::from_square(state_.en_passant.value()) : BitBoard(0);
+      const BitBoard en_passant_mask = state_.en_passant != Square::kNoSquare ? BitBoard::from_square(state_.en_passant) : BitBoard(0);
       possible_moves = generate_pawn_moves(from, state_) | (generate_pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
       break;
     }
@@ -59,9 +59,9 @@ bool Board::is_legal_move(const Move &move) {
       return false;
   }
 
-  const bool en_passant_set = state_.en_passant.has_value() && possible_moves.is_set(state_.en_passant.value());
+  const bool en_passant_set = state_.en_passant != Square::kNoSquare && possible_moves.is_set(state_.en_passant);
   possible_moves &= ~our_pieces;
-  if (en_passant_set) possible_moves.set_bit(state_.en_passant.value());
+  if (en_passant_set) possible_moves.set_bit(state_.en_passant);
 
   if (possible_moves.is_set(to)) {
     // check if this move puts the king in check
@@ -115,23 +115,17 @@ void Board::make_move(const Move &move) {
       // pawn must be directly behind/in front of the attack square
       const U8 en_passant_pawn_pos = is_white ? to - 8 : to + 8;
 
-      const BitBoard &pawns = state_.pawns();
-      if (pawns.is_set(en_passant_pawn_pos)) {
-        // xor out the en passant captured pawn
-        state_.zobrist_key ^= zobrist::hash_square(en_passant_pawn_pos, state_, flip_color(state_.turn), PieceType::kPawn);
-        state_.remove_piece(en_passant_pawn_pos);
+      // xor out the en passant captured pawn
+      state_.zobrist_key ^= zobrist::hash_square(en_passant_pawn_pos, state_, flip_color(state_.turn), PieceType::kPawn);
+      state_.remove_piece(en_passant_pawn_pos);
 
-        // xor out the en passant pos
-        state_.zobrist_key ^= zobrist::hash_en_passant(state_);
-        state_.en_passant.reset();
-      }
+      // xor out the en passant pos
+      state_.zobrist_key ^= zobrist::hash_en_passant(state_);
+      state_.en_passant = Square::kNoSquare;
     } else {
-      const int from_rank = rank(from);
-      const int to_rank = rank(to);
-
       // setting en passant target if pawn moved two squares
-      const int kDoublePushDist = 2;
-      if (std::abs(from_rank - to_rank) == kDoublePushDist) {
+      const int kDoublePushDist = 16;
+      if ((from ^ to) == kDoublePushDist) {
         // xor out previous en passant square (if it exists)
         // we will xor in new en passant square after the turn has been updated
         state_.zobrist_key ^= zobrist::hash_en_passant(state_);
@@ -144,16 +138,16 @@ void Board::make_move(const Move &move) {
         move_is_double_push = true;
       }
       // this move wasn't a double pawn push, so if ep square was set from the previous move, we xor it out
-      else if (state_.en_passant.has_value()) {
+      else if (state_.en_passant != Square::kNoSquare) {
         state_.zobrist_key ^= zobrist::hash_en_passant(state_);
-        state_.en_passant.reset();
+        state_.en_passant = Square::kNoSquare;
       }
     }
   }
   // if ep square was set from the previous move, we xor it out
-  else if (state_.en_passant.has_value()) {
+  else if (state_.en_passant != Square::kNoSquare) {
     state_.zobrist_key ^= zobrist::hash_en_passant(state_);
-    state_.en_passant.reset();
+    state_.en_passant = Square::kNoSquare;
   }
 
   handle_castling(move);
@@ -162,8 +156,9 @@ void Board::make_move(const Move &move) {
   state_.remove_piece(from);
   state_.place_piece(to, piece_type, state_.turn);
 
-  if (piece_type == PieceType::kPawn)
+  if (piece_type == PieceType::kPawn && move.get_promotion_type() != PromotionType::kNone) {
     handle_promotions(move);
+  }
 
   // xor in the moved piece
   state_.zobrist_key ^= zobrist::hash_square(to, state_, state_.turn, piece_type);
@@ -196,9 +191,9 @@ void Board::make_null_move() {
   state_.zobrist_key ^= zobrist::hash_turn(state_);
 
   // xor out en passant if it exists
-  if (state_.en_passant.has_value()) {
+  if (state_.en_passant != Square::kNoSquare) {
     state_.zobrist_key ^= zobrist::hash_en_passant(state_);
-    state_.en_passant.reset();
+    state_.en_passant = Square::kNoSquare;
   }
 
   // switch turn and xor in the new turn hash
@@ -259,7 +254,7 @@ void Board::handle_castling(const Move &move) {
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
 
-  const auto old_rights = state_.castle_rights;
+  const auto &old_rights = state_.castle_rights;
 
   if (piece_type == PieceType::kKing) {
     if (state_.castle_rights.can_kingside_castle(state_.turn) ||
@@ -288,8 +283,7 @@ void Board::handle_castling(const Move &move) {
                                is_white ? Square::kD1 : Square::kD8);
       }
 
-      state_.castle_rights.set_can_kingside_castle(state_.turn, false);
-      state_.castle_rights.set_can_queenside_castle(state_.turn, false);
+      state_.castle_rights.set_both_rights(state_.turn, false);
     }
   }
   // handle rook moves changing castle rights

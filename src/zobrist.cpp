@@ -44,7 +44,7 @@ U64 hash_castle_rights(const CastleRights &rights) {
 }
 
 U64 hash_en_passant(const BoardState &state) {
-  if (!state.en_passant.has_value())
+  if (state.en_passant == Square::kNoSquare)
     return 0ULL;
 
   const auto ep_square = state.en_passant;
@@ -52,13 +52,13 @@ U64 hash_en_passant(const BoardState &state) {
   // if our pawn can capture the en passant
   const BitBoard our_pawns = state.pawns(state.turn);
 
-  BitBoard en_passant_bb = BitBoard::from_square(ep_square.value());
+  BitBoard en_passant_bb = BitBoard::from_square(ep_square);
   en_passant_bb =
       state.turn == Color::kWhite ? shift<Direction::kSouth>(en_passant_bb) : shift<Direction::kNorth>(en_passant_bb);
   en_passant_bb = shift<Direction::kEast>(en_passant_bb) | shift<Direction::kWest>(en_passant_bb);
 
   if (en_passant_bb & our_pawns) {
-    const int en_passant_file = file(ep_square.value());
+    const int en_passant_file = file(ep_square);
     return kRandomsArray[Indices::kEnPassantFileA + en_passant_file];
   }
 

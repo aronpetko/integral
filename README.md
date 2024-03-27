@@ -1,5 +1,5 @@
-## Integral
-Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. This is a personal project developed with the goal of meshing my admiration for chess with programming.
+## <img src="https://i.imgur.com/Py8am6G.png" width="30%" height="30%"/>
+Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming.
 
 ## Usage
 Integral supports the following UCI commands:
@@ -21,3 +21,6 @@ cd integral
 cmake ..
 make
 ```
+
+## Rating
+Integral is estimated to be around 1900 CCRL Blitz

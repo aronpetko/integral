@@ -64,7 +64,7 @@ bool Move::is_capture(const BoardState &state) const {
   const auto from = get_from();
   const auto to = get_to();
   return (state.get_piece_type(to) != PieceType::kNone) ||
-      (state.get_piece_type(from) == PieceType::kPawn && state.en_passant.has_value() && (state.en_passant == to));
+      (state.get_piece_type(from) == PieceType::kPawn && state.en_passant != Square::kNoSquare && (state.en_passant == to));
 }
 
 std::string Move::to_string() const {

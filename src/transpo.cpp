@@ -22,8 +22,7 @@ void TranspositionTable::clear() {
 
 void TranspositionTable::save(const Entry &entry, int ply) {
   auto &table_entry = table_[entry.key % table_size_];
-
-  if (table_entry.depth <= entry.depth) {
+  if (table_entry.key != entry.key || table_entry.depth <= entry.depth || entry.flag == Entry::kExact) {
     table_entry = entry;
 
     const int kRoughlyMate = -eval::kMateScore + 1000;

@@ -50,6 +50,12 @@ class CastleRights {
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
+  inline void set_both_rights(Color turn, bool value) {
+    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside | CastleRightMasks::kWhiteKingside :
+              CastleRightMasks::kBlackQueenside | CastleRightMasks::kBlackKingside;
+    value ? rights_ |= mask : rights_ &= ~mask;
+  }
+
   [[nodiscard]] inline Square get_kingside_rook(Color turn) const {
     return kRookSquares[turn][kKingsideRookIndex];
   }
@@ -67,7 +73,7 @@ class CastleRights {
 };
 
 struct BoardState {
-  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(std::nullopt) {
+  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(Square::kNoSquare) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -109,51 +115,51 @@ struct BoardState {
     return side_bbs[side];
   }
 
-  [[nodiscard]] inline BitBoard pawns(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard pawns(Color side) const {
     return piece_bbs[PieceType::kPawn] & side_bbs[side];
   }
 
-  [[nodiscard]] inline const BitBoard &pawns() const {
+  [[nodiscard]] constexpr inline const BitBoard &pawns() const {
     return piece_bbs[PieceType::kPawn];
   }
 
-  [[nodiscard]] inline BitBoard knights(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard knights(Color side) const {
     return piece_bbs[PieceType::kKnight] & side_bbs[side];
   }
 
-  [[nodiscard]] inline const BitBoard &knights() const {
+  [[nodiscard]] constexpr inline const BitBoard &knights() const {
     return piece_bbs[PieceType::kKnight];
   }
 
-  [[nodiscard]] inline BitBoard bishops(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard bishops(Color side) const {
     return piece_bbs[PieceType::kBishop] & side_bbs[side];
   }
 
-  [[nodiscard]] inline const BitBoard &bishops() const {
+  [[nodiscard]] constexpr inline const BitBoard &bishops() const {
     return piece_bbs[PieceType::kBishop];
   }
 
-  [[nodiscard]] inline BitBoard rooks(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard rooks(Color side) const {
     return piece_bbs[PieceType::kRook] & side_bbs[side];
   }
 
-  [[nodiscard]] inline const BitBoard &rooks() const {
+  [[nodiscard]] constexpr inline const BitBoard &rooks() const {
     return piece_bbs[PieceType::kRook];
   }
 
-  [[nodiscard]] inline BitBoard queens(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard queens(Color side) const {
     return piece_bbs[PieceType::kQueen] & side_bbs[side];
   }
 
-  [[nodiscard]] inline const BitBoard &queens() const {
+  [[nodiscard]] constexpr inline const BitBoard &queens() const {
     return piece_bbs[PieceType::kQueen];
   }
 
-  [[nodiscard]] inline BitBoard king(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard king(Color side) const {
     return piece_bbs[PieceType::kKing] & side_bbs[side];
   }
 
-  [[nodiscard]] inline BitBoard &king() {
+  [[nodiscard]] constexpr inline const BitBoard &king() const {
     return piece_bbs[PieceType::kKing];
   }
 
@@ -162,7 +168,7 @@ struct BoardState {
   std::array<PieceType, Square::kSquareCount> piece_on_square;
   Color turn;
   U16 fifty_moves_clock;
-  std::optional<Square> en_passant;
+  Square en_passant;
   CastleRights castle_rights;
   U64 zobrist_key;
   Move move_played;
