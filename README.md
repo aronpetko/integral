@@ -1,5 +1,7 @@
 ## <img src="https://i.imgur.com/Py8am6G.png" width="30%" height="30%"/>
-Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming.
+Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming. \
+\
+<b>Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)</b>
 
 ## Usage
 Integral supports the following UCI commands:
@@ -23,4 +25,4 @@ make
 ```
 
 ## Rating
-Integral is estimated to be around 1900 CCRL Blitz
+Integral is estimated to be around 2100 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral can consistently beat 2000 FIDE-rated players.

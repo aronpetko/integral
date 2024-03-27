@@ -39,7 +39,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
     return static_eval;
 
   // delta pruning
-  if (static_eval + eval::kPieceValues[PieceType::kQueen] < alpha)
+  if (static_eval + eval::kSEEPieceScores[PieceType::kQueen] < alpha)
     return alpha;
 
   alpha = std::max(alpha, static_eval);
@@ -190,7 +190,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       continue;
     }
 
-    __builtin_prefetch(&tt_entry);
+    // load the transposition table entry for this move in the background
+    __builtin_prefetch(&transpo.probe(state.zobrist_key));
 
     const bool move_caused_check = king_in_check(state.turn, state);
     const bool is_quiet = !is_capture && !is_promotion;
@@ -228,14 +229,13 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
     board_.undo_move();
 
-    time_mgmt_.update_nodes_searched();
     moves_tried++;
+    time_mgmt_.update_nodes_searched();
 
     if (time_mgmt_.times_up() && !best_move.is_null()) {
       temp_pv_line.clear();
       return 0;
     }
-
 
     // alpha is raised, therefore this move is the new pv node for this depth
     if (score > best_score) {
@@ -328,7 +328,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     // move ordering places the moves that are most likely to cause a beta cutoff first
     // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     int reduction = 0;
-    if (depth >= 2 && moves_tried > 3 && is_quiet && !in_check) {
+    if (depth >= 2 && moves_tried > 1 && is_quiet && !in_check) {
       reduction = kLateMoveReductionTable[depth][moves_tried];
     }
 
@@ -349,7 +349,10 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     board_.undo_move();
     moves_tried++;
 
+    // update the amount of nodes spent searching this move
+    // if this move is the pv move, we allocate more time for search depending on how much the search explores it
     time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
+
     if (time_mgmt_.times_up() && !result.best_move.is_null()) {
       break;
     }

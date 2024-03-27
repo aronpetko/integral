@@ -8,10 +8,10 @@ namespace eval {
 const int kDrawScore = 0;
 const int kMateScore = 1e8;
 
-const std::array<int, PieceType::kNumPieceTypes> kPieceValues = {
+const std::array<int, PieceType::kNumPieceTypes> kSEEPieceScores = {
     100, // pawn
     300, // knight
-    315, // bishop
+    300, // bishop
     500, // rook
     900, // queen
     20000, // king

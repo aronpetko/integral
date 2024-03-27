@@ -21,11 +21,15 @@ void TranspositionTable::clear() {
 }
 
 void TranspositionTable::save(const Entry &entry, int ply) {
+  // typically as the search progresses, other factors that influence the move ordering like counter moves, history, killers, etc are improved
+  // therefore, we cannot simply trust a higher depth search as being a better reflection of the evaluation, and we give some lenience for the replacement strategy
+  const int kDepthLenience = 4;
+
   auto &table_entry = table_[entry.key % table_size_];
-  if (table_entry.key != entry.key || table_entry.depth <= entry.depth || entry.flag == Entry::kExact) {
+  if (table_entry.key != entry.key || table_entry.depth <= entry.depth + kDepthLenience || entry.flag == Entry::kExact) {
     table_entry = entry;
 
-    const int kRoughlyMate = -eval::kMateScore + 1000;
+    const int kRoughlyMate = -eval::kMateScore + kMaxGameMoves;
     if (entry.score <= kRoughlyMate) {
       table_entry.score -= ply;
     } else if (entry.score >= -kRoughlyMate) {
@@ -35,7 +39,7 @@ void TranspositionTable::save(const Entry &entry, int ply) {
 }
 
 int TranspositionTable::correct_score(int score, int ply) const {
-  const int kRoughlyMate = -eval::kMateScore + 1000;
+  const int kRoughlyMate = -eval::kMateScore + kMaxGameMoves;
   if (score <= kRoughlyMate) {
     score += ply;
   } else if (score >= -kRoughlyMate) {
