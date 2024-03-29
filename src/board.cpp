@@ -28,8 +28,9 @@ void Board::set_from_fen(const std::string &fen_str) {
 bool Board::is_legal_move(const Move &move) {
   const auto from = move.get_from(), to = move.get_to();
 
-  BitBoard our_pieces = state_.occupied(state_.turn);
-  BitBoard their_pieces = state_.occupied(flip_color(state_.turn));
+  const BitBoard &our_pieces = state_.occupied(state_.turn);
+  const BitBoard &their_pieces = state_.occupied(flip_color(state_.turn));
+  const BitBoard occupied = our_pieces | their_pieces;
 
   // check if the moved piece belongs to the current move's player
   if (!our_pieces.is_set(from)) {
@@ -42,18 +43,18 @@ bool Board::is_legal_move(const Move &move) {
   switch (state_.get_piece_type(from)) {
     case PieceType::kPawn: {
       const BitBoard en_passant_mask = state_.en_passant != Square::kNoSquare ? BitBoard::from_square(state_.en_passant) : BitBoard(0);
-      possible_moves = generate_pawn_moves(from, state_) | (generate_pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
+      possible_moves = move_gen::pawn_moves(from, state_) | (move_gen::pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
       break;
     }
-    case PieceType::kKnight: possible_moves = generate_knight_moves(from, state_);
+    case PieceType::kKnight: possible_moves = move_gen::knight_moves(from);
       break;
-    case PieceType::kBishop: possible_moves = generate_bishop_moves(from, state_);
+    case PieceType::kBishop: possible_moves = move_gen::bishop_moves(from, occupied);
       break;
-    case PieceType::kRook: possible_moves = generate_rook_moves(from, state_);
+    case PieceType::kRook: possible_moves = move_gen::rook_moves(from, our_pieces);
       break;
-    case PieceType::kQueen: possible_moves = generate_bishop_moves(from, state_) | generate_rook_moves(from, state_);
+    case PieceType::kQueen: possible_moves = move_gen::bishop_moves(from, occupied) | move_gen::rook_moves(from, occupied);
       break;
-    case PieceType::kKing: possible_moves = generate_king_moves(from, state_, true);
+    case PieceType::kKing: possible_moves = move_gen::king_moves(from, state_);
       break;
     default: std::cerr << "this piece doesn't exist" << std::endl;
       return false;
@@ -67,7 +68,7 @@ bool Board::is_legal_move(const Move &move) {
     // check if this move puts the king in check
     // now that we have made the move, the turn to move has flipped to the other side, so we flip it back to see if that king is in check
     make_move(move);
-    bool in_check = king_in_check(flip_color(state_.turn), state_);
+    bool in_check = move_gen::king_in_check(flip_color(state_.turn), state_);
     undo_move();
 
     if (in_check)
@@ -169,8 +170,9 @@ void Board::make_move(const Move &move) {
 
   // xor en passant in now that the turn's have been switched (should only happen if this move wasn't an ep capture)
   // this is important since hash_en_passant checks if the opponents pawn is next to the double-pushed pawn
-  if (move_is_double_push)
+  if (move_is_double_push) {
     state_.zobrist_key ^= zobrist::hash_en_passant(state_);
+  }
 
   state_.fifty_moves_clock = new_fifty_move_clock;
 }
@@ -254,7 +256,7 @@ void Board::handle_castling(const Move &move) {
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
 
-  const auto &old_rights = state_.castle_rights;
+  const auto old_rights = state_.castle_rights;
 
   if (piece_type == PieceType::kKing) {
     if (state_.castle_rights.can_kingside_castle(state_.turn) ||
@@ -273,7 +275,7 @@ void Board::handle_castling(const Move &move) {
       const int kKingsideCastleDist = -2;
       const int kQueensideCastleDist = 2;
 
-      // note: the only way move_dist is ever 2 or -2 is from generate_castling_moves allowing it
+      // note: the only way move_dist is ever 2 or -2 is from move_gen::castling_moves allowing it
       const int move_dist = static_cast<int>(from) - static_cast<int>(to);
       if (move_dist == kKingsideCastleDist) {
         move_rook_for_castling(is_white ? Square::kH1 : Square::kH8,

@@ -46,7 +46,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
   int best_score = static_eval;
 
-  MoveOrderer move_orderer(board_, generate_capture_moves(board_), MoveType::kCaptures);
+  MoveOrderer move_orderer(board_, move_gen::capture_moves(board_), MoveType::kCaptures);
   for (int i = 0; i < move_orderer.size(); i++) {
     if (time_mgmt_.times_up()) {
       return 0;
@@ -56,7 +56,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
     board_.make_move(move);
     // since the move generator is pseudo-legal, we must verify legality here
-    if (king_in_check(flip_color(state.turn), state)) {
+    if (move_gen::king_in_check(flip_color(state.turn), state)) {
       board_.undo_move();
       continue;
     }
@@ -125,7 +125,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
 
   // extend the main search if we're when in check to ensure we fully explore our options
   // essentially delay entering quiescent search
-  const bool in_check = king_in_check(state.turn, state);
+  const bool in_check = move_gen::king_in_check(state.turn, state);
   if (in_check) {
     depth++;
   }
@@ -175,7 +175,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   int best_score = std::numeric_limits<int>::min();
 
   // order the list of moves to increase the likelihood of pruning this branch
-  MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
+  MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
@@ -185,7 +185,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     board_.make_move(move);
 
     // since the move generator is pseudo-legal, we must verify legality here
-    if (king_in_check(flip_color(state.turn), state)) {
+    if (move_gen::king_in_check(flip_color(state.turn), state)) {
       board_.undo_move();
       continue;
     }
@@ -193,7 +193,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     // load the transposition table entry for this move in the background
     __builtin_prefetch(&transpo.probe(state.zobrist_key));
 
-    const bool move_caused_check = king_in_check(state.turn, state);
+    const bool move_caused_check = move_gen::king_in_check(state.turn, state);
     const bool is_quiet = !is_capture && !is_promotion;
 
     // extend the search of certain moves if they are potentially tactical
@@ -256,8 +256,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     if (alpha >= beta) {
       if (is_quiet) {
         MoveOrderer::update_killer_move(move, depth);
+        MoveOrderer::update_counter_move(state.move_played, move);
         MoveOrderer::update_move_history(move, quiet_non_cutoffs, state.turn, depth);
-        MoveOrderer::update_counter_move_history(state.move_played, move);
       }
       break;
     }
@@ -295,14 +295,14 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   Search::Result result;
 
   const auto &state = board_.get_state();
-  const bool in_check = king_in_check(state.turn, state);
+  const bool in_check = move_gen::king_in_check(state.turn, state);
 
   PVLine temp_pv_line;
   MoveList quiet_non_cutoffs;
   int moves_tried = 0;
 
   // order the list of moves to increase the likelihood of pruning this branch
-  MoveOrderer move_orderer(board_, generate_moves(board_), MoveType::kAll);
+  MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
@@ -312,7 +312,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     board_.make_move(move);
 
     // since the move generator is pseudo-legal, we must verify legality here
-    if (king_in_check(flip_color(state.turn), state)) {
+    if (move_gen::king_in_check(flip_color(state.turn), state)) {
       board_.undo_move();
       continue;
     }
@@ -375,8 +375,8 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     if (alpha >= beta) {
       if (is_quiet) {
         MoveOrderer::update_killer_move(move, depth);
+        MoveOrderer::update_counter_move(state.move_played, move);
         MoveOrderer::update_move_history(move, quiet_non_cutoffs, state.turn, depth);
-        MoveOrderer::update_counter_move_history(state.move_played, move);
       }
       break;
     }
@@ -429,7 +429,7 @@ Search::Result Search::iterative_deepening() {
                              is_mate ? "mate" : "cp",
                              is_mate ? eval::mate_in(result.score) : result.score,
                              time_mgmt_.get_nodes_searched(),
-                             static_cast<int>(time_mgmt_.get_nodes_searched() / std::max(1.0, time_mgmt_.time_elapsed() / 1000.0)),
+                             time_mgmt_.nodes_per_second(),
                              time_mgmt_.time_elapsed(),
                              result.pv_line.length(),
                              result.pv_line.to_string()) << std::endl;

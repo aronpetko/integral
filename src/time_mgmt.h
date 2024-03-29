@@ -33,6 +33,8 @@ class TimeManagement {
 
   [[nodiscard]] bool times_up() const;
 
+  [[nodiscard]] long long nodes_per_second() const;
+
   [[nodiscard]] long long get_nodes_searched() const;
 
   [[nodiscard]] long long get_move_time() const;
@@ -46,7 +48,7 @@ class TimeManagement {
  private:
   const Config &config_;
   Board &board_;
-  std::chrono::steady_clock::time_point start_time_;
+  std::chrono::steady_clock::time_point start_time_, end_time_;
   long long current_move_time_;
   long long nodes_searched_;
   std::atomic<bool> times_up_;

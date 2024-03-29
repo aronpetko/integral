@@ -79,11 +79,11 @@ int perft_internal(Board &board, int depth, int start_depth) {
   auto &state = board.get_state();
 
   int nodes = 0;
-  auto moves = generate_moves(board);
+  auto moves = move_gen::moves(board);
 
   for (int i = 0; i < moves.size(); i++) {
     board.make_move(moves[i]);
-    if (!king_in_check(flip_color(state.turn), state)) {
+    if (!move_gen::king_in_check(flip_color(state.turn), state)) {
       const int pos_nodes = perft_internal(board, depth - 1, start_depth);
       nodes += pos_nodes;
 
@@ -115,12 +115,16 @@ void accept_commands() {
   std::cout << std::format("Integral v{}", kEngineVersion) << std::endl;
 
   // init attack lookups
-  initialize_attacks();
+  move_gen::initialize_attacks();
 
   // init table lookups that the search will do
   Search::init_tables();
 
-  Board board;
+  Board board(64);
+  board.set_from_fen("6RR/4bP2/8/8/5r2/3K4/5p2/4k3 w - - 0 1");
+
+  std::cout << (bool)board.get_state().turn << std::endl;
+  std::cout << eval::static_exchange(Move::from_str(board.get_state(), "f7f8n").value(), -00, board.get_state()) << std::endl;
 
   std::string input_line;
   while (input_line != "quit") {

@@ -47,6 +47,8 @@ void TimeManagement::stop() {
   if (worker.joinable()) {
     worker.join();
   }
+
+  end_time_ = std::chrono::steady_clock::now();
 }
 
 [[nodiscard]] long long TimeManagement::calculate_hard_limit() {
@@ -77,6 +79,13 @@ bool TimeManagement::times_up() const {
 
 bool TimeManagement::root_times_up(const Move &pv_move) {
   return config_.depth == 0 && time_elapsed() >= calculate_soft_limit(pv_move);
+}
+
+long long TimeManagement::nodes_per_second() const {
+  const double time_in_ms =
+      std::max(times_up_ ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_).count() : time_elapsed(),
+               1LL);
+  return nodes_searched_ * 1000.0 / time_in_ms;
 }
 
 long long TimeManagement::get_nodes_searched() const {

@@ -148,8 +148,7 @@ const std::array<int, PieceType::kNumPieceTypes> kMiddleGamePieceValues = {82, 3
 const std::array<int, PieceType::kNumPieceTypes> kEndGamePieceValues = {94, 281, 297, 512, 936, 0};
 
 bool is_mate_score(int evaluation) {
-  const int kThreshold = 1048;
-  return kMateScore - std::abs(evaluation) <= kThreshold;
+  return kMateScore - std::abs(evaluation) <= kMaxGameMoves;
 }
 
 int mate_in(int evaluation) {
@@ -161,6 +160,117 @@ int mate_in(int evaluation) {
 
   // not a mate score
   return evaluation;
+}
+
+bool static_exchange(const Move &move, int threshold, const BoardState &state) {
+  const U8 from = move.get_from();
+  const U8 to = move.get_to();
+
+  int score = kSEEPieceScores[state.get_piece_type(from)] - kSEEPieceScores[state.get_piece_type(to)];
+  std::cout << "score: " << score << std::endl;
+
+  // if we're winning material already, then we can choose to stop after this first capture
+  //if (score <= 0) {
+  //  return true;
+  //}
+
+  const BitBoard &pawns = state.pawns();
+  const BitBoard &knights = state.knights();
+  const BitBoard &bishops = state.bishops();
+  const BitBoard &rooks = state.rooks();
+  const BitBoard &queens = state.queens();
+  BitBoard occupied = state.occupied();
+
+  // get all pieces that attack the capture square
+  auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite) & state.pawns(Color::kBlack)) |
+      (move_gen::pawn_attacks(to, state, Color::kBlack) & state.pawns(Color::kWhite));
+  auto knight_attackers = move_gen::knight_moves(to) & state.knights();
+
+  BitBoard bishop_attacks = move_gen::bishop_moves(to, occupied);
+  BitBoard rook_attacks = move_gen::rook_moves(to, occupied);
+
+  const BitBoard bishop_attackers = bishop_attacks & bishops;
+  const BitBoard rook_attackers = rook_attacks & rooks;
+  const BitBoard queen_attackers = (bishop_attacks | rook_attacks) & queens;
+
+  BitBoard all_attackers = pawn_attackers | knight_attackers | bishop_attackers | rook_attackers | queen_attackers;
+  all_attackers.clear_bit(from);
+  all_attackers.clear_bit(to);
+
+  Color turn = flip_color(state.turn);
+
+  // loop through all pieces that attack the capture square
+  while (all_attackers) {
+    const BitBoard our_attackers = all_attackers & state.occupied(turn);
+
+    // find the least valuable attacker
+    BitBoard next_attacker;
+    int attacker_value;
+
+    if ((next_attacker = our_attackers & pawns)) {
+      attacker_value = kSEEPieceScores[PieceType::kPawn];
+      occupied ^= next_attacker;
+
+      // add pieces that were diagonal xray attacking the captured piece
+      bishop_attacks = move_gen::bishop_moves(to, occupied);
+      all_attackers |= bishop_attacks & (bishops & occupied);
+      all_attackers |= bishop_attacks & (queens & occupied);
+    } else if ((next_attacker = our_attackers & knights)) {
+      attacker_value = kSEEPieceScores[PieceType::kKnight];
+      occupied ^= next_attacker;
+
+      // add pieces that were xray attacking the captured piece
+      all_attackers |= move_gen::knight_moves(to) & (knights & occupied);
+    } else if ((next_attacker = our_attackers & bishops)) {
+      attacker_value = kSEEPieceScores[PieceType::kBishop];
+      occupied ^= next_attacker;
+
+      // add pieces that were xray attacking the captured piece
+      bishop_attacks = move_gen::bishop_moves(to, occupied);
+      all_attackers |= bishop_attacks & (bishops & occupied);
+      all_attackers |= bishop_attacks & (queens & occupied);
+    } else if ((next_attacker = our_attackers & rooks)) {
+      attacker_value = kSEEPieceScores[PieceType::kRook];
+      occupied ^= next_attacker;
+
+      // add pieces that were xray attacking the captured piece
+      rook_attacks = move_gen::rook_moves(to, occupied);
+      all_attackers |= rook_attacks & (rooks & occupied);
+      all_attackers |= rook_attacks & (queens & occupied);
+    } else if ((next_attacker = our_attackers & queens)) {
+      attacker_value = kSEEPieceScores[PieceType::kQueen];
+      occupied ^= next_attacker;
+
+      // add pieces that were xray attacking the captured piece
+      rook_attacks = move_gen::rook_moves(to, occupied);
+      bishop_attacks = move_gen::bishop_moves(to, occupied);
+      all_attackers |= rook_attacks & (queens & occupied);
+      all_attackers |= bishop_attacks & (queens & occupied);
+    } else if ((all_attackers & ~our_attackers) == 0) { // the king can capture back this piece only if there are no more opposing attackers
+      return score >= threshold;
+    }
+    print_bb(next_attacker);
+
+    if (next_attacker)  {
+      // score represents how many points (in piece value) that the other side can gain after this capture
+      // if initially a knight captured a queen, the other side can gain 3 - 9 = -6 points (indicating they can only gain a loss)
+      // if we flip it and initially a queen captured a knight, the other side can gain 9 - 3 = 6 points (if they capture the queen back the least amount of points they lose is 3)
+      score = -score + attacker_value;
+      std::cout << "score: " << score << std::endl;
+
+      // if we dip below the threshold we stop evaluating any more captures
+      if (score < threshold) {
+        return state.turn == turn;
+      }
+
+      // remove this attacker from consideration
+      all_attackers ^= next_attacker;
+    }
+
+    turn = flip_color(turn);
+  }
+
+  return state.turn != turn;
 }
 
 int evaluate(const BoardState &state) {

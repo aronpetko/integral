@@ -10,8 +10,8 @@ const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPiec
                                                                                                         }};
 
 std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxGameMoves> MoveOrderer::killer_moves{};
+std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_moves{};
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
-std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_move_history{};
 
 MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type) noexcept
     : board_(board), moves_(moves), move_type_(move_type), move_scores_({}) {
@@ -44,6 +44,8 @@ void MoveOrderer::update_killer_move(const Move &move, int ply) {
   if (move == MoveOrderer::killer_moves[ply][0])
     return;
 
+  const int kNumKillerMoves = 2;
+
   // shift killer moves right one
   for (std::size_t i = 1; i < kNumKillerMoves; i++)
     MoveOrderer::killer_moves[ply][i] = MoveOrderer::killer_moves[ply][i - 1];
@@ -52,9 +54,9 @@ void MoveOrderer::update_killer_move(const Move &move, int ply) {
   MoveOrderer::killer_moves[ply][0] = move;
 }
 
-void MoveOrderer::update_counter_move_history(const Move &prev_move, const Move &counter) {
+void MoveOrderer::update_counter_move(const Move &prev_move, const Move &counter) {
   if (prev_move != Move::null_move()) {
-    counter_move_history[prev_move.get_from()][prev_move.get_to()] = counter;
+    counter_moves[prev_move.get_from()][prev_move.get_to()] = counter;
   }
 }
 
@@ -150,7 +152,7 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
   // check if this move was a natural counter to the previous move (caused a beta cutoff)
   // complimentary to killer move heuristic
   const auto last_move = board_.get_prev_state().move_played;
-  if (move == MoveOrderer::counter_move_history[last_move.get_from()][last_move.get_to()]) {
+  if (move == MoveOrderer::counter_moves[last_move.get_from()][last_move.get_to()]) {
     // counter moves should be searched right after killer moves
     return kMVVLVAScore - 10;
   }
