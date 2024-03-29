@@ -8,13 +8,14 @@ namespace eval {
 const int kDrawScore = 0;
 const int kMateScore = 1e8;
 
-const std::array<int, PieceType::kNumPieceTypes> kSEEPieceScores = {
+const std::array<int, PieceType::kNumPieceTypes + 1> kSEEPieceScores = {
     100, // pawn
     300, // knight
     300, // bishop
     500, // rook
     900, // queen
-    20000, // king
+    0, // king
+    0, // none
 };
 
 bool is_mate_score(int evaluation);

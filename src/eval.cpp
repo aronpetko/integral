@@ -166,20 +166,28 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   const U8 from = move.get_from();
   const U8 to = move.get_to();
 
-  int score = kSEEPieceScores[state.get_piece_type(from)] - kSEEPieceScores[state.get_piece_type(to)];
-  std::cout << "score: " << score << std::endl;
+  // score represents the maximum number of points the opponent can gain with the next capture
+  int score = kSEEPieceScores[state.get_piece_type(to)] - threshold;
+  // if the captured piece is worth less than what we can give up, we lose
+  if (score < 0) {
+    return false;
+  }
 
-  // if we're winning material already, then we can choose to stop after this first capture
-  //if (score <= 0) {
-  //  return true;
-  //}
+  score = kSEEPieceScores[state.get_piece_type(from)] - score;
+  // if we captured a piece with equal/greater value than our capturing piece, we win
+  if (score <= 0) {
+    return true;
+  }
 
   const BitBoard &pawns = state.pawns();
   const BitBoard &knights = state.knights();
   const BitBoard &bishops = state.bishops();
   const BitBoard &rooks = state.rooks();
   const BitBoard &queens = state.queens();
+
   BitBoard occupied = state.occupied();
+  occupied.clear_bit(from);
+  occupied.clear_bit(to);
 
   // get all pieces that attack the capture square
   auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite) & state.pawns(Color::kBlack)) |
@@ -193,15 +201,26 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   const BitBoard rook_attackers = rook_attacks & rooks;
   const BitBoard queen_attackers = (bishop_attacks | rook_attacks) & queens;
 
+  // compute all attacking pieces for this square minus the captured and capturing piece
   BitBoard all_attackers = pawn_attackers | knight_attackers | bishop_attackers | rook_attackers | queen_attackers;
-  all_attackers.clear_bit(from);
-  all_attackers.clear_bit(to);
+  all_attackers &= occupied;
 
-  Color turn = flip_color(state.turn);
+  Color turn = state.turn;
+  Color winner = state.turn;
 
   // loop through all pieces that attack the capture square
-  while (all_attackers) {
+  while (true) {
+    turn = flip_color(turn);
+
     const BitBoard our_attackers = all_attackers & state.occupied(turn);
+    // if the current side to move has no attackers left, they lose
+    if (!our_attackers) {
+      break;
+    }
+
+    // without considering piece values, the winner of an exchange is whoever has more attackers
+    // therefore we set the winner's side to the current side to move if they can attack
+    winner = turn;
 
     // find the least valuable attacker
     BitBoard next_attacker;
@@ -246,31 +265,28 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
       bishop_attacks = move_gen::bishop_moves(to, occupied);
       all_attackers |= rook_attacks & (queens & occupied);
       all_attackers |= bishop_attacks & (queens & occupied);
-    } else if ((all_attackers & ~our_attackers) == 0) { // the king can capture back this piece only if there are no more opposing attackers
-      return score >= threshold;
+    } else {
+      // the king can capture back this piece only if there are no more opposing attackers
+      return (all_attackers & ~our_attackers) == 0 ? turn : flip_color(turn);
     }
-    print_bb(next_attacker);
 
     if (next_attacker)  {
       // score represents how many points (in piece value) that the other side can gain after this capture
       // if initially a knight captured a queen, the other side can gain 3 - 9 = -6 points (indicating they can only gain a loss)
       // if we flip it and initially a queen captured a knight, the other side can gain 9 - 3 = 6 points (if they capture the queen back the least amount of points they lose is 3)
       score = -score + attacker_value;
-      std::cout << "score: " << score << std::endl;
 
-      // if we dip below the threshold we stop evaluating any more captures
-      if (score < threshold) {
-        return state.turn == turn;
+      // if the maximum score gain with the next capture is negative or neutral we stop here
+      if (score <= 0) {
+        break;
       }
 
       // remove this attacker from consideration
       all_attackers ^= next_attacker;
     }
-
-    turn = flip_color(turn);
   }
 
-  return state.turn != turn;
+  return winner == state.turn;
 }
 
 int evaluate(const BoardState &state) {

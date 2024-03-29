@@ -121,10 +121,9 @@ void accept_commands() {
   Search::init_tables();
 
   Board board(64);
-  board.set_from_fen("6RR/4bP2/8/8/5r2/3K4/5p2/4k3 w - - 0 1");
+  board.set_from_fen("6rr/6pk/p1Qp1b1p/2n5/1B3p2/5p2/P1P2P2/4RK1R w - -");
 
-  std::cout << (bool)board.get_state().turn << std::endl;
-  std::cout << eval::static_exchange(Move::from_str(board.get_state(), "f7f8n").value(), -00, board.get_state()) << std::endl;
+  std::cout << eval::static_exchange(Move::from_str(board.get_state(), "e1e8").value(), 0, board.get_state()) << std::endl;
 
   std::string input_line;
   while (input_line != "quit") {

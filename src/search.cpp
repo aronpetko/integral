@@ -54,6 +54,13 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
     const auto &move = move_orderer.get_move(i);
 
+    // quiescent search SEE pruning
+    // don't look at moves that result end in an exchange where we're down more than 1 pawn in material
+    const int kMaximumExchangeLoss = eval::kSEEPieceScores[PieceType::kPawn];
+    if (!eval::static_exchange(move, kMaximumExchangeLoss, state)) {
+      continue;
+    }
+
     board_.make_move(move);
     // since the move generator is pseudo-legal, we must verify legality here
     if (move_gen::king_in_check(flip_color(state.turn), state)) {
