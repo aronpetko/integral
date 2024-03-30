@@ -18,9 +18,6 @@ void Board::set_from_fen(const std::string &fen_str) {
   key_history_count_ = 0;
   history_count_ = 0;
 
-  key_history_.fill(0);
-  history_.fill(BoardState{});
-
   state_ = fen::string_to_board(fen_str);
   initialized_ = true;
 }

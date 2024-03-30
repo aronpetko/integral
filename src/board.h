@@ -11,8 +11,8 @@
 #include "zobrist.h"
 #include "transpo.h"
 
-const int kMaxGameMoves = 1024;
-const int kHalfMoveLimit = 1024;
+const int kMaxPlyFromRoot = 256;
+const int kMaxGamePly = 1024;
 
 class CastleRights {
  public:
@@ -159,7 +159,7 @@ struct BoardState {
     return piece_bbs[PieceType::kKing] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &king() const {
+  [[nodiscard]] constexpr inline const BitBoard &kings() const {
     return piece_bbs[PieceType::kKing];
   }
 
@@ -219,9 +219,9 @@ class Board {
   BoardState state_;
   TranspositionTable transpo_table_;
   bool initialized_;
-  std::array<BoardState, kMaxGameMoves> history_;
+  std::array<BoardState, kMaxGamePly> history_;
   int history_count_;
-  std::array<U64, kHalfMoveLimit> key_history_;
+  std::array<U64, kMaxGamePly> key_history_;
   int key_history_count_;
 };
 

@@ -1,39 +1,38 @@
 #include "move_orderer.h"
 
-const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
-                                                                                                            {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
-                                                                                                            {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
-                                                                                                            {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
-                                                                                                            {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
-                                                                                                            {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
-                                                                                                            {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
-                                                                                                        }};
+const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes + 1> kMVVLVATable = {{
+  {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
+  {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
+  {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
+  {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
+  {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
+  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
+  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
+}};
 
-std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxGameMoves> MoveOrderer::killer_moves{};
+std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxPlyFromRoot> MoveOrderer::killer_moves{};
 std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_moves{};
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
 
-MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type) noexcept
-    : board_(board), moves_(moves), move_type_(move_type), move_scores_({}) {
+MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type, const int &ply) noexcept
+    : board_(board), moves_(moves), move_type_(move_type), move_scores_({}), ply_(ply) {
   score_moves();
 }
 
 const Move &MoveOrderer::get_move(int start) noexcept {
   // perform a selection sort for the next best move
-  int best_score = move_scores_[start];
-  int best_score_idx = start;
-
   for (int i = start + 1; i < moves_.size(); i++) {
-    if (move_scores_[i] > best_score) {
-      best_score = move_scores_[i];
-      best_score_idx = i;
+    if (move_scores_[i] > move_scores_[start]) {
+      std::swap(move_scores_[start], move_scores_[i]);
+      std::swap(moves_[start], moves_[i]);
     }
   }
 
-  std::swap(move_scores_[best_score_idx], move_scores_[start]);
-  std::swap(moves_[best_score_idx], moves_[start]);
-
   return moves_[start];
+}
+
+const int &MoveOrderer::get_move_score(int start) noexcept {
+  return move_scores_[start];
 }
 
 [[nodiscard]] std::size_t MoveOrderer::size() const {
@@ -43,8 +42,6 @@ const Move &MoveOrderer::get_move(int start) noexcept {
 void MoveOrderer::update_killer_move(const Move &move, int ply) {
   if (move == MoveOrderer::killer_moves[ply][0])
     return;
-
-  const int kNumKillerMoves = 2;
 
   // shift killer moves right one
   for (std::size_t i = 1; i < kNumKillerMoves; i++)
@@ -112,64 +109,51 @@ void MoveOrderer::score_moves() noexcept {
     }
   }
 
-  for (int i = 0; i < moves_.size(); i++)
+  for (int i = 0; i < moves_.size(); i++) {
     move_scores_[i] = calculate_move_score(moves_[i], tt_move);
+  }
 }
 
-int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) {
-  const int kMVVLVAScore = std::numeric_limits<int>::max() - 256;
-  const int kMaxMoveScore = std::numeric_limits<int>::max();
-  const int kKillerMoveScore = 15;
-
+int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) const {
   auto &state = board_.get_state();
 
   const auto from = move.get_from();
   const auto to = move.get_to();
 
-  int score = 0;
-
   // tt move get priority since it's the current stored best move
+  const int kMaxMoveScore = std::numeric_limits<int>::max();
   if (move == tt_move) {
     return kMaxMoveScore;
   }
 
-  // check if this move caused a beta cutoff within the last 2 plies
-  bool is_killer = false;
-  for (int i = 0; i < kNumKillerMoves; i++) {
-    // if we've already found a killer (avoiding goto)
-    if (is_killer) break;
+  // winning/neutral captures are searched next
+  // losing captures are searched last
+  const int kBaseMVVLVAScore = std::numeric_limits<int>::max() - 256;
+  const int kDepthsOfHellScore = std::numeric_limits<int>::min();
+  if (move.is_capture(state)) {
+    const int mvv_lva_score = kMVVLVATable[state.get_piece_type(to)][state.get_piece_type(from)];
+    return eval::static_exchange(move, 0, state) ? kBaseMVVLVAScore + mvv_lva_score :
+      kDepthsOfHellScore + mvv_lva_score;
+  }
 
-    for (const auto &killer_move : MoveOrderer::killer_moves[i]) {
-      if (killer_move == move) {
-        // killer moves should get higher priority than bad captures
-        score = kMVVLVAScore + (kNumKillerMoves - 1 - i) * kKillerMoveScore;
-        is_killer = true;
-        break;
-      }
+  // killer moves are searched next (moves that caused a beta cutoff at this ply)
+  const int kKillerMoveScore = kBaseMVVLVAScore - 10;
+  for (int i = 0; i < kNumKillerMoves; i++) {
+    if (MoveOrderer::killer_moves[ply_][i] == move) {
+      return kKillerMoveScore;
     }
   }
 
   // check if this move was a natural counter to the previous move (caused a beta cutoff)
   // complimentary to killer move heuristic
+  const int kCounterMoveScore = kKillerMoveScore - 10;
   const auto last_move = board_.get_prev_state().move_played;
   if (move == MoveOrderer::counter_moves[last_move.get_from()][last_move.get_to()]) {
     // counter moves should be searched right after killer moves
-    return kMVVLVAScore - 10;
+    return kCounterMoveScore;
   }
 
-  if (move.is_capture(state)) {
-    // killer moves are already close to the base MVV-LVA score
-    // therefore, if this move wasn't a killer, we set it to the base MVV-LVA score
-    if (!is_killer) {
-      score = kMVVLVAScore;
-    }
-
-    score += kMVVLVATable[state.get_piece_type(to)][state.get_piece_type(from)];
-  } else if (!is_killer) {
-    // order moves that caused a beta cutoff by their history score
-    // the higher the depth this move caused a cutoff the more likely it move will be ordered first
-    score += MoveOrderer::move_history[state.turn][from][to];
-  }
-
-  return score;
+  // order moves that caused a beta cutoff by their own history score
+  // the higher the depth this move caused a cutoff the more likely it move will be ordered first
+  return MoveOrderer::move_history[state.turn][from][to];
 }

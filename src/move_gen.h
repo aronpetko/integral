@@ -44,7 +44,7 @@ namespace move_gen {
 // initializes piece attack lookups and magics
 void initialize_attacks();
 
-BitBoard pawn_attacks(U8 pos, const BoardState &state, Color which = Color::kNoColor);
+BitBoard pawn_attacks(U8 pos, const BoardState &state, Color which = Color::kNoColor, bool en_passant = true);
 
 BitBoard pawn_moves(U8 pos, const BoardState &state);
 

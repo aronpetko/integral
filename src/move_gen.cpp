@@ -70,12 +70,11 @@ inline bool is_square_attacked(U8 pos, Color attacker, const BoardState &state) 
       || is_square_attacked_sliding_pieces(pos, attacker, state);
 }
 
-BitBoard pawn_attacks(U8 pos, const BoardState &state, Color which) {
+BitBoard pawn_attacks(U8 pos, const BoardState &state, Color which, bool en_passant) {
   BitBoard attacks = pawn_masks[which == Color::kNoColor ? state.get_piece_color(pos) : which][pos];
-
-  // allow en passant attack
-  if (state.en_passant != Square::kNoSquare && attacks.is_set(state.en_passant))
+  if (en_passant && state.en_passant != Square::kNoSquare && attacks.is_set(state.en_passant)) {
     attacks.set_bit(state.en_passant);
+  }
 
   return attacks;
 }
@@ -363,8 +362,7 @@ MoveList capture_moves(Board &board) {
 
     const BitBoard
         en_passant_mask = state.en_passant != Square::kNoSquare ? BitBoard::from_square(state.en_passant) : BitBoard(0);
-    auto possible_moves =
-        pawn_moves(from, state) | (pawn_attacks(from, state) & (their_pieces | en_passant_mask));
+    auto possible_moves = pawn_attacks(from, state) & (their_pieces | en_passant_mask);
 
     const bool en_passant_set = state.en_passant != Square::kNoSquare && possible_moves.is_set(state.en_passant);
     possible_moves &= ~our_pieces & their_pieces;

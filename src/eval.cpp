@@ -148,7 +148,7 @@ const std::array<int, PieceType::kNumPieceTypes> kMiddleGamePieceValues = {82, 3
 const std::array<int, PieceType::kNumPieceTypes> kEndGamePieceValues = {94, 281, 297, 512, 936, 0};
 
 bool is_mate_score(int evaluation) {
-  return kMateScore - std::abs(evaluation) <= kMaxGameMoves;
+  return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;
 }
 
 int mate_in(int evaluation) {
@@ -166,6 +166,12 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   const U8 from = move.get_from();
   const U8 to = move.get_to();
 
+  const PieceType &from_piece = state.get_piece_type(from);
+  if (from_piece == PieceType::kPawn && to == state.en_passant || // ignore en passant captures
+      from_piece == PieceType::kKing && std::abs(from - to) == 2) { // ignore castling moves
+    return threshold <= 0;
+  }
+
   // score represents the maximum number of points the opponent can gain with the next capture
   int score = kSEEPieceScores[state.get_piece_type(to)] - threshold;
   // if the captured piece is worth less than what we can give up, we lose
@@ -173,7 +179,7 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
     return false;
   }
 
-  score = kSEEPieceScores[state.get_piece_type(from)] - score;
+  score = kSEEPieceScores[from_piece] - score;
   // if we captured a piece with equal/greater value than our capturing piece, we win
   if (score <= 0) {
     return true;
@@ -184,14 +190,15 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   const BitBoard &bishops = state.bishops();
   const BitBoard &rooks = state.rooks();
   const BitBoard &queens = state.queens();
+  const BitBoard &kings = state.kings();
 
   BitBoard occupied = state.occupied();
   occupied.clear_bit(from);
   occupied.clear_bit(to);
 
   // get all pieces that attack the capture square
-  auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite) & state.pawns(Color::kBlack)) |
-      (move_gen::pawn_attacks(to, state, Color::kBlack) & state.pawns(Color::kWhite));
+  auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite, false) & state.pawns(Color::kBlack)) |
+      (move_gen::pawn_attacks(to, state, Color::kBlack, false) & state.pawns(Color::kWhite));
   auto knight_attackers = move_gen::knight_moves(to) & state.knights();
 
   BitBoard bishop_attacks = move_gen::bishop_moves(to, occupied);
@@ -200,9 +207,11 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   const BitBoard bishop_attackers = bishop_attacks & bishops;
   const BitBoard rook_attackers = rook_attacks & rooks;
   const BitBoard queen_attackers = (bishop_attacks | rook_attacks) & queens;
+  const BitBoard king_attackers = move_gen::king_attacks(to) & kings;
 
   // compute all attacking pieces for this square minus the captured and capturing piece
-  BitBoard all_attackers = pawn_attackers | knight_attackers | bishop_attackers | rook_attackers | queen_attackers;
+  BitBoard all_attackers =
+      pawn_attackers | knight_attackers | bishop_attackers | rook_attackers | queen_attackers | king_attackers;
   all_attackers &= occupied;
 
   Color turn = state.turn;
@@ -211,6 +220,7 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   // loop through all pieces that attack the capture square
   while (true) {
     turn = flip_color(turn);
+    all_attackers &= occupied;
 
     const BitBoard our_attackers = all_attackers & state.occupied(turn);
     // if the current side to move has no attackers left, they lose
@@ -219,8 +229,8 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
     }
 
     // without considering piece values, the winner of an exchange is whoever has more attackers
-    // therefore we set the winner's side to the current side to move if they can attack
-    winner = turn;
+    // therefore we set the winner's side to the current side to move only after we check if they can attack
+    winner = flip_color(winner);
 
     // find the least valuable attacker
     BitBoard next_attacker;
@@ -228,46 +238,39 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
 
     if ((next_attacker = our_attackers & pawns)) {
       attacker_value = kSEEPieceScores[PieceType::kPawn];
-      occupied ^= next_attacker;
+      occupied.clear_bit(next_attacker.get_lsb_pos());
 
       // add pieces that were diagonal xray attacking the captured piece
       bishop_attacks = move_gen::bishop_moves(to, occupied);
-      all_attackers |= bishop_attacks & (bishops & occupied);
-      all_attackers |= bishop_attacks & (queens & occupied);
+      all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & knights)) {
       attacker_value = kSEEPieceScores[PieceType::kKnight];
-      occupied ^= next_attacker;
-
-      // add pieces that were xray attacking the captured piece
-      all_attackers |= move_gen::knight_moves(to) & (knights & occupied);
+      occupied ^= BitBoard::from_square(next_attacker.get_lsb_pos());
     } else if ((next_attacker = our_attackers & bishops)) {
       attacker_value = kSEEPieceScores[PieceType::kBishop];
-      occupied ^= next_attacker;
+      occupied.clear_bit(next_attacker.get_lsb_pos());
 
       // add pieces that were xray attacking the captured piece
       bishop_attacks = move_gen::bishop_moves(to, occupied);
-      all_attackers |= bishop_attacks & (bishops & occupied);
-      all_attackers |= bishop_attacks & (queens & occupied);
+      all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & rooks)) {
       attacker_value = kSEEPieceScores[PieceType::kRook];
-      occupied ^= next_attacker;
+      occupied.clear_bit(next_attacker.get_lsb_pos());
 
       // add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::rook_moves(to, occupied);
-      all_attackers |= rook_attacks & (rooks & occupied);
-      all_attackers |= rook_attacks & (queens & occupied);
+      all_attackers |= rook_attacks & (rooks | queens);
     } else if ((next_attacker = our_attackers & queens)) {
       attacker_value = kSEEPieceScores[PieceType::kQueen];
-      occupied ^= next_attacker;
+      occupied.clear_bit(next_attacker.get_lsb_pos());
 
       // add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::rook_moves(to, occupied);
       bishop_attacks = move_gen::bishop_moves(to, occupied);
-      all_attackers |= rook_attacks & (queens & occupied);
-      all_attackers |= bishop_attacks & (queens & occupied);
+      all_attackers |= (rook_attacks & (queens | rooks)) | (bishop_attacks & (queens | bishops));
     } else {
-      // the king can capture back this piece only if there are no more opposing attackers
-      return (all_attackers & ~our_attackers) == 0 ? turn : flip_color(turn);
+      // king: check if we capture a piece that our opponent is still attacking
+      return (all_attackers & state.occupied(flip_color(turn))) ? state.turn != winner : state.turn == winner;
     }
 
     if (next_attacker)  {
@@ -276,17 +279,15 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
       // if we flip it and initially a queen captured a knight, the other side can gain 9 - 3 = 6 points (if they capture the queen back the least amount of points they lose is 3)
       score = -score + attacker_value;
 
-      // if the maximum score gain with the next capture is negative or neutral we stop here
-      if (score <= 0) {
+      // if it's our opponents turn, we break only if the exchange is at a loss for them
+      // if it's our turn, we break only if the exchange is either neutral or a loss for us
+      if (score < (state.turn == winner)) {
         break;
       }
-
-      // remove this attacker from consideration
-      all_attackers ^= next_attacker;
     }
   }
 
-  return winner == state.turn;
+  return state.turn == winner;
 }
 
 int evaluate(const BoardState &state) {

@@ -53,7 +53,7 @@ class Search {
     }
 
    private:
-    std::array<Move, 1024> moves_;
+    std::array<Move, kMaxPlyFromRoot> moves_;
     int move_count_;
   };
 

@@ -1,7 +1,7 @@
 ## <img src="https://i.imgur.com/Py8am6G.png" width="30%" height="30%"/>
 Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming. \
 \
-<b>Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)</b>
+**Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)**
 
 ## Usage
 Integral supports the following UCI commands:
@@ -16,13 +16,16 @@ Integral supports the following UCI commands:
 - `go movetime <time>` Searches for the best move using the full time allotted.
 
 ## Compilation
+> [!NOTE]  
+> Integral must be compiled with either GCC v13 (or higher) or Clang v15 (or higher)
+
 To compile Integral, enter the following commands in a terminal:
 ```shell
 git clone https://github.com/aronpetko/integral
 cd integral
-cmake ..
+cmake .
 make
 ```
 
 ## Rating
-Integral is estimated to be around 2100 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral can consistently beat 2000 FIDE-rated players.
+Integral is estimated to be around 2300 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral can consistently beat 2200 FIDE-rated players.

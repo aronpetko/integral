@@ -35,18 +35,14 @@ int Search::quiesce(int ply, int alpha, int beta) {
     return eval::kDrawScore;
 
   int static_eval = eval::evaluate(state);
-  if (static_eval >= beta || ply >= kMaxGameMoves)
+  if (static_eval >= beta || ply >= kMaxPlyFromRoot)
     return static_eval;
-
-  // delta pruning
-  if (static_eval + eval::kSEEPieceScores[PieceType::kQueen] < alpha)
-    return alpha;
 
   alpha = std::max(alpha, static_eval);
 
   int best_score = static_eval;
 
-  MoveOrderer move_orderer(board_, move_gen::capture_moves(board_), MoveType::kCaptures);
+  MoveOrderer move_orderer(board_, move_gen::capture_moves(board_), MoveType::kCaptures, ply);
   for (int i = 0; i < move_orderer.size(); i++) {
     if (time_mgmt_.times_up()) {
       return 0;
@@ -54,11 +50,11 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
     const auto &move = move_orderer.get_move(i);
 
-    // quiescent search SEE pruning
-    // don't look at moves that result end in an exchange where we're down more than 1 pawn in material
-    const int kMaximumExchangeLoss = eval::kSEEPieceScores[PieceType::kPawn];
-    if (!eval::static_exchange(move, kMaximumExchangeLoss, state)) {
-      continue;
+    // static exchange evaluation (SEE) pruning
+    // don't look at moves that result in an exchange where we're down material
+    // the move orderer will score bad captures are scored negatively
+    if (move_orderer.get_move_score(i) < 0) {
+      break;
     }
 
     board_.make_move(move);
@@ -168,7 +164,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       can_do_null_move_ = true;
 
       if (null_move_score >= beta) {
-        return null_move_score > eval::kMateScore - kMaxGameMoves ? beta : null_move_score;
+        return null_move_score > eval::kMateScore - kMaxPlyFromRoot ? beta : null_move_score;
       }
     }
   }
@@ -182,12 +178,28 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
   int best_score = std::numeric_limits<int>::min();
 
   // order the list of moves to increase the likelihood of pruning this branch
-  MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll);
+  MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll, ply);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
     const bool is_capture = move.is_capture(state);
     const bool is_promotion = move.get_promotion_type() != PromotionType::kNone;
+    const bool is_quiet = !is_capture && !is_promotion;
+
+    // late move pruning
+    // skip (late) quiet moves if we've already searched the most promising moves
+    const int lmp_threshold = depth * depth;
+    if (depth <= 6 && is_quiet && !in_pv_node && !in_check && moves_tried >= lmp_threshold) {
+      continue;
+    }
+
+    // static exchange evaluation (SEE) pruning
+    // skip moves that lose too much material
+    const int see_threshold = is_capture ? -20 * depth * depth : -65 * depth;
+    if (depth <= 10 && (best_score > -eval::kMateScore + kMaxPlyFromRoot) // prune captures only if we might get mated
+        && !eval::static_exchange(move, see_threshold, state)) {
+      continue;
+    }
 
     board_.make_move(move);
 
@@ -201,7 +213,6 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     __builtin_prefetch(&transpo.probe(state.zobrist_key));
 
     const bool move_caused_check = move_gen::king_in_check(state.turn, state);
-    const bool is_quiet = !is_capture && !is_promotion;
 
     // extend the search of certain moves if they are potentially tactical
     // idea: extend for captures as well using static exchange evaluation (SEE)
@@ -227,7 +238,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
       score = -search(depth - 1 - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line);
 
       // if the move looks promising from null window search, research to obtain a more accurate score
-      if (score > alpha && (in_pv_node || reduction > 0)) {
+      if ((score > alpha) && (in_pv_node || reduction > 0)) {
         num_extensions += extensions;
         score = -search(depth - 1 + extensions, ply + 1, -beta, -alpha, child_pv_line);
         num_extensions -= extensions;
@@ -239,7 +250,7 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line) {
     moves_tried++;
     time_mgmt_.update_nodes_searched();
 
-    if (time_mgmt_.times_up() && !best_move.is_null()) {
+    if (time_mgmt_.times_up()) {
       temp_pv_line.clear();
       return 0;
     }
@@ -309,12 +320,18 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
   int moves_tried = 0;
 
   // order the list of moves to increase the likelihood of pruning this branch
-  MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll);
+  MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll, ply);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
 
     const bool is_capture = move.is_capture(state);
     const bool is_promotion = move.get_promotion_type() != PromotionType::kNone;
+
+    // SEE pruning
+    if (depth <= 10 && (result.score > -eval::kMateScore + kMaxPlyFromRoot) // prune captures only if we might get mated
+        && !eval::static_exchange(move, is_capture ? (-20 * depth * depth) : (-65 * depth), state)) {
+      continue;
+    }
 
     board_.make_move(move);
 
@@ -359,8 +376,7 @@ Search::Result Search::search_root(int depth, int ply, int alpha, int beta) {
     // update the amount of nodes spent searching this move
     // if this move is the pv move, we allocate more time for search depending on how much the search explores it
     time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
-
-    if (time_mgmt_.times_up() && !result.best_move.is_null()) {
+    if (time_mgmt_.times_up()) {
       break;
     }
 

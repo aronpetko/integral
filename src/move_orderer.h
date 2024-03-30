@@ -6,9 +6,11 @@
 
 class MoveOrderer {
  public:
-  explicit MoveOrderer(Board &board, MoveList moves, MoveType move_type) noexcept;
+  explicit MoveOrderer(Board &board, MoveList moves, MoveType move_type, const int &ply) noexcept;
 
   const Move &get_move(int start) noexcept;
+
+  const int &get_move_score(int start) noexcept;
 
   [[nodiscard]] std::size_t size() const;
 
@@ -25,16 +27,17 @@ class MoveOrderer {
  private:
   void score_moves() noexcept;
 
-  int calculate_move_score(const Move &move, const Move &tt_move);
+  int calculate_move_score(const Move &move, const Move &tt_move) const;
 
  private:
   Board &board_;
   MoveList moves_;
   MoveType move_type_;
   std::array<int, 256> move_scores_;
+  int ply_;
 
   static constexpr int kNumKillerMoves = 2;
-  static std::array<std::array<Move, kNumKillerMoves>, kMaxGameMoves> killer_moves;
+  static std::array<std::array<Move, kNumKillerMoves>, kMaxPlyFromRoot> killer_moves;
   static std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> counter_moves;
   static std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> move_history;
 };

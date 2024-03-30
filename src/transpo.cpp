@@ -29,7 +29,7 @@ void TranspositionTable::save(const Entry &entry, int ply) {
   if (table_entry.key != entry.key || table_entry.depth <= entry.depth + kDepthLenience || entry.flag == Entry::kExact) {
     table_entry = entry;
 
-    const int kRoughlyMate = -eval::kMateScore + kMaxGameMoves;
+    const int kRoughlyMate = -eval::kMateScore + kMaxPlyFromRoot;
     if (entry.score <= kRoughlyMate) {
       table_entry.score -= ply;
     } else if (entry.score >= -kRoughlyMate) {
@@ -39,7 +39,7 @@ void TranspositionTable::save(const Entry &entry, int ply) {
 }
 
 int TranspositionTable::correct_score(int score, int ply) const {
-  const int kRoughlyMate = -eval::kMateScore + kMaxGameMoves;
+  const int kRoughlyMate = -eval::kMateScore + kMaxPlyFromRoot;
   if (score <= kRoughlyMate) {
     score += ply;
   } else if (score >= -kRoughlyMate) {
