@@ -130,18 +130,13 @@ int Search::search(int depth, int ply, int alpha, int beta, int num_extensions, 
     }
   }
 
+  const bool tt_hit = tt_entry.key == state.zobrist_key;
   const bool in_check = move_gen::king_in_check(state.turn, state);
-
-  if (depth >= 4 && tt_entry.key == 0ULL) {
-    // internal iterative reduction: reduce the depth if there is no tt entry for this move
-    // it will most likely be searched again later to a fuller depth, so no need to go the extra mile right now
-    depth--;
-  }
 
   // reverse (static) futility pruning
   // we assume that the static evaluation of the current position can't fall below beta within the next move
   // the margin for this comparison is scaled based on how many moves left we have to search
-  const int static_eval = eval::evaluate(state);
+  const int static_eval = tt_hit ? tt_entry.score : eval::evaluate(state);
   if (depth <= 6 && !in_pv_node && !in_check) {
     const int kMarginIncrement = 70;
     if (static_eval - depth * kMarginIncrement >= beta) {
@@ -178,10 +173,18 @@ int Search::search(int depth, int ply, int alpha, int beta, int num_extensions, 
   }
   can_do_null_move_ = true;
 
+  int extensions = 0;
+
   // extend the main search if we're when in check to ensure we fully explore our options
   // essentially delay entering quiescent search
   if (in_pv_node && in_check && depth <= 2) {
-    depth++;
+    extensions++;
+  }
+
+  // internal iterative reduction: reduce the depth if there is no tt entry for this move
+  // it will most likely be searched again later to a fuller depth, so no need to go the extra mile right now
+  if (depth >= 4 && !tt_hit) {
+    extensions--;
   }
 
   bool skip_quiets = false;
@@ -234,11 +237,8 @@ int Search::search(int depth, int ply, int alpha, int beta, int num_extensions, 
     // load the transposition table entry for this move in the background
     __builtin_prefetch(&transpo.probe(state.zobrist_key));
 
-    const bool move_caused_check = move_gen::king_in_check(state.turn, state);
-
     // extend the search of certain moves if they are potentially tactical
     // idea: extend for captures as well using static exchange evaluation (SEE)
-    const int extensions = num_extensions <= 16 && move_caused_check;
     const int new_depth = depth - 1;
 
     PVLine child_pv_line;
@@ -252,7 +252,7 @@ int Search::search(int depth, int ply, int alpha, int beta, int num_extensions, 
       // move ordering places the moves that are most likely to cause a beta cutoff first
       // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
       int reduction = 0;
-      if (depth >= 2 && moves_tried >= 1 + in_root) {
+      if (depth > 2 && moves_tried >= 1 + in_root) {
         reduction = kLateMoveReductionTable[depth][moves_tried];
         reduction -= in_pv_node;
         reduction -= move_orderer.get_history_score(move, state.turn) / 1024;
