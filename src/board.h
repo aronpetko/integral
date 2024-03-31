@@ -221,8 +221,6 @@ class Board {
   bool initialized_;
   std::array<BoardState, kMaxGamePly> history_;
   int history_count_;
-  std::array<U64, kMaxGamePly> key_history_;
-  int key_history_count_;
 };
 
 #endif // INTEGRAL_BOARD_H_

@@ -12,6 +12,8 @@ class MoveOrderer {
 
   const int &get_move_score(int start) noexcept;
 
+  const int &get_history_score(const Move &move, Color turn) noexcept;
+
   [[nodiscard]] std::size_t size() const;
 
   static void update_killer_move(const Move &move, int ply);

@@ -68,7 +68,7 @@ MoveList moves(Board &board);
 
 MoveList legal_moves(Board &board);
 
-MoveList capture_moves(Board &board);
+MoveList tactical_moves(Board &board);
 
 MoveList filter_moves(MoveList &moves, MoveType type, Board &board);
 

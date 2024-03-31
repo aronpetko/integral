@@ -294,13 +294,19 @@ int evaluate(const BoardState &state) {
   std::array<int, 2> middle_game_scores = {0, 0};
   std::array<int, 2> end_game_scores = {0, 0};
 
+  // tempo bonus
+  middle_game_scores[state.turn] += 10;
+  end_game_scores[state.turn] += 10;
+
   int middle_game_phase = 0;
   for (int square = 0; square < Square::kSquareCount; square++) {
     const auto piece = state.get_piece_type(square);
     if (piece != PieceType::kNone) {
       const auto color = state.get_piece_color(square);
-      middle_game_scores[color] += kMiddleGamePieceValues[piece] + kMiddleGameTables[piece][color == Color::kWhite ? square ^ 56 : square];
-      end_game_scores[color] += kEndGamePieceValues[piece] + kEndGameTables[piece][color == Color::kWhite ? square ^ 56 : square];
+      const auto table_pos = color == Color::kWhite ? square ^ 56 : square;
+
+      middle_game_scores[color] += kMiddleGamePieceValues[piece] + kMiddleGameTables[piece][table_pos];
+      end_game_scores[color] += kEndGamePieceValues[piece] + kEndGameTables[piece][table_pos];
 
       // increase the phase of the game depending on the assigned scores
       middle_game_phase += kGamePhaseIncrements[piece];

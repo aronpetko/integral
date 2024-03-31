@@ -347,7 +347,7 @@ MoveList legal_moves(Board &board) {
   return legal_moves;
 }
 
-MoveList capture_moves(Board &board) {
+MoveList tactical_moves(Board &board) {
   MoveList move_list;
 
   auto &state = board.get_state();
@@ -365,7 +365,7 @@ MoveList capture_moves(Board &board) {
     auto possible_moves = pawn_attacks(from, state) & (their_pieces | en_passant_mask);
 
     const bool en_passant_set = state.en_passant != Square::kNoSquare && possible_moves.is_set(state.en_passant);
-    possible_moves &= ~our_pieces & their_pieces;
+    possible_moves &= ~our_pieces;
     if (en_passant_set) possible_moves.set_bit(state.en_passant);
 
     while (possible_moves) {
@@ -381,7 +381,10 @@ MoveList capture_moves(Board &board) {
         move_list.push(Move(from, to, PromotionType::kBishop));
         continue;
       } else {
-        move_list.push(Move(from, to));
+        const auto move = Move(from, to);
+        if (move.is_capture(state)) {
+          move_list.push(move);
+        }
       }
     }
   }

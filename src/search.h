@@ -5,12 +5,18 @@
 #include "eval.h"
 #include "time_mgmt.h"
 
+enum class NodeType {
+  kRoot,
+  kPV,
+  kNonPV
+};
+
 class Search {
  public:
   explicit Search(TimeManagement::Config &time_config, Board &board);
 
   static constexpr int kMaxSearchDepth = 100;
-  static std::array<std::array<int, 512>, kMaxSearchDepth + 1> kLateMoveReductionTable;
+  static std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> kLateMoveReductionTable;
 
   static void init_tables();
 
@@ -70,9 +76,8 @@ class Search {
  private:
   int quiesce(int ply, int alpha, int beta);
 
-  [[nodiscard]] int search(int depth, int ply, int alpha, int beta, PVLine &pv_line);
-
-  [[nodiscard]] Result search_root(int depth, int ply, int alpha, int beta);
+  template<NodeType node_type>
+  int search(int depth, int ply, int alpha, int beta, int num_extensions, PVLine &pv_line, Result &result);
 
   Result iterative_deepening();
 

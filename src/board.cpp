@@ -7,15 +7,12 @@
 Board::Board(std::size_t transpo_table_size)
     : transpo_table_(transpo_table_size),
       history_count_(0),
-      key_history_count_(0),
-      history_({}),
-      key_history_({}) {}
+      history_({}) {}
 
-Board::Board() : key_history_count_(0), history_count_(0), history_({}), key_history_({}), initialized_(false) {}
+Board::Board() : history_count_(0), history_({}), initialized_(false) {}
 
 void Board::set_from_fen(const std::string &fen_str) {
   // reset history everytime we parse from fen, since they will be re-applied when the moves are made
-  key_history_count_ = 0;
   history_count_ = 0;
 
   state_ = fen::string_to_board(fen_str);
@@ -80,9 +77,6 @@ bool Board::is_legal_move(const Move &move) {
 void Board::make_move(const Move &move) {
   // save previous board state
   history_[history_count_++] = state_;
-
-  // update key history for repetition check
-  key_history_[key_history_count_++] = state_.zobrist_key;
 
   const bool is_white = state_.turn == Color::kWhite;
   const auto from = move.get_from(), to = move.get_to();
@@ -176,15 +170,11 @@ void Board::make_move(const Move &move) {
 
 void Board::undo_move() {
   state_ = history_[--history_count_];
-  key_history_count_--;
 }
 
 void Board::make_null_move() {
   // save previous board state
   history_[history_count_++] = state_;
-
-  // save previous board state
-  key_history_[key_history_count_++] = state_.zobrist_key;
 
   // xor out the previous turn hash
   state_.zobrist_key ^= zobrist::hash_turn(state_);
@@ -202,8 +192,8 @@ void Board::make_null_move() {
 
 bool Board::has_repeated(U8 times) const {
   // we know that the position can be repeated if no moves were captured, hence we only search until the fifty moves clock was reset
-  for (int i = key_history_count_ - 1; i >= key_history_count_ - state_.fifty_moves_clock && i >= 0; i--) {
-    if (key_history_[i] == state_.zobrist_key && --times == 0) {
+  for (int i = history_count_ - 2; i >= history_count_ - state_.fifty_moves_clock && i >= 0; i -= 2) {
+    if (history_[i].zobrist_key == state_.zobrist_key && --times == 0) {
       return true;
     }
   }
@@ -211,40 +201,16 @@ bool Board::has_repeated(U8 times) const {
 }
 
 bool Board::is_draw() const {
-  if (state_.fifty_moves_clock >= 100 || has_repeated(1)) {
+  if (state_.fifty_moves_clock >= 100 || has_repeated(2)) {
     return true;
   }
 
-  // insufficient material
-  const int white_pawns = state_.pawns(Color::kWhite).pop_count();
-  const int white_knights = state_.knights(Color::kWhite).pop_count();
-  const int white_bishops = state_.bishops(Color::kWhite).pop_count();
-  const int white_rooks = state_.rooks(Color::kWhite).pop_count();
-  const int white_queens = state_.queens(Color::kWhite).pop_count();
-
-  const int black_pawns = state_.pawns(Color::kBlack).pop_count();
-  const int black_knights = state_.knights(Color::kBlack).pop_count();
-  const int black_bishops = state_.bishops(Color::kBlack).pop_count();
-  const int black_rooks = state_.rooks(Color::kBlack).pop_count();
-  const int black_queens = state_.queens(Color::kBlack).pop_count();
-
-  bool white_insufficient = false;
-  if (white_pawns == 0 && white_rooks == 0 && white_queens == 0) {
-    if ((white_bishops == 0 && white_knights <= 1) ||
-        (white_knights == 0 && white_bishops <= 1)) {
-      white_insufficient = true;
-    }
-  }
-
-  bool black_insufficient = false;
-  if (black_pawns == 0 && black_rooks == 0 && black_queens == 0) {
-    if ((black_bishops == 0 && black_knights <= 1) ||
-        (black_knights == 0 && black_bishops <= 1)) {
-      black_insufficient = true;
-    }
-  }
-
-  return white_insufficient && black_insufficient;
+  // insufficient material checks
+  return !((state_.pawns() | state_.rooks() | state_.queens()) ||
+      (state_.occupied(Color::kWhite).pop_count() > 1 && state_.occupied(Color::kBlack).pop_count() > 1) ||
+      ((state_.knights() | state_.bishops()).pop_count() > 1) ||
+      (state_.bishops() == 0) ||
+      (state_.knights().pop_count() < 3));
 }
 
 void Board::handle_castling(const Move &move) {

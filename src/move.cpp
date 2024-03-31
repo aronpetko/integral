@@ -63,12 +63,16 @@ std::optional<Move> Move::from_str(const BoardState &state, std::string_view str
 bool Move::is_capture(const BoardState &state) const {
   const auto from = get_from();
   const auto to = get_to();
-  return (state.get_piece_type(to) != PieceType::kNone) ||
-      (state.get_piece_type(from) == PieceType::kPawn && state.en_passant != Square::kNoSquare && (state.en_passant == to));
+  return state.get_piece_type(to) != PieceType::kNone
+      || state.get_piece_type(from) == PieceType::kPawn && state.en_passant == to;
+}
+
+[[nodiscard]] bool Move::is_tactical(const BoardState &state) const {
+  return is_capture(state) || get_promotion_type() != PromotionType::kNone;
 }
 
 std::string Move::to_string() const {
-  if (*this == null_move())
+  if (data_ == 0)
     return "null";
 
   const auto from_rank = get_from() / kBoardRanks, from_file = get_from() % kBoardFiles;

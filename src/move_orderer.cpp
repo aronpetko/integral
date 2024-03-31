@@ -1,14 +1,14 @@
 #include "move_orderer.h"
 
 const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes + 1> kMVVLVATable = {{
-  {{10, 11, 12, 13, 14, 15}}, // victim P, attacker K, Q, R, B, N, P
-  {{20, 21, 22, 23, 24, 25}}, // victim N, attacker K, Q, R, B, N, P
-  {{30, 31, 32, 33, 34, 35}}, // victim B, attacker K, Q, R, B, N, P
-  {{40, 41, 42, 43, 44, 45}}, // victim R, attacker K, Q, R, B, N, P
-  {{50, 51, 52, 53, 54, 55}}, // victim Q, attacker K, Q, R, B, N, P
-  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
-  {{0, 0, 0, 0, 0, 0}},       // victim K, attacker K, Q, R, B, N, P
-}};
+                                                                                                                {{10, 11, 12, 13, 14, 15}}, // victim P,    attacker K, Q, R, B, N, P
+                                                                                                                {{20, 21, 22, 23, 24, 25}}, // victim N,    attacker K, Q, R, B, N, P
+                                                                                                                {{30, 31, 32, 33, 34, 35}}, // victim B,    attacker K, Q, R, B, N, P
+                                                                                                                {{40, 41, 42, 43, 44, 45}}, // victim R,    attacker K, Q, R, B, N, P
+                                                                                                                {{50, 51, 52, 53, 54, 55}}, // victim Q,    attacker K, Q, R, B, N, P
+                                                                                                                {{0, 0, 0, 0, 0, 0}},       // victim K,    attacker K, Q, R, B, N, P
+                                                                                                                {{0, 0, 0, 0, 0, 0}},       // victim None, attacker K, Q, R, B, N, P
+                                                                                                            }};
 
 std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxPlyFromRoot> MoveOrderer::killer_moves{};
 std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_moves{};
@@ -33,6 +33,10 @@ const Move &MoveOrderer::get_move(int start) noexcept {
 
 const int &MoveOrderer::get_move_score(int start) noexcept {
   return move_scores_[start];
+}
+
+const int &MoveOrderer::get_history_score(const Move &move, Color turn) noexcept {
+  return MoveOrderer::move_history[turn][move.get_from()][move.get_to()];
 }
 
 [[nodiscard]] std::size_t MoveOrderer::size() const {
@@ -103,8 +107,7 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_move = Move::null_move();
 
   if (tt_entry.key == state.zobrist_key && !tt_entry.move.is_null()) {
-    const bool is_capture = tt_entry.move.is_capture(state);
-    if (move_type_ != MoveType::kCaptures || is_capture) {
+    if (move_type_ != MoveType::kTactical || tt_entry.move.is_tactical(state)) {
       tt_move = tt_entry.move;
     }
   }
@@ -121,23 +124,39 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) con
   const auto to = move.get_to();
 
   // tt move get priority since it's the current stored best move
-  const int kMaxMoveScore = std::numeric_limits<int>::max();
   if (move == tt_move) {
-    return kMaxMoveScore;
+    return std::numeric_limits<int>::max();
+  }
+
+  // queen and knight promotions get next priority
+  switch (move.get_promotion_type()) {
+    case PromotionType::kNone:
+      break;
+    case PromotionType::kQueen:
+      return 1e9 - 1;
+    case PromotionType::kKnight:
+      return 1e9 - 2;
+    default:
+      return -1e9;
   }
 
   // winning/neutral captures are searched next
   // losing captures are searched last
-  const int kBaseMVVLVAScore = std::numeric_limits<int>::max() - 256;
-  const int kDepthsOfHellScore = std::numeric_limits<int>::min();
+  const int kBaseGoodCaptureScore = 1e8;
+  const int kBaseBadCaptureScore = -1e8;
   if (move.is_capture(state)) {
-    const int mvv_lva_score = kMVVLVATable[state.get_piece_type(to)][state.get_piece_type(from)];
-    return eval::static_exchange(move, 0, state) ? kBaseMVVLVAScore + mvv_lva_score :
-      kDepthsOfHellScore + mvv_lva_score;
+    const int mvv_lva_score = kMVVLVATable[state.get_piece_type(from)][state.get_piece_type(to)];
+    return eval::static_exchange(move, 0, state) ? kBaseGoodCaptureScore + mvv_lva_score :
+           kBaseBadCaptureScore + mvv_lva_score;
+  }
+
+  // no point is scoring moves that the quiescent search will not look at
+  if (move_type_ == MoveType::kTactical) {
+    return std::numeric_limits<int>::min();
   }
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
-  const int kKillerMoveScore = kBaseMVVLVAScore - 10;
+  const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
   for (int i = 0; i < kNumKillerMoves; i++) {
     if (MoveOrderer::killer_moves[ply_][i] == move) {
       return kKillerMoveScore;

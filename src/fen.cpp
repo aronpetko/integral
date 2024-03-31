@@ -122,10 +122,6 @@ std::string board_to_string(BoardState& state) {
   output.append(std::to_string(state.fifty_moves_clock));
   output.push_back(' ');
 
-  // todo: implement half moves
-  // const U32 full_moves = state.half_moves / 2;
-  // output.append(std::to_string(full_moves));
-
   return output;
 }
 
