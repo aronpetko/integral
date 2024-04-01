@@ -148,12 +148,16 @@ void Board::make_move(const Move &move) {
   state_.remove_piece(from);
   state_.place_piece(to, piece_type, state_.turn);
 
-  if (piece_type == PieceType::kPawn && move.get_promotion_type() != PromotionType::kNone) {
+  const auto promotion_type = move.get_promotion_type();
+  if (piece_type == PieceType::kPawn && promotion_type != PromotionType::kNone) {
     handle_promotions(move);
-  }
 
-  // xor in the moved piece
-  state_.zobrist_key ^= zobrist::hash_square(to, state_, state_.turn, piece_type);
+    // xor in the promoted piece
+    state_.zobrist_key ^= zobrist::hash_square(to, state_, state_.turn, PieceType(promotion_type));
+  } else {
+    // xor in the moved piece
+    state_.zobrist_key ^= zobrist::hash_square(to, state_, state_.turn, piece_type);
+  }
 
   // xor in new turn
   state_.turn = flip_color(state_.turn);
@@ -166,6 +170,7 @@ void Board::make_move(const Move &move) {
   }
 
   state_.fifty_moves_clock = new_fifty_move_clock;
+  state_.move_played = move;
 }
 
 void Board::undo_move() {
@@ -188,6 +193,9 @@ void Board::make_null_move() {
   // switch turn and xor in the new turn hash
   state_.turn = flip_color(state_.turn);
   state_.zobrist_key ^= zobrist::hash_turn(state_);
+
+  state_.fifty_moves_clock++;
+  state_.move_played = Move::null_move();
 }
 
 bool Board::has_repeated(U8 times) const {
@@ -315,4 +323,21 @@ void Board::handle_promotions(const Move &move) {
         break;
     }
   }
+}
+
+void Board::print_pieces() const {
+  for (int rank = kBoardRanks - 1; rank >= 0; rank--) {
+    std::cout << rank + 1 << ' ';
+    for (int file = 0; file < kBoardFiles; file++) {
+      U8 square = rank_file_to_pos(rank, file);
+      std::cout << fen::get_piece_char(const_cast<BoardState&>(state_), square);
+      if (file < kBoardFiles - 1)
+        std::cout << " ";  // space separator for clarity
+    }
+    std::cout << std::endl;
+  }
+  std::cout << "  ";
+  for (int file = 0; file < kBoardFiles; file++)
+    std::cout << static_cast<char>('a' + file) << ' ';
+  std::cout << std::endl;
 }

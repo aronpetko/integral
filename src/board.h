@@ -210,6 +210,8 @@ class Board {
 
   [[nodiscard]] bool is_draw() const;
 
+  void print_pieces() const;
+
  private:
   void handle_castling(const Move &move);
 

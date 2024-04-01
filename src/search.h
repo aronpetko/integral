@@ -74,6 +74,7 @@ class Search {
   Result go();
 
  private:
+  template<NodeType node_type>
   int quiesce(int ply, int alpha, int beta);
 
   template<NodeType node_type>
@@ -86,7 +87,6 @@ class Search {
   TimeManagement time_mgmt_;
   double branching_factor_;
   int total_bfs_;
-  bool can_do_null_move_;
 };
 
 #endif // INTEGRAL_SEARCH_H_

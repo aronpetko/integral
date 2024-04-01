@@ -31,6 +31,8 @@ const std::unordered_map<PieceType, char> kPieceTypeToChar = {
     {PieceType::kKing, 'k'},
 };
 
+char get_piece_char(BoardState &state, U8 pos);
+
 BoardState string_to_board(std::string fen_str = kStartFen);
 
 std::string board_to_string(BoardState &state);

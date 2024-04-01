@@ -47,11 +47,7 @@ void MoveOrderer::update_killer_move(const Move &move, int ply) {
   if (move == MoveOrderer::killer_moves[ply][0])
     return;
 
-  // shift killer moves right one
-  for (std::size_t i = 1; i < kNumKillerMoves; i++)
-    MoveOrderer::killer_moves[ply][i] = MoveOrderer::killer_moves[ply][i - 1];
-
-  // insert at the beginning
+  MoveOrderer::killer_moves[ply][1] = MoveOrderer::killer_moves[ply][0];
   MoveOrderer::killer_moves[ply][0] = move;
 }
 
@@ -88,7 +84,7 @@ void MoveOrderer::penalize_move_history(MoveList& moves, Color turn, int depth) 
   }
 }
 
-void MoveOrderer::reset_move_history() {
+void MoveOrderer::clear_move_history() {
   for (auto &sides : MoveOrderer::move_history) {
     for (auto &moves : sides) {
       moves.fill(0);
@@ -97,6 +93,13 @@ void MoveOrderer::reset_move_history() {
   for (auto &killers : MoveOrderer::killer_moves) {
     killers.fill(Move::null_move());
   }
+  for (auto &counters : MoveOrderer::counter_moves) {
+    counters.fill(Move::null_move());
+  }
+}
+
+void MoveOrderer::clear_killers(int ply) {
+  MoveOrderer::killer_moves[ply].fill(Move::null_move());
 }
 
 void MoveOrderer::score_moves() noexcept {
@@ -145,9 +148,13 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) con
   const int kBaseGoodCaptureScore = 1e8;
   const int kBaseBadCaptureScore = -1e8;
   if (move.is_capture(state)) {
-    const int mvv_lva_score = kMVVLVATable[state.get_piece_type(from)][state.get_piece_type(to)];
-    return eval::static_exchange(move, 0, state) ? kBaseGoodCaptureScore + mvv_lva_score :
-           kBaseBadCaptureScore + mvv_lva_score;
+    const auto attacker = state.get_piece_type(from);
+    const auto victim = state.get_piece_type(to);
+
+    const int mvv_lva_score =
+        kMVVLVATable[attacker][to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim];
+    return eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state) ?
+      kBaseGoodCaptureScore + mvv_lva_score : mvv_lva_score + MoveOrderer::move_history[state.turn][from][to];
   }
 
   // no point is scoring moves that the quiescent search will not look at
@@ -166,7 +173,7 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) con
   // check if this move was a natural counter to the previous move (caused a beta cutoff)
   // complimentary to killer move heuristic
   const int kCounterMoveScore = kKillerMoveScore - 10;
-  const auto last_move = board_.get_prev_state().move_played;
+  const auto &last_move = state.move_played;
   if (move == MoveOrderer::counter_moves[last_move.get_from()][last_move.get_to()]) {
     // counter moves should be searched right after killer moves
     return kCounterMoveScore;

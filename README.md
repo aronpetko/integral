@@ -28,4 +28,4 @@ make
 ```
 
 ## Rating
-Integral is estimated to be around 2300 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral can consistently beat 2200 FIDE-rated players.
+Integral is estimated to be around 2500 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral can consistently beat 2200 FIDE-rated players.

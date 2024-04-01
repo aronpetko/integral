@@ -24,7 +24,9 @@ class MoveOrderer {
 
   static void penalize_move_history(MoveList& moves, Color turn, int depth);
 
-  static void reset_move_history();
+  static void clear_move_history();
+
+  static void clear_killers(int ply);
 
  private:
   void score_moves() noexcept;
