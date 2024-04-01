@@ -78,7 +78,7 @@ class Search {
   int quiesce(int ply, int alpha, int beta);
 
   template<NodeType node_type>
-  int search(int depth, int ply, int alpha, int beta, int num_extensions, PVLine &pv_line, Result &result);
+  int search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Result &result);
 
   Result iterative_deepening();
 

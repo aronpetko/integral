@@ -1,14 +1,15 @@
 #include "move_orderer.h"
 
-const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes + 1> kMVVLVATable = {{
-                                                                                                                {{10, 11, 12, 13, 14, 15}}, // victim P,    attacker K, Q, R, B, N, P
-                                                                                                                {{20, 21, 22, 23, 24, 25}}, // victim N,    attacker K, Q, R, B, N, P
-                                                                                                                {{30, 31, 32, 33, 34, 35}}, // victim B,    attacker K, Q, R, B, N, P
-                                                                                                                {{40, 41, 42, 43, 44, 45}}, // victim R,    attacker K, Q, R, B, N, P
-                                                                                                                {{50, 51, 52, 53, 54, 55}}, // victim Q,    attacker K, Q, R, B, N, P
-                                                                                                                {{0, 0, 0, 0, 0, 0}},       // victim K,    attacker K, Q, R, B, N, P
-                                                                                                                {{0, 0, 0, 0, 0, 0}},       // victim None, attacker K, Q, R, B, N, P
-                                                                                                            }};
+// clang-format off
+const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
+  {{10, 11, 12, 13, 14, 15}}, // victim P,    attacker K, Q, R, B, N, P
+  {{20, 21, 22, 23, 24, 25}}, // victim N,    attacker K, Q, R, B, N, P
+  {{30, 31, 32, 33, 34, 35}}, // victim B,    attacker K, Q, R, B, N, P
+  {{40, 41, 42, 43, 44, 45}}, // victim R,    attacker K, Q, R, B, N, P
+  {{50, 51, 52, 53, 54, 55}}, // victim Q,    attacker K, Q, R, B, N, P
+  {{0, 0, 0, 0, 0, 0}},       // victim K,    attacker K, Q, R, B, N, P
+}};
+// clang-format on
 
 std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxPlyFromRoot> MoveOrderer::killer_moves{};
 std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_moves{};
