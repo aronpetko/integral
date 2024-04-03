@@ -16,12 +16,17 @@ const int kMaxGamePly = 1024;
 
 class CastleRights {
  public:
-  static constexpr int kKingsideRookIndex = 0;
-  static constexpr int kQueensideRookIndex = 1;
+  static constexpr int kKingsideIndex = 0;
+  static constexpr int kQueensideIndex = 1;
 
   static constexpr std::array<std::array<Square, 2>, 2> kRookSquares = {{
     {Square::kH8, Square::kA8},
     {Square::kH1, Square::kA1}
+  }};
+
+  static constexpr std::array<std::array<U8, 2>, 2> kMasks = {{
+      {CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside},
+      {CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside}
   }};
 
   CastleRights() : rights_(0) {}
@@ -31,37 +36,38 @@ class CastleRights {
   }
 
   [[nodiscard]] inline bool can_kingside_castle(Color turn) const {
-    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteKingside : CastleRightMasks::kBlackKingside;
-    return rights_ & mask;
+    return rights_ & kMasks[turn][kKingsideIndex];
   }
 
   [[nodiscard]] inline bool can_queenside_castle(Color turn) const {
-    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside : CastleRightMasks::kBlackQueenside;
-    return rights_ & mask;
+    return rights_ & kMasks[turn][kQueensideIndex];
+  }
+
+  [[nodiscard]] inline bool can_castle(Color turn) const {
+    return can_kingside_castle(turn) || can_queenside_castle(turn);
   }
 
   inline void set_can_kingside_castle(Color turn, bool value) {
-    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteKingside : CastleRightMasks::kBlackKingside;
+    const U8 mask = kMasks[turn][kKingsideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
   inline void set_can_queenside_castle(Color turn, bool value) {
-    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside : CastleRightMasks::kBlackQueenside;
+    const U8 mask = kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
   inline void set_both_rights(Color turn, bool value) {
-    U8 mask = turn == Color::kWhite ? CastleRightMasks::kWhiteQueenside | CastleRightMasks::kWhiteKingside :
-              CastleRightMasks::kBlackQueenside | CastleRightMasks::kBlackKingside;
+    const U8 mask = kMasks[turn][kKingsideIndex] | kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
   [[nodiscard]] inline Square get_kingside_rook(Color turn) const {
-    return kRookSquares[turn][kKingsideRookIndex];
+    return kRookSquares[turn][kKingsideIndex];
   }
 
   [[nodiscard]] inline Square get_queenside_rook(Color turn) const {
-    return kRookSquares[turn][kQueensideRookIndex];
+    return kRookSquares[turn][kQueensideIndex];
   }
 
   inline U8 get_rights() const {
@@ -205,6 +211,8 @@ class Board {
   void make_null_move();
 
   void undo_move();
+
+  U64 key_after(const Move &move) const;
 
   [[nodiscard]] bool has_repeated(U8 times) const;
 

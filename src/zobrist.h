@@ -219,7 +219,7 @@ enum Indices : int {
   kTurn = 780,
 };
 
-U64 hash_turn(const BoardState &state);
+U64 hash_turn(Color turn);
 
 U64 hash_square(U8 square, const BoardState &state, Color color = Color::kNoColor, PieceType piece = PieceType::kNone);
 

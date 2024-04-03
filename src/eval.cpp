@@ -1,10 +1,12 @@
 #include "eval.h"
+
 #include "move_gen.h"
 
 // evaluation is exactly the same as PeSTO's texel-tuned tables. using this evaluation over my own gained some +200 elo
 // this will likely be reverted (even if it lowers the elo), as I don't like the idea of using someone else's evaluation
 namespace eval {
 
+// clang-format off
 const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kMiddleGameTables = {{
     // pawns
     {
@@ -142,6 +144,7 @@ const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kEndGameTables 
         -53, -34, -21, -11, -28, -14, -24, -43
     }
 }};
+// clang-format on
 
 const std::array<int, PieceType::kNumPieceTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
 const std::array<int, PieceType::kNumPieceTypes> kMiddleGamePieceValues = {82, 337, 365, 477, 1025, 0};
@@ -155,7 +158,7 @@ int mate_in(int evaluation) {
   if (evaluation > 0 && evaluation < kMateScore) { // mate in favor
     return (kMateScore - evaluation + 1) / 2;
   } else if (evaluation < 0 && evaluation > -kMateScore) { // mate against
-    return (kMateScore + evaluation) / 2;
+    return -(kMateScore + evaluation) / 2;
   }
 
   // not a mate score
@@ -167,8 +170,8 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   const U8 to = move.get_to();
 
   const PieceType &from_piece = state.get_piece_type(from);
-  if (from_piece == PieceType::kPawn && to == state.en_passant || // ignore en passant captures
-      from_piece == PieceType::kKing && std::abs(from - to) == 2) { // ignore castling moves
+  if (from_piece == PieceType::kPawn && to == state.en_passant ||    // ignore en passant captures
+      from_piece == PieceType::kKing && std::abs(from - to) == 2) {  // ignore castling moves
     return threshold <= 0;
   }
 
@@ -198,7 +201,7 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
 
   // get all pieces that attack the capture square
   auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite, false) & state.pawns(Color::kBlack)) |
-      (move_gen::pawn_attacks(to, state, Color::kBlack, false) & state.pawns(Color::kWhite));
+                        (move_gen::pawn_attacks(to, state, Color::kBlack, false) & state.pawns(Color::kWhite));
   auto knight_attackers = move_gen::knight_moves(to) & state.knights();
 
   BitBoard bishop_attacks = move_gen::bishop_moves(to, occupied);
@@ -273,10 +276,11 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
       return (all_attackers & state.occupied(flip_color(turn))) ? state.turn != winner : state.turn == winner;
     }
 
-    if (next_attacker)  {
+    if (next_attacker) {
       // score represents how many points (in piece value) that the other side can gain after this capture
-      // if initially a knight captured a queen, the other side can gain 3 - 9 = -6 points (indicating they can only gain a loss)
-      // if we flip it and initially a queen captured a knight, the other side can gain 9 - 3 = 6 points (if they capture the queen back the least amount of points they lose is 3)
+      // if initially a knight captured a queen, the other side can gain 3 - 9 = -6 points (indicating they can only
+      // gain a loss) if we flip it and initially a queen captured a knight, the other side can gain 9 - 3 = 6 points
+      // (if they capture the queen back the least amount of points they lose is 3)
       score = -score + attacker_value;
 
       // if it's our opponents turn, we break only if the exchange is at a loss for them
@@ -299,17 +303,20 @@ int evaluate(const BoardState &state) {
   end_game_scores[state.turn] += 10;
 
   int middle_game_phase = 0;
-  for (int square = 0; square < Square::kSquareCount; square++) {
-    const auto piece = state.get_piece_type(square);
-    if (piece != PieceType::kNone) {
-      const auto color = state.get_piece_color(square);
-      const auto table_pos = color == Color::kWhite ? square ^ 56 : square;
 
-      middle_game_scores[color] += kMiddleGamePieceValues[piece] + kMiddleGameTables[piece][table_pos];
-      end_game_scores[color] += kEndGamePieceValues[piece] + kEndGameTables[piece][table_pos];
+  for (int color = Color::kBlack; color <= Color::kWhite; color++) {
+    for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
+      BitBoard bb = state.piece_bbs[piece] & state.side_bbs[color];
 
-      // increase the phase of the game depending on the assigned scores
-      middle_game_phase += kGamePhaseIncrements[piece];
+      while (bb) {
+        const auto square = bb.pop_lsb();
+        const auto table_pos = color == Color::kWhite ? square ^ 56 : square;
+
+        middle_game_scores[color] += kMiddleGamePieceValues[piece] + kMiddleGameTables[piece][table_pos];
+        end_game_scores[color] += kEndGamePieceValues[piece] + kEndGameTables[piece][table_pos];
+
+        middle_game_phase += kGamePhaseIncrements[piece];
+      }
     }
   }
 
@@ -325,4 +332,4 @@ int evaluate(const BoardState &state) {
   return (middle_game_score * middle_game_phase + end_game_score * end_game_phase) / kMaxMiddleGamePhase;
 }
 
-}
+}  // namespace eval

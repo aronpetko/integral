@@ -10,10 +10,9 @@
 Search::Search(TimeManagement::Config &time_config, Board &board)
     : board_(board),
       time_mgmt_(time_config, board),
-      branching_factor_(0.0),
-      total_bfs_(0) {}
+      stack_({}) {}
 
-std::array<std::array<int, kMaxPlyFromRoot>, Search::kMaxSearchDepth + 1> Search::kLateMoveReductionTable;
+std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> Search::kLateMoveReductionTable;
 
 void Search::init_tables() {
   const double kBaseReduction = 0.77;
@@ -43,13 +42,18 @@ int Search::quiesce(int ply, int alpha, int beta) {
   constexpr auto pv_node_type = in_pv_node ? NodeType::kPV : NodeType::kNonPV;
 
   const auto &tt_entry = transpo.probe(state.zobrist_key);
-  if (in_pv_node && tt_entry.key == state.zobrist_key && (tt_entry.flag == TranspositionTable::Entry::kExact
+  const bool tt_hit = tt_entry.key == state.zobrist_key;
+  if (in_pv_node && tt_hit && (tt_entry.flag == TranspositionTable::Entry::kExact
       || (tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta)
       || (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha))) {
     return transpo.correct_score(tt_entry.score, ply);
   }
 
-  const int static_eval = eval::evaluate(state);
+  const int static_eval = tt_hit ? tt_entry.score : eval::evaluate(state);
+  if (ply >= kMaxPlyFromRoot) {
+    return static_eval;
+  }
+
   if (static_eval >= beta) {
     TranspositionTable::Entry entry;
     entry.key = state.zobrist_key;
@@ -73,7 +77,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
     // static exchange evaluation (SEE) pruning
     // don't look at moves that result in lost material
-    if (!eval::static_exchange(move, 0, state)) {
+    if (!eval::static_exchange(move, -100, state)) {
       continue;
     }
 
@@ -134,14 +138,10 @@ int Search::quiesce(int ply, int alpha, int beta) {
 }
 
 template<NodeType node_type>
-int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Result &result) {
+int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   // check for repetitions of this position and the fifty-move rule
   if (board_.is_draw()) {
     return eval::kDrawScore;
-  }
-
-  if (ply >= kMaxSearchDepth) {
-    return eval::evaluate(board_.get_state());
   }
 
   // pv nodes are nodes that fall inside the [alpha, beta] window
@@ -164,13 +164,11 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
   }
 
   // mate distance pruning: reduce the search space if we've already found a mate
-  if (!in_root) {
-    alpha = std::max(alpha, -eval::kMateScore + ply);
-    beta  = std::min(beta, eval::kMateScore - ply - 1);
+  alpha = std::max(alpha, -eval::kMateScore + ply);
+  beta = std::min(beta, eval::kMateScore - ply - 1);
 
-    if (alpha >= beta) {
-      return alpha;
-    }
+  if (alpha >= beta) {
+    return alpha;
   }
 
   auto &transpo = board_.get_transpo_table();
@@ -181,30 +179,53 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
   // b) return alpha if this position score indicates a better option us
   // c) return beta if this position's score suggests a worse option for the opponent
   const auto &tt_entry = transpo.probe(state.zobrist_key);
-  if (!in_pv_node && tt_entry.key == state.zobrist_key && tt_entry.depth >= depth && (tt_entry.flag == TranspositionTable::Entry::kExact
+  const bool tt_hit = tt_entry.key == state.zobrist_key;
+  if (!in_pv_node && tt_hit && tt_entry.depth >= depth && (tt_entry.flag == TranspositionTable::Entry::kExact
       || (tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta)
       || (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha))) {
     return transpo.correct_score(tt_entry.score, ply);
   }
 
-  const bool tt_hit = tt_entry.key == state.zobrist_key;
+  const int static_eval = tt_hit ? tt_entry.score : eval::evaluate(state);
+  if (ply >= kMaxPlyFromRoot) {
+    return static_eval;
+  }
+
+  bool improving = false;
+
+  auto search_stack = &stack_[ply];
+  if (!in_check) {
+    search_stack->static_eval = static_eval;
+    if (ply >= 2 && search_stack->behind(2)->static_eval != kScoreNone) {
+      improving = static_eval > search_stack->behind(2)->static_eval;
+    } else if (ply >= 4 && search_stack->behind(4)->static_eval != kScoreNone) {
+      improving = static_eval > search_stack->behind(4)->static_eval;
+    }
+  } else {
+    search_stack->static_eval = kScoreNone;
+  }
+
+  // internal iterative reduction: reduce the depth if there is no tt entry for the position
+  // it will most likely be searched again later to a fuller depth, so no need to go the extra mile right now
+  if (depth >= 4 && !tt_hit) {
+    depth--;
+  }
 
   // reverse (static) futility pruning
   // we assume that the static evaluation of the current position can't fall below beta within the next move
   // the margin for this comparison is scaled based on how many moves left we have to search
-  const int static_eval = tt_hit ? tt_entry.score : eval::evaluate(state);
   if (depth <= 6 && !in_pv_node && !in_check) {
-    const int kMarginIncrement = 70;
-    if (static_eval - depth * kMarginIncrement >= beta) {
+    const int futility_margin = (depth - improving) * 90;
+    if (static_eval - futility_margin >= beta) {
       return static_eval;
     }
   }
 
   // razoring: when evaluation is far below alpha, we assume only captures can bring us back
   // therefore, drop into quiesce and cut off  if we still can't hit alpha
-  if (!in_pv_node && !in_check && static_eval < alpha - 400 - 250 * depth * depth) {
-    const int razoring_score = quiesce<node_type>(ply, alpha, beta);
-    if (razoring_score < alpha) {
+  if (!in_pv_node && !in_check && alpha < 2000 && static_eval < alpha - 400 - 250 * depth * depth) {
+    const int razoring_score = quiesce<pv_node_type>(ply, alpha, beta);
+    if (razoring_score <= alpha) {
       return razoring_score;
     }
   }
@@ -218,9 +239,8 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
     if (safe_to_nmp) {
       board_.make_null_move();
 
-      PVLine dummy_pv;
       const int reduction = depth / 4 + 4;
-      const int null_move_score = -search<pv_node_type>(depth - reduction, ply + 1, -beta, -beta + 1, dummy_pv, result);
+      const int null_move_score = -search<NodeType::kNonPV>(depth - reduction, ply + 1, -beta, -beta + 1, result);
 
       board_.undo_move();
 
@@ -234,17 +254,10 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
     }
   }
 
-  // internal iterative reduction: reduce the depth if there is no tt entry for the position
-  // it will most likely be searched again later to a fuller depth, so no need to go the extra mile right now
-  if (depth >= 4 && !tt_hit) {
-    depth--;
-  }
-
   MoveOrderer::clear_killers(ply + 1);
 
   bool skip_quiets = false;
 
-  PVLine temp_pv_line;
   MoveList quiet_non_cutoffs;
   int moves_tried = 0;
 
@@ -255,17 +268,10 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
   MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll, ply);
   for (int i = 0; i < move_orderer.size(); i++) {
     const Move &move = move_orderer.get_move(i);
-    const bool is_quiet = !move.is_tactical(state);
 
+    const bool is_quiet = !move.is_tactical(state);
     if (is_quiet && skip_quiets) {
       continue;
-    }
-
-    // late move pruning
-    // skip (late) quiet moves if we've already searched the most promising moves
-    const int lmp_threshold = 3 + depth * depth;
-    if (depth <= 6 && !in_root && moves_tried >= lmp_threshold) {
-      skip_quiets = true;
     }
 
     // no aggressive pruning when we could potentially be checkmated
@@ -277,20 +283,28 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
         continue;
       }
 
+      // late move pruning
+      // skip (late) quiet moves if we've already searched the most promising moves
+      const int lmp_threshold = (3 + depth * depth) / (2 - improving);
+      if (!in_root && moves_tried >= lmp_threshold) {
+        skip_quiets = true;
+      }
+
       // futility pruning
       int lmr_reduction = kLateMoveReductionTable[depth][moves_tried];
       lmr_reduction -= in_pv_node;
       lmr_reduction -= MoveOrderer::get_history_score(move, state.turn) / 1024;
-      lmr_reduction = std::clamp(lmr_reduction, 1, depth - 1);
-      if (!in_check && is_quiet && depth - lmr_reduction <= 8 && static_eval + 150 + 100 * depth < alpha) {
+      lmr_reduction += !improving;
+      lmr_reduction = std::clamp(lmr_reduction, 0, depth - 1);
+      if (!in_pv_node && !in_check && is_quiet && depth - lmr_reduction <= 8 && static_eval + 150 + 100 * depth < alpha) {
         continue;
       }
     }
 
-    board_.make_move(move);
-
     // load the transposition table entry for this move in the background
-    __builtin_prefetch(&transpo.probe(state.zobrist_key));
+    transpo.prefetch(board_.key_after(move));
+
+    board_.make_move(move);
 
     // since the move generator is pseudo-legal, we must verify legality here
     if (move_gen::king_in_check(flip_color(state.turn), state)) {
@@ -301,39 +315,41 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
     time_mgmt_.update_nodes_searched();
     const auto prev_nodes_searched = time_mgmt_.get_nodes_searched();
 
-    const int new_depth = depth - 1;
+    // clear the child pv so the pv for this node is accurate
+    if (in_pv_node) {
+      search_stack->ahead()->pv.clear();
+    }
 
-    PVLine child_pv_line;
+    const int new_depth = depth - 1;
     int score;
 
     // principal variation search (pvs)
     // search the first move with a normal alpha-beta window
-    if (moves_tried == 0) {
-      score = -search<pv_node_type>(new_depth, ply + 1, -beta, -alpha, child_pv_line, result);
+    bool needs_full_search = false;
+
+    // move ordering places the moves that are most likely to cause a beta cutoff first
+    // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
+    if (depth > 2 && moves_tried >= 1 + in_root * 2) {
+      int reduction = kLateMoveReductionTable[depth][moves_tried];
+      reduction -= in_pv_node;
+      reduction -= MoveOrderer::get_history_score(move, state.turn) / 1024;
+      reduction += !improving;
+      reduction = std::clamp(reduction, 0, new_depth - 1);
+
+      // null window search for a quick refutation or indication of a potentially good move
+      score = -search<NodeType::kNonPV>(new_depth - reduction, ply + 1, -alpha - 1, -alpha, result);
+      needs_full_search = score > alpha && reduction > 0;
     } else {
-      bool needs_full_depth_search = true;
+      needs_full_search = !in_pv_node || moves_tried >= 1;
+    }
 
-      // move ordering places the moves that are most likely to cause a beta cutoff first
-      // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
-      if (depth > 2 && moves_tried >= 1 + in_root) {
-        int reduction = kLateMoveReductionTable[depth][moves_tried];
-        reduction -= in_pv_node;
-        reduction -= MoveOrderer::get_history_score(move, state.turn) / 1024;
-        reduction = std::clamp(reduction, 1, new_depth - 1);
+    if (needs_full_search) {
+      score = -search<NodeType::kNonPV>(new_depth, ply + 1, -alpha - 1, -alpha, result);
+    }
 
-        // null window search for a quick refutation or indication of a potentially good move
-        score = -search<NodeType::kNonPV>(new_depth - reduction, ply + 1, -alpha - 1, -alpha, child_pv_line, result);
-        needs_full_depth_search = score > alpha;
-      }
-
-      if (needs_full_depth_search) {
-        score = -search<NodeType::kNonPV>(new_depth, ply + 1, -alpha - 1, -alpha, child_pv_line, result);
-
-        // if the move looks promising from null window search, re-search to obtain a more accurate score
-        if (score > alpha && in_pv_node) {
-          score = -search<pv_node_type>(new_depth, ply + 1, -beta, -alpha, child_pv_line, result);
-        }
-      }
+    // if the move looks promising from null window search, re-search to obtain a more accurate score
+    if (in_pv_node && (score > alpha || moves_tried == 0)) {
+      score = -search<NodeType::kPV>(new_depth, ply + 1, -beta, -alpha, result);
     }
 
     board_.undo_move();
@@ -341,7 +357,6 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
 
     time_mgmt_.update_node_spent_table(move, prev_nodes_searched);
     if (time_mgmt_.times_up()) {
-      temp_pv_line.clear();
       break;
     }
 
@@ -355,12 +370,14 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
         result.score = best_score;
       }
 
-      // replace the pv from move
-      temp_pv_line.clear();
-      temp_pv_line.push(move);
+      if (in_pv_node) {
+        search_stack->pv.clear();
+        search_stack->pv.push(move);
 
-      for (int child_pv_move = 0; child_pv_move < child_pv_line.length(); child_pv_move++) {
-        temp_pv_line.push(child_pv_line[child_pv_move]);
+        auto &child_pv = search_stack->ahead()->pv;
+        for (int child_pv_move = 0; child_pv_move < child_pv.length(); child_pv_move++) {
+          search_stack->pv.push(child_pv[child_pv_move]);
+        }
       }
     }
 
@@ -378,8 +395,6 @@ int Search::search(int depth, int ply, int alpha, int beta, PVLine &pv_line, Res
       quiet_non_cutoffs.push(move);
     }
   }
-
-  pv_line = temp_pv_line;
 
   // the game is over if we couldn't try a move
   if (moves_tried == 0) {
@@ -413,8 +428,6 @@ Search::Result Search::iterative_deepening() {
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
   for (int depth = 1; depth <= max_search_depth; depth++) {
-    const int kAspirationWindow = 75;
-
     int alpha = -std::numeric_limits<int>::max();
     int beta = std::numeric_limits<int>::max();
     int window = 40;
@@ -427,18 +440,18 @@ Search::Result Search::iterative_deepening() {
       }
 
       Result new_result;
-      search<NodeType::kRoot>(depth, 0, alpha, beta, new_result.pv_line, new_result);
+      search<NodeType::kRoot>(depth, 0, alpha, beta, new_result);
 
       if (!new_result.best_move.is_null()) {
         result = new_result;
-        break;
+        result.pv_line = stack_[0].pv;
       }
 
       if (time_mgmt_.times_up()) {
         break;
       }
 
-      if (alpha < new_result.score && beta >= new_result.score) {
+      if (alpha < new_result.score && beta > new_result.score) {
         break;
       }
 

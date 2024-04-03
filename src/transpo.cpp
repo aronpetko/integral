@@ -27,7 +27,13 @@ void TranspositionTable::save(const Entry &entry, int ply) {
 
   auto &table_entry = table_[entry.key % table_size_];
   if (table_entry.key != entry.key || table_entry.depth <= entry.depth + kDepthLenience || entry.flag == Entry::kExact) {
+    const auto &old_tt_move = table_entry.move;
     table_entry = entry;
+
+    // restore the tt move if we're saving a tt entry from a null move
+    if (entry.move.is_null()) {
+      table_entry.move = old_tt_move;
+    }
 
     const int kRoughlyMate = -eval::kMateScore + kMaxPlyFromRoot;
     if (entry.score <= kRoughlyMate) {
@@ -36,6 +42,10 @@ void TranspositionTable::save(const Entry &entry, int ply) {
       table_entry.score += ply;
     }
   }
+}
+
+void TranspositionTable::prefetch(const U64 &key) const {
+  __builtin_prefetch(&probe(key));
 }
 
 int TranspositionTable::correct_score(int score, int ply) const {

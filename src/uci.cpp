@@ -107,7 +107,7 @@ void perft(Board &board, std::stringstream &input_stream) {
     const int nodes = perft_internal(board, depth, depth);
     const auto elapsed = duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
 
-    std::cout << std::format("nodes: {}\ntime elapsed: {:.2f}s\nnodes per second: {}", nodes, elapsed, nodes / elapsed) << std::endl;
+    std::cout << std::format("nodes: {}\ntime elapsed: {:.2f}s\nnodes per second: {:.0f}", nodes, elapsed, nodes / elapsed) << std::endl;
   }
 }
 

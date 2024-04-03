@@ -85,7 +85,7 @@ void Board::make_move(const Move &move) {
   int new_fifty_move_clock = state_.fifty_moves_clock + 1;
 
   // xor out the previous turn hash and moved piece
-  state_.zobrist_key ^= zobrist::hash_square(from, state_, state_.turn, piece_type) ^ zobrist::hash_turn(state_);
+  state_.zobrist_key ^= zobrist::hash_square(from, state_, state_.turn, piece_type) ^ zobrist::hash_turn(state_.turn);
 
   const auto captured_piece = state_.get_piece_type(to);
   if (captured_piece != PieceType::kNone) {
@@ -161,7 +161,7 @@ void Board::make_move(const Move &move) {
 
   // xor in new turn
   state_.turn = flip_color(state_.turn);
-  state_.zobrist_key ^= zobrist::hash_turn(state_);
+  state_.zobrist_key ^= zobrist::hash_turn(state_.turn);
 
   // xor en passant in now that the turn's have been switched (should only happen if this move wasn't an ep capture)
   // this is important since hash_en_passant checks if the opponents pawn is next to the double-pushed pawn
@@ -182,7 +182,7 @@ void Board::make_null_move() {
   history_[history_count_++] = state_;
 
   // xor out the previous turn hash
-  state_.zobrist_key ^= zobrist::hash_turn(state_);
+  state_.zobrist_key ^= zobrist::hash_turn(state_.turn);
 
   // xor out en passant if it exists
   if (state_.en_passant != Square::kNoSquare) {
@@ -192,10 +192,44 @@ void Board::make_null_move() {
 
   // switch turn and xor in the new turn hash
   state_.turn = flip_color(state_.turn);
-  state_.zobrist_key ^= zobrist::hash_turn(state_);
+  state_.zobrist_key ^= zobrist::hash_turn(state_.turn);
 
   state_.fifty_moves_clock++;
   state_.move_played = Move::null_move();
+}
+
+U64 Board::key_after(const Move &move) const {
+  U64 key = state_.zobrist_key;
+  key ^= zobrist::hash_turn(state_.turn) ^ zobrist::hash_turn(flip_color(state_.turn));
+
+  // just swap sides
+  if (move.is_null()) {
+    return key;
+  }
+
+  const auto from = move.get_from();
+  const auto to = move.get_to();
+  const auto piece = state_.get_piece_type(from);
+
+  // xor out from position
+  key ^= zobrist::hash_square(from, state_, state_.turn, piece);
+
+  const auto captured_piece = state_.get_piece_type(to);
+  if (captured_piece != PieceType::kNone) {
+    // xor out the captured piece
+    key ^= zobrist::hash_square(to, state_, state_.turn, captured_piece);
+  }
+
+  const auto promotion_type = move.get_promotion_type();
+  if (piece == PieceType::kPawn && promotion_type != PromotionType::kNone) {
+    // xor in the promoted piece
+    key ^= zobrist::hash_square(to, state_, state_.turn, PieceType(promotion_type));
+  } else {
+    // xor in the moved piece
+    key ^= zobrist::hash_square(to, state_, state_.turn, piece);
+  }
+
+  return key;
 }
 
 bool Board::has_repeated(U8 times) const {
@@ -226,8 +260,6 @@ void Board::handle_castling(const Move &move) {
 
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
-
-  const auto old_rights = state_.castle_rights;
 
   if (piece_type == PieceType::kKing) {
     if (state_.castle_rights.can_kingside_castle(state_.turn) ||
@@ -260,7 +292,7 @@ void Board::handle_castling(const Move &move) {
     }
   }
   // handle rook moves changing castle rights
-  else if (piece_type == PieceType::kRook) {
+  else if (piece_type == PieceType::kRook && state_.castle_rights.can_castle(state_.turn)) {
     if (is_white) {
       if (from == Square::kH1) {
         state_.castle_rights.set_can_kingside_castle(state_.turn, false);
@@ -284,11 +316,6 @@ void Board::handle_castling(const Move &move) {
     state_.castle_rights.set_can_kingside_castle(flip_color(state_.turn), false);
   } else if (to == their_queenside_rook) {
     state_.castle_rights.set_can_queenside_castle(flip_color(state_.turn), false);
-  }
-
-  if (old_rights != state_.castle_rights) {
-    state_.zobrist_key ^= zobrist::hash_castle_rights(old_rights);
-    state_.zobrist_key ^= zobrist::hash_castle_rights(state_.castle_rights);
   }
 }
 

@@ -3,8 +3,8 @@
 
 namespace zobrist {
 
-U64 hash_turn(const BoardState &state) {
-  return state.turn == Color::kWhite ? kRandomsArray[Indices::kTurn] : 0ULL;
+U64 hash_turn(Color turn) {
+  return turn == Color::kWhite ? kRandomsArray[Indices::kTurn] : 0ULL;
 }
 
 U64 hash_square(U8 square, const BoardState &state, Color color, PieceType piece) {
@@ -50,18 +50,13 @@ U64 hash_en_passant(const BoardState &state) {
   const auto ep_square = state.en_passant;
 
   // if our pawn can capture the en passant
-  const BitBoard our_pawns = state.pawns(state.turn);
-
   BitBoard en_passant_bb = BitBoard::from_square(ep_square);
-  en_passant_bb =
-      state.turn == Color::kWhite ? shift<Direction::kSouth>(en_passant_bb) : shift<Direction::kNorth>(en_passant_bb);
-  en_passant_bb = shift<Direction::kEast>(en_passant_bb) | shift<Direction::kWest>(en_passant_bb);
+  en_passant_bb = state.turn == Color::kWhite
+                      ? shift<Direction::kSouthEast>(en_passant_bb) | shift<Direction::kSouthWest>(en_passant_bb)
+                      : shift<Direction::kNorthEast>(en_passant_bb) | shift<Direction::kNorthWest>(en_passant_bb);
 
-  if (en_passant_bb & our_pawns) {
-    const int en_passant_file = file(ep_square);
-    return kRandomsArray[Indices::kEnPassantFileA + en_passant_file];
-  }
-
+  if (en_passant_bb & state.pawns(state.turn))
+    return kRandomsArray[Indices::kEnPassantFileA + file(ep_square)];
   return 0ULL;
 }
 
@@ -71,7 +66,7 @@ U64 generate_key(const BoardState &state) {
     if (state.piece_exists(square))
       pieces ^= hash_square(square, state);
 
-  return pieces ^ hash_castle_rights(state.castle_rights) ^ hash_en_passant(state) ^ hash_turn(state);
+  return pieces ^ hash_castle_rights(state.castle_rights) ^ hash_en_passant(state) ^ hash_turn(state.turn);
 }
 
 }

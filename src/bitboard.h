@@ -71,27 +71,27 @@ class BitBoard {
 
   constexpr BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
-  static BitBoard from_square(U8 pos) {
-    return BitBoard(1ULL << pos);
+  static BitBoard from_square(const U8 &square) {
+    return {1ULL << square};
   }
 
   [[nodiscard]] constexpr inline U64 as_u64() const {
     return bitboard_;
   }
 
-  constexpr inline void set_bit(U8 square) {
+  constexpr inline void set_bit(const U8 &square) {
     bitboard_ |= (1ULL << square);
   }
 
-  constexpr inline void clear_bit(U8 square) {
+  constexpr inline void clear_bit(const U8 &square) {
     bitboard_ &= ~(1ULL << square);
   }
 
-  [[nodiscard]] constexpr inline bool is_set(U8 square) const {
+  [[nodiscard]] constexpr inline bool is_set(const U8 &square) const {
     return (bitboard_ >> square) & 1;
   }
 
-  inline constexpr void move(U8 from, U8 to) {
+  inline constexpr void move(const U8 &from, const U8 &to) {
     bitboard_ ^= (1ULL << from) | (1ULL << to);
   }
 
@@ -104,7 +104,7 @@ class BitBoard {
   }
 
   constexpr inline U8 pop_lsb() {
-    U8 lsb_pos = get_lsb_pos();
+    const U8 lsb_pos = get_lsb_pos();
     bitboard_ &= bitboard_ - 1;
     return lsb_pos;
   }
@@ -118,45 +118,42 @@ class BitBoard {
     return *this;
   }
 
-  constexpr inline BitBoard &operator=(const BitBoard &other) {
-    bitboard_ = other.bitboard_;
-    return *this;
-  }
+  constexpr inline BitBoard &operator=(const BitBoard &other) = default;
 
-  constexpr inline BitBoard operator&(U64 other) const {
-    return BitBoard(bitboard_ & other);
+  constexpr inline BitBoard operator&(const U64 &other) const {
+    return {bitboard_ & other};
   }
 
   constexpr inline BitBoard operator&(const BitBoard &other) const {
-    return BitBoard(bitboard_ & other.bitboard_);
+    return {bitboard_ & other.bitboard_};
   }
 
   constexpr inline BitBoard operator|(const BitBoard &other) const {
-    return BitBoard(bitboard_ | other.bitboard_);
+    return {bitboard_ | other.bitboard_};
   }
 
-  constexpr inline BitBoard operator|(U64 other) const {
-    return BitBoard(bitboard_ | other);
+  constexpr inline BitBoard operator|(const U64 &other) const {
+    return {bitboard_ | other};
   }
 
   constexpr inline BitBoard operator|(U64 &other) const {
-    return BitBoard(bitboard_ | other);
+    return {bitboard_ | other};
   }
 
-  constexpr inline BitBoard operator^(U64 other) const {
-    return BitBoard(bitboard_ ^ other);
+  constexpr inline BitBoard operator^(const U64 &other) const {
+    return {bitboard_ ^ other};
   }
 
   constexpr inline BitBoard operator^(const BitBoard &other) const {
-    return BitBoard(bitboard_ ^ other.bitboard_);
+    return {bitboard_ ^ other.bitboard_};
   }
 
   constexpr inline BitBoard operator<<(U8 shift) const {
-    return BitBoard(bitboard_ << shift);
+    return {bitboard_ << shift};
   }
 
   constexpr inline BitBoard operator>>(U8 shift) const {
-    return BitBoard(bitboard_ >> shift);
+    return {bitboard_ >> shift};
   }
 
   constexpr inline BitBoard &operator|=(const BitBoard &other) {
@@ -169,7 +166,7 @@ class BitBoard {
     return *this;
   }
 
-  constexpr inline BitBoard &operator&=(U64 other) {
+  constexpr inline BitBoard &operator&=(const U64 &other) {
     bitboard_ &= other;
     return *this;
   }
@@ -195,31 +192,31 @@ class BitBoard {
   }
 
   constexpr inline BitBoard operator~() const {
-    return BitBoard(~bitboard_);
+    return {~bitboard_};
   }
 
   constexpr inline BitBoard operator-(const BitBoard &other) const {
-    return BitBoard(bitboard_ - other.bitboard_);
+    return {bitboard_ - other.bitboard_};
   }
 
   constexpr inline BitBoard operator-(int num) const {
-    return BitBoard(bitboard_ - num);
+    return {bitboard_ - num};
   }
 
   constexpr inline BitBoard operator-() const {
-    return BitBoard(~bitboard_ + 1);
+    return {~bitboard_ + 1};
   }
 
   constexpr inline BitBoard operator+(const BitBoard &other) const {
-    return BitBoard(bitboard_ + other.bitboard_);
+    return {bitboard_ + other.bitboard_};
   }
 
   constexpr inline BitBoard operator/(const BitBoard &other) const {
-    return BitBoard(bitboard_ / other.bitboard_);
+    return {bitboard_ / other.bitboard_};
   }
 
   constexpr inline BitBoard operator*(const BitBoard &other) const {
-    return BitBoard(bitboard_ * other.bitboard_);
+    return {bitboard_ * other.bitboard_};
   }
 
   constexpr inline bool operator==(const BitBoard &other) const {
@@ -261,11 +258,11 @@ constexpr inline BitBoard shift(const BitBoard& bitboard) {
 }
 
 inline int rank(int square) {
-  return square / kBoardRanks;
+  return square >> 3;
 }
 
 inline int file(int square) {
-  return square % kBoardFiles;
+  return square & 7;
 }
 
 static U8 rank_file_to_pos(int rank, int file) {

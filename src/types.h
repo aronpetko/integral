@@ -2,6 +2,7 @@
 #define INTEGRAL_TYPES_H_
 
 #include <cstdint>
+#include <cmath>
 
 using U8 = std::uint8_t;
 using U16 = std::uint16_t;

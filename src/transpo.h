@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cassert>
+#include <algorithm>
 
 class TranspositionTable {
  public:
@@ -36,6 +37,8 @@ class TranspositionTable {
   void clear();
 
   void save(const Entry &entry, int ply);
+
+  void prefetch(const U64 &key) const;
 
   [[nodiscard]] const Entry &probe(const U64 &key) const;
 

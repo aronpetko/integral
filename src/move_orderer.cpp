@@ -154,13 +154,12 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) con
 
     const int mvv_lva_score =
         kMVVLVATable[attacker][to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim];
-    return eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state) ?
-      kBaseGoodCaptureScore + mvv_lva_score : mvv_lva_score + MoveOrderer::move_history[state.turn][from][to];
-  }
-
-  // no point is scoring moves that the quiescent search will not look at
-  if (move_type_ == MoveType::kTactical) {
-    return std::numeric_limits<int>::min();
+    // good captures are searched first, bad captures are searched last
+    if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
+      return kBaseGoodCaptureScore + mvv_lva_score;
+    } else {
+      return kBaseBadCaptureScore + mvv_lva_score;
+    }
   }
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
