@@ -58,12 +58,6 @@ enum class NodeType {
 
 class Search {
  public:
-  explicit Search(TimeManagement::Config &time_config, Board &board);
-
-  static std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> kLateMoveReductionTable;
-
-  static void init_tables();
-
   struct Result {
     Move best_move;
     PVLine pv_line;
@@ -72,20 +66,10 @@ class Search {
     Result() : score(kScoreNone) {}
   };
 
-  Result go();
-
- private:
-  template<NodeType node_type>
-  int quiesce(int ply, int alpha, int beta);
-
-  template<NodeType node_type>
-  int search(int depth, int ply, int alpha, int beta,Result &result);
-
-  Result iterative_deepening();
-
   struct Stack {
     int static_eval;
     PVLine pv;
+    std::array<Move, 2> killers;
 
     Stack() : static_eval(kScoreNone) {}
 
@@ -97,6 +81,23 @@ class Search {
       return this - amount;
     }
   };
+
+  explicit Search(TimeManagement::Config &time_config, Board &board);
+
+  static std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> kLateMoveReductionTable;
+
+  static void init_tables();
+
+  Result go();
+
+ private:
+  template<NodeType node_type>
+  int quiesce(int ply, int alpha, int beta);
+
+  template<NodeType node_type>
+  int search(int depth, int ply, int alpha, int beta,Result &result);
+
+  Result iterative_deepening();
 
  private:
   Board &board_;

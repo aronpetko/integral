@@ -17,6 +17,10 @@ bool Move::operator==(const Move& other) const {
   return data_ == other.data_;
 }
 
+Move::operator bool() const {
+  return !is_null();
+}
+
 std::optional<Move> Move::from_str(const BoardState &state, std::string_view str) {
   const int kMinMoveLen = 4, kMaxMoveLen = 5;
   if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)

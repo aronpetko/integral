@@ -15,7 +15,7 @@ std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxPlyFromRoot> Move
 std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_moves{};
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
 
-MoveOrderer::MoveOrderer(Board &board, MoveList moves, MoveType move_type, const int &ply) noexcept
+MoveOrderer::MoveOrderer(Board &board, List<Move> moves, MoveType move_type, const int &ply) noexcept
     : board_(board), moves_(moves), move_type_(move_type), move_scores_({}), ply_(ply) {
   score_moves();
 }
@@ -60,7 +60,7 @@ void MoveOrderer::update_counter_move(const Move &prev_move, const Move &counter
 
 const int kHistoryCap = 8192;
 
-void MoveOrderer::update_move_history(const Move &move, MoveList& quiet_non_cutoffs, Color turn, int depth) {
+void MoveOrderer::update_move_history(const Move &move, List<Move>& quiet_non_cutoffs, Color turn, int depth) {
   auto &move_history_score = MoveOrderer::move_history[turn][move.get_from()][move.get_to()];
 
   // apply a linear dampening to the bonus as the depth increases
@@ -73,7 +73,7 @@ void MoveOrderer::update_move_history(const Move &move, MoveList& quiet_non_cuto
   penalize_move_history(quiet_non_cutoffs, turn, depth);
 }
 
-void MoveOrderer::penalize_move_history(MoveList& moves, Color turn, int depth) {
+void MoveOrderer::penalize_move_history(List<Move>& moves, Color turn, int depth) {
   const int bonus = depth * depth;
   for (int i = 0; i < moves.size(); i++) {
     const auto &move = moves[i];
@@ -111,7 +111,7 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_move = Move::null_move();
 
   if (tt_entry.key == state.zobrist_key && !tt_entry.move.is_null()) {
-    if (move_type_ != MoveType::kTactical || tt_entry.move.is_tactical(state)) {
+    if (move_type_ != MoveType::kCaptures || tt_entry.move.is_capture(state)) {
       tt_move = tt_entry.move;
     }
   }

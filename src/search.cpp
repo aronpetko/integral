@@ -1,8 +1,9 @@
 #include "search.h"
 #include "move_gen.h"
 #include "transpo.h"
-#include "move_orderer.h"
+#include "move_picker.h"
 #include "time_mgmt.h"
+#include "move_orderer.h"
 
 #include <iomanip>
 #include <format>
@@ -71,10 +72,13 @@ int Search::quiesce(int ply, int alpha, int beta) {
   alpha = std::max(alpha, static_eval);
   const int original_alpha = alpha;
 
-  MoveOrderer move_orderer(board_, move_gen::tactical_moves(board_), MoveType::kTactical, ply);
-  for (int i = 0; i < move_orderer.size(); i++) {
-    const auto &move = move_orderer.get_move(i);
+  auto search_stack = &stack_[ply];
 
+  // MoveOrderer move_orderer(board_, move_gen::tactical_moves(board_), MoveType::kTactical, ply);
+  MovePicker move_picker(MovePickerType::kSearch, board_, tt_entry.move, search_stack);
+
+  Move move;
+  while ((move = move_picker.next())) {
     // static exchange evaluation (SEE) pruning
     // don't look at moves that result in lost material
     if (!eval::static_exchange(move, -100, state)) {
@@ -254,21 +258,20 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     }
   }
 
-  MoveOrderer::clear_killers(ply + 1);
+  search_stack->ahead(1)->killers.fill(Move::null_move());
 
   bool skip_quiets = false;
 
-  MoveList quiet_non_cutoffs;
+  List<Move> quiet_non_cutoffs;
   int moves_tried = 0;
 
   Move best_move = Move::null_move();
   int best_score = std::numeric_limits<int>::min();
 
-  // order the list of moves to increase the likelihood of pruning this branch
-  MoveOrderer move_orderer(board_, move_gen::moves(board_), MoveType::kAll, ply);
-  for (int i = 0; i < move_orderer.size(); i++) {
-    const Move &move = move_orderer.get_move(i);
+  MovePicker move_picker(MovePickerType::kSearch, board_, tt_entry.move, search_stack);
 
+  Move move;
+  while ((move = move_picker.next())) {
     const bool is_quiet = !move.is_tactical(state);
     if (is_quiet && skip_quiets) {
       continue;
@@ -386,7 +389,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
       if (is_quiet) {
-        MoveOrderer::update_killer_move(move, depth);
+        if (move != search_stack->killers[0]) {
+          search_stack->killers[1] = search_stack->killers[0];
+          search_stack->killers[0] = move;
+        }
+
+        // moveOrderer::update_killer_move(move, depth);
         MoveOrderer::update_counter_move(state.move_played, move);
         MoveOrderer::update_move_history(move, quiet_non_cutoffs, state.turn, depth);
       }

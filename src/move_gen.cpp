@@ -216,34 +216,37 @@ bool king_in_check(Color color, const BoardState &state) {
   return is_square_attacked(state.king(color).get_lsb_pos(), flip_color(color), state);
 }
 
-MoveList moves(Board &board) {
-  MoveList move_list;
+List<Move> moves(MoveType move_type, Board &board) {
+  List<Move> move_list;
 
   auto &state = board.get_state();
 
   const BitBoard &our_pieces = state.occupied(state.turn);
   const BitBoard &their_pieces = state.occupied(flip_color(state.turn));
   const BitBoard occupied = state.occupied();
-
   const BitBoard en_passant_mask = state.en_passant != Square::kNoSquare ? BitBoard::from_square(state.en_passant) : 0;
+
+  BitBoard targets = 0;
+  if (move_type & MoveType::kQuiet) {
+    targets |= ~occupied;
+  }
+  if (move_type & MoveType::kCaptures) {
+    targets |= their_pieces;
+  }
 
   BitBoard pawns = state.pawns(state.turn);
   while (pawns) {
     const U8 from = pawns.pop_lsb();
 
-    auto possible_moves = pawn_moves(from, state) | (pawn_attacks(from, state) & (their_pieces | en_passant_mask));
-
-    const bool en_passant_set = state.en_passant != Square::kNoSquare && possible_moves.is_set(state.en_passant);
-    possible_moves &= ~our_pieces;
-    if (en_passant_set) possible_moves |= en_passant_mask;
+    auto possible_moves = pawn_moves(from, state) & targets;
+    possible_moves |= pawn_attacks(from, state) & (their_pieces | en_passant_mask);
 
     while (possible_moves) {
       const auto to = possible_moves.pop_lsb();
       const auto to_rank = rank(to);
 
       // add the different promotion moves if possible
-      if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1) ||
-           (state.turn == Color::kBlack && to_rank == 0))) {
+      if (to_rank == kBoardRanks - 1 || to_rank == 0) {
         move_list.push(Move(from, to, PromotionType::kQueen));
         move_list.push(Move(from, to, PromotionType::kRook));
         move_list.push(Move(from, to, PromotionType::kKnight));
@@ -259,7 +262,7 @@ MoveList moves(Board &board) {
   while (knights) {
     const U8 from = knights.pop_lsb();
 
-    auto possible_moves = knight_moves(from) & ~our_pieces;
+    auto possible_moves = knight_moves(from) & targets;
     while (possible_moves) {
       const U8 to = possible_moves.pop_lsb();
       move_list.push(Move(from, to));
@@ -270,7 +273,7 @@ MoveList moves(Board &board) {
   while (bishops) {
     const U8 from = bishops.pop_lsb();
 
-    auto possible_moves = bishop_moves(from, occupied) & ~our_pieces;
+    auto possible_moves = bishop_moves(from, occupied) & targets;
     while (possible_moves) {
       const U8 to = possible_moves.pop_lsb();
       move_list.push(Move(from, to));
@@ -281,7 +284,7 @@ MoveList moves(Board &board) {
   while (rooks) {
     const U8 from = rooks.pop_lsb();
 
-    auto possible_moves = rook_moves(from, occupied) & ~our_pieces;
+    auto possible_moves = rook_moves(from, occupied) & targets;
     while (possible_moves) {
       const U8 to = possible_moves.pop_lsb();
       move_list.push(Move(from, to));
@@ -292,7 +295,7 @@ MoveList moves(Board &board) {
   while (queens) {
     const U8 from = queens.pop_lsb();
 
-    auto possible_moves = (rook_moves(from, occupied) | bishop_moves(from, occupied)) & ~our_pieces;
+    auto possible_moves = (rook_moves(from, occupied) | bishop_moves(from, occupied)) & targets;
     while (possible_moves) {
       const U8 to = possible_moves.pop_lsb();
       move_list.push(Move(from, to));
@@ -303,7 +306,7 @@ MoveList moves(Board &board) {
   if (king) {
     const U8 from = king.get_lsb_pos();
 
-    auto possible_moves = king_moves(from, state) & ~our_pieces;
+    auto possible_moves = king_moves(from, state) & targets;
     while (possible_moves) {
       const U8 to = possible_moves.pop_lsb();
       move_list.push(Move(from, to));
@@ -313,138 +316,7 @@ MoveList moves(Board &board) {
   return move_list;
 }
 
-MoveList legal_moves(Board &board) {
-  auto &state = board.get_state();
-
-  const auto is_legal_move = [&board, &state](const Move &move) {
-    board.make_move(move);
-    const bool in_check = king_in_check(flip_color(state.turn), state);
-    board.undo_move();
-    return !in_check;
-  };
-
-  MoveList pseudo_legal_moves = moves(board), legal_moves;
-
-  for (int i = 0; i < pseudo_legal_moves.size(); i++) {
-    if (is_legal_move(pseudo_legal_moves[i])) {
-      legal_moves.push(pseudo_legal_moves[i]);
-    }
-  }
-
-  return legal_moves;
-}
-
-MoveList tactical_moves(Board &board) {
-  MoveList move_list;
-
-  auto &state = board.get_state();
-
-  const BitBoard &our_pieces = state.occupied(state.turn);
-  const BitBoard &their_pieces = state.occupied(flip_color(state.turn));
-  const BitBoard occupied = state.occupied();
-
-  BitBoard pawns = state.pawns(state.turn);
-  while (pawns) {
-    const U8 from = pawns.pop_lsb();
-
-    const BitBoard en_passant_mask =
-        state.en_passant != Square::kNoSquare ? BitBoard::from_square(state.en_passant) : BitBoard(0);
-    auto possible_moves = pawn_attacks(from, state) & (their_pieces | en_passant_mask);
-
-    const bool en_passant_set = state.en_passant != Square::kNoSquare && possible_moves.is_set(state.en_passant);
-    possible_moves &= ~our_pieces;
-    if (en_passant_set) possible_moves.set_bit(state.en_passant);
-
-    while (possible_moves) {
-      const auto to = possible_moves.pop_lsb();
-      const auto to_rank = rank(to);
-
-      // add the different promotion moves if possible
-      if (((state.turn == Color::kWhite && to_rank == kBoardRanks - 1) ||
-           (state.turn == Color::kBlack && to_rank == 0))) {
-        move_list.push(Move(from, to, PromotionType::kQueen));
-        move_list.push(Move(from, to, PromotionType::kRook));
-        move_list.push(Move(from, to, PromotionType::kKnight));
-        move_list.push(Move(from, to, PromotionType::kBishop));
-        continue;
-      } else {
-        const auto move = Move(from, to);
-        if (move.is_capture(state)) {
-          move_list.push(move);
-        }
-      }
-    }
-  }
-
-  BitBoard knights = state.knights(state.turn);
-  while (knights) {
-    const U8 from = knights.pop_lsb();
-
-    auto possible_moves = knight_moves(from);
-    possible_moves &= ~our_pieces & their_pieces;
-
-    while (possible_moves) {
-      const U8 to = possible_moves.pop_lsb();
-      move_list.push(Move(from, to));
-    }
-  }
-
-  BitBoard bishops = state.bishops(state.turn);
-  while (bishops) {
-    const U8 from = bishops.pop_lsb();
-
-    auto possible_moves = bishop_moves(from, occupied);
-    possible_moves &= ~our_pieces & their_pieces;
-
-    while (possible_moves) {
-      const U8 to = possible_moves.pop_lsb();
-      move_list.push(Move(from, to));
-    }
-  }
-
-  BitBoard rooks = state.rooks(state.turn);
-  while (rooks) {
-    const U8 from = rooks.pop_lsb();
-
-    auto possible_moves = rook_moves(from, occupied);
-    possible_moves &= ~our_pieces & their_pieces;
-
-    while (possible_moves) {
-      const U8 to = possible_moves.pop_lsb();
-      move_list.push(Move(from, to));
-    }
-  }
-
-  BitBoard queens = state.queens(state.turn);
-  while (queens) {
-    const U8 from = queens.pop_lsb();
-
-    auto possible_moves = rook_moves(from, occupied) | bishop_moves(from, occupied);
-    possible_moves &= ~our_pieces & their_pieces;
-
-    while (possible_moves) {
-      const U8 to = possible_moves.pop_lsb();
-      move_list.push(Move(from, to));
-    }
-  }
-
-  BitBoard king = state.king(state.turn);
-  while (king) {
-    const U8 from = king.pop_lsb();
-
-    auto possible_moves = king_moves(from, state);
-    possible_moves &= ~our_pieces & their_pieces;
-
-    while (possible_moves) {
-      const U8 to = possible_moves.pop_lsb();
-      move_list.push(Move(from, to));
-    }
-  }
-
-  return move_list;
-}
-
-MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
+List<Move> filter_moves(List<Move> &moves, MoveType type, Board &board) {
   if (type == MoveType::kAll) return moves;
 
   auto &state = board.get_state();
@@ -456,7 +328,7 @@ MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
     return in_check;
   };
 
-  MoveList filtered;
+  List<Move> filtered;
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
     const bool is_capture = move.is_capture(state);
@@ -475,4 +347,4 @@ MoveList filter_moves(MoveList &moves, MoveType type, Board &board) {
   return filtered;
 }
 
-}  // namespace move_gen
+}

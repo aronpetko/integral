@@ -26,6 +26,8 @@ class Move {
 
   bool operator==(const Move &other) const;
 
+  operator bool() const;
+
   static std::optional<Move> from_str(const BoardState &state, std::string_view str);
 
   [[nodiscard]] bool is_capture(const BoardState &state) const;

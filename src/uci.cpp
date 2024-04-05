@@ -79,7 +79,7 @@ int perft_internal(Board &board, int depth, int start_depth) {
   auto &state = board.get_state();
 
   int nodes = 0;
-  auto moves = move_gen::moves(board);
+  auto moves = move_gen::moves(MoveType::kCaptures, board);
 
   for (int i = 0; i < moves.size(); i++) {
     board.make_move(moves[i]);

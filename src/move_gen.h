@@ -5,20 +5,21 @@
 #include "board.h"
 #include "types.h"
 
-class MoveList {
+template<class T>
+class List {
  public:
-  explicit MoveList(const std::array<Move, 256> &moves, int count) : moves_(moves), count_(count) {}
+  explicit List(const std::array<T, 256> &container, int count) : container_(container), count_(count) {}
 
-  MoveList() : count_(0) {}
+  List() : count_(0) {}
 
-  inline Move &operator[](int i) {
+  inline T &operator[](int i) {
     assert(i >= 0 && i < count_);
-    return moves_[i];
+    return container_[i];
   }
 
-  inline void push(const Move &move) {
-    assert(count_ < moves_.size());
-    moves_[count_++] = move;
+  inline void push(const T &object) {
+    assert(count_ < container_.size());
+    container_[count_++] = object;
   }
 
   inline void pop_back() {
@@ -35,7 +36,7 @@ class MoveList {
   }
 
  private:
-  std::array<Move, 256> moves_;
+  std::array<T, 256> container_;
   int count_;
 };
 
@@ -64,13 +65,9 @@ BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool incl
 
 bool king_in_check(Color color, const BoardState &state);
 
-MoveList moves(Board &board);
+List<Move> moves(MoveType move_type, Board &board);
 
-MoveList legal_moves(Board &board);
-
-MoveList tactical_moves(Board &board);
-
-MoveList filter_moves(MoveList &moves, MoveType type, Board &board);
+List<Move> filter_moves(List<Move> &moves, MoveType type, Board &board);
 
 }
 

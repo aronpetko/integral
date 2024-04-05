@@ -6,7 +6,7 @@
 
 class MoveOrderer {
  public:
-  explicit MoveOrderer(Board &board, MoveList moves, MoveType move_type, const int &ply) noexcept;
+  explicit MoveOrderer(Board &board, List<Move> moves, MoveType move_type, const int &ply) noexcept;
 
   const Move &get_move(int start) noexcept;
 
@@ -20,9 +20,9 @@ class MoveOrderer {
 
   static void update_counter_move(const Move &prev_move, const Move &counter);
 
-  static void update_move_history(const Move &move, MoveList& quiet_non_cutoffs, Color turn, int depth);
+  static void update_move_history(const Move &move, List<Move>& quiet_non_cutoffs, Color turn, int depth);
 
-  static void penalize_move_history(MoveList& moves, Color turn, int depth);
+  static void penalize_move_history(List<Move>& moves, Color turn, int depth);
 
   static void clear_move_history();
 
@@ -35,11 +35,12 @@ class MoveOrderer {
 
  private:
   Board &board_;
-  MoveList moves_;
+  List<Move> moves_;
   MoveType move_type_;
   std::array<int, 256> move_scores_;
   int ply_;
 
+ public:
   static constexpr int kNumKillerMoves = 2;
   static std::array<std::array<Move, kNumKillerMoves>, kMaxPlyFromRoot> killer_moves;
   static std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> counter_moves;
