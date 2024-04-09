@@ -20,7 +20,7 @@ enum class MovePickerType {
 
 class MovePicker {
  public:
-  MovePicker(MovePickerType type, Board &board, const Move &tt_move, Search::Stack *search_stack);
+  MovePicker(MovePickerType type, Board &board, Move tt_move, Search::Stack *search_stack);
 
   Move next();
 
@@ -35,6 +35,8 @@ class MovePicker {
  private:
   enum class Stage {
     kTTMove,
+    kGenerateMoves,
+    kPlayMoves,
     kGenerateCaptures,
     kGoodCaptures,
     kFirstKiller,
@@ -43,21 +45,15 @@ class MovePicker {
     kGenerateQuiets,
     kQuiets,
     kBadCaptures,
-    kFinished
   };
 
   Board &board_;
-  const Move &tt_move_;
+  Move tt_move_;
   MovePickerType type_;
   Search::Stack *search_stack_;
   Stage stage_;
-  List<ScoredMove> captures_;
-  List<ScoredMove> good_captures_;
-  List<ScoredMove> bad_captures_;
-  List<ScoredMove> quiets_;
-  int good_captures_idx_;
-  int bad_captures_idx_;
-  int quiets_idx_;
+  List<ScoredMove> scored_moves_;
+  int moves_idx_;
 };
 
-#endif //INTEGRAL_MOVE_PICKER_H_
+#endif // INTEGRAL_MOVE_PICKER_H_

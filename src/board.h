@@ -204,7 +204,7 @@ class Board {
 
   void set_from_fen(const std::string &fen_str);
 
-  [[nodiscard]] bool is_legal_move(const Move &move);
+  [[nodiscard]] bool is_move_pseudo_legal(const Move &move);
 
   void make_move(const Move &move);
 

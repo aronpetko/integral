@@ -221,31 +221,34 @@ List<Move> moves(MoveType move_type, Board &board) {
 
   auto &state = board.get_state();
 
-  const BitBoard &our_pieces = state.occupied(state.turn);
-  const BitBoard &their_pieces = state.occupied(flip_color(state.turn));
   const BitBoard occupied = state.occupied();
+  const BitBoard &their_pieces = state.occupied(flip_color(state.turn));
   const BitBoard en_passant_mask = state.en_passant != Square::kNoSquare ? BitBoard::from_square(state.en_passant) : 0;
 
   BitBoard targets = 0;
-  if (move_type & MoveType::kQuiet) {
+  if (move_type & MoveType::kQuiet)
     targets |= ~occupied;
-  }
-  if (move_type & MoveType::kCaptures) {
+  if (move_type & MoveType::kCaptures)
     targets |= their_pieces;
-  }
 
   BitBoard pawns = state.pawns(state.turn);
   while (pawns) {
     const U8 from = pawns.pop_lsb();
 
-    auto possible_moves = pawn_moves(from, state) & targets;
-    possible_moves |= pawn_attacks(from, state) & (their_pieces | en_passant_mask);
+    BitBoard pawn_targets = targets;
+    if (move_type & MoveType::kTactical) {
+      pawn_targets |= RankMask::kRank1 | RankMask::kRank8;
+    }
+
+    auto possible_moves = pawn_moves(from, state) & pawn_targets;
+    if (move_type & MoveType::kCaptures) {
+      possible_moves |= pawn_attacks(from, state) & (their_pieces | en_passant_mask);
+    }
 
     while (possible_moves) {
       const auto to = possible_moves.pop_lsb();
       const auto to_rank = rank(to);
 
-      // add the different promotion moves if possible
       if (to_rank == kBoardRanks - 1 || to_rank == 0) {
         move_list.push(Move(from, to, PromotionType::kQueen));
         move_list.push(Move(from, to, PromotionType::kRook));

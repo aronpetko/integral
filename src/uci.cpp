@@ -1,5 +1,6 @@
 #include "uci.h"
 #include "move_gen.h"
+#include "move_picker.h"
 
 #include <string>
 #include <format>
@@ -18,7 +19,7 @@ void position(Board &board, std::stringstream &input_stream) {
     position_fen = fen::kStartFen;
   }
 
-  const int kTranspositionTableMbSize = 64;
+  const int kTranspositionTableMbSize = 128;
   if (!board.initialized()) {
     board = Board(kTranspositionTableMbSize);
   }
@@ -32,7 +33,7 @@ void position(Board &board, std::stringstream &input_stream) {
   while (input_stream >> move_input) {
     const auto move = Move::from_str(board.get_state(), move_input);
 
-    if (move.has_value() && board.is_legal_move(move.value())) {
+    if (move.has_value() && board.is_move_pseudo_legal(move.value())) {
       board.make_move(move.value());
     } else {
       std::cerr << std::format("invalid move: {}\n", move_input);
@@ -79,16 +80,18 @@ int perft_internal(Board &board, int depth, int start_depth) {
   auto &state = board.get_state();
 
   int nodes = 0;
-  auto moves = move_gen::moves(MoveType::kCaptures, board);
+  //auto moves = move_gen::moves(MoveType::kAll, board);
 
-  for (int i = 0; i < moves.size(); i++) {
-    board.make_move(moves[i]);
+  MovePicker mp(MovePickerType::kSearch, board, Move::null_move(), nullptr);
+  Move move;
+  while ((move = mp.next())) {
+    board.make_move(move);
     if (!move_gen::king_in_check(flip_color(state.turn), state)) {
       const int pos_nodes = perft_internal(board, depth - 1, start_depth);
       nodes += pos_nodes;
 
       if (depth == start_depth) {
-        std::cout << std::format("{}: {}\n", moves[i].to_string(), pos_nodes);
+        std::cout << std::format("{}: {}\n", move.to_string(), pos_nodes);
       }
     }
     board.undo_move();

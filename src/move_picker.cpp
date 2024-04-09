@@ -12,72 +12,32 @@ const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPiec
 }};
 // clang-format on
 
-MovePicker::MovePicker(MovePickerType type, Board &board, const Move &tt_move, Search::Stack *search_stack)
-    : type_(type), board_(board), tt_move_(tt_move), stage_(Stage::kTTMove), search_stack_(search_stack),
-      quiets_idx_(0), bad_captures_idx_(0), good_captures_idx_(0) {}
+MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, Search::Stack *search_stack)
+    : type_(type),
+      board_(board),
+      tt_move_(tt_move),
+      stage_(Stage::kTTMove),
+      search_stack_(search_stack),
+      moves_idx_(0) {}
 
 Move MovePicker::next() {
-  const auto &state = board_.get_state();
-  switch (stage_) {
-    case Stage::kTTMove: {
-      if (!tt_move_.is_null()) {
-        return tt_move_;
-      }
-      stage_ = Stage::kGenerateQuiets;
-      // fall through
+  if (stage_ == Stage::kTTMove) {
+    stage_ = Stage::kGenerateMoves;
+    if (tt_move_ && board_.is_move_pseudo_legal(tt_move_)) {
+      return tt_move_;
     }
-    case Stage::kGenerateCaptures:
-      captures_ = generate_and_score_moves<MoveType::kCaptures>();
-      stage_ = Stage::kGoodCaptures;
-      // fall through
-    case Stage::kGoodCaptures: {
-      if (good_captures_idx_ < good_captures_.size()) {
-        return selection_sort(good_captures_, good_captures_idx_++).move;
-      }
-      stage_ = Stage::kFirstKiller;
-      // fall through
+  }
+
+  if (stage_ == Stage::kGenerateMoves) {
+    stage_ = Stage::kPlayMoves;
+    scored_moves_ = type_ == MovePickerType::kQuiescence ? generate_and_score_moves<MoveType::kTactical>()
+                                                         : generate_and_score_moves<MoveType::kAll>();
+  }
+
+  if (stage_ == Stage::kPlayMoves) {
+    if (moves_idx_ < scored_moves_.size()) {
+      return selection_sort(scored_moves_, moves_idx_++).move;
     }
-    case Stage::kFirstKiller: {
-      const auto &first_killer = search_stack_->killers[0];
-      if (!first_killer.is_null() &&
-          (type_ == MovePickerType::kSearch || first_killer.is_tactical(state))) {
-        return first_killer;
-      }
-      stage_ = Stage::kSecondKiller;
-      // fall through
-    }
-    case Stage::kSecondKiller: {
-      const auto &second_killer = search_stack_->killers[1];
-      if (!second_killer.is_null() &&
-          (type_ == MovePickerType::kSearch || second_killer.is_tactical(state))) {
-        return second_killer;
-      }
-      stage_ = Stage::kCounterMove;
-      // fall through
-    }
-    case Stage::kCounterMove:
-      stage_ = Stage::kGenerateQuiets;
-      // fall through
-    case Stage::kGenerateQuiets:
-      if (type_ != MovePickerType::kQuiescence) {
-        quiets_ = generate_and_score_moves<MoveType::kQuiet>();
-      }
-      stage_ = Stage::kQuiets;
-    case Stage::kQuiets:
-      if (type_ != MovePickerType::kQuiescence) {
-        if (quiets_idx_ < quiets_.size()) {
-          return selection_sort(quiets_, quiets_idx_++).move;
-        }
-      }
-      stage_ = Stage::kBadCaptures;
-      // fall through
-    case Stage::kBadCaptures:
-      if (bad_captures_idx_ < bad_captures_.size()) {
-        return selection_sort(bad_captures_, bad_captures_idx_++).move;
-      }
-      break;
-    default:
-      break;
   }
 
   return Move::null_move();
@@ -99,7 +59,9 @@ List<ScoredMove> MovePicker::generate_and_score_moves() {
 
   List<ScoredMove> scored_moves;
   for (int i = 0; i < moves.size(); i++) {
-    scored_moves.push(ScoredMove(moves[i], score_move(moves[i])));
+    if (moves[i] != tt_move_) {
+      scored_moves.push(ScoredMove(moves[i], score_move(moves[i])));
+    }
   }
 
   return scored_moves;
@@ -109,12 +71,7 @@ int MovePicker::score_move(Move &move) {
   const auto from = move.get_from();
   const auto to = move.get_to();
 
-  // tt move get priority since it's the current stored best move
-  if (move == tt_move_) {
-    return std::numeric_limits<int>::max();
-  }
-
-  // queen and knight promotions get next priority
+  // queen and knight promotions get priority
   switch (move.get_promotion_type()) {
     case PromotionType::kNone:
       break;
@@ -140,20 +97,20 @@ int MovePicker::score_move(Move &move) {
         kMVVLVATable[attacker][to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim];
     // good captures are searched first, bad captures are searched last
     if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
-      score += kBaseGoodCaptureScore;
-      good_captures_.push(ScoredMove(move, score));
+      //score += kBaseGoodCaptureScore;
+      // good_captures_.push(ScoredMove(move, score));
     } else {
-      score += kBaseBadCaptureScore;
-      bad_captures_.push(ScoredMove(move, score));
+      //score += kBaseBadCaptureScore;
+      // bad_captures_.push(ScoredMove(move, score));
     }
 
-    return score;
+    return score + kBaseGoodCaptureScore;
   }
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
   const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
-  for (int i = 0; i < 2; i++) {
-    if (search_stack_->killers[i] == move) {
+  if (search_stack_) {
+    if (search_stack_->killers[0] == move || search_stack_->killers[1] == move) {
       return kKillerMoveScore;
     }
   }

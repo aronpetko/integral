@@ -71,7 +71,7 @@ class Search {
     PVLine pv;
     std::array<Move, 2> killers;
 
-    Stack() : static_eval(kScoreNone) {}
+    Stack() : static_eval(kScoreNone), killers({}) {}
 
     Stack *ahead(int amount = 1) {
       return this + amount;

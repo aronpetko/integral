@@ -34,9 +34,10 @@ enum class PromotionType : U8 {
 };
 
 enum MoveType : U8 {
-  kCaptures = 1,
-  kQuiet,
-  kAll = kCaptures | kQuiet,
+  kCaptures = 0b1,
+  kQuiet = 0b10,
+  kTactical = 0b100 | kCaptures,
+  kAll = kCaptures | kQuiet | kTactical,
 };
 
 enum Color : U8 {

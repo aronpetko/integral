@@ -27,12 +27,20 @@ class List {
     --count_;
   }
 
+  inline void erase(int i) {
+    std::swap(container_[i], container_[--count_]);
+  }
+
   [[nodiscard]] inline int size() const {
     return count_;
   }
 
   [[nodiscard]] inline int empty() const {
     return count_ == 0;
+  }
+
+  [[nodiscard]] inline std::array<T, 256> &data() {
+    return container_;
   }
 
  private:

@@ -19,18 +19,16 @@ void Board::set_from_fen(const std::string &fen_str) {
   initialized_ = true;
 }
 
-bool Board::is_legal_move(const Move &move) {
+bool Board::is_move_pseudo_legal(const Move &move) {
   const auto from = move.get_from(), to = move.get_to();
 
   const BitBoard &our_pieces = state_.occupied(state_.turn);
-  const BitBoard &their_pieces = state_.occupied(flip_color(state_.turn));
-  const BitBoard occupied = our_pieces | their_pieces;
-
-  // check if the moved piece belongs to the current move's player
   if (!our_pieces.is_set(from)) {
-    std::cerr << "this piece doesn't belong to you" << std::endl;
     return false;
   }
+
+  const BitBoard &their_pieces = state_.occupied(flip_color(state_.turn));
+  const BitBoard occupied = our_pieces | their_pieces;
 
   BitBoard possible_moves;
 
@@ -44,13 +42,13 @@ bool Board::is_legal_move(const Move &move) {
       break;
     case PieceType::kBishop: possible_moves = move_gen::bishop_moves(from, occupied);
       break;
-    case PieceType::kRook: possible_moves = move_gen::rook_moves(from, our_pieces);
+    case PieceType::kRook: possible_moves = move_gen::rook_moves(from, occupied);
       break;
     case PieceType::kQueen: possible_moves = move_gen::bishop_moves(from, occupied) | move_gen::rook_moves(from, occupied);
       break;
     case PieceType::kKing: possible_moves = move_gen::king_moves(from, state_);
       break;
-    default: std::cerr << "this piece doesn't exist" << std::endl;
+    default:
       return false;
   }
 
@@ -58,20 +56,7 @@ bool Board::is_legal_move(const Move &move) {
   possible_moves &= ~our_pieces;
   if (en_passant_set) possible_moves.set_bit(state_.en_passant);
 
-  if (possible_moves.is_set(to)) {
-    // check if this move puts the king in check
-    // now that we have made the move, the turn to move has flipped to the other side, so we flip it back to see if that king is in check
-    make_move(move);
-    bool in_check = move_gen::king_in_check(flip_color(state_.turn), state_);
-    undo_move();
-
-    if (in_check)
-      std::cerr << "this move places you in check" << std::endl;
-    return !in_check;
-  }
-
-  std::cerr << "this piece cant move here" << std::endl;
-  return false;
+  return possible_moves.is_set(to);
 }
 
 void Board::make_move(const Move &move) {
