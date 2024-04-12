@@ -1,9 +1,9 @@
 #include "search.h"
 #include "move_gen.h"
 #include "transpo.h"
+#include "move_orderer.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
-#include "move_orderer.h"
 
 #include <iomanip>
 #include <format>
@@ -13,16 +13,16 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
       time_mgmt_(time_config, board),
       stack_({}) {}
 
-std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> Search::kLateMoveReductionTable;
+std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> Search::kLateMoveReductionTable{{}};
 
 void Search::init_tables() {
-  const double kBaseReduction = 0.77;
+  const double kBaseReduction = 0.39;
   const double kDivisor = 2.36;
 
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxPlyFromRoot; move++) {
       Search::kLateMoveReductionTable[depth][move] =
-          static_cast<int>(0.25 + 0.46 * std::log(depth) * std::log(move));
+          static_cast<int>(kBaseReduction + std::log(depth) * std::log(move) / kDivisor);
     }
   }
 }
@@ -43,15 +43,17 @@ int Search::quiesce(int ply, int alpha, int beta) {
   constexpr auto pv_node_type = in_pv_node ? NodeType::kPV : NodeType::kNonPV;
 
   const auto &tt_entry = transpo.probe(state.zobrist_key);
-  const bool tt_hit = tt_entry.key == state.zobrist_key;
-  if (in_pv_node && tt_hit && (tt_entry.flag == TranspositionTable::Entry::kExact
-      || (tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta)
-      || (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha))) {
+  const bool tt_hit = tt_entry.compare_key(state.zobrist_key);
+  const Move tt_move = tt_entry.move;
+  if (!in_pv_node && tt_hit && tt_entry.score != kScoreNone &&
+      (tt_entry.flag == TranspositionTable::Entry::kExact ||
+       (tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta) ||
+       (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha))) {
     return transpo.correct_score(tt_entry.score, ply);
   }
 
   const int static_eval = tt_hit ? tt_entry.score : eval::evaluate(state);
-  if (ply >= kMaxPlyFromRoot - 4) {
+  if (ply >= kMaxPlyFromRoot) {
     return static_eval;
   }
 
@@ -59,33 +61,21 @@ int Search::quiesce(int ply, int alpha, int beta) {
     return static_eval;
   }
 
-  Move best_move;
+  Move best_move = Move::null_move();
   int best_score = static_eval;
   int moves_tried = 0;
 
   alpha = std::max(alpha, static_eval);
   const int original_alpha = alpha;
 
-  auto search_stack = &stack_[ply];
-
-  const bool in_check = move_gen::king_in_check(state.turn, state);
-  const bool search_tt_move = tt_hit && (in_check || tt_entry.move.is_tactical(state));
-
-  // MoveOrderer move_orderer(board_, move_gen::tactical_moves(board_), MoveType::kTactical, ply);
- // MovePicker move_picker(MovePickerType::kQuiescence, board_, tt_hit ? tt_entry.move : Move::null_move(), search_stack);
-  //Move move;
- // while (move = move_picker.next()) {
-  MoveOrderer move_orderer(board_, move_gen::moves(MoveType::kTactical, board_), MoveType::kTactical, ply);
-  for (int i = 0; i < move_orderer.size(); i++) {
-    auto &move = move_orderer.get_move(i);
-
-    // static exchange evaluation (SEE) pruning
-    // don't look at moves that result in lost material
-    if (!eval::static_exchange(move, -100, state)) {
-      continue;
-    }
+  MovePicker move_picker(MovePickerType::kQuiescence, board_, tt_move, &stack_[ply]);
+  Move move;
+  while (move = move_picker.next()) {
+    // load the transposition table entry for this move in the background
+    transpo.prefetch(board_.key_after(move));
 
     board_.make_move(move);
+
     // since the move generator is pseudo-legal, we must verify legality here
     if (move_gen::king_in_check(flip_color(state.turn), state)) {
       board_.undo_move();
@@ -116,6 +106,8 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
     if (score > best_score) {
       best_score = score;
+      best_move = move;
+
       if (score >= beta) {
         break;
       }
@@ -137,7 +129,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
     entry.flag = TranspositionTable::Entry::kExact;
   }
 
-  transpo.save(entry, ply);
+  transpo.save(state.zobrist_key, entry, ply);
   return best_score;
 }
 
@@ -158,9 +150,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
 
   const bool in_check = move_gen::king_in_check(state.turn, state);
   if (in_check) {
-    if (++depth <= 0) {
-      depth = 1;
-    }
+    depth++;
   }
 
   // enter quiescent search to return a final score for the original position
@@ -185,21 +175,25 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   // b) return alpha if this position score indicates a better option us
   // c) return beta if this position's score suggests a worse option for the opponent
   const auto &tt_entry = transpo.probe(state.zobrist_key);
-  const bool tt_hit = tt_entry.key == state.zobrist_key;
-  if (!in_pv_node && tt_hit && tt_entry.depth >= depth && (tt_entry.flag == TranspositionTable::Entry::kExact
-      || (tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta)
-      || (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha))) {
+  const bool tt_hit = tt_entry.compare_key(state.zobrist_key);
+  const Move tt_move = tt_entry.move;
+  if (!in_pv_node && tt_hit && tt_entry.depth >= depth && tt_entry.score != kScoreNone &&
+      (tt_entry.flag == TranspositionTable::Entry::kExact ||
+       (tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta) ||
+       (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha))) {
     return transpo.correct_score(tt_entry.score, ply);
   }
 
-  const int static_eval = tt_hit ? tt_entry.score : eval::evaluate(state);
-  if (ply >= kMaxPlyFromRoot - 4) {
+  const int static_eval = tt_hit && !in_check ? tt_entry.score : eval::evaluate(state);
+  if (ply >= kMaxPlyFromRoot) [[unlikely]] {
     return static_eval;
   }
 
   bool improving = false;
 
   auto search_stack = &stack_[ply];
+  search_stack->ply = ply;
+
   if (!in_check) {
     search_stack->static_eval = static_eval;
     if (ply >= 2 && search_stack->behind(2)->static_eval != kScoreNone) {
@@ -221,7 +215,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   // we assume that the static evaluation of the current position can't fall below beta within the next move
   // the margin for this comparison is scaled based on how many moves left we have to search
   if (depth <= 6 && !in_pv_node && !in_check) {
-    const int futility_margin = (depth - improving) * 90;
+    const int futility_margin = (depth - improving) * 120;
     if (static_eval - futility_margin >= beta) {
       return static_eval;
     }
@@ -229,7 +223,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
 
   // razoring: when evaluation is far below alpha, we assume only captures can bring us back
   // therefore, drop into quiesce and cut off  if we still can't hit alpha
-  if (!in_pv_node && !in_check && alpha < 2000 && static_eval < alpha - 400 - 250 * depth * depth) {
+  if (!in_pv_node && !in_check && alpha < 2000 && static_eval < alpha - 400 * depth) {
     const int razoring_score = quiesce<pv_node_type>(ply, alpha, beta);
     if (razoring_score <= alpha) {
       return razoring_score;
@@ -260,52 +254,47 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     }
   }
 
-  search_stack->ahead(1)->killers.fill(Move::null_move());
+  MoveOrderer::clear_killers(ply + 1);
+  search_stack->ahead()->killers.fill(Move::null_move());
 
   bool skip_quiets = false;
 
-  List<Move> quiet_non_cutoffs;
+  List<Move, kMaxMoves> quiet_non_cutoffs;
   int moves_tried = 0;
 
   Move best_move = Move::null_move();
   int best_score = std::numeric_limits<int>::min();
 
-  //MovePicker move_picker(MovePickerType::kSearch, board_, tt_hit ? tt_entry.move : Move::null_move(), search_stack);
-  //Move move;
-  //while (move = move_picker.next()) {
-  MoveOrderer move_orderer(board_, move_gen::moves(MoveType::kAll, board_), MoveType::kAll, ply);
-  for (int i = 0; i < move_orderer.size(); i++) {
-    auto &move = move_orderer.get_move(i);
-
+  MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, search_stack);
+  Move move;
+  while (move = move_picker.next()) {
     const bool is_quiet = !move.is_tactical(state);
-    if (is_quiet && skip_quiets) {
-      continue;
-    }
 
     // no aggressive pruning when we could potentially be checkmated
     if (best_score > -eval::kMateScore + kMaxPlyFromRoot) {
       // static exchange evaluation (SEE) pruning
       // skip moves that lose too much material
       const int see_threshold = is_quiet ? -60 * depth : -20 * depth * depth;
-      if (depth <= 10 && moves_tried > 0 && !eval::static_exchange(move, see_threshold, state)) {
+      if (depth <= 8 && moves_tried > 0 && !eval::static_exchange(move, see_threshold, state)) {
         continue;
       }
 
       // late move pruning
       // skip (late) quiet moves if we've already searched the most promising moves
-      const int lmp_threshold = (3 + depth * depth) / (2 - improving);
-      if (!in_root && moves_tried >= lmp_threshold) {
-        skip_quiets = true;
+      const int lmp_threshold = 3 + depth * depth / (2 - improving);
+      if (is_quiet && !in_root && moves_tried >= lmp_threshold) {
+        break;
       }
 
       // futility pruning
-      int lmr_reduction = kLateMoveReductionTable[depth][moves_tried];
-      lmr_reduction -= in_pv_node;
-      lmr_reduction -= MoveOrderer::get_history_score(move, state.turn) / 1024;
-      lmr_reduction += !improving;
-      lmr_reduction = std::clamp(lmr_reduction, 0, depth - 1);
-      if (!in_pv_node && !in_check && is_quiet && depth - lmr_reduction <= 8 && static_eval + 150 + 100 * depth < alpha) {
+      // skip (futile) quiet moves when there's a really low chance our eval can raise alpha
+      if (depth <= 8 && !in_root && !in_check && is_quiet && static_eval + 150 + 100 * depth < alpha && alpha < eval::kMateScore - kMaxPlyFromRoot) {
         continue;
+      }
+
+      // history pruning
+      if (is_quiet && depth <= 4 && MoveOrderer::get_history_score(move, state.turn) < -1024 * depth) {
+        break;
       }
     }
 
@@ -338,9 +327,10 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     // move ordering places the moves that are most likely to cause a beta cutoff first
     // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     if (depth > 2 && moves_tried >= 1 + in_root * 2) {
-      int reduction = kLateMoveReductionTable[depth][moves_tried];
+      int reduction = kLateMoveReductionTable[depth][moves_tried] / (1 + !is_quiet);
       reduction -= in_pv_node;
-      reduction -= MoveOrderer::get_history_score(move, state.turn) / 1024;
+      reduction -= in_check;
+      if (is_quiet) reduction -= MoveOrderer::get_history_score(move, state.turn) / 2048;
       reduction += !improving;
       reduction = std::clamp(reduction, 0, new_depth - 1);
 
@@ -358,10 +348,6 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     // if the move looks promising from null window search, re-search to obtain a more accurate score
     if (in_pv_node && (score > alpha || moves_tried == 0)) {
       score = -search<NodeType::kPV>(new_depth, ply + 1, -beta, -alpha, result);
-    }
-
-    if (in_root) {
-      std::cout << std::format("[{}] {} score {}\n", moves_tried, move.to_string(), score);
     }
 
     board_.undo_move();
@@ -398,9 +384,10 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
       if (is_quiet) {
-        if (move != search_stack->killers[0]) {
-          search_stack->killers[1] = search_stack->killers[0];
-          search_stack->killers[0] = move;
+        auto &killers = search_stack->killers;
+        if (move != killers[0]) {
+          killers[1] = killers[0];
+          killers[0] = move;
         }
 
         MoveOrderer::update_killer_move(move, ply);
@@ -432,7 +419,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     entry.flag = TranspositionTable::Entry::kExact;
   }
 
-  transpo.save(entry, ply);
+  transpo.save(state.zobrist_key, entry, ply);
   return best_score;
 }
 
@@ -440,6 +427,7 @@ Search::Result Search::iterative_deepening() {
   Search::Result result;
 
   MoveOrderer::clear_move_history();
+  stack_.front().killers.fill(Move::null_move());
 
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;

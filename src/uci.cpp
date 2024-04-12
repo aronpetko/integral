@@ -19,7 +19,7 @@ void position(Board &board, std::stringstream &input_stream) {
     position_fen = fen::kStartFen;
   }
 
-  const int kTranspositionTableMbSize = 128;
+  const int kTranspositionTableMbSize = 32;
   if (!board.initialized()) {
     board = Board(kTranspositionTableMbSize);
   }
@@ -80,11 +80,13 @@ int perft_internal(Board &board, int depth, int start_depth) {
   auto &state = board.get_state();
 
   int nodes = 0;
-  //auto moves = move_gen::moves(MoveType::kAll, board);
+  auto moves = move_gen::moves(MoveType::kAll, board);
 
-  MovePicker mp(MovePickerType::kSearch, board, Move::null_move(), nullptr);
-  Move move;
-  while ((move = mp.next())) {
+  //MovePicker mp(MovePickerType::kSearch, board, Move::null_move(), nullptr);
+  //Move move;
+  //while ((move = mp.next())) {
+  for (int i = 0; i < moves.size(); i++) {
+    auto &move = moves[i];
     board.make_move(move);
     if (!move_gen::king_in_check(flip_color(state.turn), state)) {
       const int pos_nodes = perft_internal(board, depth - 1, start_depth);

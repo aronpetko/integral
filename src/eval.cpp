@@ -304,19 +304,20 @@ int evaluate(const BoardState &state) {
 
   int middle_game_phase = 0;
 
-  for (int color = Color::kBlack; color <= Color::kWhite; color++) {
-    for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
-      BitBoard bb = state.piece_bbs[piece] & state.side_bbs[color];
+  const BitBoard white_pieces = state.occupied(Color::kWhite);
+  for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
+    BitBoard bb = state.piece_bbs[piece];
 
-      while (bb) {
-        const auto square = bb.pop_lsb();
-        const auto table_pos = color == Color::kWhite ? square ^ 56 : square;
+    while (bb) {
+      const auto square = bb.pop_lsb();
+      const auto color = white_pieces.is_set(square) ? Color::kWhite : Color::kBlack;
 
-        middle_game_scores[color] += kMiddleGamePieceValues[piece] + kMiddleGameTables[piece][table_pos];
-        end_game_scores[color] += kEndGamePieceValues[piece] + kEndGameTables[piece][table_pos];
+      const auto table_pos = color == Color::kWhite ? square ^ 56 : square;
 
-        middle_game_phase += kGamePhaseIncrements[piece];
-      }
+      middle_game_scores[color] += kMiddleGamePieceValues[piece] + kMiddleGameTables[piece][table_pos];
+      end_game_scores[color] += kEndGamePieceValues[piece] + kEndGameTables[piece][table_pos];
+
+      middle_game_phase += kGamePhaseIncrements[piece];
     }
   }
 

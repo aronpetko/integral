@@ -23,48 +23,57 @@ MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, Search::
 Move MovePicker::next() {
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateMoves;
+
+    auto &state = board_.get_state();
     if (tt_move_ && board_.is_move_pseudo_legal(tt_move_)) {
-      return tt_move_;
+      if (type_ != MovePickerType::kQuiescence || tt_move_.is_tactical(state)) {
+        return tt_move_;
+      }
     }
   }
 
   if (stage_ == Stage::kGenerateMoves) {
     stage_ = Stage::kPlayMoves;
-    scored_moves_ = type_ == MovePickerType::kQuiescence ? generate_and_score_moves<MoveType::kTactical>()
-                                                         : generate_and_score_moves<MoveType::kAll>();
+    if (type_ == MovePickerType::kQuiescence) {
+      generate_and_score_moves<MoveType::kTactical>();
+    } else {
+      generate_and_score_moves<MoveType::kAll>();
+    }
   }
 
   if (stage_ == Stage::kPlayMoves) {
-    if (moves_idx_ < scored_moves_.size()) {
-      return selection_sort(scored_moves_, moves_idx_++).move;
+    if (moves_idx_ < scored_moves_.moves.size()) {
+      const auto &move = selection_sort(scored_moves_, moves_idx_);
+      if (type_ == MovePickerType::kQuiescence && scored_moves_.scores[moves_idx_] < 0) {
+        return Move::null_move();
+      }
+
+      moves_idx_++;
+      return move;
     }
   }
 
   return Move::null_move();
 }
 
-ScoredMove &MovePicker::selection_sort(List<ScoredMove> &moves, const int &index) {
-  for (int next = index + 1; next < moves.size(); next++) {
-    if (moves[next].score > moves[index].score) {
-      std::swap(moves[index], moves[next]);
+Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
+  for (int next = index + 1; next < move_list.moves.size(); next++) {
+    if (move_list.scores[next] > move_list.scores[index] && move_list.moves[next] != tt_move_) {
+      std::swap(move_list.moves[index], move_list.moves[next]);
+      std::swap(move_list.scores[index], move_list.scores[next]);
     }
   }
 
-  return moves[index];
+  return move_list.moves[index];
 }
 
 template<MoveType move_type>
-List<ScoredMove> MovePicker::generate_and_score_moves() {
-  List<Move> moves = move_gen::moves(move_type, board_);
+void MovePicker::generate_and_score_moves() {
+  scored_moves_.moves = move_gen::moves(move_type, board_);
 
-  List<ScoredMove> scored_moves;
-  for (int i = 0; i < moves.size(); i++) {
-    if (moves[i] != tt_move_) {
-      scored_moves.push(ScoredMove(moves[i], score_move(moves[i])));
-    }
+  for (int i = 0; i < scored_moves_.moves.size(); i++) {
+    scored_moves_.scores.push(score_move(scored_moves_.moves[i]));
   }
-
-  return scored_moves;
 }
 
 int MovePicker::score_move(Move &move) {
@@ -93,18 +102,14 @@ int MovePicker::score_move(Move &move) {
     const auto attacker = state.get_piece_type(from);
     const auto victim = state.get_piece_type(to);
 
-    int score =
-        kMVVLVATable[attacker][to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim];
+    const int mvv_lva_score =
+        kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
     // good captures are searched first, bad captures are searched last
     if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
-      //score += kBaseGoodCaptureScore;
-      // good_captures_.push(ScoredMove(move, score));
+      return kBaseGoodCaptureScore + mvv_lva_score;
     } else {
-      //score += kBaseBadCaptureScore;
-      // bad_captures_.push(ScoredMove(move, score));
+      return kBaseBadCaptureScore + mvv_lva_score;
     }
-
-    return score + kBaseGoodCaptureScore;
   }
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)

@@ -4,10 +4,13 @@
 #include <cstdint>
 #include <cmath>
 
+#include "list.h"
+
 using U8 = std::uint8_t;
 using U16 = std::uint16_t;
 using U32 = std::uint32_t;
 using U64 = std::uint64_t;
+using U128 = unsigned __int128;
 
 const U8 kBoardFiles = 8;
 const U8 kBoardRanks = 8;

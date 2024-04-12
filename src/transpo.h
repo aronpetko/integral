@@ -17,11 +17,15 @@ class TranspositionTable {
       kUpperBound
     };
 
-    Entry() : key(0), depth(0), flag(kExact), score(0), move({}) {}
+    Entry() : key(0), depth(0), flag(kExact), score(0), move(Move::null_move()) {}
 
-    explicit Entry(U64 key, U8 depth, Flag flag, int score, const Move &move) : key(key), depth(depth), flag(flag), score(score), move(move) {}
+    explicit Entry(U64 key, U8 depth, Flag flag, int score, const Move &move) : key(static_cast<U16>(key)), depth(depth), flag(flag), score(score), move(move) {}
 
-    U64 key;
+    [[nodiscard]] bool compare_key(const U64 &test_key) const {
+      return static_cast<U16>(test_key) == key;
+    }
+
+    U16 key;
     U8 depth;
     Flag flag;
     int score;
@@ -36,13 +40,15 @@ class TranspositionTable {
 
   void clear();
 
-  void save(const Entry &entry, int ply);
+  void save(const U64 &key, const Entry &entry, int ply);
 
   void prefetch(const U64 &key) const;
 
   [[nodiscard]] const Entry &probe(const U64 &key) const;
 
   [[nodiscard]] int correct_score(int evaluation, int ply) const;
+
+  U64 index(const U64 &key) const;
 
  private:
   std::vector<Entry> table_;

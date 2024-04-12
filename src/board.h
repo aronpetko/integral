@@ -79,7 +79,7 @@ class CastleRights {
 };
 
 struct BoardState {
-  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(Square::kNoSquare) {
+  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(Square::kNoSquare), move_played(Move::null_move()) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -186,15 +186,11 @@ class Board {
 
   Board();
 
-  BoardState &get_state() {
+  inline BoardState &get_state() {
     return state_;
   }
 
-  [[nodiscard]] BoardState &get_prev_state() {
-    return history_count_ == 0 ? state_ : history_[history_count_ - 1];
-  }
-
-  TranspositionTable &get_transpo_table() {
+  inline TranspositionTable &get_transpo_table() {
     return transpo_table_;
   }
 
@@ -212,13 +208,13 @@ class Board {
 
   void undo_move();
 
-  U64 key_after(const Move &move) const;
+  U64 key_after(const Move &move);
 
-  [[nodiscard]] bool has_repeated(U8 times) const;
+  [[nodiscard]] bool has_repeated(U8 times);
 
-  [[nodiscard]] bool is_draw() const;
+  [[nodiscard]] bool is_draw();
 
-  void print_pieces() const;
+  void print_pieces();
 
  private:
   void handle_castling(const Move &move);
@@ -229,8 +225,7 @@ class Board {
   BoardState state_;
   TranspositionTable transpo_table_;
   bool initialized_;
-  std::array<BoardState, kMaxGamePly> history_;
-  int history_count_;
+  List<BoardState, kMaxGamePly> history_;
 };
 
 #endif // INTEGRAL_BOARD_H_

@@ -10,7 +10,7 @@ const int kScoreNone = std::numeric_limits<int>::min();
 
 struct PVLine {
  public:
-  PVLine() : moves_({}), move_count_(0) {
+  PVLine() : moves_({}) {
     clear();
   }
 
@@ -19,23 +19,22 @@ struct PVLine {
   }
 
   void clear() {
-    moves_.fill(Move::null_move());
-    move_count_ = 0;
+    moves_.clear();
   }
 
   void push(const Move& move) {
-    moves_[move_count_++] = move;
+    moves_.push(move);
   }
 
   [[nodiscard]] std::size_t length() const {
-    return move_count_;
+    return moves_.size();
   }
 
-  [[nodiscard]] std::string to_string() const {
+  [[nodiscard]] std::string to_string() {
     std::string str;
-    for (int i = 0; i < move_count_; i++) {
+    for (int i = 0; i < moves_.size(); i++) {
       str += moves_[i].to_string();
-      if (i < move_count_ - 1)
+      if (i < moves_.size() - 1)
         str += ' ';
     }
     return str;
@@ -46,8 +45,7 @@ struct PVLine {
   }
 
  private:
-  std::array<Move, kMaxPlyFromRoot> moves_;
-  int move_count_;
+  List<Move, kMaxPlyFromRoot> moves_;
 };
 
 enum class NodeType {
@@ -63,15 +61,18 @@ class Search {
     PVLine pv_line;
     int score;
 
-    Result() : score(kScoreNone) {}
+    Result() : score(kScoreNone), best_move(Move::null_move()) {}
   };
 
   struct Stack {
+    int ply;
     int static_eval;
     PVLine pv;
     std::array<Move, 2> killers;
 
-    Stack() : static_eval(kScoreNone), killers({}) {}
+    Stack() : static_eval(kScoreNone), ply(0) {
+      killers.fill(Move::null_move());
+    }
 
     Stack *ahead(int amount = 1) {
       return this + amount;
@@ -95,7 +96,7 @@ class Search {
   int quiesce(int ply, int alpha, int beta);
 
   template<NodeType node_type>
-  int search(int depth, int ply, int alpha, int beta,Result &result);
+  int search(int depth, int ply, int alpha, int beta, Result &result);
 
   Result iterative_deepening();
 

@@ -6,24 +6,23 @@
 
 Board::Board(std::size_t transpo_table_size)
     : transpo_table_(transpo_table_size),
-      history_count_(0),
-      history_({}) {}
+      history_() {}
 
-Board::Board() : history_count_(0), history_({}), initialized_(false) {}
+Board::Board() : history_(), initialized_(false) {}
 
 void Board::set_from_fen(const std::string &fen_str) {
   // reset history everytime we parse from fen, since they will be re-applied when the moves are made
-  history_count_ = 0;
-
+  history_.clear();
   state_ = fen::string_to_board(fen_str);
   initialized_ = true;
 }
 
 bool Board::is_move_pseudo_legal(const Move &move) {
   const auto from = move.get_from(), to = move.get_to();
+  const auto piece_type = state_.get_piece_type(from);
 
   const BitBoard &our_pieces = state_.occupied(state_.turn);
-  if (!our_pieces.is_set(from)) {
+  if (!our_pieces.is_set(from) || our_pieces.is_set(to) || move.get_promotion_type() != PromotionType::kNone && piece_type != PieceType::kPawn) {
     return false;
   }
 
@@ -32,36 +31,37 @@ bool Board::is_move_pseudo_legal(const Move &move) {
 
   BitBoard possible_moves;
 
-  switch (state_.get_piece_type(from)) {
+  switch (piece_type) {
     case PieceType::kPawn: {
       const BitBoard en_passant_mask = state_.en_passant != Square::kNoSquare ? BitBoard::from_square(state_.en_passant) : BitBoard(0);
       possible_moves = move_gen::pawn_moves(from, state_) | (move_gen::pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
       break;
     }
-    case PieceType::kKnight: possible_moves = move_gen::knight_moves(from);
+    case PieceType::kKnight:
+      possible_moves = move_gen::knight_moves(from);
       break;
-    case PieceType::kBishop: possible_moves = move_gen::bishop_moves(from, occupied);
+    case PieceType::kBishop:
+      possible_moves = move_gen::bishop_moves(from, occupied);
       break;
-    case PieceType::kRook: possible_moves = move_gen::rook_moves(from, occupied);
+    case PieceType::kRook:
+      possible_moves = move_gen::rook_moves(from, occupied);
       break;
-    case PieceType::kQueen: possible_moves = move_gen::bishop_moves(from, occupied) | move_gen::rook_moves(from, occupied);
+    case PieceType::kQueen:
+      possible_moves = move_gen::bishop_moves(from, occupied) | move_gen::rook_moves(from, occupied);
       break;
-    case PieceType::kKing: possible_moves = move_gen::king_moves(from, state_);
+    case PieceType::kKing:
+      possible_moves = move_gen::king_moves(from, state_);
       break;
     default:
       return false;
   }
 
-  const bool en_passant_set = state_.en_passant != Square::kNoSquare && possible_moves.is_set(state_.en_passant);
-  possible_moves &= ~our_pieces;
-  if (en_passant_set) possible_moves.set_bit(state_.en_passant);
-
   return possible_moves.is_set(to);
 }
 
 void Board::make_move(const Move &move) {
-  // save previous board state
-  history_[history_count_++] = state_;
+  // create new board state
+  history_.push(state_);
 
   const bool is_white = state_.turn == Color::kWhite;
   const auto from = move.get_from(), to = move.get_to();
@@ -159,12 +159,12 @@ void Board::make_move(const Move &move) {
 }
 
 void Board::undo_move() {
-  state_ = history_[--history_count_];
+  state_ = history_.pop_back();
 }
 
 void Board::make_null_move() {
-  // save previous board state
-  history_[history_count_++] = state_;
+  // create new board state
+  history_.push(state_);
 
   // xor out the previous turn hash
   state_.zobrist_key ^= zobrist::hash_turn(state_.turn);
@@ -183,7 +183,7 @@ void Board::make_null_move() {
   state_.move_played = Move::null_move();
 }
 
-U64 Board::key_after(const Move &move) const {
+U64 Board::key_after(const Move &move) {
   U64 key = state_.zobrist_key;
   key ^= zobrist::hash_turn(state_.turn) ^ zobrist::hash_turn(flip_color(state_.turn));
 
@@ -202,7 +202,7 @@ U64 Board::key_after(const Move &move) const {
   const auto captured_piece = state_.get_piece_type(to);
   if (captured_piece != PieceType::kNone) {
     // xor out the captured piece
-    key ^= zobrist::hash_square(to, state_, state_.turn, captured_piece);
+    key ^= zobrist::hash_square(to, state_, flip_color(state_.turn), captured_piece);
   }
 
   const auto promotion_type = move.get_promotion_type();
@@ -217,9 +217,9 @@ U64 Board::key_after(const Move &move) const {
   return key;
 }
 
-bool Board::has_repeated(U8 times) const {
+bool Board::has_repeated(U8 times) {
   // we know that the position can be repeated if no moves were captured, hence we only search until the fifty moves clock was reset
-  for (int i = history_count_ - 2; i >= history_count_ - state_.fifty_moves_clock && i >= 0; i -= 2) {
+  for (int i = history_.size() - 2; i >= history_.size() - state_.fifty_moves_clock && i >= 0; i -= 2) {
     if (history_[i].zobrist_key == state_.zobrist_key && --times == 0) {
       return true;
     }
@@ -227,7 +227,7 @@ bool Board::has_repeated(U8 times) const {
   return false;
 }
 
-bool Board::is_draw() const {
+bool Board::is_draw() {
   if (state_.fifty_moves_clock >= 100 || has_repeated(2)) {
     return true;
   }
@@ -305,6 +305,7 @@ void Board::handle_castling(const Move &move) {
 }
 
 void Board::handle_promotions(const Move &move) {
+
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto to = move.get_to();
@@ -337,7 +338,7 @@ void Board::handle_promotions(const Move &move) {
   }
 }
 
-void Board::print_pieces() const {
+void Board::print_pieces() {
   for (int rank = kBoardRanks - 1; rank >= 0; rank--) {
     std::cout << rank + 1 << ' ';
     for (int file = 0; file < kBoardFiles; file++) {

@@ -5,48 +5,7 @@
 #include "board.h"
 #include "types.h"
 
-template<class T>
-class List {
- public:
-  explicit List(const std::array<T, 256> &container, int count) : container_(container), count_(count) {}
-
-  List() : count_(0) {}
-
-  inline T &operator[](int i) {
-    assert(i >= 0 && i < count_);
-    return container_[i];
-  }
-
-  inline void push(const T &object) {
-    assert(count_ < container_.size());
-    container_[count_++] = object;
-  }
-
-  inline void pop_back() {
-    assert(count_ > 0);
-    --count_;
-  }
-
-  inline void erase(int i) {
-    std::swap(container_[i], container_[--count_]);
-  }
-
-  [[nodiscard]] inline int size() const {
-    return count_;
-  }
-
-  [[nodiscard]] inline int empty() const {
-    return count_ == 0;
-  }
-
-  [[nodiscard]] inline std::array<T, 256> &data() {
-    return container_;
-  }
-
- private:
-  std::array<T, 256> container_;
-  int count_;
-};
+const int kMaxMoves = 256;
 
 namespace move_gen {
 
@@ -73,9 +32,9 @@ BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool incl
 
 bool king_in_check(Color color, const BoardState &state);
 
-List<Move> moves(MoveType move_type, Board &board);
+List<Move, kMaxMoves> moves(MoveType move_type, Board &board);
 
-List<Move> filter_moves(List<Move> &moves, MoveType type, Board &board);
+List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, Board &board);
 
 }
 

@@ -1,0 +1,61 @@
+#ifndef INTEGRAL_SRC_LIST_H
+#define INTEGRAL_SRC_LIST_H
+
+#include <cassert>
+#include <array>
+
+template<class T, std::size_t SIZE>
+class List {
+ public:
+  List() : count_(0) {}
+
+  inline T &operator[](int i) {
+    assert(i >= 0 && i < count_);
+    return container_[i];
+  }
+
+  inline T &back() {
+    return (*this)[count_ - 1];
+  }
+
+  inline void push(const T& object) {
+    assert(count_ < SIZE);
+    container_[count_++] = object;
+  }
+
+  inline void push(T&& object) {
+    assert(count_ < SIZE);
+    container_[count_++] = std::move(object);
+  }
+
+  inline T &pop_back() {
+    assert(count_ > 0);
+    return container_[--count_];
+  }
+
+  inline void erase(int i) {
+    container_[i] = container_[--count_];
+  }
+
+  [[nodiscard]] inline int size() const {
+    return count_;
+  }
+
+  [[nodiscard]] inline bool empty() const {
+    return count_ == 0;
+  }
+
+  [[nodiscard]] inline T* &data() {
+    return container_;
+  }
+
+  inline void clear() {
+    count_ = 0;
+  }
+
+ private:
+  T container_[SIZE];
+  int count_ = 0;
+};
+
+#endif  // INTEGRAL_SRC_LIST_H

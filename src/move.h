@@ -16,11 +16,17 @@ const U32 kPromotionTypeMask = 0b000111000000000000;
 // bits 12-14: promotion piece type
 class Move {
  public:
-  Move() : data_(0) {}
+  constexpr Move() = default;
+  constexpr ~Move() = default;
 
-  explicit Move(U8 from, U8 to);
+  constexpr explicit Move(U8 from, U8 to) : data_(0) {
+    set_from(from);
+    set_to(to);
+  }
 
-  explicit Move(U8 from, U8 to, PromotionType promotion_type);
+  constexpr explicit Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {
+    set_promotion_type(promotion_type);
+  }
 
   [[nodiscard]] static Move null_move();
 

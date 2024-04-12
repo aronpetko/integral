@@ -15,7 +15,7 @@ std::array<std::array<Move, MoveOrderer::kNumKillerMoves>, kMaxPlyFromRoot> Move
 std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> MoveOrderer::counter_moves{};
 std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> MoveOrderer::move_history{};
 
-MoveOrderer::MoveOrderer(Board &board, List<Move> moves, MoveType move_type, const int &ply) noexcept
+MoveOrderer::MoveOrderer(Board &board, List<Move, kMaxMoves> moves, MoveType move_type, const int &ply) noexcept
     : board_(board), moves_(moves), move_type_(move_type), move_scores_({}), ply_(ply) {
   score_moves();
 }
@@ -44,7 +44,7 @@ const int &MoveOrderer::get_history_score(const Move &move, Color turn) noexcept
   return moves_.size();
 }
 
-void MoveOrderer::update_killer_move(const Move &move, int ply) {
+void MoveOrderer:: update_killer_move(const Move &move, int ply) {
   if (move == MoveOrderer::killer_moves[ply][0])
     return;
 
@@ -60,7 +60,7 @@ void MoveOrderer::update_counter_move(const Move &prev_move, const Move &counter
 
 const int kHistoryCap = 8192;
 
-void MoveOrderer::update_move_history(const Move &move, List<Move>& quiet_non_cutoffs, Color turn, int depth) {
+void MoveOrderer::update_move_history(const Move &move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth) {
   auto &move_history_score = MoveOrderer::move_history[turn][move.get_from()][move.get_to()];
 
   // apply a linear dampening to the bonus as the depth increases
@@ -73,7 +73,7 @@ void MoveOrderer::update_move_history(const Move &move, List<Move>& quiet_non_cu
   penalize_move_history(quiet_non_cutoffs, turn, depth);
 }
 
-void MoveOrderer::penalize_move_history(List<Move>& moves, Color turn, int depth) {
+void MoveOrderer::penalize_move_history(List<Move, kMaxMoves>& moves, Color turn, int depth) {
   const int bonus = depth * depth;
   for (int i = 0; i < moves.size(); i++) {
     const auto &move = moves[i];
@@ -111,7 +111,7 @@ void MoveOrderer::score_moves() noexcept {
   auto tt_move = Move::null_move();
 
   if (tt_entry.key == state.zobrist_key && !tt_entry.move.is_null()) {
-    if (move_type_ != MoveType::kCaptures || tt_entry.move.is_capture(state)) {
+    if (move_type_ != MoveType::kTactical || tt_entry.move.is_tactical(state)) {
       tt_move = tt_entry.move;
     }
   }
@@ -153,7 +153,7 @@ int MoveOrderer::calculate_move_score(const Move &move, const Move &tt_move) con
     const auto victim = state.get_piece_type(to);
 
     const int mvv_lva_score =
-        kMVVLVATable[attacker][to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim];
+        kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
     // good captures are searched first, bad captures are searched last
     if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
       return kBaseGoodCaptureScore + mvv_lva_score;

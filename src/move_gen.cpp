@@ -216,8 +216,8 @@ bool king_in_check(Color color, const BoardState &state) {
   return is_square_attacked(state.king(color).get_lsb_pos(), flip_color(color), state);
 }
 
-List<Move> moves(MoveType move_type, Board &board) {
-  List<Move> move_list;
+List<Move, kMaxMoves> moves(MoveType move_type, Board &board) {
+  List<Move, kMaxMoves> move_list;
 
   auto &state = board.get_state();
 
@@ -319,7 +319,7 @@ List<Move> moves(MoveType move_type, Board &board) {
   return move_list;
 }
 
-List<Move> filter_moves(List<Move> &moves, MoveType type, Board &board) {
+List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, Board &board) {
   if (type == MoveType::kAll) return moves;
 
   auto &state = board.get_state();
@@ -331,7 +331,7 @@ List<Move> filter_moves(List<Move> &moves, MoveType type, Board &board) {
     return in_check;
   };
 
-  List<Move> filtered;
+  List<Move, kMaxMoves> filtered;
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
     const bool is_capture = move.is_capture(state);

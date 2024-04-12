@@ -1,14 +1,5 @@
 #include "board.h"
 
-Move::Move(U8 from, U8 to) : data_(0) {
-  set_from(from);
-  set_to(to);
-}
-
-Move::Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {
-  set_promotion_type(promotion_type);
-}
-
 Move Move::null_move() {
   return Move(0, 0);
 }

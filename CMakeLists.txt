@@ -9,6 +9,6 @@ file(GLOB SOURCES "src/*.cpp" "src/magics/*.cpp")
 
 add_executable(integral ${SOURCES}
         src/move_picker.cpp
-        src/move_picker.h)
+        src/move_picker.h src/list.h)
 
 target_link_options(integral PRIVATE)

@@ -4,13 +4,9 @@
 #include "move_gen.h"
 #include "search.h"
 
-struct ScoredMove {
-  Move move;
-  int score;
-
-  explicit ScoredMove(Move &move, const int &score) : move(move), score(score) {}
-
-  ScoredMove() : score(kScoreNone) {}
+struct ScoredMoveList {
+  List<Move, kMaxMoves> moves;
+  List<int, kMaxMoves> scores;
 };
 
 enum class MovePickerType {
@@ -25,10 +21,10 @@ class MovePicker {
   Move next();
 
  private:
-  ScoredMove &selection_sort(List<ScoredMove> &moves, const int &index);
+  Move &selection_sort(ScoredMoveList &move_list, const int &index);
 
   template<MoveType move_type>
-  List<ScoredMove> generate_and_score_moves();
+  void generate_and_score_moves();
 
   int score_move(Move &move);
 
@@ -52,7 +48,7 @@ class MovePicker {
   MovePickerType type_;
   Search::Stack *search_stack_;
   Stage stage_;
-  List<ScoredMove> scored_moves_;
+  ScoredMoveList scored_moves_;
   int moves_idx_;
 };
 
