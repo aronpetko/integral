@@ -1,4 +1,5 @@
 #include "time_mgmt.h"
+
 #include <thread>
 
 TimeManagement::TimeManagement(const TimeManagement::Config &config, Board &board)
@@ -24,9 +25,8 @@ void TimeManagement::start() {
     if (!times_up_.load()) {
       worker_processed_ = true;
 
-      times_up_cv_.wait_for(lock, std::chrono::milliseconds(calculate_hard_limit()), [this] {
-        return times_up_.load();
-      });
+      times_up_cv_.wait_for(lock, std::chrono::milliseconds(calculate_hard_limit()),
+                            [this] { return times_up_.load(); });
 
       times_up_ = true;
       end_time_ = std::chrono::steady_clock::now();
@@ -58,8 +58,7 @@ void TimeManagement::stop() {
 }
 
 [[nodiscard]] long long TimeManagement::calculate_soft_limit(const Move &pv_move) {
-  if (config_.move_time)
-    return config_.move_time;
+  if (config_.move_time) return config_.move_time;
 
   // taken from chessatron
   const auto best_move_fraction =
@@ -86,8 +85,9 @@ bool TimeManagement::soft_times_up(const Move &pv_move) {
 }
 
 long long TimeManagement::nodes_per_second() const {
-  const long long elapsed = times_up_.load() ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_).count()
-                                             : time_elapsed();
+  const long long elapsed = times_up_.load() && config_.depth == 0
+                                ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_).count()
+                                : time_elapsed();
   return nodes_searched_ * 1000.0 / std::max(elapsed, 1LL);
 }
 
@@ -100,6 +100,5 @@ long long TimeManagement::get_move_time() const {
 }
 
 long long TimeManagement::time_elapsed() const {
-  return duration_cast<std::chrono::milliseconds>(
-      std::chrono::steady_clock::now() - start_time_).count();
+  return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_).count();
 }

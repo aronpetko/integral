@@ -330,10 +330,10 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     if (depth > 2 && moves_tried >= 1 + in_root * 2) {
       int reduction = kLateMoveReductionTable[depth][moves_tried];
-      reduction -= in_pv_node;
-      reduction -= in_check;
       if (is_quiet) reduction -= MoveOrderer::get_history_score(move, state.turn) / 2048;
       else reduction /= 2;
+      reduction -= in_pv_node;
+      reduction -= in_check;
       reduction += !improving;
       reduction = std::clamp(reduction, 0, new_depth - 1);
 
