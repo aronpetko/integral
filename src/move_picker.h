@@ -3,6 +3,7 @@
 
 #include "move_gen.h"
 #include "search.h"
+#include "history.h"
 
 struct ScoredMoveList {
   List<Move, kMaxMoves> moves;
@@ -16,7 +17,7 @@ enum class MovePickerType {
 
 class MovePicker {
  public:
-  MovePicker(MovePickerType type, Board &board, Move tt_move, Search::Stack *search_stack);
+  MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, Search::Stack *search_stack);
 
   Move next();
 
@@ -46,6 +47,7 @@ class MovePicker {
   Board &board_;
   Move tt_move_;
   MovePickerType type_;
+  MoveHistory &move_history_;
   Search::Stack *search_stack_;
   Stage stage_;
   ScoredMoveList scored_moves_;

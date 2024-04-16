@@ -12,6 +12,7 @@ Integral supports the following UCI commands:
 - `position fen <string>` Sets the board state and pieces to the given [FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation) string
 - `position fen <string> moves <e2e4 e7e5 ...>` Plays the given moves from the FEN position
 - `go depth <depth>` Searches up to the given depth and replies with `bestmove <move>`
+- `go infinite` Searches up to the maximum search depth (100) and replies with `bestmove <move>`
 - `go wtime <time> btime <time> winc <inc> binc <inc>` Searches for and replies with the best move given within the time/increment allotted. The amount of time used is managed by an internal time management system to ensure the engine doesn't run out of time.
 - `go movetime <time>` Searches for the best move using the full time allotted.
 
@@ -28,4 +29,4 @@ make
 ```
 
 ## Rating
-Integral is estimated to be around 2500 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral can consistently beat 2200 FIDE-rated players.
+Integral is estimated to be around 2700 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral can consistently beat 2400 FIDE-rated players.

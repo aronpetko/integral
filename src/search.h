@@ -4,6 +4,7 @@
 #include "board.h"
 #include "eval.h"
 #include "time_mgmt.h"
+#include "history.h"
 
 const int kMaxSearchDepth = 100;
 const int kScoreNone = std::numeric_limits<int>::min();
@@ -65,14 +66,11 @@ class Search {
   };
 
   struct Stack {
-    int ply;
+    [[maybe_unused]] int ply;
     int static_eval;
     PVLine pv;
-    std::array<Move, 2> killers;
 
-    Stack() : static_eval(kScoreNone), ply(0) {
-      killers.fill(Move::null_move());
-    }
+    Stack() : static_eval(kScoreNone), ply(0) {}
 
     Stack *ahead(int amount = 1) {
       return this + amount;
@@ -103,6 +101,7 @@ class Search {
  private:
   Board &board_;
   TimeManagement time_mgmt_;
+  MoveHistory move_history_;
   std::array<Stack, kMaxPlyFromRoot> stack_;
   int sel_depth_;
 };

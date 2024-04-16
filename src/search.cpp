@@ -1,7 +1,6 @@
 #include "search.h"
 #include "move_gen.h"
 #include "transpo.h"
-#include "move_orderer.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
 
@@ -12,7 +11,8 @@ Search::Search(TimeManagement::Config &time_config, Board &board)
     : board_(board),
       time_mgmt_(time_config, board),
       stack_({}),
-      sel_depth_(0) {}
+      sel_depth_(0),
+      move_history_(board_.get_state()) {}
 
 std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> Search::kLateMoveReductionTable{{}};
 
@@ -69,7 +69,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
   alpha = std::max(alpha, static_eval);
   const int original_alpha = alpha;
 
-  MovePicker move_picker(MovePickerType::kQuiescence, board_, tt_move, &stack_[ply]);
+  MovePicker move_picker(MovePickerType::kQuiescence, board_, tt_move, move_history_, &stack_[ply]);
   Move move;
   while (move = move_picker.next()) {
     // load the transposition table entry for this move in the background
@@ -257,8 +257,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     }
   }
 
-  MoveOrderer::clear_killers(ply + 1);
-  search_stack->ahead()->killers.fill(Move::null_move());
+  move_history_.clear_killers(ply + 1);
 
   List<Move, kMaxMoves> quiet_non_cutoffs;
   int moves_tried = 0;
@@ -266,7 +265,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   Move best_move = Move::null_move();
   int best_score = std::numeric_limits<int>::min();
 
-  MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, search_stack);
+  MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, search_stack);
   Move move;
   while (move = move_picker.next()) {
     const bool is_quiet = !move.is_tactical(state);
@@ -295,7 +294,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
       }
 
       // history pruning
-      if (is_quiet && depth <= 4 && MoveOrderer::get_history_score(move, state.turn) < -1024 * depth) {
+      if (is_quiet && depth <= 4 && move_history_.get_history_score(move, state.turn) < -1024 * depth) {
         break;
       }
     }
@@ -330,7 +329,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     if (depth > 2 && moves_tried >= 1 + in_root * 2) {
       int reduction = kLateMoveReductionTable[depth][moves_tried];
-      if (is_quiet) reduction -= MoveOrderer::get_history_score(move, state.turn) / 2048;
+      if (is_quiet) reduction -= move_history_.get_history_score(move, state.turn) / 2048;
       else reduction /= 2;
       reduction -= in_pv_node;
       reduction -= in_check;
@@ -390,15 +389,9 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     // this opponent has a better move, so we prune this branch
     if (alpha >= beta) {
       if (is_quiet) {
-        auto &killers = search_stack->killers;
-        if (move != killers[0]) {
-          killers[1] = killers[0];
-          killers[0] = move;
-        }
-
-        MoveOrderer::update_killer_move(move, ply);
-        MoveOrderer::update_counter_move(state.move_played, move);
-        MoveOrderer::update_move_history(move, quiet_non_cutoffs, state.turn, depth);
+        move_history_.update_killer_move(move, ply);
+        move_history_.update_counter_move(state.move_played, move);
+        move_history_.update_move_history(move, quiet_non_cutoffs, state.turn, depth);
       }
       break;
     } else if (is_quiet) {
@@ -432,8 +425,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
 Search::Result Search::iterative_deepening() {
   Search::Result result;
 
-  MoveOrderer::clear_move_history();
-  stack_.front().killers.fill(Move::null_move());
+  move_history_.clear_move_history();
 
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;

@@ -1,5 +1,4 @@
 #include "move_picker.h"
-#include "move_orderer.h"
 
 // clang-format off
 const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kMVVLVATable = {{
@@ -12,11 +11,12 @@ const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kM
 }};
 // clang-format on
 
-MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, Search::Stack *search_stack)
+MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, Search::Stack *search_stack)
     : type_(type),
       board_(board),
       tt_move_(tt_move),
       stage_(Stage::kTTMove),
+      move_history_(move_history),
       search_stack_(search_stack),
       moves_idx_(0) {}
 
@@ -114,22 +114,20 @@ int MovePicker::score_move(Move &move) {
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
   const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
-  if (search_stack_) {
-    if (search_stack_->killers[0] == move || search_stack_->killers[1] == move) {
-      return kKillerMoveScore;
-    }
+  const auto &killers = move_history_.get_killers(search_stack_->ply);
+  if (killers[0] == move || killers[1] == move) {
+    return kKillerMoveScore;
   }
 
   // check if this move was a natural counter to the previous move (caused a beta cutoff)
   // complimentary to killer move heuristic
   const int kCounterMoveScore = kKillerMoveScore - 10;
-  const auto &last_move = state.move_played;
-  if (move == MoveOrderer::counter_moves[last_move.get_from()][last_move.get_to()]) {
+  if (move == move_history_.get_counter(state.move_played)) {
     // counter moves should be searched right after killer moves
     return kCounterMoveScore;
   }
 
   // order moves that caused a beta cutoff by their own history score
   // the higher the depth this move caused a cutoff the more likely it move will be ordered first
-  return MoveOrderer::move_history[state.turn][from][to];
+  return move_history_.get_history_score(move, state.turn);
 }

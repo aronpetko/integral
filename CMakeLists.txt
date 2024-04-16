@@ -7,8 +7,6 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 
 file(GLOB SOURCES "src/*.cpp" "src/magics/*.cpp")
 
-add_executable(integral ${SOURCES}
-        src/move_picker.cpp
-        src/move_picker.h src/list.h)
+add_executable(integral ${SOURCES})
 
 target_link_options(integral PRIVATE)
