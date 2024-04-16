@@ -232,12 +232,36 @@ bool Board::is_draw() {
     return true;
   }
 
-  // insufficient material checks
-  return !((state_.pawns() | state_.rooks() | state_.queens()) ||
-      (state_.occupied(Color::kWhite).pop_count() > 1 && state_.occupied(Color::kBlack).pop_count() > 1) ||
-      ((state_.knights() | state_.bishops()).pop_count() > 1) ||
-      (state_.bishops() == 0) ||
-      (state_.knights().pop_count() < 3));
+  // insufficient material
+  const int white_pawns = state_.pawns(Color::kWhite).pop_count();
+  const int white_knights = state_.knights(Color::kWhite).pop_count();
+  const int white_bishops = state_.bishops(Color::kWhite).pop_count();
+  const int white_rooks = state_.rooks(Color::kWhite).pop_count();
+  const int white_queens = state_.queens(Color::kWhite).pop_count();
+
+  const int black_pawns = state_.pawns(Color::kBlack).pop_count();
+  const int black_knights = state_.knights(Color::kBlack).pop_count();
+  const int black_bishops = state_.bishops(Color::kBlack).pop_count();
+  const int black_rooks = state_.rooks(Color::kBlack).pop_count();
+  const int black_queens = state_.queens(Color::kBlack).pop_count();
+
+  bool white_insufficient = false;
+  if (white_pawns == 0 && white_rooks == 0 && white_queens == 0) {
+    if ((white_bishops == 0 && white_knights <= 1) ||
+        (white_knights == 0 && white_bishops <= 1)) {
+      white_insufficient = true;
+    }
+  }
+
+  bool black_insufficient = false;
+  if (black_pawns == 0 && black_rooks == 0 && black_queens == 0) {
+    if ((black_bishops == 0 && black_knights <= 1) ||
+        (black_knights == 0 && black_bishops <= 1)) {
+      black_insufficient = true;
+    }
+  }
+
+  return white_insufficient && black_insufficient;
 }
 
 void Board::handle_castling(const Move &move) {
@@ -311,7 +335,7 @@ void Board::handle_promotions(const Move &move) {
   const auto to = move.get_to();
   const auto to_rank = rank(to);
 
-  if ((is_white && to_rank == kBoardRanks - 1) || (!is_white && to_rank == 0)) {
+  if ((is_white && to_rank == kNumRanks - 1) || (!is_white && to_rank == 0)) {
     state_.remove_piece(to);
 
     switch (move.get_promotion_type()) {
@@ -339,18 +363,18 @@ void Board::handle_promotions(const Move &move) {
 }
 
 void Board::print_pieces() {
-  for (int rank = kBoardRanks - 1; rank >= 0; rank--) {
+  for (int rank = kNumRanks - 1; rank >= 0; rank--) {
     std::cout << rank + 1 << ' ';
-    for (int file = 0; file < kBoardFiles; file++) {
+    for (int file = 0; file < kNumFiles; file++) {
       U8 square = rank_file_to_pos(rank, file);
       std::cout << fen::get_piece_char(const_cast<BoardState&>(state_), square);
-      if (file < kBoardFiles - 1)
+      if (file < kNumFiles - 1)
         std::cout << " ";  // space separator for clarity
     }
     std::cout << std::endl;
   }
   std::cout << "  ";
-  for (int file = 0; file < kBoardFiles; file++)
+  for (int file = 0; file < kNumFiles; file++)
     std::cout << static_cast<char>('a' + file) << ' ';
   std::cout << std::endl;
 }

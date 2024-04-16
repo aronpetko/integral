@@ -1,7 +1,7 @@
 #include "move_orderer.h"
 
 // clang-format off
-const std::array<std::array<int, PieceType::kNumPieceTypes>, PieceType::kNumPieceTypes> kMVVLVATable = {{
+const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kMVVLVATable = {{
   {{10, 11, 12, 13, 14, 15}}, // victim P,    attacker K, Q, R, B, N, P
   {{20, 21, 22, 23, 24, 25}}, // victim N,    attacker K, Q, R, B, N, P
   {{30, 31, 32, 33, 34, 35}}, // victim B,    attacker K, Q, R, B, N, P

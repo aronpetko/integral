@@ -7,7 +7,7 @@
 namespace eval {
 
 // clang-format off
-const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kMiddleGameTables = {{
+const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = {{
     // pawns
     {
         0,   0,   0,   0,   0,   0,  0,   0,
@@ -76,7 +76,7 @@ const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kMiddleGameTabl
     }
 }};
 
-const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kEndGameTables = {{
+const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
     // pawns
     {
         0,   0,   0,   0,   0,   0,   0,   0,
@@ -146,9 +146,9 @@ const std::array<std::array<int, 64>, PieceType::kNumPieceTypes> kEndGameTables 
 }};
 // clang-format on
 
-const std::array<int, PieceType::kNumPieceTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
-const std::array<int, PieceType::kNumPieceTypes> kMiddleGamePieceValues = {82, 337, 365, 477, 1025, 0};
-const std::array<int, PieceType::kNumPieceTypes> kEndGamePieceValues = {94, 281, 297, 512, 936, 0};
+const std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
+const std::array<int, PieceType::kNumTypes> kMiddleGamePieceValues = {82, 337, 365, 477, 1025, 0};
+const std::array<int, PieceType::kNumTypes> kEndGamePieceValues = {94, 281, 297, 512, 936, 0};
 
 bool is_mate_score(int evaluation) {
   return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;

@@ -40,7 +40,7 @@ struct PVLine {
     return str;
   }
 
-  friend std::ostream& operator<<(std::ostream& stream, PVLine& pv_line) {
+  friend std::ostream &operator<<(std::ostream& stream, PVLine& pv_line) {
     return stream << pv_line.to_string();
   }
 
@@ -104,6 +104,7 @@ class Search {
   Board &board_;
   TimeManagement time_mgmt_;
   std::array<Stack, kMaxPlyFromRoot> stack_;
+  int sel_depth_;
 };
 
 #endif // INTEGRAL_SEARCH_H_

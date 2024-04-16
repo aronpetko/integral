@@ -30,7 +30,7 @@ class TimeManagement {
 
   void update_node_spent_table(const Move &move, long long prev_nodes_searched);
 
-  [[nodiscard]] bool root_times_up(const Move &pv_move);
+  [[nodiscard]] bool soft_times_up(const Move &pv_move);
 
   [[nodiscard]] bool times_up() const;
 

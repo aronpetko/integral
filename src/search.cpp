@@ -11,7 +11,8 @@
 Search::Search(TimeManagement::Config &time_config, Board &board)
     : board_(board),
       time_mgmt_(time_config, board),
-      stack_({}) {}
+      stack_({}),
+      sel_depth_(0) {}
 
 std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> Search::kLateMoveReductionTable{{}};
 
@@ -30,15 +31,15 @@ void Search::init_tables() {
 template<NodeType node_type>
 int Search::quiesce(int ply, int alpha, int beta) {
   const auto &state = board_.get_state();
-  auto &transpo = board_.get_transpo_table();
 
   if (board_.is_draw()) {
     return eval::kDrawScore;
   }
 
+  auto &transpo = board_.get_transpo_table();
+
   // pv nodes are nodes that fall inside the [alpha, beta] window
-  // we typically want to search these nodes in their entirety, as they're the most "sensible" moves in a position
-  constexpr bool in_root = node_type == NodeType::kRoot;
+  // these nodes are searched in their entirety, as they're where the most "sensible" moves belong
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
   constexpr auto pv_node_type = in_pv_node ? NodeType::kPV : NodeType::kNonPV;
 
@@ -84,7 +85,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
     // principal variation search (pvs)
     // search the first move with a normal alpha-beta window
-    int score = 0;
+    int score;
     if (moves_tried == 0) {
       score = -quiesce<pv_node_type>(ply + 1, -beta, -alpha);
     } else {
@@ -135,26 +136,26 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
 template<NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
+  const auto &state = board_.get_state();
+
   // check for repetitions of this position and the fifty-move rule
   if (board_.is_draw()) {
     return eval::kDrawScore;
   }
 
   // pv nodes are nodes that fall inside the [alpha, beta] window
-  // we typically want to search these nodes in their entirety, as they're the most "sensible" moves in a position
+  // these nodes are searched in their entirety, as they're where the most "sensible" moves belong
   constexpr bool in_root = node_type == NodeType::kRoot;
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
   constexpr auto pv_node_type = in_pv_node ? NodeType::kPV : NodeType::kNonPV;
-
-  const auto &state = board_.get_state();
 
   const bool in_check = move_gen::king_in_check(state.turn, state);
   if (in_check) {
     depth++;
   }
 
-  // enter quiescent search to return a final score for the original position
-  // this ensures that we never evaluate positions where we may miss a tactic
+  // enter quiescent search to return a final score for the position
+  // this ensures that we never evaluate positions where a tactic could occur (minimizing the horizon effect)
   if (depth <= 0) {
     return quiesce<pv_node_type>(ply, alpha, beta);
   }
@@ -189,11 +190,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     return static_eval;
   }
 
-  bool improving = false;
+  sel_depth_ = std::max(sel_depth_, ply);
 
   auto search_stack = &stack_[ply];
   search_stack->ply = ply;
 
+  bool improving = false;
   if (!in_check) {
     search_stack->static_eval = static_eval;
     if (ply >= 2 && search_stack->behind(2)->static_eval != kScoreNone) {
@@ -205,15 +207,15 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     search_stack->static_eval = kScoreNone;
   }
 
-  // internal iterative reduction: reduce the depth if there is no tt entry for the position
+  // internal iterative reduction
+  // reduce the depth if there is no tt entry for the position
   // it will most likely be searched again later to a fuller depth, so no need to go the extra mile right now
   if (depth >= 4 && !tt_hit) {
     depth--;
   }
 
-  // reverse (static) futility pruning
-  // we assume that the static evaluation of the current position can't fall below beta within the next move
-  // the margin for this comparison is scaled based on how many moves left we have to search
+  // reverse (static) futility pruning: cutoff if we think the position can't fall below beta anytime soon
+  // the margin for this comparison is scaled based on how many ply we have left to search
   if (depth <= 6 && !in_pv_node && !in_check) {
     const int futility_margin = (depth - improving) * 120;
     if (static_eval - futility_margin >= beta) {
@@ -222,7 +224,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   }
 
   // razoring: when evaluation is far below alpha, we assume only captures can bring us back
-  // therefore, drop into quiesce and cut off  if we still can't hit alpha
+  // therefore, drop into quiesce and cut off if we still can't hit/raise alpha
   if (!in_pv_node && !in_check && alpha < 2000 && static_eval < alpha - 400 * depth) {
     const int razoring_score = quiesce<pv_node_type>(ply, alpha, beta);
     if (razoring_score <= alpha) {
@@ -235,7 +237,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   // the opponent wouldn't have allowed this position to occur, so we prune this branch
   if (!state.move_played.is_null() && static_eval >= beta && !in_check && !in_pv_node) {
     // nmp is considered unsafe in positions that zugwang is likely to occur
-    const bool safe_to_nmp = state.knights(state.turn) || state.bishops(state.turn) || state.rooks(state.turn) || state.queens(state.turn);
+    const bool safe_to_nmp =
+        state.knights(state.turn) || state.bishops(state.turn) || state.rooks(state.turn) || state.queens(state.turn);
     if (safe_to_nmp) {
       board_.make_null_move();
 
@@ -256,8 +259,6 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
 
   MoveOrderer::clear_killers(ply + 1);
   search_stack->ahead()->killers.fill(Move::null_move());
-
-  bool skip_quiets = false;
 
   List<Move, kMaxMoves> quiet_non_cutoffs;
   int moves_tried = 0;
@@ -288,7 +289,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
 
       // futility pruning
       // skip (futile) quiet moves when there's a really low chance our eval can raise alpha
-      if (depth <= 8 && !in_root && !in_check && is_quiet && static_eval + 150 + 100 * depth < alpha && alpha < eval::kMateScore - kMaxPlyFromRoot) {
+      if (depth <= 8 && !in_root && !in_check && is_quiet && static_eval + 150 + 100 * depth < alpha &&
+          alpha < eval::kMateScore - kMaxPlyFromRoot) {
         continue;
       }
 
@@ -322,15 +324,16 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
 
     // principal variation search (pvs)
     // search the first move with a normal alpha-beta window
-    bool needs_full_search = false;
+    bool needs_full_search;
 
     // move ordering places the moves that are most likely to cause a beta cutoff first
     // therefore, we save time on searching moves that are less likely to be good by reducing the search depth for them
     if (depth > 2 && moves_tried >= 1 + in_root * 2) {
-      int reduction = kLateMoveReductionTable[depth][moves_tried] / (1 + !is_quiet);
+      int reduction = kLateMoveReductionTable[depth][moves_tried];
       reduction -= in_pv_node;
       reduction -= in_check;
       if (is_quiet) reduction -= MoveOrderer::get_history_score(move, state.turn) / 2048;
+      else reduction /= 2;
       reduction += !improving;
       reduction = std::clamp(reduction, 0, new_depth - 1);
 
@@ -369,9 +372,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
       }
 
       if (in_pv_node) {
+        // clear this ply's pv if a new best move was discovered
         search_stack->pv.clear();
+        // add the new best move to the pv
         search_stack->pv.push(move);
 
+        // copy over the child's pv to this ply's pv
         auto &child_pv = search_stack->ahead()->pv;
         for (int child_pv_move = 0; child_pv_move < child_pv.length(); child_pv_move++) {
           search_stack->pv.push(child_pv[child_pv_move]);
@@ -439,7 +445,7 @@ Search::Result Search::iterative_deepening() {
 
     while (true) {
       const int kAspirationMinDepth = 4;
-      if (depth > kAspirationMinDepth) {
+      if (depth >= kAspirationMinDepth) {
         alpha = result.score - window;
         beta = result.score + window;
       }
@@ -449,7 +455,7 @@ Search::Result Search::iterative_deepening() {
 
       if (!new_result.best_move.is_null()) {
         result = new_result;
-        result.pv_line = stack_[0].pv;
+        result.pv_line = stack_.front().pv;
       }
 
       if (time_mgmt_.times_up()) {
@@ -464,17 +470,18 @@ Search::Result Search::iterative_deepening() {
     }
 
     const bool is_mate = eval::is_mate_score(result.score);
-    std::cout << std::format("info depth {} score {} {} nodes {} nps {} time {} seldepth {} pv {}",
+    std::cout << std::format("info depth {} score {} {} nodes {} nps {} time {} seldepth {} hashfull {} pv {}",
                              depth,
                              is_mate ? "mate" : "cp",
                              is_mate ? eval::mate_in(result.score) : result.score,
                              time_mgmt_.get_nodes_searched(),
                              time_mgmt_.nodes_per_second(),
                              time_mgmt_.time_elapsed(),
-                             result.pv_line.length(),
+                             sel_depth_,
+                             board_.get_transpo_table().hash_full(),
                              result.pv_line.to_string()) << std::endl;
 
-    if (time_mgmt_.times_up() || time_mgmt_.root_times_up(result.best_move)) {
+    if (time_mgmt_.soft_times_up(result.best_move)) {
       break;
     }
   }

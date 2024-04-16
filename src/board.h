@@ -169,7 +169,7 @@ struct BoardState {
     return piece_bbs[PieceType::kKing];
   }
 
-  std::array<BitBoard, PieceType::kNumPieceTypes> piece_bbs;
+  std::array<BitBoard, PieceType::kNumTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, Square::kSquareCount> piece_on_square;
   Color turn;

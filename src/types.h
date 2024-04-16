@@ -12,8 +12,8 @@ using U32 = std::uint32_t;
 using U64 = std::uint64_t;
 using U128 = unsigned __int128;
 
-const U8 kBoardFiles = 8;
-const U8 kBoardRanks = 8;
+const U8 kNumFiles = 8;
+const U8 kNumRanks = 8;
 const U8 kBoardLength = 8;
 
 enum PieceType : U8 {
@@ -24,7 +24,7 @@ enum PieceType : U8 {
   kQueen,
   kKing,
   kNone,
-  kNumPieceTypes = kNone
+  kNumTypes = kNone
 };
 
 enum class PromotionType : U8 {
@@ -58,8 +58,6 @@ enum CastleRightMasks : U8 {
   kWhiteQueenside = 0b0010,
   kBlackKingside = 0b0100,
   kBlackQueenside = 0b1000,
-  kWhiteBothSides = kWhiteKingside | kWhiteQueenside,
-  kBlackBothSides = kBlackKingside | kBlackQueenside,
 };
 
 enum Direction : int {

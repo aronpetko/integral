@@ -30,7 +30,7 @@ U64 hash_square(U8 square, const BoardState &state, Color color, PieceType piece
    */
 
   const int piece_idx =
-      Square::kSquareCount * (static_cast<int>(piece) * 2 + color) + kBoardRanks * rank(square) + file(square);
+      Square::kSquareCount * (static_cast<int>(piece) * 2 + color) + kNumRanks * rank(square) + file(square);
   return kRandomsArray[piece_idx];
 }
 

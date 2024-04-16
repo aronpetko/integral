@@ -65,3 +65,11 @@ const TranspositionTable::Entry &TranspositionTable::probe(const U64 &key) const
 U64 TranspositionTable::index(const U64 &key) const {
   return (static_cast<U128>(key) * static_cast<U128>(table_size_)) >> 64;
 }
+
+int TranspositionTable::hash_full() const {
+  std::size_t filled_entries = 0ULL;
+  for (const auto &entry : table_) {
+    filled_entries += entry.key != 0;
+  }
+  return static_cast<int>(static_cast<double>(filled_entries) / table_size_ * 1000);
+}

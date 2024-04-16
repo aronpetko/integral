@@ -70,8 +70,8 @@ std::string Move::to_string() const {
   if (data_ == 0)
     return "null";
 
-  const auto from_rank = get_from() / kBoardRanks, from_file = get_from() % kBoardFiles;
-  const auto to_rank = get_to() / kBoardRanks, to_file = get_to() % kBoardFiles;
+  const auto from_rank = rank(get_from()), from_file = file(get_from());
+  const auto to_rank = rank(get_to()), to_file = file(get_to());
 
   std::string res = std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) +
                     std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);

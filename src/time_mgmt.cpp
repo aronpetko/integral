@@ -58,6 +58,9 @@ void TimeManagement::stop() {
 }
 
 [[nodiscard]] long long TimeManagement::calculate_soft_limit(const Move &pv_move) {
+  if (config_.move_time)
+    return config_.move_time;
+
   // taken from chessatron
   const auto best_move_fraction =
       static_cast<double>(node_spent_table_[pv_move.get_data() & 0xFFF]) / std::max(1LL, nodes_searched_);
@@ -75,18 +78,17 @@ void TimeManagement::update_node_spent_table(const Move &move, long long prev_no
 }
 
 bool TimeManagement::times_up() const {
-  return !config_.depth && times_up_.load();
+  return config_.depth == 0 && times_up_.load();
 }
 
-bool TimeManagement::root_times_up(const Move &pv_move) {
+bool TimeManagement::soft_times_up(const Move &pv_move) {
   return config_.depth == 0 && time_elapsed() >= calculate_soft_limit(pv_move);
 }
 
 long long TimeManagement::nodes_per_second() const {
-  const double time_in_ms =
-      std::max(times_up_ ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_).count() : time_elapsed(),
-               1LL);
-  return nodes_searched_ * 1000.0 / time_in_ms;
+  const long long elapsed = times_up_.load() ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_).count()
+                                             : time_elapsed();
+  return nodes_searched_ * 1000.0 / std::max(elapsed, 1LL);
 }
 
 long long TimeManagement::get_nodes_searched() const {

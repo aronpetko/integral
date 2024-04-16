@@ -2,7 +2,7 @@
 
 namespace fen {
 
-constexpr std::array<std::array<char, PieceType::kNumPieceTypes>, 2> piece_to_char = {{
+constexpr std::array<std::array<char, PieceType::kNumTypes>, 2> piece_to_char = {{
   {'p', 'n', 'b', 'r', 'q', 'k'},
   {'P', 'N', 'B', 'R', 'Q', 'K'}
 }};
@@ -28,7 +28,7 @@ BoardState string_to_board(std::string fen_str) {
   U8 square = Square::kA8;
   for (const char &ch : position) {
     if (ch == '/') {
-      square = square - 16 + (square % kBoardFiles);
+      square = square - 16 + (square % kNumFiles);
       continue;
     }
     

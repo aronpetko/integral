@@ -48,7 +48,9 @@ class TranspositionTable {
 
   [[nodiscard]] int correct_score(int evaluation, int ply) const;
 
-  U64 index(const U64 &key) const;
+  [[nodiscard]] U64 index(const U64 &key) const;
+
+  [[nodiscard]] int hash_full() const;
 
  private:
   std::vector<Entry> table_;

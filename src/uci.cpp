@@ -78,28 +78,24 @@ int perft_internal(Board &board, int depth, int start_depth) {
     return 1;
 
   auto &state = board.get_state();
+  int total_nodes = 0;
 
-  int nodes = 0;
-  auto moves = move_gen::moves(MoveType::kAll, board);
-
-  //MovePicker mp(MovePickerType::kSearch, board, Move::null_move(), nullptr);
-  //Move move;
-  //while ((move = mp.next())) {
+  List<Move, kMaxMoves> moves = move_gen::moves(MoveType::kAll, board);
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
     board.make_move(move);
     if (!move_gen::king_in_check(flip_color(state.turn), state)) {
-      const int pos_nodes = perft_internal(board, depth - 1, start_depth);
-      nodes += pos_nodes;
+      const int child_nodes = perft_internal(board, depth - 1, start_depth);
+      total_nodes += child_nodes;
 
       if (depth == start_depth) {
-        std::cout << std::format("{}: {}\n", move.to_string(), pos_nodes);
+        std::cout << std::format("{}: {}\n", move.to_string(), child_nodes);
       }
     }
     board.undo_move();
   }
 
-  return nodes;
+  return total_nodes;
 }
 
 void perft(Board &board, std::stringstream &input_stream) {

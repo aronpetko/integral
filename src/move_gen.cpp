@@ -249,7 +249,7 @@ List<Move, kMaxMoves> moves(MoveType move_type, Board &board) {
       const auto to = possible_moves.pop_lsb();
       const auto to_rank = rank(to);
 
-      if (to_rank == kBoardRanks - 1 || to_rank == 0) {
+      if (to_rank == kNumRanks - 1 || to_rank == 0) {
         move_list.push(Move(from, to, PromotionType::kQueen));
         move_list.push(Move(from, to, PromotionType::kRook));
         move_list.push(Move(from, to, PromotionType::kKnight));
