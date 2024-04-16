@@ -21,4 +21,4 @@ void accept_commands();
 
 }
 
-#endif //INTEGRAL_UCI_H_
+#endif // INTEGRAL_UCI_H_
