@@ -202,6 +202,8 @@ class Board {
 
   [[nodiscard]] bool is_move_pseudo_legal(const Move &move);
 
+  [[nodiscard]] bool is_move_legal(const Move &move);
+
   void make_move(const Move &move);
 
   void make_null_move();

@@ -26,6 +26,11 @@ void TranspositionTable::save(const U64 &key, const Entry &entry, int ply) {
 
   auto &table_entry = table_[index(key)];
   if (table_entry.key != entry.key || table_entry.depth <= entry.depth + kDepthLenience || entry.flag == Entry::kExact) {
+    // for hashfull counting
+    if (table_entry.key == 0) {
+      used_entries_++;
+    }
+
     const auto old_tt_move = table_entry.move;
     table_entry = entry;
 
@@ -67,9 +72,5 @@ U64 TranspositionTable::index(const U64 &key) const {
 }
 
 int TranspositionTable::hash_full() const {
-  std::size_t filled_entries = 0ULL;
-  for (const auto &entry : table_) {
-    filled_entries += entry.key != 0;
-  }
-  return static_cast<int>(static_cast<double>(filled_entries) / table_size_ * 1000);
+  return static_cast<int>(static_cast<double>(used_entries_) / table_size_ * 1000);
 }

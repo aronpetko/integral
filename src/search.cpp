@@ -441,17 +441,21 @@ Search::Result Search::iterative_deepening() {
   for (int depth = 1; depth <= max_search_depth; depth++) {
     int alpha = -std::numeric_limits<int>::max();
     int beta = std::numeric_limits<int>::max();
-    int window = 40;
+
+    const int kAspirationMinDepth = 4;
+    const int kAspirationStartWindow = 15;
+
+    int window = kAspirationStartWindow;
+    int fail_high_count = 0;
 
     while (true) {
-      const int kAspirationMinDepth = 4;
       if (depth >= kAspirationMinDepth) {
-        alpha = result.score - window;
-        beta = result.score + window;
+        alpha = std::max(-std::numeric_limits<int>::max(), result.score - window);
+        beta = std::min(std::numeric_limits<int>::max(), result.score + window);
       }
 
       Result new_result;
-      search<NodeType::kRoot>(depth, 0, alpha, beta, new_result);
+      search<NodeType::kRoot>(depth - std::min(2, fail_high_count), 0, alpha, beta, new_result);
 
       if (!new_result.best_move.is_null()) {
         result = new_result;
@@ -462,11 +466,33 @@ Search::Result Search::iterative_deepening() {
         break;
       }
 
-      if (alpha < new_result.score && beta > new_result.score) {
-        break;
-      }
+      if (new_result.score <= alpha) {
+        // adjust beta to be midpoint between alpha and itself
+        // this adjustment narrows the [alpha, beta] window based, effectively lowering the expectation for what constitutes an acceptable move
+        beta = (alpha + beta) / 2;
 
-      window *= 2;
+        // decrease alpha by the window size to expand the search range downwards
+        // this ensures the search encompasses potentially better moves that were previously outside the initial narrower window
+        alpha = std::max(-std::numeric_limits<int>::max(), alpha - window);
+
+        // reset fail_high_count to zero since the window adjustment
+        // requires a fresh evaluation of high-fail occurrences without previous bias
+        fail_high_count = 0;
+      }
+      else if (new_result.score >= beta) {
+        // increase beta by the window size to extend the upper search range
+        // this adjustment allows the search to explore further along this promising path without cutting off due to an overly restrictive beta bound
+        beta = std::min(std::numeric_limits<int>::max(), beta + window);
+
+        // search to lower depths as fail highs (beta cutoffs) increase
+        if (new_result.score < 2000) {
+          fail_high_count++;
+        }
+      }
+      else
+        break;
+
+      window += window / 2;
     }
 
     const bool is_mate = eval::is_mate_score(result.score);

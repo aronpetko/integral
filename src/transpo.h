@@ -34,7 +34,7 @@ class TranspositionTable {
 
   explicit TranspositionTable(std::size_t mb_size);
 
-  TranspositionTable() : table_size_(0) {}
+  TranspositionTable() : table_size_(0ULL), used_entries_(0ULL) {}
 
   void resize(std::size_t mb_size);
 
@@ -55,6 +55,7 @@ class TranspositionTable {
  private:
   std::vector<Entry> table_;
   std::size_t table_size_;
+  std::size_t used_entries_;
 };
 
 #endif // INTEGRAL_TRANSPO_H_
