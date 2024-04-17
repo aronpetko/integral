@@ -70,7 +70,7 @@ int Search::quiesce(int ply, int alpha, int beta) {
   const int original_alpha = alpha;
 
   MovePicker move_picker(MovePickerType::kQuiescence, board_, tt_move, move_history_, &stack_[ply]);
-  Move move;
+  Move move = Move::null_move();
   while (move = move_picker.next()) {
     // load the transposition table entry for this move in the background
     transpo.prefetch(board_.key_after(move));
@@ -207,8 +207,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
     search_stack->static_eval = kScoreNone;
   }
 
-  // internal iterative reduction
-  // reduce the depth if there is no tt entry for the position
+  // internal iterative reduction: reduce the depth if there is no tt entry for the position
   // it will most likely be searched again later to a fuller depth, so no need to go the extra mile right now
   if (depth >= 4 && !tt_hit) {
     depth--;
@@ -266,34 +265,31 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   int best_score = std::numeric_limits<int>::min();
 
   MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, search_stack);
-  Move move;
+  Move move = Move::null_move();
   while (move = move_picker.next()) {
     const bool is_quiet = !move.is_tactical(state);
 
     // no aggressive pruning when we could potentially be checkmated
     if (best_score > -eval::kMateScore + kMaxPlyFromRoot) {
-      // static exchange evaluation (SEE) pruning
-      // skip moves that lose too much material
+      // static exchange evaluation (SEE) pruning: skip moves that lose too much material
       const int see_threshold = is_quiet ? -60 * depth : -20 * depth * depth;
       if (depth <= 8 && moves_tried > 0 && !eval::static_exchange(move, see_threshold, state)) {
         continue;
       }
 
-      // late move pruning
-      // skip (late) quiet moves if we've already searched the most promising moves
+      // late move pruning: skip (late) quiet moves if we've already searched the most promising moves
       const int lmp_threshold = 3 + depth * depth / (2 - improving);
       if (is_quiet && !in_root && moves_tried >= lmp_threshold) {
         break;
       }
 
-      // futility pruning
-      // skip (futile) quiet moves when there's a really low chance our eval can raise alpha
+      // futility pruning: skip (futile) quiet moves when there's a really low chance our eval can raise alpha
       if (depth <= 8 && !in_root && !in_check && is_quiet && static_eval + 150 + 100 * depth < alpha &&
           alpha < eval::kMateScore - kMaxPlyFromRoot) {
         continue;
       }
 
-      // history pruning
+      // history pruning: skip quiet moves that don't cause as many beta cutoffs
       if (is_quiet && depth <= 4 && move_history_.get_history_score(move, state.turn) < -1024 * depth) {
         break;
       }
@@ -431,6 +427,8 @@ Search::Result Search::iterative_deepening() {
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
   for (int depth = 1; depth <= max_search_depth; depth++) {
+    sel_depth_ = 0;
+
     int alpha = -std::numeric_limits<int>::max();
     int beta = std::numeric_limits<int>::max();
 

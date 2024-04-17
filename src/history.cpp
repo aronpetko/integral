@@ -11,7 +11,8 @@ std::array<Move, 2> &MoveHistory::get_killers(int ply) {
 }
 
 Move &MoveHistory::get_counter(const Move &move){
-  return counter_moves_[state_.get_piece_type(move.get_from())][move.get_to()];
+  const auto to = move.get_to();
+  return counter_moves_[state_.get_piece_type(to)][to];
 }
 
 void MoveHistory::update_killer_move(const Move &move, int ply) {
@@ -24,7 +25,8 @@ void MoveHistory::update_killer_move(const Move &move, int ply) {
 
 void MoveHistory::update_counter_move(const Move &prev_move, const Move &counter) {
   if (prev_move != Move::null_move()) {
-    counter_moves_[state_.get_piece_type(prev_move.get_from())][prev_move.get_to()] = counter;
+    const auto to = prev_move.get_to();
+    counter_moves_[state_.get_piece_type(to)][to] = counter;
   }
 }
 

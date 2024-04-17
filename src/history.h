@@ -7,7 +7,7 @@
 
 class MoveHistory {
  public:
-  MoveHistory(const BoardState &state);
+  explicit MoveHistory(const BoardState &state);
 
   const int &get_history_score(const Move &move, Color turn) noexcept;
 
@@ -31,7 +31,7 @@ class MoveHistory {
  private:
   const BoardState &state_;
   std::array<std::array<Move, 2>, kMaxPlyFromRoot> killer_moves_;
-  std::array<std::array<Move, Square::kSquareCount>, PieceType::kNumTypes> counter_moves_;
+  std::array<std::array<Move, Square::kSquareCount>, Square::kSquareCount> counter_moves_;
   std::array<std::array<std::array<int, Square::kSquareCount>, Square::kSquareCount>, 2> butterfly_history_;
 };
 

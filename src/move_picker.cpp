@@ -70,7 +70,6 @@ Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
 template<MoveType move_type>
 void MovePicker::generate_and_score_moves() {
   scored_moves_.moves = move_gen::moves(move_type, board_);
-
   for (int i = 0; i < scored_moves_.moves.size(); i++) {
     scored_moves_.scores.push(score_move(scored_moves_.moves[i]));
   }
