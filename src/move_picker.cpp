@@ -57,13 +57,18 @@ Move MovePicker::next() {
 }
 
 Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
+  int best_move_idx = index;
+  int best_move_score = move_list.scores[index];
+
   for (int next = index + 1; next < move_list.moves.size(); next++) {
-    if (move_list.scores[next] > move_list.scores[index] && move_list.moves[next] != tt_move_) {
-      std::swap(move_list.moves[index], move_list.moves[next]);
-      std::swap(move_list.scores[index], move_list.scores[next]);
+    if (move_list.moves[next] != tt_move_ && move_list.scores[next] > best_move_score) {
+      best_move_idx = next;
+      best_move_score = move_list.scores[next];
     }
   }
 
+  std::swap(move_list.moves[index], move_list.moves[best_move_idx]);
+  std::swap(move_list.scores[index], move_list.scores[best_move_idx]);
   return move_list.moves[index];
 }
 

@@ -12,23 +12,33 @@ namespace move_gen {
 // initializes piece attack lookups and magics
 void initialize_attacks();
 
-BitBoard pawn_attacks(U8 pos, const BoardState &state, Color which = Color::kNoColor, bool en_passant = true);
+BitBoard pawn_attacks(Square square, const BoardState &state, Color which = Color::kNoColor);
 
-BitBoard pawn_moves(U8 pos, const BoardState &state);
+BitBoard pawn_moves(Square square, const BoardState &state);
 
-BitBoard knight_moves(U8 pos);
+BitBoard knight_moves(Square square);
 
-BitBoard bishop_moves(U8 pos, const BitBoard &occupied);
+BitBoard bishop_moves(Square square, const BitBoard &occupied);
 
-BitBoard rook_moves(U8 pos, const BitBoard &occupied);
+BitBoard rook_moves(Square square, const BitBoard &occupied);
 
-BitBoard king_moves(U8 pos, const BoardState &state);
+BitBoard king_moves(Square square, const BoardState &state);
 
-BitBoard king_attacks(U8 pos);
+BitBoard king_attacks(Square square);
 
 BitBoard castling_moves(Color which, const BoardState &state);
 
-BitBoard get_attacked_squares(const BoardState &state, Color attacker, bool include_king_attacks = true);
+BitBoard get_attacked_squares(const BoardState &state, Color attacker);
+
+BitBoard get_attackers_to(const BoardState &state, Square square, Color attacker, bool include_king_attacks = true);
+
+BitBoard get_sliding_attackers_to(const BoardState &state, Square square, const BitBoard &occupied, Color attacker);
+
+// returns a bitboard with the set bits being sliding attacks between the two squares
+BitBoard ray_between(Square first, Square second);
+
+// returns a bitboard with the set bits being the ray that the two squares lie on
+BitBoard ray_intersecting(Square first, Square second);
 
 bool king_in_check(Color color, const BoardState &state);
 

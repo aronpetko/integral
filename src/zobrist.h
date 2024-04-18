@@ -2,6 +2,7 @@
 #define INTEGRAL_ZOBRIST_H_
 
 #include "types.h"
+#include "bitboard.h"
 
 class BoardState;
 class CastleRights;
@@ -221,7 +222,7 @@ enum Indices : int {
 
 U64 hash_turn(Color turn);
 
-U64 hash_square(U8 square, const BoardState &state, Color color = Color::kNoColor, PieceType piece = PieceType::kNone);
+U64 hash_square(Square square, const BoardState &state, Color color = Color::kNoColor, PieceType piece = PieceType::kNone);
 
 U64 hash_castle_rights(const CastleRights &rights);
 

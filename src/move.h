@@ -5,6 +5,8 @@
 #include <vector>
 #include <string>
 
+#include "bitboard.h"
+
 class BoardState;
 
 const U32 kFromMask = 0b000000000000111111;
@@ -28,9 +30,11 @@ class Move {
     set_promotion_type(promotion_type);
   }
 
-  [[nodiscard]] static Move null_move();
+  constexpr bool operator==(const Move& other) const {
+    return data_ == other.data_;
+  }
 
-  bool operator==(const Move &other) const;
+  [[nodiscard]] static Move null_move();
 
   operator bool() const;
 
@@ -48,12 +52,12 @@ class Move {
     return data_;
   }
 
-  [[nodiscard]] constexpr inline U8 get_from() const {
-    return data_ & kFromMask;
+  [[nodiscard]] constexpr inline Square get_from() const {
+    return Square(data_ & kFromMask);
   }
 
-  [[nodiscard]] constexpr inline U8 get_to() const {
-    return (data_ & kToMask) >> 6;
+  [[nodiscard]] constexpr inline Square get_to() const {
+    return Square((data_ & kToMask) >> 6);
   }
 
   [[nodiscard]] constexpr inline PromotionType get_promotion_type() const {

@@ -7,7 +7,7 @@ U64 hash_turn(Color turn) {
   return turn == Color::kWhite ? kRandomsArray[Indices::kTurn] : 0ULL;
 }
 
-U64 hash_square(U8 square, const BoardState &state, Color color, PieceType piece) {
+U64 hash_square(Square square, const BoardState &state, Color color, PieceType piece) {
   if (color == Color::kNoColor || piece == PieceType::kNone) {
     color = state.get_piece_color(square);
     piece = state.get_piece_type(square);
@@ -63,8 +63,8 @@ U64 hash_en_passant(const BoardState &state) {
 U64 generate_key(const BoardState &state) {
   U64 pieces = 0;
   for (int square = 0; square < Square::kSquareCount; square++)
-    if (state.piece_exists(square))
-      pieces ^= hash_square(square, state);
+    if (state.piece_exists(Square(square)))
+      pieces ^= hash_square(Square(square), state);
 
   return pieces ^ hash_castle_rights(state.castle_rights) ^ hash_en_passant(state) ^ hash_turn(state.turn);
 }

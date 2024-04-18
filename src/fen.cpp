@@ -7,12 +7,12 @@ constexpr std::array<std::array<char, PieceType::kNumTypes>, 2> piece_to_char = 
   {'P', 'N', 'B', 'R', 'Q', 'K'}
 }};
 
-char get_piece_char(BoardState &state, U8 pos) {
-  if (!state.occupied().is_set(pos)) {
+char get_piece_char(BoardState &state, Square square) {
+  if (!state.occupied().is_set(square)) {
     return ' ';
   }
 
-  return piece_to_char[state.get_piece_color(pos)][state.get_piece_type(pos)];
+  return piece_to_char[state.get_piece_color(square)][state.get_piece_type(square)];
 }
 
 BoardState string_to_board(std::string fen_str) {
@@ -25,7 +25,7 @@ BoardState string_to_board(std::string fen_str) {
   stream >> position;
 
   // from 63 to 0, starting from a8 to h1
-  U8 square = Square::kA8;
+  int square = Square::kA8;
   for (const char &ch : position) {
     if (ch == '/') {
       square = square - 16 + (square % kNumFiles);
@@ -65,7 +65,7 @@ BoardState string_to_board(std::string fen_str) {
   stream >> en_passant;
 
   if (en_passant != "-") {
-    state.en_passant = Square(rank_file_to_pos(en_passant[1] - '1', en_passant[0] - 'a'));
+    state.en_passant = Square(rank_file_to_square(en_passant[1] - '1', en_passant[0] - 'a'));
   }
 
   stream >> state.fifty_moves_clock;
@@ -83,8 +83,7 @@ std::string board_to_string(BoardState& state) {
     int empty = 0;
 
     for (int file = 0; file < 8; file++) {
-      U8 square = rank_file_to_pos(rank, file);
-
+      const auto square = rank_file_to_square(rank, file);
       if (state.occupied().is_set(square))
         output.push_back(get_piece_char(state, square));
       else

@@ -4,10 +4,6 @@ Move Move::null_move() {
   return Move(0, 0);
 }
 
-bool Move::operator==(const Move& other) const {
-  return data_ == other.data_;
-}
-
 Move::operator bool() const {
   return !is_null();
 }
@@ -24,8 +20,8 @@ std::optional<Move> Move::from_str(const BoardState &state, std::string_view str
       from_file < 0 || from_file >= 8 || to_file < 0 || to_file >= 8)
     return std::nullopt;
 
-  const auto from = rank_file_to_pos(from_rank, from_file);
-  const auto to = rank_file_to_pos(to_rank, to_file);
+  const auto from = rank_file_to_square(from_rank, from_file);
+  const auto to = rank_file_to_square(to_rank, to_file);
 
   if (str.length() < kMaxMoveLen)
     return Move(from, to);

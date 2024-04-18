@@ -5,7 +5,6 @@
 namespace magics::attacks {
 
 std::array<std::array<BitBoard, kBishopBlockerCombinations>, Square::kSquareCount> bishop_attacks{};
-
 std::array<std::array<BitBoard, kRookBlockerCombinations>, Square::kSquareCount> rook_attacks{};
 
 template<Direction Dir>
@@ -32,13 +31,13 @@ int distance_to_edge(int square) {
   }
 }
 
-template<Direction Dir>
+template<Direction dir>
 BitBoard sliding_attacks(U8 from, const BitBoard &occupied) {
   BitBoard attacks;
   BitBoard current = BitBoard::from_square(from);
 
-  for (int i = 0; i < distance_to_edge<Dir>(from); i++) {
-    current = shift<Dir>(current);
+  for (int i = 0; i < distance_to_edge<dir>(from); i++) {
+    current = shift<dir>(current);
     attacks |= current;
 
     if (occupied & current)
@@ -48,13 +47,13 @@ BitBoard sliding_attacks(U8 from, const BitBoard &occupied) {
   return attacks;
 }
 
-template<Direction Dir>
+template<Direction dir>
 BitBoard sliding_occupancies(U8 from) {
   BitBoard attacks;
   BitBoard current = BitBoard::from_square(from);
 
-  for (int i = 1; i < distance_to_edge<Dir>(from); i++) {
-    current = shift<Dir>(current);
+  for (int i = 1; i < distance_to_edge<dir>(from); i++) {
+    current = shift<dir>(current);
     attacks |= current;
   }
 
@@ -66,7 +65,7 @@ std::vector<BitBoard> create_blockers(BitBoard moves) {
   set_bits.reserve(moves.pop_count());
 
   // store the indices (from the LSB) of each set bit in the moves bitboard
-  for (U8 square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < Square::kSquareCount; square++) {
     if (moves.is_set(square)) {
       set_bits.push_back(square);
     }
@@ -94,24 +93,24 @@ std::vector<BitBoard> create_blockers(BitBoard moves) {
   return blockers;
 }
 
-BitBoard generate_bishop_mask(U8 pos) {
-  return sliding_occupancies<Direction::kNorthWest>(pos) | sliding_occupancies<Direction::kNorthEast>(pos)
-      | sliding_occupancies<Direction::kSouthWest>(pos) | sliding_occupancies<Direction::kSouthEast>(pos);
+BitBoard generate_bishop_mask(Square square) {
+  return sliding_occupancies<Direction::kNorthWest>(square) | sliding_occupancies<Direction::kNorthEast>(square)
+      | sliding_occupancies<Direction::kSouthWest>(square) | sliding_occupancies<Direction::kSouthEast>(square);
 }
 
-BitBoard generate_rook_mask(U8 pos) {
-  return sliding_occupancies<Direction::kNorth>(pos) | sliding_occupancies<Direction::kEast>(pos)
-      | sliding_occupancies<Direction::kSouth>(pos) | sliding_occupancies<Direction::kWest>(pos);
+BitBoard generate_rook_mask(Square square) {
+  return sliding_occupancies<Direction::kNorth>(square) | sliding_occupancies<Direction::kEast>(square)
+      | sliding_occupancies<Direction::kSouth>(square) | sliding_occupancies<Direction::kWest>(square);
 }
 
-BitBoard generate_bishop_moves(U8 pos, const BitBoard &occupied) {
-  return sliding_attacks<Direction::kNorthWest>(pos, occupied) | sliding_attacks<Direction::kNorthEast>(pos, occupied)
-      | sliding_attacks<Direction::kSouthWest>(pos, occupied) | sliding_attacks<Direction::kSouthEast>(pos, occupied);
+BitBoard generate_bishop_moves(Square square, const BitBoard &occupied) {
+  return sliding_attacks<Direction::kNorthWest>(square, occupied) | sliding_attacks<Direction::kNorthEast>(square, occupied)
+      | sliding_attacks<Direction::kSouthWest>(square, occupied) | sliding_attacks<Direction::kSouthEast>(square, occupied);
 }
 
-BitBoard generate_rook_moves(U8 pos, const BitBoard &occupied) {
-  return sliding_attacks<Direction::kNorth>(pos, occupied) | sliding_attacks<Direction::kEast>(pos, occupied)
-      | sliding_attacks<Direction::kSouth>(pos, occupied) | sliding_attacks<Direction::kWest>(pos, occupied);
+BitBoard generate_rook_moves(Square square, const BitBoard &occupied) {
+  return sliding_attacks<Direction::kNorth>(square, occupied) | sliding_attacks<Direction::kEast>(square, occupied)
+      | sliding_attacks<Direction::kSouth>(square, occupied) | sliding_attacks<Direction::kWest>(square, occupied);
 }
 
 void initialize() {
@@ -125,7 +124,7 @@ void initialize() {
 
     for (const auto &occupied : blockers) {
       const U64 magic_index = ((entry.mask & occupied.as_u64()) * entry.magic) >> entry.shift;
-      square_bishop_attacks[magic_index] = attacks::generate_bishop_moves(square, occupied);
+      square_bishop_attacks[magic_index] = attacks::generate_bishop_moves(Square(square), occupied);
     }
 
     bishop_attacks[square] = square_bishop_attacks;
@@ -138,7 +137,7 @@ void initialize() {
 
     for (const auto &occupied : blockers) {
       const U64 magic_index = ((entry.mask & occupied.as_u64()) * entry.magic) >> entry.shift;
-      square_rook_attacks[magic_index] = attacks::generate_rook_moves(square, occupied);
+      square_rook_attacks[magic_index] = attacks::generate_rook_moves(Square(square), occupied);
     }
 
     rook_attacks[square] = square_rook_attacks;

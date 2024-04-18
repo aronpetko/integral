@@ -144,6 +144,16 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
         -53, -34, -21, -11, -28, -14, -24, -43
     }
 }};
+const std::array<int, Square::kSquareCount> kFlipTable = {
+  56, 57, 58, 59, 60, 61, 62, 63,
+  48, 49, 50, 51, 52, 53, 54, 55,
+  40, 41, 42, 43, 44, 45, 46, 47,
+  32, 33, 34, 35, 36, 37, 38, 39,
+  24, 25, 26, 27, 28, 29, 30, 31,
+  16, 17, 18, 19, 20, 21, 22, 23,
+  8,  9, 10, 11, 12, 13, 14,  15,
+  0,  1,  2,  3,  4,  5,  6,   7
+};
 // clang-format on
 
 const std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
@@ -166,8 +176,8 @@ int mate_in(int evaluation) {
 }
 
 bool static_exchange(const Move &move, int threshold, const BoardState &state) {
-  const U8 from = move.get_from();
-  const U8 to = move.get_to();
+  const auto from = move.get_from();
+  const auto to = move.get_to();
 
   const PieceType &from_piece = state.get_piece_type(from);
   if (from_piece == PieceType::kPawn && to == state.en_passant ||    // ignore en passant captures
@@ -200,8 +210,8 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   occupied.clear_bit(to);
 
   // get all pieces that attack the capture square
-  auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite, false) & state.pawns(Color::kBlack)) |
-                        (move_gen::pawn_attacks(to, state, Color::kBlack, false) & state.pawns(Color::kWhite));
+  auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite) & state.pawns(Color::kBlack)) |
+                        (move_gen::pawn_attacks(to, state, Color::kBlack) & state.pawns(Color::kWhite));
   auto knight_attackers = move_gen::knight_moves(to) & state.knights();
 
   BitBoard bishop_attacks = move_gen::bishop_moves(to, occupied);
@@ -294,43 +304,83 @@ bool static_exchange(const Move &move, int threshold, const BoardState &state) {
   return state.turn == winner;
 }
 
-int evaluate(const BoardState &state) {
-  std::array<int, 2> middle_game_scores = {0, 0};
-  std::array<int, 2> end_game_scores = {0, 0};
+std::pair<int, int> evaluate_material(const BoardState &state) {
+  int mg_material = 0;
+  int eg_material = 0;
 
-  // tempo bonus
-  middle_game_scores[state.turn] += 10;
-  end_game_scores[state.turn] += 10;
+  const Color us = state.turn, them = flip_color(us);
+
+  const BitBoard our_pieces = state.occupied(us);
+  const BitBoard their_pieces = state.occupied(them);
+
+  const BitBoard pawns = state.pawns();
+  const BitBoard knights = state.knights();
+  const BitBoard bishops = state.bishops();
+  const BitBoard rooks = state.rooks();
+  const BitBoard queens = state.queens();
+
+  const int pawn_count = (pawns & our_pieces).pop_count() - (pawns & their_pieces).pop_count();
+  const int knight_count = (knights & our_pieces).pop_count() - (knights & their_pieces).pop_count();
+  const int bishop_count = (bishops & our_pieces).pop_count() - (bishops & their_pieces).pop_count();
+  const int rook_count = (rooks & our_pieces).pop_count() - (rooks & their_pieces).pop_count();
+  const int queen_count = (queens & our_pieces).pop_count() - (queens & their_pieces).pop_count();
+  
+  mg_material += kMiddleGamePieceValues[PieceType::kPawn] * pawn_count;
+  mg_material += kMiddleGamePieceValues[PieceType::kKnight] * knight_count;
+  mg_material += kMiddleGamePieceValues[PieceType::kBishop] * bishop_count;
+  mg_material += kMiddleGamePieceValues[PieceType::kRook] * rook_count;
+  mg_material += kMiddleGamePieceValues[PieceType::kQueen] * queen_count;
+  
+  eg_material += kEndGamePieceValues[PieceType::kPawn] * pawn_count;
+  eg_material += kEndGamePieceValues[PieceType::kKnight] * knight_count;
+  eg_material += kEndGamePieceValues[PieceType::kBishop] * bishop_count;
+  eg_material += kEndGamePieceValues[PieceType::kRook] * rook_count;
+  eg_material += kEndGamePieceValues[PieceType::kQueen] * queen_count;
+
+  return {mg_material, eg_material};
+}
+
+int evaluate(const BoardState &state) {
+  auto [middle_game_score, end_game_score] = evaluate_material(state);
 
   int middle_game_phase = 0;
+  middle_game_phase += kGamePhaseIncrements[PieceType::kPawn] * state.pawns().pop_count();
+  middle_game_phase += kGamePhaseIncrements[PieceType::kKnight] * state.knights().pop_count();
+  middle_game_phase += kGamePhaseIncrements[PieceType::kBishop] * state.bishops().pop_count();
+  middle_game_phase += kGamePhaseIncrements[PieceType::kRook] * state.rooks().pop_count();
+  middle_game_phase += kGamePhaseIncrements[PieceType::kQueen] * state.queens().pop_count();
 
-  const BitBoard white_pieces = state.occupied(Color::kWhite);
-  for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
-    BitBoard bb = state.piece_bbs[piece];
+  const Color us = state.turn, them = flip_color(us);
 
-    while (bb) {
-      const auto square = bb.pop_lsb();
-      const auto color = white_pieces.is_set(square) ? Color::kWhite : Color::kBlack;
+  BitBoard our_pieces = state.occupied(us);
+  while (our_pieces) {
+    const auto square = Square(our_pieces.pop_lsb());
+    const auto piece = state.get_piece_type(square);
 
-      const auto table_pos = color == Color::kWhite ? square ^ 56 : square;
+    middle_game_score += kMiddleGameTables[piece][relative_square(square, us)];
+    end_game_score += kEndGameTables[piece][relative_square(square, us)];
+  }
 
-      middle_game_scores[color] += kMiddleGamePieceValues[piece] + kMiddleGameTables[piece][table_pos];
-      end_game_scores[color] += kEndGamePieceValues[piece] + kEndGameTables[piece][table_pos];
+  BitBoard their_pieces = state.occupied(them);
+  while (their_pieces) {
+    const auto square = Square(their_pieces.pop_lsb());
+    const auto piece = state.get_piece_type(square);
 
-      middle_game_phase += kGamePhaseIncrements[piece];
-    }
+    middle_game_score -= kMiddleGameTables[piece][relative_square(square, them)];
+    end_game_score -= kEndGameTables[piece][relative_square(square, them)];
   }
 
   // tapered evaluation
-  const int middle_game_score = middle_game_scores[state.turn] - middle_game_scores[flip_color(state.turn)];
-  const int end_game_score = end_game_scores[state.turn] - end_game_scores[flip_color(state.turn)];
-
   const int kMaxMiddleGamePhase = 24;
 
   middle_game_phase = std::min(middle_game_phase, kMaxMiddleGamePhase);
   const int end_game_phase = kMaxMiddleGamePhase - middle_game_phase;
 
-  return (middle_game_score * middle_game_phase + end_game_score * end_game_phase) / kMaxMiddleGamePhase;
+  int score = (middle_game_score * middle_game_phase + end_game_score * end_game_phase) / kMaxMiddleGamePhase;
+  const int kTempoBonus = 10;
+  score += kTempoBonus;
+
+  return score;
 }
 
 }  // namespace eval

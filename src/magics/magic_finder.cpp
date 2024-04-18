@@ -23,7 +23,7 @@ bool try_magic(const U64 &magic, int shift, int size, const std::vector<BitBoard
   return true;
 }
 
-MagicEntry find_magic(PieceType piece_type, U8 square) {
+MagicEntry find_magic(PieceType piece_type, Square square) {
   assert(piece_type == PieceType::kRook || piece_type == PieceType::kBishop);
 
   const bool is_rook = piece_type == PieceType::kRook;
@@ -62,8 +62,8 @@ MagicEntry find_magic(PieceType piece_type, U8 square) {
 void generate_magics() {
   std::cout << "const std::array<MagicEntry, Square::kSquareCount> kRookMagics = {" << std::endl;
 
-  for (U8 square = 0; square < Square::kSquareCount; square++) {
-    const auto magic_entry = find_magic(PieceType::kRook, square);
+  for (int square = 0; square < Square::kSquareCount; square++) {
+    const auto magic_entry = find_magic(PieceType::kRook, Square(square));
     std::cout << "  " << std::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}", magic_entry.mask, magic_entry.magic, magic_entry.shift);
 
     if (square < Square::kSquareCount - 1) {
@@ -77,8 +77,8 @@ void generate_magics() {
 
   std::cout << "const std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {" << std::endl;
 
-  for (U8 square = 0; square < Square::kSquareCount; square++) {
-    const auto magic_entry = find_magic(PieceType::kBishop, square);
+  for (int square = 0; square < Square::kSquareCount; square++) {
+    const auto magic_entry = find_magic(PieceType::kBishop, Square(square));
     std::cout << "  " << std::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}", magic_entry.mask, magic_entry.magic, magic_entry.shift);
 
     if (square < Square::kSquareCount - 1) {

@@ -4,7 +4,7 @@
 #include <cassert>
 #include <array>
 
-template<class T, std::size_t SIZE>
+template<class T, std::size_t length>
 class List {
  public:
   List() : count_(0) {}
@@ -19,12 +19,12 @@ class List {
   }
 
   inline void push(const T& object) {
-    assert(count_ < SIZE);
+    assert(count_ < length);
     container_[count_++] = object;
   }
 
   inline void push(T&& object) {
-    assert(count_ < SIZE);
+    assert(count_ < length);
     container_[count_++] = std::move(object);
   }
 
@@ -54,7 +54,7 @@ class List {
   }
 
  private:
-  T container_[SIZE];
+  T container_[length];
   int count_ = 0;
 };
 

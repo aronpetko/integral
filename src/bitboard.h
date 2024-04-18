@@ -3,10 +3,10 @@
 
 #include <iostream>
 #include <array>
+#include <vector>
 #include <bit>
 
 #include "types.h"
-#include "move.h"
 
 enum Square : U16 {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
@@ -265,14 +265,18 @@ inline int file(int square) {
   return square & 7;
 }
 
-static U8 rank_file_to_pos(int rank, int file) {
-  return rank * kBoardLength + file;
+inline Square rank_file_to_square(int rank, int file) {
+  return Square(rank * kBoardLength + file);
+}
+
+inline Square relative_square(Square square, Color side) {
+  return Square(square ^ (56 * side));
 }
 
 static void print_bb(BitBoard board) {
   for (int rank = 7; rank >= 0; rank--) {
     for (int file = 0; file < 8; file++) {
-      U8 square = rank_file_to_pos(rank, file);
+      const auto square = rank_file_to_square(rank, file);
       std::cout << (board.is_set(square) ? '1' : '0');
       if (file < 7)
         std::cout << " ";  // space separator for clarity

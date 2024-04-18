@@ -5,7 +5,7 @@
 
 namespace magics::finder {
 
-MagicEntry find_magic(PieceType piece_type, U8 square);
+MagicEntry find_magic(PieceType piece_type, Square square);
 
 void generate_magics();
 

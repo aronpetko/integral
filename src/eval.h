@@ -7,6 +7,7 @@ namespace eval {
 
 const int kDrawScore = 0;
 const int kMateScore = 1e8;
+const int kInfiniteScore = 1e8 + 1;
 
 const std::array<int, PieceType::kNumTypes + 1> kSEEPieceScores = {
     100, // pawn

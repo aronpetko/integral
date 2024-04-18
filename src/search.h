@@ -7,7 +7,7 @@
 #include "history.h"
 
 const int kMaxSearchDepth = 100;
-const int kScoreNone = std::numeric_limits<int>::min();
+const int kScoreNone = -eval::kInfiniteScore;
 
 struct PVLine {
  public:

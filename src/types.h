@@ -49,7 +49,7 @@ enum Color : U8 {
   kNoColor
 };
 
-static Color flip_color(const Color &color) {
+inline Color flip_color(const Color &color) {
   return Color(!color);
 }
 

@@ -79,7 +79,14 @@ class CastleRights {
 };
 
 struct BoardState {
-  BoardState() : fifty_moves_clock(0), zobrist_key(0ULL), turn(Color::kWhite), en_passant(Square::kNoSquare), move_played(Move::null_move()) {
+  BoardState()
+      : fifty_moves_clock(0),
+        zobrist_key(0ULL),
+        turn(Color::kWhite),
+        checkers(0ULL),
+        pinned(0ULL),
+        en_passant(Square::kNoSquare),
+        move_played(Move::null_move()) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -109,7 +116,7 @@ struct BoardState {
     return piece_on_square[square];
   }
 
-  [[nodiscard]] constexpr inline bool piece_exists(U8 square) const {
+  [[nodiscard]] constexpr inline bool piece_exists(Square square) const {
     return get_piece_type(square) != PieceType::kNone;
   }
 
@@ -178,6 +185,8 @@ struct BoardState {
   CastleRights castle_rights;
   U64 zobrist_key;
   Move move_played;
+  BitBoard checkers;
+  BitBoard pinned;
 };
 
 class Board {
@@ -202,6 +211,7 @@ class Board {
 
   [[nodiscard]] bool is_move_pseudo_legal(const Move &move);
 
+  // assuming the move is pseudo legal
   [[nodiscard]] bool is_move_legal(const Move &move);
 
   void make_move(const Move &move);
@@ -212,9 +222,9 @@ class Board {
 
   U64 key_after(const Move &move);
 
-  [[nodiscard]] bool has_repeated(U8 times);
+  [[nodiscard]] bool has_repeated(int ply);
 
-  [[nodiscard]] bool is_draw();
+  [[nodiscard]] bool is_draw(int ply);
 
   void print_pieces();
 
@@ -222,6 +232,8 @@ class Board {
   void handle_castling(const Move &move);
 
   void handle_promotions(const Move &move);
+
+  void calculate_king_attacks();
 
  private:
   BoardState state_;

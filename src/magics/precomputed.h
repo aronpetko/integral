@@ -5,8 +5,8 @@
 #include <array>
 
 namespace magics {
-
-const std::array<MagicEntry, Square::kSquareCount> kRookMagics = {
+// clang-format off
+constexpr std::array<MagicEntry, Square::kSquareCount> kRookMagics = {
     MagicEntry{0x000101010101017eULL, 0x2480001240002088ULL, 52},
     MagicEntry{0x000202020202027cULL, 0x0040002000405000ULL, 53},
     MagicEntry{0x000404040404047aULL, 0x2080088010012001ULL, 53},
@@ -73,7 +73,7 @@ const std::array<MagicEntry, Square::kSquareCount> kRookMagics = {
     MagicEntry{0x7e80808080808000ULL, 0x0001940028410092ULL, 52}
 };
 
-const std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {
+constexpr std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {
     MagicEntry{0x0040201008040200ULL, 0x0040440812022420ULL, 58},
     MagicEntry{0x0000402010080400ULL, 0x3209080800504480ULL, 59},
     MagicEntry{0x0000004020100a00ULL, 0x401000a189000040ULL, 59},
@@ -139,7 +139,7 @@ const std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {
     MagicEntry{0x0020100804020000ULL, 0x0000044448020400ULL, 59},
     MagicEntry{0x0040201008040200ULL, 0x0040440812022420ULL, 58}
 };
-
+// clang-format on
 }
 
 #endif // INTEGRAL_MAGICS_PRECOMPUTED_H_

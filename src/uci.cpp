@@ -59,7 +59,7 @@ void go(Board &board, std::stringstream &input_stream) {
     } else if (option == "depth") {
       input_stream >> time_config.depth;
     } else if (option == "infinite") {
-      time_config.depth = 20;
+      time_config.depth = kMaxSearchDepth;
     } else if (option == "perft") {
       perft(board, input_stream);
       return;
@@ -67,7 +67,7 @@ void go(Board &board, std::stringstream &input_stream) {
   }
 
   if (option.empty())
-    time_config.depth = 13;
+    time_config.depth = kMaxSearchDepth;
 
   const auto search_result = Search(time_config, board).go();
   std::cout << std::format("bestmove {}", search_result.best_move.to_string()) << std::endl;
@@ -83,14 +83,15 @@ int perft_internal(Board &board, int depth, int start_depth) {
   List<Move, kMaxMoves> moves = move_gen::moves(MoveType::kAll, board);
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
-    board.make_move(move);
-    if (!move_gen::king_in_check(flip_color(state.turn), state)) {
-      const int child_nodes = perft_internal(board, depth - 1, start_depth);
-      total_nodes += child_nodes;
+    if (!board.is_move_legal(move))
+      continue;
 
-      if (depth == start_depth) {
-        std::cout << std::format("{}: {}\n", move.to_string(), child_nodes);
-      }
+    board.make_move(move);
+    const int child_nodes = perft_internal(board, depth - 1, start_depth);
+    total_nodes += child_nodes;
+
+    if (depth == start_depth) {
+      std::cout << std::format("{}: {}\n", move.to_string(), child_nodes);
     }
     board.undo_move();
   }
@@ -113,7 +114,7 @@ void perft(Board &board, std::stringstream &input_stream) {
 }
 
 void accept_commands() {
-  std::cout << std::format("Integral v{}", kEngineVersion) << std::endl;
+  std::cout << std::format("    v{}, written by {}\n", kEngineVersion, kEngineAuthor) << std::endl;
 
   // init attack lookups
   move_gen::initialize_attacks();
