@@ -45,7 +45,7 @@ class List {
     return count_ == 0;
   }
 
-  [[nodiscard]] inline T* &data() {
+  [[nodiscard]] inline std::array<T, length> &data() {
     return container_;
   }
 
@@ -54,7 +54,7 @@ class List {
   }
 
  private:
-  T container_[length];
+  std::array<T, length> container_;
   int count_ = 0;
 };
 

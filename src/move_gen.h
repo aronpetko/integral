@@ -12,15 +12,15 @@ namespace move_gen {
 // initializes piece attack lookups and magics
 void initialize_attacks();
 
-BitBoard pawn_attacks(Square square, const BoardState &state, Color which = Color::kNoColor);
+BitBoard pawn_attacks(Square square, const BoardState &state, Color side);
 
 BitBoard pawn_moves(Square square, const BoardState &state);
 
 BitBoard knight_moves(Square square);
 
-BitBoard bishop_moves(Square square, const BitBoard &occupied);
+BitBoard &bishop_moves(Square square, const BitBoard &occupied);
 
-BitBoard rook_moves(Square square, const BitBoard &occupied);
+BitBoard &rook_moves(Square square, const BitBoard &occupied);
 
 BitBoard king_moves(Square square, const BoardState &state);
 
@@ -39,8 +39,6 @@ BitBoard ray_between(Square first, Square second);
 
 // returns a bitboard with the set bits being the ray that the two squares lie on
 BitBoard ray_intersecting(Square first, Square second);
-
-bool king_in_check(Color color, const BoardState &state);
 
 List<Move, kMaxMoves> moves(MoveType move_type, Board &board);
 

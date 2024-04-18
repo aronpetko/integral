@@ -30,12 +30,12 @@ void Search::init_tables() {
 
 template<NodeType node_type>
 int Search::quiesce(int ply, int alpha, int beta) {
-  const auto &state = board_.get_state();
-
+  // check for repetitions of this position and the fifty-move rule
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
   }
 
+  const auto &state = board_.get_state();
   auto &transpo = board_.get_transpo_table();
 
   // pv nodes are nodes that fall inside the [alpha, beta] window
@@ -80,7 +80,6 @@ int Search::quiesce(int ply, int alpha, int beta) {
     }
 
     time_mgmt_.update_nodes_searched();
-
     board_.make_move(move);
 
     // principal variation search (pvs)
@@ -121,6 +120,18 @@ int Search::quiesce(int ply, int alpha, int beta) {
     }
   }
 
+  // we may be in stalemate/checkmate
+  if (moves_tried == 0) {
+    List<Move, kMaxMoves> moves = move_gen::moves(MoveType::kAll, board_);
+    for (int i = 0; i < moves.size(); i++) {
+      if (board_.is_move_legal(moves[i]))
+        goto end;
+    }
+
+    return state.checkers != 0 ? -eval::kMateScore + ply : eval::kDrawScore;
+  }
+
+  end:
   TranspositionTable::Entry entry;
   entry.key = state.zobrist_key;
   entry.score = best_score;
@@ -140,12 +151,12 @@ int Search::quiesce(int ply, int alpha, int beta) {
 
 template<NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
-  const auto &state = board_.get_state();
-
   // check for repetitions of this position and the fifty-move rule
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
   }
+
+  const auto &state = board_.get_state();
 
   // pv nodes are nodes that fall inside the [alpha, beta] window
   // these nodes are searched in their entirety, as they're where the most "sensible" moves belong
@@ -273,6 +284,9 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, search_stack);
   Move move = Move::null_move();
   while (move = move_picker.next()) {
+    // load the transposition table entry for this move in the background
+    transpo.prefetch(board_.key_after(move));
+
     if (!board_.is_move_legal(move)) {
       continue;
     }
@@ -288,7 +302,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
       }
 
       // late move pruning: skip (late) quiet moves if we've already searched the most promising moves
-      const int lmp_threshold = 3 + depth * depth / (2 - improving);
+      const int lmp_threshold = (3 + depth * depth) / (2 - improving);
       if (is_quiet && !in_root && moves_tried >= lmp_threshold) {
         break;
       }
@@ -304,9 +318,6 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
         break;
       }
     }
-
-    // load the transposition table entry for this move in the background
-    transpo.prefetch(board_.key_after(move));
 
     board_.make_move(move);
 
@@ -332,7 +343,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
       if (is_quiet) reduction -= move_history_.get_history_score(move, state.turn) / 2048;
       else reduction /= 2;
       reduction -= in_pv_node;
-      reduction -= in_check;
+      reduction -= state.checkers != 0;
       reduction += !improving;
       reduction = std::clamp(reduction, 0, new_depth - 1);
 
@@ -394,7 +405,9 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
         move_history_.update_move_history(move, quiet_non_cutoffs, state.turn, depth);
       }
       break;
-    } else if (is_quiet) {
+    }
+
+    if (is_quiet && move != best_move) {
       quiet_non_cutoffs.push(move);
     }
   }
@@ -425,7 +438,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
 Search::Result Search::iterative_deepening() {
   Search::Result result;
 
-  move_history_.clear_move_history();
+  move_history_.decay_move_history();
 
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;

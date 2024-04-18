@@ -36,7 +36,7 @@ bool Board::is_move_pseudo_legal(const Move &move) {
       const BitBoard en_passant_mask =
           state_.en_passant != Square::kNoSquare ? BitBoard::from_square(state_.en_passant) : BitBoard(0);
       possible_moves = move_gen::pawn_moves(from, state_) |
-                       (move_gen::pawn_attacks(from, state_) & (their_pieces | en_passant_mask));
+                       (move_gen::pawn_attacks(from, state_, state_.turn) & (their_pieces | en_passant_mask));
       break;
     }
     case PieceType::kKnight:
@@ -68,7 +68,8 @@ bool Board::is_move_legal(const Move &move) {
   const auto from = Square(move.get_from());
   const auto to = Square(move.get_to());
 
-  const auto king_square = Square(state_.king(us).get_lsb_pos());
+  const BitBoard king_mask = state_.king(us);
+  const auto king_square = Square(king_mask.get_lsb_pos());
 
   const auto piece_type = state_.get_piece_type(from);
   if (piece_type == PieceType::kKing) {
@@ -112,7 +113,7 @@ bool Board::is_move_legal(const Move &move) {
   }
 
   // if the piece being moved is pinned, verify that it's moving on the same diagonal
-  if (state_.pinned.is_set(from) && !move_gen::ray_intersecting(from, to).is_set(king_square)) {
+  if (state_.pinned.is_set(from) && !(move_gen::ray_intersecting(from, to) & king_mask)) {
     return false;
   }
 

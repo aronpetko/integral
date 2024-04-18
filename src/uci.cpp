@@ -73,27 +73,29 @@ void go(Board &board, std::stringstream &input_stream) {
   std::cout << std::format("bestmove {}", search_result.best_move.to_string()) << std::endl;
 }
 
-int perft_internal(Board &board, int depth, int start_depth) {
-  if (depth == 0)
-    return 1;
+U64 perft_internal(Board &board, int depth, int start_depth) {
+  List<Move, kMaxMoves> moves = move_gen::moves(MoveType::kAll, board);
 
   auto &state = board.get_state();
-  int total_nodes = 0;
+  U64 total_nodes = 0;
 
-  List<Move, kMaxMoves> moves = move_gen::moves(MoveType::kAll, board);
   for (int i = 0; i < moves.size(); i++) {
     auto &move = moves[i];
     if (!board.is_move_legal(move))
       continue;
 
-    board.make_move(move);
-    const int child_nodes = perft_internal(board, depth - 1, start_depth);
-    total_nodes += child_nodes;
+    U64 child_nodes;
+    if (depth == 1) {
+      total_nodes += child_nodes = 1;
+    } else {
+      board.make_move(move);
+      total_nodes += child_nodes = perft_internal(board, depth - 1, start_depth);
+      board.undo_move();
+    }
 
     if (depth == start_depth) {
       std::cout << std::format("{}: {}\n", move.to_string(), child_nodes);
     }
-    board.undo_move();
   }
 
   return total_nodes;
@@ -106,10 +108,10 @@ void perft(Board &board, std::stringstream &input_stream) {
     assert(depth >= 0);
 
     const auto start_time = std::chrono::steady_clock::now();
-    const int nodes = perft_internal(board, depth, depth);
+    const U64 nodes = perft_internal(board, depth, depth);
     const auto elapsed = duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
 
-    std::cout << std::format("nodes: {}\ntime elapsed: {:.2f}s\nnodes per second: {:.0f}", nodes, elapsed, nodes / elapsed) << std::endl;
+    std::cout << std::format("info nodes {} time {} nps {}", nodes, elapsed * 1000.0, static_cast<U64>(nodes / elapsed)) << std::endl;
   }
 }
 
@@ -144,6 +146,8 @@ void accept_commands() {
       go(board, input_stream);
     } else if (command == "ucinewgame") {
       board.get_transpo_table().clear();
+    } else if (command == "print") {
+      board.print_pieces();
     }
   }
 }

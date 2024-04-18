@@ -21,7 +21,7 @@ class MoveHistory {
 
   void update_move_history(const Move &move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth);
 
-  void clear_move_history();
+  void decay_move_history();
 
   void clear_killers(int ply);
 

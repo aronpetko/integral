@@ -46,21 +46,21 @@ void MoveHistory::update_move_history(const Move &move, List<Move, kMaxMoves>& q
 }
 
 void MoveHistory::penalize_move_history(List<Move, kMaxMoves>& moves, Color turn, int depth) {
-  const int bonus = depth * depth;
+  const int bonus = -depth * depth;
   for (int i = 0; i < moves.size(); i++) {
     const auto &move = moves[i];
     auto &move_history_score = butterfly_history_[turn][move.get_from()][move.get_to()];
 
     // apply a linear dampening to the bonus (penalty here) as the depth increases
     const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryCap;
-    move_history_score -= scaled_bonus;
+    move_history_score += scaled_bonus;
   }
 }
 
-void MoveHistory::clear_move_history() {
+void MoveHistory::decay_move_history() {
   for (auto &sides : butterfly_history_) {
-    for (auto &moves : sides) {
-      moves.fill(0);
+    for (auto &move_scores : sides) {
+      move_scores.fill(0);
     }
   }
   for (auto &killers : killer_moves_) {
