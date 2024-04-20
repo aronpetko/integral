@@ -108,7 +108,7 @@ bool Board::is_move_legal(const Move &move) {
   }
 
   // if the king is double-checked, it can only evade check with a king move, which should've been handled earlier
-  if (state_.checkers.pop_count() == 2) {
+  if (state_.checkers.more_than_one()) {
     return false;
   }
 
@@ -251,6 +251,8 @@ void Board::make_null_move() {
 
   state_.fifty_moves_clock++;
   state_.move_played = Move::null_move();
+
+  calculate_king_attacks();
 }
 
 U64 Board::key_after(const Move &move) {
@@ -307,34 +309,37 @@ bool Board::is_draw(int ply) {
     return true;
   }
 
-  // insufficient material
-  const int white_pawns = state_.pawns(Color::kWhite).pop_count();
-  const int white_knights = state_.knights(Color::kWhite).pop_count();
-  const int white_bishops = state_.bishops(Color::kWhite).pop_count();
-  const int white_rooks = state_.rooks(Color::kWhite).pop_count();
-  const int white_queens = state_.queens(Color::kWhite).pop_count();
+  // insufficient material detection
+  const Color us = state_.turn, them = flip_color(us);
 
-  const int black_pawns = state_.pawns(Color::kBlack).pop_count();
-  const int black_knights = state_.knights(Color::kBlack).pop_count();
-  const int black_bishops = state_.bishops(Color::kBlack).pop_count();
-  const int black_rooks = state_.rooks(Color::kBlack).pop_count();
-  const int black_queens = state_.queens(Color::kBlack).pop_count();
-
-  bool white_insufficient = false;
-  if (white_pawns == 0 && white_rooks == 0 && white_queens == 0) {
-    if ((white_bishops == 0 && white_knights <= 1) || (white_knights == 0 && white_bishops <= 1)) {
-      white_insufficient = true;
-    }
+  // check for queens, rooks, or pawns on the board
+  if (state_.queens() || state_.rooks() || state_.pawns()) {
+    return false;
   }
 
-  bool black_insufficient = false;
-  if (black_pawns == 0 && black_rooks == 0 && black_queens == 0) {
-    if ((black_bishops == 0 && black_knights <= 1) || (black_knights == 0 && black_bishops <= 1)) {
-      black_insufficient = true;
-    }
+  if (!state_.kingless_occupied()) {
+    return true;
   }
 
-  return white_insufficient && black_insufficient;
+  const BitBoard our_knights = state_.knights(us), their_knights = state_.knights(them);
+  const BitBoard our_bishops = state_.bishops(us), their_bishops = state_.bishops(them);
+  
+  const BitBoard their_minor_pieces = their_knights | their_bishops;
+  const BitBoard our_minor_pieces = our_knights | our_bishops;
+
+  // more than one minor piece on either side
+  if (their_minor_pieces.more_than_one() || our_minor_pieces.more_than_one()) {
+    return false;
+  }
+
+  // lone king on one side and one minor piece on the other
+  if (their_minor_pieces != 0 && state_.kingless_occupied(us) == 0 ||
+      our_minor_pieces != 0 && state_.kingless_occupied(them) == 0) {
+    return true;
+  }
+
+  // any other combination of pieces not covered by the above is not a draw
+  return false;
 }
 
 void Board::handle_castling(const Move &move) {

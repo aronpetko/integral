@@ -32,7 +32,8 @@ template<NodeType node_type>
 int Search::quiesce(int ply, int alpha, int beta) {
   // check for repetitions of this position and the fifty-move rule
   if (board_.is_draw(ply)) {
-    return eval::kDrawScore;
+    return 0;
+    //return 1 - (time_mgmt_.get_nodes_searched() & 2);
   }
 
   const auto &state = board_.get_state();
@@ -153,7 +154,8 @@ template<NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
   // check for repetitions of this position and the fifty-move rule
   if (board_.is_draw(ply)) {
-    return eval::kDrawScore;
+    return 0;
+    //return 1 - (time_mgmt_.get_nodes_searched() & 2);
   }
 
   const auto &state = board_.get_state();
@@ -372,9 +374,10 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
       break;
 
     // alpha is raised, therefore this move is the new pv node for this depth
-    if (score > best_score) {
-      best_score = score;
+    best_score = std::max(best_score, score);
+    if (best_score > alpha) {
       best_move = move;
+      alpha = best_score;
 
       if (in_root) {
         result.best_move = best_move;
@@ -393,18 +396,16 @@ int Search::search(int depth, int ply, int alpha, int beta, Result &result) {
           search_stack->pv.push(child_pv[child_pv_move]);
         }
       }
-    }
 
-    alpha = std::max(alpha, best_score);
-
-    // this opponent has a better move, so we prune this branch
-    if (alpha >= beta) {
-      if (is_quiet) {
-        move_history_.update_killer_move(move, ply);
-        move_history_.update_counter_move(state.move_played, move);
-        move_history_.update_move_history(move, quiet_non_cutoffs, state.turn, depth);
+      // this opponent has a better move, so we prune this branch
+      if (alpha >= beta) {
+        if (is_quiet) {
+          move_history_.update_killer_move(move, ply);
+          move_history_.update_counter_move(state.move_played, move);
+          move_history_.update_move_history(move, quiet_non_cutoffs, state.turn, depth);
+        }
+        break;
       }
-      break;
     }
 
     if (is_quiet && move != best_move) {

@@ -275,7 +275,7 @@ BitBoard get_attacked_squares(const BoardState &state, Color attacker) {
   return attacked;
 }
 
-BitBoard get_attackers_to(const BoardState &state, Square square, Color attacker, bool include_king_attacks) {
+BitBoard get_attackers_to(const BoardState &state, Square square, Color attacker) {
   const BitBoard occupied = state.occupied();
   const BitBoard queens = state.queens();
 
@@ -284,10 +284,7 @@ BitBoard get_attackers_to(const BoardState &state, Square square, Color attacker
   attackers |= knight_moves(square) & state.knights();
   attackers |= bishop_moves(square, occupied) & (state.bishops() | queens);
   attackers |= rook_moves(square, occupied) & (state.rooks() | queens);
-
-  if (include_king_attacks) {
-    attackers |= king_attacks(square) & state.kings();
-  }
+  attackers |= king_attacks(square) & state.kings();
 
   return attackers & state.occupied(attacker);
 }
@@ -324,7 +321,7 @@ List<Move, kMaxMoves> moves(MoveType move_type, Board &board) {
 
   if (state.checkers) {
     // only king moves are legal if there's multiple pieces checking the king
-    if (state.checkers.pop_count() == 2) {
+    if (state.checkers.more_than_one()) {
       const auto king_square = Square(state.king(state.turn).get_lsb_pos());
 
       auto possible_moves = king_moves(king_square, state) & targets;

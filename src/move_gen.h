@@ -30,7 +30,7 @@ BitBoard castling_moves(Color which, const BoardState &state);
 
 BitBoard get_attacked_squares(const BoardState &state, Color attacker);
 
-BitBoard get_attackers_to(const BoardState &state, Square square, Color attacker, bool include_king_attacks = true);
+BitBoard get_attackers_to(const BoardState &state, Square square, Color attacker);
 
 BitBoard get_sliding_attackers_to(const BoardState &state, Square square, const BitBoard &occupied, Color attacker);
 

@@ -128,6 +128,14 @@ struct BoardState {
     return side_bbs[side];
   }
 
+  [[nodiscard]] constexpr inline BitBoard kingless_occupied() const {
+    return (side_bbs[Color::kWhite] | side_bbs[Color::kBlack]) & ~piece_bbs[kKing];
+  }
+
+  [[nodiscard]] constexpr inline BitBoard kingless_occupied(Color side) const {
+    return side_bbs[side] & ~piece_bbs[kKing];
+  }
+
   [[nodiscard]] constexpr inline BitBoard pawns(Color side) const {
     return piece_bbs[PieceType::kPawn] & side_bbs[side];
   }
@@ -197,6 +205,10 @@ class Board {
 
   inline BoardState &get_state() {
     return state_;
+  }
+
+  inline BoardState &get_prev_state() {
+    return history_.back();
   }
 
   inline TranspositionTable &get_transpo_table() {

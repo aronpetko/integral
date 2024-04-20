@@ -65,6 +65,9 @@ static const std::array<FileMask, 8> kFileMasks = {
     FileMask::kFileH,
 };
 
+constexpr U64 kDarkSquares = 0xAA55AA55AA55AA55ULL;
+constexpr U64 kLightSquares = 0x55AA55AA55AA55AAULL;
+
 class BitBoard {
  public:
   constexpr BitBoard() : bitboard_(0ULL) {}
@@ -111,6 +114,10 @@ class BitBoard {
 
   [[nodiscard]] constexpr inline int pop_count() const {
     return std::popcount(bitboard_);
+  }
+
+  [[nodiscard]] constexpr inline bool more_than_one() const {
+    return (bitboard_ & (bitboard_ - 1)) != 0;
   }
 
   constexpr inline BitBoard &operator=(const U64 &bitboard) {

@@ -21,7 +21,7 @@ void TimeManagement::start() {
 
   // stop after the hard limit has been passed
   worker = std::thread([this] {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock lock(mutex_);
     if (!times_up_.load()) {
       worker_processed_ = true;
 
