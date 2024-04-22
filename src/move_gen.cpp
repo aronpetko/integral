@@ -102,7 +102,7 @@ inline bool is_square_attacked(Square square, Color attacker, const BoardState &
          is_square_attacked_sliding_pieces(square, attacker, state);
 }
 
-BitBoard pawn_attacks(Square square, const BoardState &state, Color side) {
+BitBoard &pawn_attacks(Square square, const BoardState &state, Color side) {
   return pawn_attack_masks[side][square];
 }
 
@@ -189,7 +189,7 @@ BitBoard pawn_double_pushes(Color side, const BoardState &state) {
   return moves;
 }
 
-BitBoard knight_moves(Square square) {
+BitBoard &knight_moves(Square square) {
   return knight_masks[square];
 }
 
@@ -214,7 +214,7 @@ BitBoard king_moves(Square square, const BoardState &state) {
   return moves;
 }
 
-BitBoard king_attacks(Square square) {
+BitBoard &king_attacks(Square square) {
   return king_masks[square];
 }
 
@@ -275,6 +275,19 @@ BitBoard get_attacked_squares(const BoardState &state, Color attacker) {
   return attacked;
 }
 
+BitBoard get_attackers_to(const BoardState &state, Square square, const BitBoard &occupied, Color attacker) {
+  const BitBoard queens = state.queens();
+
+  BitBoard attackers;
+  attackers |= pawn_attacks(square, state, flip_color(attacker)) & state.pawns();
+  attackers |= knight_moves(square) & state.knights();
+  attackers |= bishop_moves(square, occupied) & (state.bishops() | queens);
+  attackers |= rook_moves(square, occupied) & (state.rooks() | queens);
+  attackers |= king_attacks(square) & state.kings();
+
+  return attackers & state.occupied(attacker);
+}
+
 BitBoard get_attackers_to(const BoardState &state, Square square, Color attacker) {
   const BitBoard occupied = state.occupied();
   const BitBoard queens = state.queens();
@@ -299,11 +312,11 @@ BitBoard get_sliding_attackers_to(const BoardState &state, Square square, const 
   return attackers & state.occupied(attacker);
 }
 
-BitBoard ray_between(Square first, Square second) {
+BitBoard &ray_between(Square first, Square second) {
   return ray_between_masks[first][second];
 }
 
-BitBoard ray_intersecting(Square first, Square second) {
+BitBoard &ray_intersecting(Square first, Square second) {
   return ray_intersecting_masks[first][second];
 }
 

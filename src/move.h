@@ -65,17 +65,15 @@ class Move {
   }
 
   constexpr inline void set_from(U8 from) {
-    data_ &= ~kFromMask;
-    data_ |= static_cast<U32>(from) & kFromMask;
+    data_ |= static_cast<U32>(from);
   }
 
   constexpr inline void set_to(U8 to) {
-    data_ &= ~kToMask;
-    data_ |= (static_cast<U32>(to) << 6) & kToMask;
+    data_ |= static_cast<U32>(to) << 6;
   }
 
   constexpr inline void set_promotion_type(PromotionType promotion_type) {
-    data_ = (data_ & ~kPromotionTypeMask) | (static_cast<U8>(promotion_type) << 12);
+    data_ |= static_cast<U8>(promotion_type) << 12;
   }
 
   [[nodiscard]] std::string to_string() const;

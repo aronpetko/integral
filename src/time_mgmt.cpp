@@ -65,8 +65,8 @@ bool TimeManagement::soft_times_up(Move pv_move) {
 
 U64 TimeManagement::nodes_per_second() const {
   const U64 elapsed = times_up_ && config_.depth == 0
-                          ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_).count()
-                          : time_elapsed();
+                      ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_).count()
+                      : time_elapsed();
   return nodes_searched_ * 1000.0 / std::max(elapsed, 1ULL);
 }
 

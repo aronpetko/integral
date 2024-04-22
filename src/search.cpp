@@ -49,11 +49,11 @@ void Search::iterative_deepening() {
 
     const int score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
     //if (score != kScoreNone) {
-      const bool is_mate = eval::is_mate_score(score);
-      std::cout << std::format("info depth {} {} {} nodes {} time {} nps {} pv {}", depth, is_mate ? "mate" : "cp",
-                               is_mate ? eval::mate_in(score) : score, time_mgmt_.get_nodes_searched(),
-                               time_mgmt_.time_elapsed(), time_mgmt_.nodes_per_second(), root_stack->pv.to_string())
-                << std::endl;
+    const bool is_mate = eval::is_mate_score(score);
+    std::cout << std::format("info depth {} {} {} nodes {} time {} nps {} pv {}", depth, is_mate ? "mate" : "cp",
+                             is_mate ? eval::mate_in(score) : score, time_mgmt_.get_nodes_searched(),
+                             time_mgmt_.time_elapsed(), time_mgmt_.nodes_per_second(), root_stack->pv.to_string())
+              << std::endl;
     //}
 
     if (time_mgmt_.soft_times_up(root_stack->best_move)) {
@@ -68,7 +68,7 @@ void Search::iterative_deepening() {
   stop();
 }
 
-template <NodeType node_type>
+template<NodeType node_type>
 int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
@@ -126,7 +126,7 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   return best_score;
 }
 
-template <NodeType node_type>
+template<NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   const auto &state = board_.get_state();
 
@@ -163,7 +163,6 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
   int moves_seen = 0;
   int best_score = kScoreNone;
-  Move best_move = Move::null_move();
 
   MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, stack);
   Move move;
@@ -214,12 +213,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
       best_score = score;
 
       if (score > alpha) {
-        stack->best_move = best_move = move;
+        stack->best_move = move;
 
         // only update the pv line if this node was expected to be in the pv
         if (in_pv_node) {
           stack->pv.clear();
-          stack->pv.push(best_move);
+          stack->pv.push(stack->best_move);
 
           // copy over the child's pv to this ply's pv
           auto &child_pv = stack->ahead()->pv;
@@ -244,14 +243,16 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
   if (best_score != kScoreNone) {
     auto entry_flag = TranspositionTable::Entry::kExact;
-    if (alpha >= beta) {  // beta cutoff
+    if (alpha >= beta) {
+      // beta cutoff
       entry_flag = TranspositionTable::Entry::kLowerBound;
-    } else if (alpha <= original_alpha) {  // alpha failed to raise
+    } else if (alpha <= original_alpha) {
+      // alpha failed to raise
       entry_flag = TranspositionTable::Entry::kUpperBound;
     }
 
     // attempt to update the transposition table with the evaluation of this position
-    TranspositionTable::Entry new_tt_entry(state.zobrist_key, depth, entry_flag, best_score, best_move);
+    TranspositionTable::Entry new_tt_entry(state.zobrist_key, depth, entry_flag, best_score, stack->best_move);
     transposition_table.save(state.zobrist_key, new_tt_entry, ply);
   }
 

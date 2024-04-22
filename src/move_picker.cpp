@@ -11,7 +11,11 @@ const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kM
 }};
 // clang-format on
 
-MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, Search::Stack *search_stack)
+MovePicker::MovePicker(MovePickerType type,
+                       Board &board,
+                       Move tt_move,
+                       MoveHistory &move_history,
+                       Search::Stack *search_stack)
     : type_(type),
       board_(board),
       tt_move_(tt_move),

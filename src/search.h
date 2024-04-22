@@ -23,7 +23,7 @@ struct PVLine {
     moves_.clear();
   }
 
-  void push(const Move& move) {
+  void push(const Move &move) {
     moves_.push(move);
   }
 
@@ -41,7 +41,7 @@ struct PVLine {
     return str;
   }
 
-  friend std::ostream &operator<<(std::ostream& stream, PVLine& pv_line) {
+  friend std::ostream &operator<<(std::ostream &stream, PVLine &pv_line) {
     return stream << pv_line.to_string();
   }
 

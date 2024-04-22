@@ -70,8 +70,6 @@ bool Board::is_move_legal(Move move) {
 
   const auto piece_type = state_.get_piece_type(from);
   if (piece_type == PieceType::kKing) {
-    const BitBoard their_pieces = state_.occupied(them);
-
     const int kKingsideCastleDist = -2;
     const int kQueensideCastleDist = 2;
 
@@ -85,15 +83,11 @@ bool Board::is_move_legal(Move move) {
              !move_gen::get_attackers_to(state_, is_white ? Square::kD1 : Square::kD8, them);
     }
 
-    const BitBoard occupied_kingless = state_.occupied() ^ state_.king(us);
-    const BitBoard their_queens = state_.queens(them);
-
     // make sure the destination square isn't attacked
     // also, verify that the king isn't moving along the same ray it's being attacked on, since the threats bitboard
     // doesn't xray past pieces
-    return !move_gen::get_attackers_to(state_, to, them) &&
-           !(move_gen::bishop_moves(to, occupied_kingless) & (their_queens | state_.bishops(them))) &&
-           !(move_gen::rook_moves(to, occupied_kingless) & (their_queens | state_.rooks(them)));
+    const BitBoard occupied_kingless = state_.occupied() ^ king_mask;
+    return !move_gen::get_attackers_to(state_, to, occupied_kingless, them);
   } else if (piece_type == PieceType::kPawn && to == state_.en_passant) {
     // pawn must be directly behind/in front of the attack square
     const BitBoard en_passant_pawn_mask = BitBoard::from_square(is_white ? to - 8 : to + 8);
@@ -114,13 +108,14 @@ bool Board::is_move_legal(Move move) {
     return false;
   }
 
-  if (!state_.checkers) {
+  // if not in check, or we can take the checking piece
+  if (!state_.checkers || state_.checkers.is_set(to)) {
     return true;
   }
 
   // only legal move left is to either take the piece that's causing check or block its path
   const auto checking_piece = Square(state_.checkers.get_lsb_pos());
-  return (move_gen::ray_between(king_square, checking_piece) | BitBoard::from_square(checking_piece)).is_set(to);
+  return move_gen::ray_between(king_square, checking_piece).is_set(to);
 }
 
 void Board::make_move(Move move) {
@@ -415,7 +410,7 @@ void Board::handle_promotions(Move move) {
   const auto to = move.get_to();
   const auto to_rank = rank(to);
 
-  if ((is_white && to_rank == kNumRanks - 1) || (!is_white && to_rank == 0)) {
+  if (is_white && to_rank == kNumRanks - 1 || !is_white && to_rank == 0) {
     state_.remove_piece(to);
 
     switch (move.get_promotion_type()) {
@@ -467,6 +462,7 @@ void Board::calculate_king_attacks() {
     const BitBoard pinned = our_pieces & move_gen::ray_between(king_square, square);
     const int num_blockers = pinned.pop_count();
     if (!num_blockers) {
+      // this piece is directly attacking the king
       state_.checkers |= BitBoard::from_square(square);
     } else if (num_blockers == 1) {
       // a piece is pinned if it's the only piece within a xray of an opponents piece to our king
