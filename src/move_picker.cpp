@@ -61,7 +61,7 @@ Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
   int best_move_score = move_list.scores[index];
 
   for (int next = index + 1; next < move_list.moves.size(); next++) {
-    if (move_list.moves[next] != tt_move_ && move_list.scores[next] > best_move_score) {
+    if (move_list.scores[next] > best_move_score) {
       best_move_idx = next;
       best_move_score = move_list.scores[next];
     }
@@ -83,6 +83,10 @@ void MovePicker::generate_and_score_moves() {
 int MovePicker::score_move(Move &move) {
   const auto from = move.get_from();
   const auto to = move.get_to();
+
+  if (move == tt_move_) {
+    return std::numeric_limits<int>::max();
+  }
 
   // queen and knight promotions get priority
   switch (move.get_promotion_type()) {

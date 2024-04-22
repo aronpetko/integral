@@ -314,6 +314,7 @@ bool Board::is_draw(int ply) {
     return false;
   }
 
+  // lone kings
   if (!state_.kingless_occupied()) {
     return true;
   }

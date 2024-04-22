@@ -1,5 +1,5 @@
 #include "transpo.h"
-
+#include "search.h"
 #include "eval.h"
 
 TranspositionTable::TranspositionTable(std::size_t mb_size) : table_size_(mb_size), used_entries_(0) {

@@ -41,25 +41,29 @@ void Search::iterative_deepening() {
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
+  auto best_move = Move::null_move();
+
   for (int depth = 1; depth <= max_search_depth; depth++) {
     const int alpha = -eval::kInfiniteScore;
     const int beta = eval::kInfiniteScore;
 
     const int score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
-    if (score != kScoreNone) {
+    //if (score != kScoreNone) {
       const bool is_mate = eval::is_mate_score(score);
       std::cout << std::format("info depth {} {} {} nodes {} time {} nps {} pv {}", depth, is_mate ? "mate" : "cp",
                                is_mate ? eval::mate_in(score) : score, time_mgmt_.get_nodes_searched(),
                                time_mgmt_.time_elapsed(), time_mgmt_.nodes_per_second(), root_stack->pv.to_string())
                 << std::endl;
-    }
+    //}
 
     if (time_mgmt_.soft_times_up(root_stack->best_move)) {
       break;
     }
+
+    best_move = root_stack->best_move;
   }
 
-  std::cout << std::format("bestmove {}", root_stack->best_move.to_string()) << std::endl;
+  std::cout << std::format("bestmove {}", best_move.to_string()) << std::endl;
 
   stop();
 }
@@ -112,6 +116,7 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
       if (score > alpha) {
         alpha = score;
         if (alpha >= beta) {
+          // beta cutoff because the opponent would never allow this position to occur
           break;
         }
       }
@@ -142,8 +147,9 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   // probe the transposition table to see if we have already evaluated this position
   const auto &tt_entry = transposition_table.probe(state.zobrist_key);
   const bool tt_hit = tt_entry.compare_key(state.zobrist_key);
+  const auto tt_move = tt_hit ? tt_entry.move : Move::null_move();
 
-  if (ply > 0 && /* !in_pv_node && */ tt_hit && tt_entry.depth >= depth && tt_entry.score != kScoreNone) {
+  if (!in_pv_node && tt_hit && tt_entry.depth >= depth && tt_entry.score != kScoreNone) {
     // saved scores from non-pv nodes must fall within the current alpha/beta window to allow early cutoff
     if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
         tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
@@ -159,7 +165,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   int best_score = kScoreNone;
   Move best_move = Move::null_move();
 
-  MovePicker move_picker(MovePickerType::kSearch, board_, Move::null_move(), move_history_, stack);
+  MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, stack);
   Move move;
   while ((move = move_picker.next())) {
     if (!board_.is_move_legal(move)) {
@@ -175,16 +181,32 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
     board_.make_move(move);
 
+    // principal variation search (pvs)
     const int new_depth = depth - 1;
-    const int score = -search<node_type>(new_depth, ply + 1, -beta, -alpha, stack->ahead());
+    int score;
+    if (moves_seen == 0) {
+      // we expect the first move to be the pv move, so we search it with a full window
+      score = -search<NodeType::kPV>(new_depth, ply + 1, -beta, -alpha, stack->ahead());
+    } else {
+      // all subsequent moves are searched with a null window to see if it has the potential to raise alpha
+      score = -search<NodeType::kNonPV>(new_depth, ply + 1, -alpha - 1, -alpha, stack->ahead());
+
+      // if this move looks promising, search it with the expectation that it's a pv move
+      if (score > alpha) {
+        score = -search<NodeType::kPV>(new_depth, ply + 1, -beta, -alpha, stack->ahead());
+      }
+    }
 
     board_.undo_move();
 
     time_mgmt_.update_nodes_searched();
-    if (ply == 0)
+    if (ply == 0) {
       time_mgmt_.update_nodes_spent_table(move, time_mgmt_.get_nodes_searched() - prev_nodes_searched);
-    if (time_mgmt_.times_up())
+    }
+
+    if (time_mgmt_.times_up()) {
       break;
+    }
 
     moves_seen++;
 
@@ -208,6 +230,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
         alpha = score;
         if (alpha >= beta) {
+          // beta cutoff because the opponent would never allow this position to occur
           break;
         }
       }
@@ -219,16 +242,18 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     return state.in_check() ? -eval::kMateScore + ply : eval::kDrawScore;
   }
 
-  auto entry_flag = TranspositionTable::Entry::kExact;
-  if (alpha >= beta) { // beta cutoff
-    entry_flag = TranspositionTable::Entry::kLowerBound;
-  } else if (alpha <= original_alpha) { // alpha failed to raise
-    entry_flag = TranspositionTable::Entry::kUpperBound;
-  }
+  if (best_score != kScoreNone) {
+    auto entry_flag = TranspositionTable::Entry::kExact;
+    if (alpha >= beta) {  // beta cutoff
+      entry_flag = TranspositionTable::Entry::kLowerBound;
+    } else if (alpha <= original_alpha) {  // alpha failed to raise
+      entry_flag = TranspositionTable::Entry::kUpperBound;
+    }
 
-  // attempt to update the transposition table with the evaluation of this position
-  TranspositionTable::Entry new_tt_entry(state.zobrist_key, depth, entry_flag, best_score, best_move);
-  transposition_table.save(state.zobrist_key, new_tt_entry, ply);
+    // attempt to update the transposition table with the evaluation of this position
+    TranspositionTable::Entry new_tt_entry(state.zobrist_key, depth, entry_flag, best_score, best_move);
+    transposition_table.save(state.zobrist_key, new_tt_entry, ply);
+  }
 
   return best_score;
 }
