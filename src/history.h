@@ -9,17 +9,17 @@ class MoveHistory {
  public:
   explicit MoveHistory(const BoardState &state);
 
-  const int &get_history_score(const Move &move, Color turn) noexcept;
+  const int &get_history_score(Move move, Color turn) noexcept;
 
   std::array<Move, 2> &get_killers(int ply);
 
-  Move &get_counter(const Move &move);
+  Move &get_counter(Move move);
 
-  void update_killer_move(const Move &move, int ply);
+  void update_killer_move(Move move, int ply);
 
-  void update_counter_move(const Move &prev_move, const Move &counter);
+  void update_counter_move(Move prev_move, Move counter);
 
-  void update_move_history(const Move &move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth);
+  void update_move_history(Move move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth);
 
   void decay_move_history();
 

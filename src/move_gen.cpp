@@ -471,7 +471,7 @@ List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, 
 
   auto &state = board.get_state();
 
-  const auto causes_check = [&board, &state](const Move &move) {
+  const auto causes_check = [&board, &state](Move move) {
     board.make_move(move);
     const bool in_check = state.checkers != 0;
     board.undo_move();
@@ -480,7 +480,7 @@ List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, 
 
   List<Move, kMaxMoves> filtered;
   for (int i = 0; i < moves.size(); i++) {
-    auto &move = moves[i];
+    const auto move = moves[i];
     const bool is_capture = move.is_capture(state);
 
     if (type == MoveType::kCaptures) {

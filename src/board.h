@@ -184,6 +184,10 @@ struct BoardState {
     return piece_bbs[PieceType::kKing];
   }
 
+  [[nodiscard]] constexpr inline bool in_check() const {
+    return checkers != 0;
+  }
+
   std::array<BitBoard, PieceType::kNumTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, Square::kSquareCount> piece_on_square;
@@ -199,8 +203,6 @@ struct BoardState {
 
 class Board {
  public:
-  explicit Board(std::size_t transpo_table_size);
-
   Board();
 
   inline BoardState &get_state() {
@@ -211,28 +213,20 @@ class Board {
     return history_.back();
   }
 
-  inline TranspositionTable &get_transpo_table() {
-    return transpo_table_;
-  }
-
-  [[nodiscard]] bool initialized() const {
-    return initialized_;
-  }
-
   void set_from_fen(const std::string &fen_str);
 
-  [[nodiscard]] bool is_move_pseudo_legal(const Move &move);
+  [[nodiscard]] bool is_move_pseudo_legal(Move move);
 
   // assuming the move is pseudo legal
-  [[nodiscard]] bool is_move_legal(const Move &move);
+  [[nodiscard]] bool is_move_legal(Move move);
 
-  void make_move(const Move &move);
+  void make_move(Move move);
 
   void make_null_move();
 
   void undo_move();
 
-  U64 key_after(const Move &move);
+  U64 key_after(Move move);
 
   [[nodiscard]] bool has_repeated(int ply);
 
@@ -241,16 +235,14 @@ class Board {
   void print_pieces();
 
  private:
-  void handle_castling(const Move &move);
+  void handle_castling(Move move);
 
-  void handle_promotions(const Move &move);
+  void handle_promotions(Move move);
 
   void calculate_king_attacks();
 
  private:
   BoardState state_;
-  TranspositionTable transpo_table_;
-  bool initialized_;
   List<BoardState, kMaxGamePly> history_;
 };
 

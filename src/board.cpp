@@ -3,20 +3,17 @@
 #include "move.h"
 #include "move_gen.h"
 
-Board::Board(std::size_t transpo_table_size) : transpo_table_(transpo_table_size), history_() {}
-
-Board::Board() : history_(), initialized_(false) {}
+Board::Board() : history_() {}
 
 void Board::set_from_fen(const std::string &fen_str) {
   // reset history everytime we parse from fen, since they will be re-applied when the moves are made
   history_.clear();
   state_ = fen::string_to_board(fen_str);
-  initialized_ = true;
 
   calculate_king_attacks();
 }
 
-bool Board::is_move_pseudo_legal(const Move &move) {
+bool Board::is_move_pseudo_legal(Move move) {
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
 
@@ -61,7 +58,7 @@ bool Board::is_move_pseudo_legal(const Move &move) {
   return possible_moves.is_set(to);
 }
 
-bool Board::is_move_legal(const Move &move) {
+bool Board::is_move_legal(Move move) {
   const Color us = state_.turn, them = flip_color(us);
   const bool is_white = state_.turn == Color::kWhite;
 
@@ -126,7 +123,7 @@ bool Board::is_move_legal(const Move &move) {
   return (move_gen::ray_between(king_square, checking_piece) | BitBoard::from_square(checking_piece)).is_set(to);
 }
 
-void Board::make_move(const Move &move) {
+void Board::make_move(Move move) {
   // create new board state
   history_.push(state_);
 
@@ -255,7 +252,7 @@ void Board::make_null_move() {
   calculate_king_attacks();
 }
 
-U64 Board::key_after(const Move &move) {
+U64 Board::key_after(Move move) {
   U64 key = state_.zobrist_key;
   key ^= zobrist::hash_turn(state_.turn) ^ zobrist::hash_turn(flip_color(state_.turn));
 
@@ -342,7 +339,7 @@ bool Board::is_draw(int ply) {
   return false;
 }
 
-void Board::handle_castling(const Move &move) {
+void Board::handle_castling(Move move) {
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto from = move.get_from(), to = move.get_to();
@@ -411,7 +408,7 @@ void Board::handle_castling(const Move &move) {
   }
 }
 
-void Board::handle_promotions(const Move &move) {
+void Board::handle_promotions(Move move) {
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto to = move.get_to();

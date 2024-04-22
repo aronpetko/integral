@@ -23,7 +23,7 @@ bool is_mate_score(int evaluation);
 
 int mate_in(int evaluation);
 
-bool static_exchange(const Move &move, int threshold, const BoardState &state);
+bool static_exchange(Move move, int threshold, const BoardState &state);
 
 int evaluate(const BoardState &state);
 

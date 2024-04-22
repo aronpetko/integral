@@ -165,7 +165,7 @@ int mate_in(int evaluation) {
   return evaluation;
 }
 
-bool static_exchange(const Move &move, int threshold, const BoardState &state) {
+bool static_exchange(Move move, int threshold, const BoardState &state) {
   const auto from = move.get_from();
   const auto to = move.get_to();
 

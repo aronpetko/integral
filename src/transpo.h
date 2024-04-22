@@ -19,7 +19,7 @@ class TranspositionTable {
 
     Entry() : key(0), depth(0), flag(kExact), score(0), move(Move::null_move()) {}
 
-    explicit Entry(U64 key, U8 depth, Flag flag, int score, const Move &move) : key(static_cast<U16>(key)), depth(depth), flag(flag), score(score), move(move) {}
+    explicit Entry(U64 key, U8 depth, Flag flag, int score, Move move) : key(static_cast<U16>(key)), depth(depth), flag(flag), score(score), move(move) {}
 
     [[nodiscard]] bool compare_key(const U64 &test_key) const {
       return static_cast<U16>(test_key) == key;
@@ -57,5 +57,7 @@ class TranspositionTable {
   std::size_t table_size_;
   std::size_t used_entries_;
 };
+
+inline TranspositionTable transposition_table;
 
 #endif // INTEGRAL_TRANSPO_H_

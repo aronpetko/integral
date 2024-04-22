@@ -10,8 +10,11 @@ void TranspositionTable::resize(std::size_t mb_size) {
   assert(mb_size > 0);
 
   const std::size_t kBytesInMegabyte = 1024 * 1024;
-  table_size_ = mb_size * kBytesInMegabyte / sizeof(Entry);
+  mb_size *= kBytesInMegabyte;
+
+  table_size_ = mb_size / sizeof(Entry);
   table_.resize(table_size_);
+  table_.shrink_to_fit();
 
   clear();
 }
@@ -21,32 +24,21 @@ void TranspositionTable::clear() {
 }
 
 void TranspositionTable::save(const U64 &key, const Entry &entry, int ply) {
-  // typically as the search progresses, other factors that influence the move ordering like counter moves, history,
-  // killers, etc are improved therefore, we cannot simply trust a higher depth search as being a better reflection of
-  // the evaluation, and we give some lenience for the replacement strategy
-  const int kDepthLenience = 4;
+  auto &tt_entry = table_[index(key)];
+  if (!tt_entry.compare_key(key) || entry.depth >= tt_entry.depth || entry.flag == Entry::kExact) {
+    const auto old_move = tt_entry.move;
+    tt_entry = entry;
 
-  auto &table_entry = table_[index(key)];
-  if (table_entry.key != entry.key || table_entry.depth <= entry.depth + kDepthLenience ||
-      entry.flag == Entry::kExact) {
-    // for hashfull counting
-    if (table_entry.key == 0 && table_entry.depth == 0) {
-      used_entries_++;
+    // keep the old move if there is no best move being saved
+    if (old_move && !entry.move) {
+      tt_entry.move = old_move;
     }
 
-    const auto old_tt_move = table_entry.move;
-    table_entry = entry;
-
-    // restore the tt move if we're saving a tt entry from a null move
-    if (!entry.move) {
-      table_entry.move = old_tt_move;
-    }
-
-    const int kRoughlyMate = -eval::kMateScore + kMaxPlyFromRoot;
-    if (entry.score <= kRoughlyMate) {
-      table_entry.score -= ply;
-    } else if (entry.score >= -kRoughlyMate) {
-      table_entry.score += ply;
+    const int kRoughlyMate = eval::kMateScore - kMaxPlyFromRoot;
+    if (tt_entry.score >= kRoughlyMate) {
+      tt_entry.score += ply;
+    } else if (tt_entry.score <= -kRoughlyMate) {
+      tt_entry.score -= ply;
     }
   }
 }
@@ -56,13 +48,12 @@ void TranspositionTable::prefetch(const U64 &key) const {
 }
 
 int TranspositionTable::correct_score(int score, int ply) const {
-  const int kRoughlyMate = -eval::kMateScore + kMaxPlyFromRoot;
-  if (score <= kRoughlyMate) {
-    score += ply;
-  } else if (score >= -kRoughlyMate) {
+  const int kRoughlyMate = eval::kMateScore - kMaxPlyFromRoot;
+  if (score >= kRoughlyMate) {
     score -= ply;
+  } else if (score <= -kRoughlyMate) {
+    score += ply;
   }
-
   return score;
 }
 

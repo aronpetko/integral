@@ -14,7 +14,7 @@ const std::string kEngineDescription = "Aron Petkovski";
 
 void position(Board &board, std::stringstream &input_stream);
 
-void go(Board &board, std::stringstream &input_stream);
+void go(Board &board, Search &search, std::stringstream &input_stream);
 
 void perft(Board &board, std::stringstream &input_stream);
 

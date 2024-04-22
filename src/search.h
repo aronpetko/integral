@@ -50,25 +50,17 @@ struct PVLine {
 };
 
 enum class NodeType {
-  kRoot,
   kPV,
   kNonPV
 };
 
 class Search {
  public:
-  struct Result {
-    Move best_move;
-    PVLine pv_line;
-    int score;
-
-    Result() : score(kScoreNone), best_move(Move::null_move()) {}
-  };
-
   struct Stack {
     [[maybe_unused]] int ply;
     int static_eval;
     PVLine pv;
+    Move best_move;
 
     Stack() : static_eval(kScoreNone), ply(0) {}
 
@@ -81,29 +73,31 @@ class Search {
     }
   };
 
-  explicit Search(TimeManagement::Config &time_config, Board &board);
+  explicit Search(Board &board);
 
-  static std::array<std::array<int, kMaxPlyFromRoot>, kMaxSearchDepth + 1> kLateMoveReductionTable;
+  void start(TimeManagement::Config &time_config);
 
-  static void init_tables();
-
-  Result go();
+  void stop();
 
  private:
-  template<NodeType node_type>
-  int quiesce(int ply, int alpha, int beta);
+  void set_time_config(TimeManagement::Config &time_config);
+
+  void iterative_deepening();
 
   template<NodeType node_type>
-  int search(int depth, int ply, int alpha, int beta, Result &result);
+  int quiescent_search(int ply, int alpha, int beta, Stack *stack);
 
-  Result iterative_deepening();
+  template<NodeType node_type>
+  int search(int depth, int ply, int alpha, int beta, Stack *stack);
 
  private:
   Board &board_;
   TimeManagement time_mgmt_;
   MoveHistory move_history_;
-  std::array<Stack, kMaxPlyFromRoot> stack_;
+  // + 1 just in case we try to access memory when we're at the maximum ply
+  std::array<Stack, kMaxPlyFromRoot + 1> stack_;
   int sel_depth_;
+  std::atomic_bool searching;
 };
 
 #endif // INTEGRAL_SEARCH_H_

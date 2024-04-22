@@ -18,6 +18,10 @@ class List {
     return (*this)[count_ - 1];
   }
 
+  inline const T &at(int i) {
+    return container_[i];
+  }
+
   inline void push(const T& object) {
     assert(count_ < length);
     container_[count_++] = object;
@@ -34,7 +38,8 @@ class List {
   }
 
   inline void erase(int i) {
-    container_[i] = container_[--count_];
+    std::swap(back(), container_[i]);
+    --count_;
   }
 
   [[nodiscard]] inline int size() const {

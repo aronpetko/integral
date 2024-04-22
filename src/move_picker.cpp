@@ -15,7 +15,7 @@ MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHist
     : type_(type),
       board_(board),
       tt_move_(tt_move),
-      stage_(Stage::kTTMove),
+      stage_(Stage::kGenerateMoves),
       move_history_(move_history),
       search_stack_(search_stack),
       moves_idx_(0) {}
@@ -108,13 +108,16 @@ int MovePicker::score_move(Move &move) {
 
     const int mvv_lva_score =
         kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
+    return mvv_lva_score;
     // good captures are searched first, bad captures are searched last
-    if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
+    /*if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
       return kBaseGoodCaptureScore + mvv_lva_score;
     } else {
       return kBaseBadCaptureScore + mvv_lva_score;
-    }
+    }*/
   }
+
+  return 0;
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
   const int kKillerMoveScore = kBaseGoodCaptureScore - 10;

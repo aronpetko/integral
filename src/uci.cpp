@@ -19,11 +19,6 @@ void position(Board &board, std::stringstream &input_stream) {
     position_fen = fen::kStartFen;
   }
 
-  const int kTranspositionTableMbSize = 32;
-  if (!board.initialized()) {
-    board = Board(kTranspositionTableMbSize);
-  }
-
   board.set_from_fen(position_fen);
 
   std::string dummy;
@@ -41,7 +36,7 @@ void position(Board &board, std::stringstream &input_stream) {
   }
 }
 
-void go(Board &board, std::stringstream &input_stream) {
+void go(Board &board, Search &search, std::stringstream &input_stream) {
   TimeManagement::Config time_config{};
 
   std::string option;
@@ -66,26 +61,29 @@ void go(Board &board, std::stringstream &input_stream) {
     }
   }
 
-  if (option.empty())
-    time_config.depth = kMaxSearchDepth;
+  time_config.turn = board.get_state().turn;
 
-  const auto search_result = Search(time_config, board).go();
-  std::cout << std::format("bestmove {}", search_result.best_move.to_string()) << std::endl;
+  if (option.empty()) {
+    time_config.depth = kMaxSearchDepth;
+  }
+
+  search.start(time_config);
 }
 
 U64 perft_internal(Board &board, int depth, int start_depth) {
-  List<Move, kMaxMoves> moves = move_gen::moves(MoveType::kAll, board);
+  auto moves = move_gen::moves(MoveType::kAll, board);
 
   auto &state = board.get_state();
   U64 total_nodes = 0;
 
   for (int i = 0; i < moves.size(); i++) {
-    auto &move = moves[i];
+    const auto move = moves[i];
     if (!board.is_move_legal(move))
       continue;
 
     U64 child_nodes;
     if (depth == 1) {
+      // bulk counting
       total_nodes += child_nodes = 1;
     } else {
       board.make_move(move);
@@ -122,9 +120,13 @@ void accept_commands() {
   move_gen::initialize_attacks();
 
   // init table lookups that the search will do
-  Search::init_tables();
+  // Search::init_tables();
+
+  const int kTTMbSize = 32;
+  transposition_table.resize(kTTMbSize);
 
   Board board;
+  Search search(board);
 
   std::string input_line;
   while (input_line != "quit") {
@@ -143,9 +145,11 @@ void accept_commands() {
     } else if (command == "position") {
       position(board, input_stream);
     } else if (command == "go") {
-      go(board, input_stream);
+      go(board, search, input_stream);
+    } else if (command == "stop") {
+      search.stop();
     } else if (command == "ucinewgame") {
-      board.get_transpo_table().clear();
+      transposition_table.clear();
     } else if (command == "print") {
       board.print_pieces();
     }

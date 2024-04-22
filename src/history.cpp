@@ -2,7 +2,7 @@
 
 MoveHistory::MoveHistory(const BoardState &state) : state_(state) {}
 
-const int &MoveHistory::get_history_score(const Move &move, Color turn) noexcept {
+const int &MoveHistory::get_history_score(Move move, Color turn) noexcept {
   return butterfly_history_[turn][move.get_from()][move.get_to()];
 }
 
@@ -10,12 +10,12 @@ std::array<Move, 2> &MoveHistory::get_killers(int ply) {
   return killer_moves_[ply];
 }
 
-Move &MoveHistory::get_counter(const Move &move){
+Move &MoveHistory::get_counter(Move move){
   const auto to = move.get_to();
   return counter_moves_[state_.get_piece_type(to)][to];
 }
 
-void MoveHistory::update_killer_move(const Move &move, int ply) {
+void MoveHistory::update_killer_move(Move move, int ply) {
   if (move == killer_moves_[ply][0])
     return;
 
@@ -23,7 +23,7 @@ void MoveHistory::update_killer_move(const Move &move, int ply) {
   killer_moves_[ply][0] = move;
 }
 
-void MoveHistory::update_counter_move(const Move &prev_move, const Move &counter) {
+void MoveHistory::update_counter_move(Move prev_move, Move counter) {
   if (prev_move != Move::null_move()) {
     const auto to = prev_move.get_to();
     counter_moves_[state_.get_piece_type(to)][to] = counter;
@@ -32,7 +32,7 @@ void MoveHistory::update_counter_move(const Move &prev_move, const Move &counter
 
 const int kHistoryCap = 8192;
 
-void MoveHistory::update_move_history(const Move &move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth) {
+void MoveHistory::update_move_history(Move move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth) {
   auto &move_history_score = butterfly_history_[turn][move.get_from()][move.get_to()];
 
   // apply a linear dampening to the bonus as the depth increases
