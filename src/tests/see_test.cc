@@ -4,7 +4,8 @@
 
 namespace tests {
 
-const std::array<std::string, 71> kSEESuite = {
+// clang-format on
+const std::array kSEESuite = {
     "6k1/1pp4p/p1pb4/6q1/3P1pRr/2P4P/PP1Br1P1/5RKN w - - | f1f4 | -100 | P - R + B",
     "5rk1/1pp2q1p/p1pb4/8/3P1NP1/2P5/1P1BQ1P1/5RK1 b - - | d6f4 | 0 | -N + B",
     "4R3/2r3p1/5bk1/1p1r3p/p2PR1P1/P1BK1P2/1P6/8 b - - | h5g4 | 0",
@@ -77,15 +78,16 @@ const std::array<std::string, 71> kSEESuite = {
     "8/8/1k6/8/8/2N1N3/4p1K1/3n4 w - - | c3d1 | 100 | N - (N + Q - P) + Q",
     "r1bqk1nr/pppp1ppp/2n5/1B2p3/1b2P3/5N2/PPPP1PPP/RNBQK2R w KQkq - | e1g1 | 0",
 };
+// clang-format off
 
 void see_suite() {
   Board board;
   for (const auto &see_test : kSEESuite) {
     const auto split = split_string(see_test, '|');
-
     board.set_from_fen(split[0]);
 
-    const auto move = Move::from_str(board.get_state(), remove_whitespace(split[1])).value();
+    const auto move = Move::from_str(board.get_state(), remove_whitespace(split[1]));
+    assert(move);
     const bool result = std::stoi(remove_whitespace(split[2])) >= 0;
 
     std::cout << std::format("{}\033[0m {}\n",

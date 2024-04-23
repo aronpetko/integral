@@ -19,7 +19,7 @@ class MoveHistory {
 
   void update_counter_move(Move prev_move, Move counter);
 
-  void update_move_history(Move move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth);
+  void update_move_history(Move move, List<Move, kMaxMoves>& bad_quiets, Color turn, int depth);
 
   void decay_move_history();
 

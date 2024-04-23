@@ -12,6 +12,8 @@ class Board;
 
 namespace tests {
 
+void bench_suite(int depth);
+
 void see_suite();
 
 void perft_suite();

@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 
-#include "../engine/move_picker.h"
+#include "../engine/search.h"
 #include "../tests/tests.h"
 #include "move_gen.h"
 
@@ -29,9 +29,8 @@ void position(Board &board, std::stringstream &input_stream) {
   std::string move_input;
   while (input_stream >> move_input) {
     const auto move = Move::from_str(board.get_state(), move_input);
-
-    if (move.has_value() && board.is_move_pseudo_legal(move.value())) {
-      board.make_move(move.value());
+    if (move && board.is_move_pseudo_legal(move)) {
+      board.make_move(move);
     } else {
       std::cerr << std::format("invalid move: {}\n", move_input);
     }
@@ -80,13 +79,11 @@ void accept_commands() {
   // init attack lookups
   move_gen::initialize_attacks();
 
-  // init table lookups that the search will do
-  // Search::init_tables();
-
-  const int kTTMbSize = 32;
+  const int kTTMbSize = 64;
   transposition_table.resize(kTTMbSize);
 
   Board board;
+  board.set_from_fen(fen::kStartFen);
   Search search(board);
 
   std::string input_line;
@@ -100,6 +97,11 @@ void accept_commands() {
     if (command == "uci") {
       std::cout << std::format("id name {}", kEngineName) << std::endl;
       std::cout << std::format("id author {}", kEngineAuthor) << std::endl;
+
+      // todo: properly implement options
+      std::cout << "option name Threads type spin default 1 min 1 max 1" << std::endl;
+      std::cout << "option name Hash type spin default 64 min 64 max 64" << std::endl;
+
       std::cout << "uciok" << std::endl;
     } else if (command == "isready") {
       std::cout << "readyok" << std::endl;
@@ -115,6 +117,10 @@ void accept_commands() {
       board.print_pieces();
     } else if (command == "test") {
       tests::see_suite();
+    } else if (command == "bench") {
+      int depth = 0;
+      input_stream >> depth;
+      tests::bench_suite(depth);
     }
   }
 }

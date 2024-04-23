@@ -10,14 +10,13 @@ std::array<Move, 2> &MoveHistory::get_killers(int ply) {
   return killer_moves_[ply];
 }
 
-Move &MoveHistory::get_counter(Move move){
+Move &MoveHistory::get_counter(Move move) {
   const auto to = move.get_to();
   return counter_moves_[state_.get_piece_type(to)][to];
 }
 
 void MoveHistory::update_killer_move(Move move, int ply) {
-  if (move == killer_moves_[ply][0])
-    return;
+  if (move == killer_moves_[ply][0]) return;
 
   killer_moves_[ply][1] = killer_moves_[ply][0];
   killer_moves_[ply][0] = move;
@@ -32,7 +31,7 @@ void MoveHistory::update_counter_move(Move prev_move, Move counter) {
 
 const int kHistoryCap = 8192;
 
-void MoveHistory::update_move_history(Move move, List<Move, kMaxMoves>& quiet_non_cutoffs, Color turn, int depth) {
+void MoveHistory::update_move_history(Move move, List<Move, kMaxMoves> &bad_quiets, Color turn, int depth) {
   auto &move_history_score = butterfly_history_[turn][move.get_from()][move.get_to()];
 
   // apply a linear dampening to the bonus as the depth increases
@@ -41,11 +40,12 @@ void MoveHistory::update_move_history(Move move, List<Move, kMaxMoves>& quiet_no
   move_history_score += scaled_bonus;
 
   // lower the score of the quiet moves that did not cause a beta cutoff
-  // a good side effect of this is that moves that caused a beta cutoff earlier and were awarded a bonus but no longer cause a beta cutoff are eventually "discarded"
-  // penalize_move_history(quiet_non_cutoffs, turn, depth);
+  // a good side effect of this is that moves that caused a beta cutoff earlier and were awarded a bonus but no longer
+  // cause a beta cutoff are eventually "discarded"
+  penalize_move_history(bad_quiets, turn, depth);
 }
 
-void MoveHistory::penalize_move_history(List<Move, kMaxMoves>& moves, Color turn, int depth) {
+void MoveHistory::penalize_move_history(List<Move, kMaxMoves> &moves, Color turn, int depth) {
   const int bonus = -depth * depth;
   for (int i = 0; i < moves.size(); i++) {
     const auto &move = moves[i];

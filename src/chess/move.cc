@@ -8,17 +8,17 @@ Move::operator bool() const {
   return !is_null();
 }
 
-std::optional<Move> Move::from_str(const BoardState &state, std::string_view str) {
+Move Move::from_str(const BoardState &state, std::string_view str) {
   const int kMinMoveLen = 4, kMaxMoveLen = 5;
   if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)
-    return std::nullopt;
+    return Move::null_move();
 
   const int from_rank = str[1] - '1', from_file = str[0] - 'a';
   const int to_rank = str[3] - '1', to_file = str[2] - 'a';
 
   if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 ||
       from_file < 0 || from_file >= 8 || to_file < 0 || to_file >= 8)
-    return std::nullopt;
+    return Move::null_move();;
 
   const auto from = rank_file_to_square(from_rank, from_file);
   const auto to = rank_file_to_square(to_rank, to_file);
@@ -45,7 +45,7 @@ std::optional<Move> Move::from_str(const BoardState &state, std::string_view str
       promotion_type = PromotionType::kKnight;
       break;
     default:
-      return std::nullopt;
+      return Move::null_move();;
   }
 
   return Move(from, to, promotion_type);

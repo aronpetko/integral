@@ -35,8 +35,7 @@ struct PVLine {
     std::string str;
     for (int i = 0; i < moves_.size(); i++) {
       str += moves_[i].to_string();
-      if (i < moves_.size() - 1)
-        str += ' ';
+      if (i < moves_.size() - 1) str += ' ';
     }
     return str;
   }
@@ -49,10 +48,8 @@ struct PVLine {
   List<Move, kMaxPlyFromRoot> moves_;
 };
 
-enum class NodeType {
-  kPV,
-  kNonPV
-};
+enum class NodeType { kPV, kNonPV };
+enum class SearchType { kRegular, kBench };
 
 class Search {
  public:
@@ -62,7 +59,7 @@ class Search {
     PVLine pv;
     Move best_move;
 
-    Stack() : static_eval(kScoreNone), ply(0) {}
+    Stack() : static_eval(kScoreNone), ply(0), best_move(Move::null_move()) {}
 
     Stack *ahead(int amount = 1) {
       return this + amount;
@@ -79,15 +76,22 @@ class Search {
 
   void stop();
 
+  void bench(int depth);
+
+  [[nodiscard]] bool finished();
+
+  const TimeManagement &get_time_management();
+
  private:
   void set_time_config(TimeManagement::Config &time_config);
 
+  template <SearchType type>
   void iterative_deepening();
 
-  template<NodeType node_type>
+  template <NodeType node_type>
   int quiescent_search(int ply, int alpha, int beta, Stack *stack);
 
-  template<NodeType node_type>
+  template <NodeType node_type>
   int search(int depth, int ply, int alpha, int beta, Stack *stack);
 
  private:
@@ -98,6 +102,7 @@ class Search {
   std::array<Stack, kMaxPlyFromRoot + 1> stack_;
   int sel_depth_;
   std::atomic_bool searching;
+  std::array<std::array<U16, kMaxMoves>, kMaxSearchDepth> lmr_table_;
 };
 
-#endif // INTEGRAL_SEARCH_H_
+#endif  // INTEGRAL_SEARCH_H_

@@ -11,10 +11,7 @@ const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kM
 }};
 // clang-format on
 
-MovePicker::MovePicker(MovePickerType type,
-                       Board &board,
-                       Move tt_move,
-                       MoveHistory &move_history,
+MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history,
                        Search::Stack *search_stack)
     : type_(type),
       board_(board),
@@ -61,9 +58,7 @@ Move MovePicker::next() {
 }
 
 Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
-  int best_move_idx = index;
-  int best_move_score = move_list.scores[index];
-
+  int best_move_idx = index, best_move_score = move_list.scores[index];
   for (int next = index + 1; next < move_list.moves.size(); next++) {
     if (move_list.scores[next] > best_move_score) {
       best_move_idx = next;
@@ -76,14 +71,13 @@ Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
   return move_list.moves[index];
 }
 
-template<MoveType move_type>
+template <MoveType move_type>
 void MovePicker::generate_and_score_moves() {
   scored_moves_.moves = move_gen::moves(move_type, board_);
   for (int i = 0; i < scored_moves_.moves.size(); i++) {
     if (scored_moves_.moves[i] == tt_move_) {
       scored_moves_.moves.erase(i);
     }
-
     scored_moves_.scores.push(score_move(scored_moves_.moves[i]));
   }
 }
@@ -113,7 +107,6 @@ int MovePicker::score_move(Move &move) {
   if (move.is_capture(state)) {
     const auto attacker = state.get_piece_type(from);
     const auto victim = state.get_piece_type(to);
-
     const int mvv_lva_score =
         kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
     // good captures are searched first, bad captures are searched last

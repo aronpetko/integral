@@ -10,10 +10,7 @@ struct ScoredMoveList {
   List<int, kMaxMoves> scores;
 };
 
-enum class MovePickerType {
-  kSearch,
-  kQuiescence
-};
+enum class MovePickerType { kSearch, kQuiescence };
 
 class MovePicker {
  public:
@@ -24,7 +21,7 @@ class MovePicker {
  private:
   Move &selection_sort(ScoredMoveList &move_list, const int &index);
 
-  template<MoveType move_type>
+  template <MoveType move_type>
   void generate_and_score_moves();
 
   int score_move(Move &move);
@@ -54,4 +51,4 @@ class MovePicker {
   int moves_idx_;
 };
 
-#endif // INTEGRAL_MOVE_PICKER_H_
+#endif  // INTEGRAL_MOVE_PICKER_H_

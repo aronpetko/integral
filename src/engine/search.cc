@@ -3,40 +3,30 @@
 #include <format>
 #include <iomanip>
 
-#include "../chess/move_gen.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
 #include "transpo.h"
 
-Search::Search(Board &board) : board_(board), sel_depth_(0), searching(false), move_history_(board_.get_state()) {}
+Search::Search(Board &board) : board_(board), sel_depth_(0), searching(false), move_history_(board_.get_state()) {
+  const double kBaseReduction = 0.39;
+  const double kDivisor = 2.36;
 
-void Search::set_time_config(TimeManagement::Config &time_config) {
-  time_mgmt_ = TimeManagement(time_config);
-}
-
-void Search::start(TimeManagement::Config &time_config) {
-  if (searching) {
-    return;
+  for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
+    for (int move = 1; move < kMaxMoves; move++) {
+      lmr_table_[depth][move] = static_cast<int>(kBaseReduction + std::log(depth) * std::log(move) / kDivisor);
+    }
   }
-
-  set_time_config(time_config);
-
-  //std::thread([this] { iterative_deepening(); }).detach();
-  searching = true;
-  time_mgmt_.start();
-  iterative_deepening();
 }
 
-void Search::stop() {
-  time_mgmt_.stop();
-  searching = false;
-}
-
+template <SearchType type>
 void Search::iterative_deepening() {
+  constexpr bool print_info = type == SearchType::kRegular;
+
   move_history_.decay_move_history();
 
   // the starting ply from a root position is always zero
   const auto root_stack = &stack_[0];
+  root_stack->best_move = Move::null_move();
 
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
@@ -48,27 +38,32 @@ void Search::iterative_deepening() {
     const int beta = eval::kInfiniteScore;
 
     const int score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
-    //if (score != kScoreNone) {
-    const bool is_mate = eval::is_mate_score(score);
-    std::cout << std::format("info depth {} {} {} nodes {} time {} nps {} pv {}", depth, is_mate ? "mate" : "cp",
-                             is_mate ? eval::mate_in(score) : score, time_mgmt_.get_nodes_searched(),
-                             time_mgmt_.time_elapsed(), time_mgmt_.nodes_per_second(), root_stack->pv.to_string())
-              << std::endl;
-    //}
 
-    if (time_mgmt_.soft_times_up(root_stack->best_move)) {
-      break;
+    if (print_info) {
+      const bool is_mate = eval::is_mate_score(score);
+      std::cout << std::format("info depth {} {} {} nodes {} time {} nps {} pv {}", depth, is_mate ? "mate" : "cp",
+                               is_mate ? eval::mate_in(score) : score, time_mgmt_.get_nodes_searched(),
+                               time_mgmt_.time_elapsed(), time_mgmt_.nodes_per_second(), root_stack->pv.to_string())
+                << std::endl;
     }
 
-    best_move = root_stack->best_move;
+    if (root_stack->best_move) {
+      best_move = root_stack->best_move;
+    }
+
+    if (!searching || time_mgmt_.soft_times_up(root_stack->best_move)) {
+      break;
+    }
   }
 
-  std::cout << std::format("bestmove {}", best_move.to_string()) << std::endl;
+  if (print_info) {
+    std::cout << std::format("bestmove {}", best_move.to_string()) << std::endl;
+  }
 
   stop();
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
@@ -126,7 +121,7 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   return best_score;
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   const auto &state = board_.get_state();
 
@@ -160,9 +155,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
   // keep track of the original alpha for bound determination when updating the transposition table
   const int original_alpha = alpha;
+  // keep track of quiet moves that failed to cause a beta cutoff
+  List<Move, kMaxMoves> bad_quiets;
 
   int moves_seen = 0;
   int best_score = kScoreNone;
+  Move best_move = Move::null_move();
 
   MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, stack);
   Move move;
@@ -182,20 +180,35 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
     board_.make_move(move);
 
-    // principal variation search (pvs)
     const int new_depth = depth - 1;
-    int score;
-    if (moves_seen == 0) {
-      // we expect the first move to be the pv move, so we search it with a full window
-      score = -search<NodeType::kPV>(new_depth, ply + 1, -beta, -alpha, stack->ahead());
-    } else {
-      // all subsequent moves are searched with a null window to see if it has the potential to raise alpha
-      score = -search<NodeType::kNonPV>(new_depth, ply + 1, -alpha - 1, -alpha, stack->ahead());
 
-      // if this move looks promising, search it with the expectation that it's a pv move
-      if (score > alpha) {
-        score = -search<NodeType::kPV>(new_depth, ply + 1, -beta, -alpha, stack->ahead());
-      }
+    // principal variation search (pvs)
+    bool needs_full_search;
+    int score;
+
+    // late move reduction: moves that are less likely to be good (due to the move ordering)
+    // are searched at lower depths
+    if (depth > 2 && moves_seen >= 1) {
+      const int reduction = lmr_table_[depth][moves_seen];
+
+      // null window search at reduced depth to see if the move has potential
+      score = -search<NodeType::kNonPV>(new_depth - reduction, ply + 1, -alpha - 1, -alpha, stack->ahead());
+      needs_full_search = score > alpha && reduction != 0;
+    } else {
+      // if we didn't perform late move reduction, then we search this move at full depth with a null window search
+      // if we don't expect it to be a pv move
+      needs_full_search = !in_pv_node || moves_seen >= 1;
+    }
+
+    // either the move has potential from a reduced depth search or it's not expected to be a pv move
+    // hence, we search it with a null window
+    if (needs_full_search) {
+      score = -search<NodeType::kNonPV>(new_depth, ply + 1, -alpha - 1, -alpha, stack->ahead());
+    }
+
+    // perform a full window search on this move if it's known to be good
+    if (in_pv_node && (score > alpha || moves_seen == 0)) {
+      score = -search<NodeType::kPV>(new_depth, ply + 1, -beta, -alpha, stack->ahead());
     }
 
     board_.undo_move();
@@ -215,12 +228,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
       best_score = score;
 
       if (score > alpha) {
-        stack->best_move = move;
+        stack->best_move = best_move = move;
 
         // only update the pv line if this node was expected to be in the pv
         if (in_pv_node) {
           stack->pv.clear();
-          stack->pv.push(stack->best_move);
+          stack->pv.push(best_move);
 
           // copy over the child's pv to this ply's pv
           auto &child_pv = stack->ahead()->pv;
@@ -232,14 +245,18 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         alpha = score;
         if (alpha >= beta) {
           if (is_quiet) {
-            List<Move, kMaxMoves> dummy;
-            move_history_.update_move_history(move, dummy, state.turn, depth);
+            move_history_.update_move_history(move, bad_quiets, state.turn, depth);
           }
 
           // beta cutoff because the opponent would never allow this position to occur
           break;
         }
       }
+    }
+
+    // penalize the history score of quiet moves that failed to raise alpha
+    if (is_quiet && move != best_move) {
+      bad_quiets.push(move);
     }
   }
 
@@ -259,9 +276,50 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     }
 
     // attempt to update the transposition table with the evaluation of this position
-    TranspositionTable::Entry new_tt_entry(state.zobrist_key, depth, entry_flag, best_score, stack->best_move);
+    TranspositionTable::Entry new_tt_entry(state.zobrist_key, depth, entry_flag, best_score, best_move);
     transposition_table.save(state.zobrist_key, new_tt_entry, ply);
   }
 
   return best_score;
+}
+
+void Search::set_time_config(TimeManagement::Config &time_config) {
+  time_mgmt_ = TimeManagement(time_config);
+}
+
+void Search::start(TimeManagement::Config &time_config) {
+  if (searching) return;
+  searching = true;
+
+  set_time_config(time_config);
+  time_mgmt_.start();
+
+  std::thread([this] { iterative_deepening<SearchType::kRegular>(); }).detach();
+}
+
+void Search::bench(int depth) {
+  if (searching) return;
+  searching = true;
+  std::cout << "bruh: " << depth << std::endl;
+
+  TimeManagement::Config time_config{};
+  time_config.depth = depth;
+
+  set_time_config(time_config);
+  time_mgmt_.start();
+
+  iterative_deepening<SearchType::kBench>();
+}
+
+void Search::stop() {
+  time_mgmt_.stop();
+  searching = false;
+}
+
+bool Search::finished() {
+  return !searching;
+}
+
+const TimeManagement &Search::get_time_management() {
+  return time_mgmt_;
 }
