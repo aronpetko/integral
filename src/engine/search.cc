@@ -18,11 +18,12 @@ Search::Search(Board &board) : board_(board), sel_depth_(0), searching(false), m
   }
 }
 
-template <SearchType type>
+template<SearchType type>
 void Search::iterative_deepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
   move_history_.decay_move_history();
+  sel_depth_ = 0;
 
   // the starting ply from a root position is always zero
   const auto root_stack = &stack_[0];
@@ -41,9 +42,15 @@ void Search::iterative_deepening() {
 
     if (print_info) {
       const bool is_mate = eval::is_mate_score(score);
-      std::cout << std::format("info depth {} {} {} nodes {} time {} nps {} pv {}", depth, is_mate ? "mate" : "cp",
-                               is_mate ? eval::mate_in(score) : score, time_mgmt_.get_nodes_searched(),
-                               time_mgmt_.time_elapsed(), time_mgmt_.nodes_per_second(), root_stack->pv.to_string())
+      std::cout << std::format("info depth {} seldepth {} {} {} nodes {} time {} nps {} pv {}",
+                               depth,
+                               sel_depth_,
+                               is_mate ? "mate" : "cp",
+                               is_mate ? eval::mate_in(score) : score,
+                               time_mgmt_.get_nodes_searched(),
+                               time_mgmt_.time_elapsed(),
+                               time_mgmt_.nodes_per_second(),
+                               root_stack->pv.to_string())
                 << std::endl;
     }
 
@@ -63,7 +70,7 @@ void Search::iterative_deepening() {
   stop();
 }
 
-template <NodeType node_type>
+template<NodeType node_type>
 int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
@@ -121,7 +128,7 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   return best_score;
 }
 
-template <NodeType node_type>
+template<NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   const auto &state = board_.get_state();
 
@@ -152,6 +159,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
       return transposition_table.correct_score(tt_entry.score, ply);
     }
   }
+
+  sel_depth_ = std::max(sel_depth_, ply);
 
   // keep track of the original alpha for bound determination when updating the transposition table
   const int original_alpha = alpha;
@@ -294,13 +303,14 @@ void Search::start(TimeManagement::Config &time_config) {
   set_time_config(time_config);
   time_mgmt_.start();
 
-  std::thread([this] { iterative_deepening<SearchType::kRegular>(); }).detach();
+  std::thread([this] {
+    iterative_deepening<SearchType::kRegular>();
+  }).detach();
 }
 
 void Search::bench(int depth) {
   if (searching) return;
   searching = true;
-  std::cout << "bruh: " << depth << std::endl;
 
   TimeManagement::Config time_config{};
   time_config.depth = depth;
@@ -308,16 +318,13 @@ void Search::bench(int depth) {
   set_time_config(time_config);
   time_mgmt_.start();
 
+  // bench is intended to block the uci loop thread
   iterative_deepening<SearchType::kBench>();
 }
 
 void Search::stop() {
   time_mgmt_.stop();
   searching = false;
-}
-
-bool Search::finished() {
-  return !searching;
 }
 
 const TimeManagement &Search::get_time_management() {

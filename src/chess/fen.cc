@@ -2,10 +2,12 @@
 
 namespace fen {
 
+// clang-format off
 constexpr std::array<std::array<char, PieceType::kNumTypes>, 2> piece_to_char = {{
   {'p', 'n', 'b', 'r', 'q', 'k'},
   {'P', 'N', 'B', 'R', 'Q', 'K'}
 }};
+// clang-format on
 
 char get_piece_char(BoardState &state, Square square) {
   if (!state.occupied().is_set(square)) {
@@ -20,7 +22,7 @@ BoardState string_to_board(std::string fen_str) {
   auto &pieces = state.piece_bbs;
 
   std::istringstream stream(fen_str);
-  
+
   std::string position;
   stream >> position;
 
@@ -31,7 +33,7 @@ BoardState string_to_board(std::string fen_str) {
       square = square - 16 + (square % kNumFiles);
       continue;
     }
-    
+
     if (std::isdigit(ch)) {
       square += ch - '0';
       continue;
@@ -75,7 +77,7 @@ BoardState string_to_board(std::string fen_str) {
   return state;
 }
 
-std::string board_to_string(BoardState& state) {
+std::string board_to_string(BoardState &state) {
   std::string output;
 
   // fen notation starts with black pieces, so we begin at the 8th rank (0-indexed)

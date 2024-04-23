@@ -48,8 +48,15 @@ struct PVLine {
   List<Move, kMaxPlyFromRoot> moves_;
 };
 
-enum class NodeType { kPV, kNonPV };
-enum class SearchType { kRegular, kBench };
+enum class NodeType {
+  kPV,
+  kNonPV
+};
+
+enum class SearchType {
+  kRegular,
+  kBench
+};
 
 class Search {
  public:
@@ -78,31 +85,28 @@ class Search {
 
   void bench(int depth);
 
-  [[nodiscard]] bool finished();
-
   const TimeManagement &get_time_management();
 
  private:
   void set_time_config(TimeManagement::Config &time_config);
 
-  template <SearchType type>
+  template<SearchType type>
   void iterative_deepening();
 
-  template <NodeType node_type>
+  template<NodeType node_type>
   int quiescent_search(int ply, int alpha, int beta, Stack *stack);
 
-  template <NodeType node_type>
+  template<NodeType node_type>
   int search(int depth, int ply, int alpha, int beta, Stack *stack);
 
  private:
   Board &board_;
   TimeManagement time_mgmt_;
   MoveHistory move_history_;
-  // + 1 just in case we try to access memory when we're at the maximum ply
   std::array<Stack, kMaxPlyFromRoot + 1> stack_;
+  std::array<std::array<U16, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   int sel_depth_;
   std::atomic_bool searching;
-  std::array<std::array<U16, kMaxMoves>, kMaxSearchDepth> lmr_table_;
 };
 
 #endif  // INTEGRAL_SEARCH_H_

@@ -4,7 +4,7 @@
 
 namespace tests {
 
-// clang-format on
+// clang-format off
 const std::array kSEESuite = {
     "6k1/1pp4p/p1pb4/6q1/3P1pRr/2P4P/PP1Br1P1/5RKN w - - | f1f4 | -100 | P - R + B",
     "5rk1/1pp2q1p/p1pb4/8/3P1NP1/2P5/1P1BQ1P1/5RK1 b - - | d6f4 | 0 | -N + B",
@@ -78,9 +78,12 @@ const std::array kSEESuite = {
     "8/8/1k6/8/8/2N1N3/4p1K1/3n4 w - - | c3d1 | 100 | N - (N + Q - P) + Q",
     "r1bqk1nr/pppp1ppp/2n5/1B2p3/1b2P3/5N2/PPPP1PPP/RNBQK2R w KQkq - | e1g1 | 0",
 };
-// clang-format off
+// clang-format on
 
 void see_suite() {
+  std::cout << "starting see test" << std::endl;
+  const auto start_time = std::chrono::steady_clock::now();
+
   Board board;
   for (const auto &see_test : kSEESuite) {
     const auto split = split_string(see_test, '|');
@@ -91,8 +94,13 @@ void see_suite() {
     const bool result = std::stoi(remove_whitespace(split[2])) >= 0;
 
     std::cout << std::format("{}\033[0m {}\n",
-                             eval::static_exchange(move, 0, board.get_state()) == result ? "\033[32mpassed" : "\033[31mfailed", see_test);
+                             eval::static_exchange(move, 0, board.get_state()) == result ? "\033[32mpassed"
+                                                                                         : "\033[31mfailed", see_test);
   }
+
+  const auto elapsed =
+      duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
+  std::cout << std::format("test finished in {}ms", static_cast<U64>(elapsed * 1000.0)) << std::endl;
 }
 
 }  // namespace tests

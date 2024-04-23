@@ -10,7 +10,10 @@ struct ScoredMoveList {
   List<int, kMaxMoves> scores;
 };
 
-enum class MovePickerType { kSearch, kQuiescence };
+enum class MovePickerType {
+  kSearch,
+  kQuiescence
+};
 
 class MovePicker {
  public:

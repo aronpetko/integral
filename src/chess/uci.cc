@@ -73,6 +73,20 @@ void go(Board &board, Search &search, std::stringstream &input_stream) {
   search.start(time_config);
 }
 
+void test(Board &board, std::stringstream &input_stream) {
+  std::string type;
+  input_stream >> type;
+
+  if (type == "perft") {
+    tests::perft_suite();
+  } else if (type == "see") {
+    tests::see_suite();
+  } else {
+    tests::perft_suite();
+    tests::see_suite();
+  }
+}
+
 void accept_commands() {
   std::cout << std::format("    v{}, written by {}\n", kEngineVersion, kEngineAuthor) << std::endl;
 
@@ -116,8 +130,9 @@ void accept_commands() {
     } else if (command == "print") {
       board.print_pieces();
     } else if (command == "test") {
-      tests::see_suite();
+      test(board, input_stream);
     } else if (command == "bench") {
+      // bench is its own command for OpenBench support
       int depth = 0;
       input_stream >> depth;
       tests::bench_suite(depth);

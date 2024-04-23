@@ -16,6 +16,8 @@ void position(Board &board, std::stringstream &input_stream);
 
 void go(Board &board, Search &search, std::stringstream &input_stream);
 
+void test(Board &board, std::stringstream &input_stream);
+
 void accept_commands();
 
 }
