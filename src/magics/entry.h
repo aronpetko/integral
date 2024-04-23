@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_MAGICS_ENTRY_H_
 #define INTEGRAL_MAGICS_ENTRY_H_
 
-#include "../bitboard.h"
+#include "../chess/bitboard.h"
 
 namespace magics {
 

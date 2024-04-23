@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_EVAL_H_
 #define INTEGRAL_EVAL_H_
 
-#include "board.h"
+#include "../chess/board.h"
 
 namespace eval {
 

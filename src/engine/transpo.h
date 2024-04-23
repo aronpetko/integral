@@ -1,12 +1,12 @@
 #ifndef INTEGRAL_TRANSPO_H_
 #define INTEGRAL_TRANSPO_H_
 
-#include "types.h"
-#include "move.h"
-
-#include <cstddef>
-#include <cassert>
 #include <algorithm>
+#include <cassert>
+#include <cstddef>
+
+#include "../chess/move.h"
+#include "../utils/types.h"
 
 class TranspositionTable {
  public:

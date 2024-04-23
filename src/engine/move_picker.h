@@ -1,9 +1,9 @@
 #ifndef INTEGRAL_MOVE_PICKER_H_
 #define INTEGRAL_MOVE_PICKER_H_
 
-#include "move_gen.h"
-#include "search.h"
+#include "../chess/move_gen.h"
 #include "history.h"
+#include "search.h"
 
 struct ScoredMoveList {
   List<Move, kMaxMoves> moves;

@@ -1,9 +1,9 @@
 #ifndef INTEGRAL_MOVE_GEN_H_
 #define INTEGRAL_MOVE_GEN_H_
 
+#include "../utils/types.h"
 #include "bitboard.h"
 #include "board.h"
-#include "types.h"
 
 const int kMaxMoves = 256;
 

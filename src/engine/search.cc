@@ -3,7 +3,7 @@
 #include <format>
 #include <iomanip>
 
-#include "move_gen.h"
+#include "../chess/move_gen.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
 #include "transpo.h"
@@ -33,7 +33,7 @@ void Search::stop() {
 }
 
 void Search::iterative_deepening() {
-  std::ranges::fill(stack_, Stack{});
+  move_history_.decay_move_history();
 
   // the starting ply from a root position is always zero
   const auto root_stack = &stack_[0];
@@ -171,6 +171,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
       continue;
     }
 
+    const bool is_quiet = !move.is_tactical(state);
+
     // ensure that the pv only contains moves down this path
     if (in_pv_node) {
       stack->ahead()->pv.clear();
@@ -229,6 +231,11 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
         alpha = score;
         if (alpha >= beta) {
+          if (is_quiet) {
+            List<Move, kMaxMoves> dummy;
+            move_history_.update_move_history(move, dummy, state.turn, depth);
+          }
+
           // beta cutoff because the opponent would never allow this position to occur
           break;
         }

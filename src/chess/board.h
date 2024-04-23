@@ -1,15 +1,14 @@
 #ifndef INTEGRAL_BOARD_H_
 #define INTEGRAL_BOARD_H_
 
+#include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
-#include <memory>
-#include <utility>
-#include <optional>
 
+#include "../engine/transpo.h"
+#include "../utils/zobrist.h"
 #include "bitboard.h"
-#include "zobrist.h"
-#include "transpo.h"
 
 const int kMaxPlyFromRoot = 256;
 const int kMaxGamePly = 1024;

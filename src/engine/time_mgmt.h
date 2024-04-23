@@ -1,13 +1,13 @@
 #ifndef INTEGRAL_TIME_MGMT_H_
 #define INTEGRAL_TIME_MGMT_H_
 
-#include "types.h"
-#include "board.h"
-
 #include <array>
 #include <chrono>
-#include <thread>
 #include <condition_variable>
+#include <thread>
+
+#include "../chess/board.h"
+#include "../utils/types.h"
 
 class TimeManagement {
  public:

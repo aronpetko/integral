@@ -1,10 +1,10 @@
 #ifndef INTEGRAL_SEARCH_H_
 #define INTEGRAL_SEARCH_H_
 
-#include "board.h"
+#include "../chess/board.h"
 #include "eval.h"
-#include "time_mgmt.h"
 #include "history.h"
+#include "time_mgmt.h"
 
 const int kMaxSearchDepth = 100;
 const int kScoreNone = -eval::kInfiniteScore;

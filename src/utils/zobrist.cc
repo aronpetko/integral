@@ -1,5 +1,6 @@
 #include "zobrist.h"
-#include "board.h"
+
+#include "../chess/board.h"
 
 namespace zobrist {
 

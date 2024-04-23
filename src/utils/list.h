@@ -15,7 +15,7 @@ class List {
   }
 
   inline T &back() {
-    return (*this)[count_ - 1];
+    return container_[count_ - 1];
   }
 
   inline const T &at(int i) {

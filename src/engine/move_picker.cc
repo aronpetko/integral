@@ -19,7 +19,7 @@ MovePicker::MovePicker(MovePickerType type,
     : type_(type),
       board_(board),
       tt_move_(tt_move),
-      stage_(Stage::kGenerateMoves),
+      stage_(Stage::kTTMove),
       move_history_(move_history),
       search_stack_(search_stack),
       moves_idx_(0) {}
@@ -80,6 +80,10 @@ template<MoveType move_type>
 void MovePicker::generate_and_score_moves() {
   scored_moves_.moves = move_gen::moves(move_type, board_);
   for (int i = 0; i < scored_moves_.moves.size(); i++) {
+    if (scored_moves_.moves[i] == tt_move_) {
+      scored_moves_.moves.erase(i);
+    }
+
     scored_moves_.scores.push(score_move(scored_moves_.moves[i]));
   }
 }
@@ -87,10 +91,6 @@ void MovePicker::generate_and_score_moves() {
 int MovePicker::score_move(Move &move) {
   const auto from = move.get_from();
   const auto to = move.get_to();
-
-  if (move == tt_move_) {
-    return std::numeric_limits<int>::max();
-  }
 
   // queen and knight promotions get priority
   switch (move.get_promotion_type()) {
@@ -116,19 +116,16 @@ int MovePicker::score_move(Move &move) {
 
     const int mvv_lva_score =
         kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
-    return mvv_lva_score;
     // good captures are searched first, bad captures are searched last
-    /*if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
+    if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
       return kBaseGoodCaptureScore + mvv_lva_score;
     } else {
       return kBaseBadCaptureScore + mvv_lva_score;
-    }*/
+    }
   }
 
-  return 0;
-
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
-  const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
+  /* const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
   const auto &killers = move_history_.get_killers(search_stack_->ply);
   if (killers[0] == move || killers[1] == move) {
     return kKillerMoveScore;
@@ -140,7 +137,7 @@ int MovePicker::score_move(Move &move) {
   if (move == move_history_.get_counter(state.move_played)) {
     // counter moves should be searched right after killer moves
     return kCounterMoveScore;
-  }
+  } */
 
   // order moves that caused a beta cutoff by their own history score
   // the higher the depth this move caused a cutoff the more likely it move will be ordered first

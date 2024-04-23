@@ -1,6 +1,6 @@
 #include "eval.h"
 
-#include "move_gen.h"
+#include "../chess/move_gen.h"
 
 // evaluation is exactly the same as PeSTO's texel-tuned tables. using this evaluation over my own gained some +200 elo
 // this will likely be reverted (even if it lowers the elo), as I don't like the idea of using someone else's evaluation

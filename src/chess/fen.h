@@ -5,7 +5,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "types.h"
+#include "../utils/types.h"
 #include "board.h"
 
 namespace fen {

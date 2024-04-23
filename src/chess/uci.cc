@@ -1,10 +1,12 @@
 #include "uci.h"
-#include "move_gen.h"
-#include "move_picker.h"
 
-#include <string>
 #include <format>
 #include <fstream>
+#include <string>
+
+#include "../engine/move_picker.h"
+#include "../tests/tests.h"
+#include "move_gen.h"
 
 namespace uci {
 
@@ -56,7 +58,9 @@ void go(Board &board, Search &search, std::stringstream &input_stream) {
     } else if (option == "infinite") {
       time_config.depth = kMaxSearchDepth;
     } else if (option == "perft") {
-      perft(board, input_stream);
+      int depth;
+      input_stream >> depth;
+      tests::perft(board, depth);
       return;
     }
   }
@@ -68,49 +72,6 @@ void go(Board &board, Search &search, std::stringstream &input_stream) {
   }
 
   search.start(time_config);
-}
-
-U64 perft_internal(Board &board, int depth, int start_depth) {
-  auto moves = move_gen::moves(MoveType::kAll, board);
-
-  auto &state = board.get_state();
-  U64 total_nodes = 0;
-
-  for (int i = 0; i < moves.size(); i++) {
-    const auto move = moves[i];
-    if (!board.is_move_legal(move))
-      continue;
-
-    U64 child_nodes;
-    if (depth == 1) {
-      // bulk counting
-      total_nodes += child_nodes = 1;
-    } else {
-      board.make_move(move);
-      total_nodes += child_nodes = perft_internal(board, depth - 1, start_depth);
-      board.undo_move();
-    }
-
-    if (depth == start_depth) {
-      std::cout << std::format("{}: {}\n", move.to_string(), child_nodes);
-    }
-  }
-
-  return total_nodes;
-}
-
-void perft(Board &board, std::stringstream &input_stream) {
-  int depth;
-
-  if (input_stream >> depth) {
-    assert(depth >= 0);
-
-    const auto start_time = std::chrono::steady_clock::now();
-    const U64 nodes = perft_internal(board, depth, depth);
-    const auto elapsed = duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
-
-    std::cout << std::format("info nodes {} time {} nps {}", nodes, elapsed * 1000.0, static_cast<U64>(nodes / elapsed)) << std::endl;
-  }
 }
 
 void accept_commands() {
@@ -152,6 +113,8 @@ void accept_commands() {
       transposition_table.clear();
     } else if (command == "print") {
       board.print_pieces();
+    } else if (command == "test") {
+      tests::see_suite();
     }
   }
 }

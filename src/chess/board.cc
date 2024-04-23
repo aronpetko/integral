@@ -1,4 +1,5 @@
 #include "board.h"
+
 #include "fen.h"
 #include "move.h"
 #include "move_gen.h"
@@ -16,8 +17,10 @@ void Board::set_from_fen(const std::string &fen_str) {
 bool Board::is_move_pseudo_legal(Move move) {
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
+  const Color us = state_.turn, them = flip_color(us);
+  const bool is_white = us == Color::kWhite;
 
-  const BitBoard &our_pieces = state_.occupied(state_.turn);
+  const BitBoard &our_pieces = state_.occupied(us);
   if (!our_pieces.is_set(from) || our_pieces.is_set(to) ||
       move.get_promotion_type() != PromotionType::kNone && piece_type != PieceType::kPawn) {
     return false;
@@ -26,8 +29,25 @@ bool Board::is_move_pseudo_legal(Move move) {
   const BitBoard &their_pieces = state_.occupied(flip_color(state_.turn));
   const BitBoard occupied = our_pieces | their_pieces;
 
-  BitBoard possible_moves;
+  if (piece_type == PieceType::kKing) {
+    const int kKingsideCastleDist = -2;
+    const int kQueensideCastleDist = 2;
 
+    // note: the only way move_dist is ever 2 or -2 is from move_gen::castling_moves allowing it
+    const int move_dist = static_cast<int>(from) - static_cast<int>(to);
+    if (move_dist == kKingsideCastleDist) {
+      return !state_.checkers && state_.castle_rights.can_kingside_castle(us) &&
+             !occupied.is_set(is_white ? Square::kG1 : Square::kG8) &&
+             !occupied.is_set(is_white ? Square::kF1 : Square::kF8);
+    } else if (move_dist == kQueensideCastleDist) {
+      return !state_.checkers && state_.castle_rights.can_queenside_castle(us) &&
+             !occupied.is_set(is_white ? Square::kC1 : Square::kC8) &&
+             !occupied.is_set(is_white ? Square::kD1 : Square::kD8) &&
+             !occupied.is_set(is_white ? Square::kB1 : Square::kB8);
+    }
+  }
+
+  BitBoard possible_moves;
   switch (piece_type) {
     case PieceType::kPawn: {
       const BitBoard en_passant_mask =
@@ -49,7 +69,7 @@ bool Board::is_move_pseudo_legal(Move move) {
       possible_moves = move_gen::bishop_moves(from, occupied) | move_gen::rook_moves(from, occupied);
       break;
     case PieceType::kKing:
-      possible_moves = move_gen::king_moves(from, state_);
+      possible_moves = move_gen::king_attacks(from);
       break;
     default:
       return false;
@@ -86,8 +106,7 @@ bool Board::is_move_legal(Move move) {
     // make sure the destination square isn't attacked
     // also, verify that the king isn't moving along the same ray it's being attacked on, since the threats bitboard
     // doesn't xray past pieces
-    const BitBoard occupied_kingless = state_.occupied() ^ king_mask;
-    return !move_gen::get_attackers_to(state_, to, occupied_kingless, them);
+    return !move_gen::get_attackers_to(state_, to, state_.occupied() ^ king_mask, them);
   } else if (piece_type == PieceType::kPawn && to == state_.en_passant) {
     // pawn must be directly behind/in front of the attack square
     const BitBoard en_passant_pawn_mask = BitBoard::from_square(is_white ? to - 8 : to + 8);

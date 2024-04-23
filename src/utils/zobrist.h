@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_ZOBRIST_H_
 #define INTEGRAL_ZOBRIST_H_
 
+#include "../chess/bitboard.h"
 #include "types.h"
-#include "bitboard.h"
 
 class BoardState;
 class CastleRights;

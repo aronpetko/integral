@@ -42,7 +42,7 @@ void MoveHistory::update_move_history(Move move, List<Move, kMaxMoves>& quiet_no
 
   // lower the score of the quiet moves that did not cause a beta cutoff
   // a good side effect of this is that moves that caused a beta cutoff earlier and were awarded a bonus but no longer cause a beta cutoff are eventually "discarded"
-  penalize_move_history(quiet_non_cutoffs, turn, depth);
+  // penalize_move_history(quiet_non_cutoffs, turn, depth);
 }
 
 void MoveHistory::penalize_move_history(List<Move, kMaxMoves>& moves, Color turn, int depth) {

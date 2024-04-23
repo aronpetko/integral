@@ -1,12 +1,12 @@
 #ifndef INTEGRAL_BITBOARD_H_
 #define INTEGRAL_BITBOARD_H_
 
-#include <iostream>
 #include <array>
-#include <vector>
 #include <bit>
+#include <iostream>
+#include <vector>
 
-#include "types.h"
+#include "../utils/types.h"
 
 enum Square : U16 {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,

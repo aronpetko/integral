@@ -2,8 +2,8 @@
 #define INTEGRAL_MOVE_H_
 
 #include <optional>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "bitboard.h"
 

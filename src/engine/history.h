@@ -1,9 +1,9 @@
 #ifndef INTEGRAL_HISTORY_H
 #define INTEGRAL_HISTORY_H
 
-#include "move_gen.h"
-
 #include <array>
+
+#include "../chess/move_gen.h"
 
 class MoveHistory {
  public:

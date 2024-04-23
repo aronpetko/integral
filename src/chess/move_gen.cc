@@ -1,8 +1,8 @@
 #include "move_gen.h"
 
+#include "../magics/attacks.h"
+#include "../magics/precomputed.h"
 #include "board.h"
-#include "magics/attacks.h"
-#include "magics/precomputed.h"
 
 namespace move_gen {
 
