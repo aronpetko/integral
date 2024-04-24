@@ -183,12 +183,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
     const bool is_quiet = !move.is_tactical(state);
 
-    const U64 prev_nodes_searched = time_mgmt_.get_nodes_searched();
-
     // ensure that the pv only contains moves down this path
     if (in_pv_node) {
-      stack->pv.clear();
+      stack->ahead()->pv.clear();
     }
+
+    const U64 prev_nodes_searched = time_mgmt_.get_nodes_searched();
 
     board_.make_move(move);
 
