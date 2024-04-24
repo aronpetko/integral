@@ -1,3 +1,0 @@
-D:/Coding/integral/CMakeFiles/integral.dir
-D:/Coding/integral/CMakeFiles/ALL_BUILD.dir
-D:/Coding/integral/CMakeFiles/ZERO_CHECK.dir
