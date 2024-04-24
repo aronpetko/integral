@@ -163,6 +163,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   sel_depth_ = std::max(sel_depth_, ply);
   stack->ply = ply;
 
+  move_history_.clear_killers(ply + 1);
+
   // keep track of the original alpha for bound determination when updating the transposition table
   const int original_alpha = alpha;
   // keep track of quiet moves that failed to cause a beta cutoff
@@ -256,7 +258,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.update_move_history(move, bad_quiets, state.turn, depth);
-            move_history_.update_killer_move(move, ply);
+            // move_history_.update_killer_move(move, ply);
           }
 
           // beta cutoff because the opponent would never allow this position to occur

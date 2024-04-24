@@ -6,6 +6,7 @@
 
 #include "../engine/search.h"
 #include "../tests/tests.h"
+#include "../ascii_logo.h"
 #include "move_gen.h"
 
 namespace uci {
@@ -100,6 +101,7 @@ void accept_commands(int arg_count, char **args) {
     return;
   }
 
+  print_ascii_logo();
   std::cout << std::format("    v{}, written by {}\n", kEngineVersion, kEngineAuthor) << std::endl;
 
   Board board;
