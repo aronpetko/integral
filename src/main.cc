@@ -10,8 +10,6 @@ int main(int arg_count, char **args) {
   SetConsoleOutputCP(CP_UTF8);
   SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 #endif
-
-  print_ascii_logo();
-
+  
   uci::accept_commands(arg_count, args);
 }
