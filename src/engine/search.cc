@@ -258,7 +258,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.update_move_history(move, bad_quiets, state.turn, depth);
-            // move_history_.update_killer_move(move, ply);
+            move_history_.update_killer_move(move, ply);
           }
 
           // beta cutoff because the opponent would never allow this position to occur
