@@ -161,8 +161,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     }
   }
 
-  sel_depth_ = std::max(sel_depth_, ply);
-  stack->ply = ply;
+  // ensure that the pv only contains moves down this path
+  if (in_pv_node) {
+    stack->pv.clear();
+  }
+
+  sel_depth_ = std::max(sel_depth_, stack->ply = ply);
 
   move_history_.clear_killers(ply + 1);
 
@@ -183,11 +187,6 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     }
 
     const bool is_quiet = !move.is_tactical(state);
-
-    // ensure that the pv only contains moves down this path
-    if (in_pv_node) {
-      stack->ahead()->pv.clear();
-    }
 
     const U64 prev_nodes_searched = time_mgmt_.get_nodes_searched();
 
