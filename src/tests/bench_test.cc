@@ -84,7 +84,6 @@ void bench_suite(int depth) {
 
   std::cout << std::format("nodes {} nps {}",
                            nodes,
-                           elapsed,
                            static_cast<U64>(nodes * 1000.0 / std::max(elapsed, 1ULL)))
             << std::endl;
 }
