@@ -118,15 +118,15 @@ int MovePicker::score_move(Move &move) {
   }
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
-  /* const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
+  /*const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
   const auto &killers = move_history_.get_killers(search_stack_->ply);
-  if (killers[0] == move || killers[1] == move) {
+  if (!move.is_tactical(state) && (killers[0] == move || killers[1] == move)) {
     return kKillerMoveScore;
-  }
+  }*/
 
   // check if this move was a natural counter to the previous move (caused a beta cutoff)
   // complimentary to killer move heuristic
-  const int kCounterMoveScore = kKillerMoveScore - 10;
+  /*const int kCounterMoveScore = kKillerMoveScore - 10;
   if (move == move_history_.get_counter(state.move_played)) {
     // counter moves should be searched right after killer moves
     return kCounterMoveScore;

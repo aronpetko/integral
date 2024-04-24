@@ -86,16 +86,15 @@ void see_suite() {
 
   Board board;
   for (const auto &see_test : kSEESuite) {
-    const auto split = split_string(see_test, '|');
-    board.set_from_fen(split[0]);
+    const auto test_data = split_string(see_test, '|');
+    board.set_from_fen(test_data[0]);
 
-    const auto move = Move::from_str(board.get_state(), remove_whitespace(split[1]));
+    const auto move = Move::from_str(board.get_state(), remove_whitespace(test_data[1]));
     assert(move);
-    const bool result = std::stoi(remove_whitespace(split[2])) >= 0;
+    const bool answer = std::stoi(remove_whitespace(test_data[2])) >= 0;
 
-    std::cout << std::format("{}\033[0m {}\n",
-                             eval::static_exchange(move, 0, board.get_state()) == result ? "\033[32mpassed"
-                                                                                         : "\033[31mfailed", see_test);
+    const bool passed = eval::static_exchange(move, 0, board.get_state()) == answer;
+    std::cout << std::format("{}\033[0m {}\n", passed ? "\033[32mpassed" : "\033[31mfailed", see_test);
   }
 
   const auto elapsed =

@@ -1,6 +1,7 @@
 #include "history.h"
 
-MoveHistory::MoveHistory(const BoardState &state) : state_(state) {}
+MoveHistory::MoveHistory(const BoardState &state)
+    : state_(state), killer_moves_({}), counter_moves_({}), butterfly_history_({}) {}
 
 const int &MoveHistory::get_history_score(Move move, Color turn) noexcept {
   return butterfly_history_[turn][move.get_from()][move.get_to()];
@@ -16,7 +17,8 @@ Move &MoveHistory::get_counter(Move move) {
 }
 
 void MoveHistory::update_killer_move(Move move, int ply) {
-  if (move == killer_moves_[ply][0]) return;
+  if (move == killer_moves_[ply][0])
+    return;
 
   killer_moves_[ply][1] = killer_moves_[ply][0];
   killer_moves_[ply][0] = move;

@@ -190,12 +190,12 @@ void perft_suite() {
 
   Board board;
   for (const auto &perft_test : kPerftSuite) {
-    const auto split = split_string(perft_test, ';');
-    board.set_from_fen(split[0]);
+    const auto test_data = split_string(perft_test, ';');
+    board.set_from_fen(test_data[0]);
 
     bool passed = true;
-    for (int i = 1; i < split.size(); i++) {
-      const auto answer_data = split_string(split[i], ' ');
+    for (int i = 1; i < test_data.size(); i++) {
+      const auto answer_data = split_string(test_data[i], ' ');
       const int test_depth = std::stoi(answer_data[0].substr(1));
       const int correct_nodes = std::stoi(answer_data[1]);
 
@@ -204,8 +204,7 @@ void perft_suite() {
       }
     }
 
-    std::cout << std::format("{}\033[0m {}\n",
-                             passed ? "\033[32mpassed" : "\033[31mfailed", perft_test);
+    std::cout << std::format("{}\033[0m {}\n", passed ? "\033[32mpassed" : "\033[31mfailed", perft_test);
   }
 
   const auto elapsed =
