@@ -1,24 +1,30 @@
-# default compiler settings
+# Default compiler settings
 CC=gcc
 CXX=g++
 
-# output binary name, default is 'integral'
-EXE ?= integral
+# Output binary name, default is 'integral.exe'
+EXE ?= integral.exe
 
-# build directory
+# Build directory
 BUILD_DIR=build
 
-# standard targets
-.PHONY: all clean
+# Standard targets
+.PHONY: all clean debug
 
 all: $(BUILD_DIR)
-	@echo "Building $(EXE)..."
+	@echo Building $(EXE)...
 	@$(MAKE) -C $(BUILD_DIR) all
-	@cp $(BUILD_DIR)/integral $(EXE)
+	@echo Copying executable...
+	@copy $(BUILD_DIR)\integral.exe $(EXE)
 
 $(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) ..
+	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+	@echo Configuring CMake...
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) ..
 
 clean:
-	@rm -rf $(BUILD_DIR) $(EXE)
+	@if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
+	@if exist $(EXE) del /f /q $(EXE)
+
+debug:
+	@echo CC=$(CC)
