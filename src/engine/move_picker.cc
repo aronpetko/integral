@@ -45,6 +45,7 @@ Move MovePicker::next() {
   if (stage_ == Stage::kPlayMoves) {
     if (moves_idx_ < scored_moves_.moves.size()) {
       const auto &move = selection_sort(scored_moves_, moves_idx_);
+      // see pruning in quiescent search
       if (type_ == MovePickerType::kQuiescence && scored_moves_.scores[moves_idx_] < 0) {
         return Move::null_move();
       }
@@ -77,7 +78,10 @@ void MovePicker::generate_and_score_moves() {
   for (int i = 0; i < scored_moves_.moves.size(); i++) {
     if (scored_moves_.moves[i] == tt_move_) {
       scored_moves_.moves.erase(i);
+      break;
     }
+  }
+  for (int i = 0; i < scored_moves_.moves.size(); i++) {
     scored_moves_.scores.push(score_move(scored_moves_.moves[i]));
   }
 }
@@ -118,13 +122,13 @@ int MovePicker::score_move(Move &move) {
   }
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
-  /* const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
+  const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
   const auto &killers = move_history_.get_killers(search_stack_->ply);
   if (killers[0] == move) {
     return kKillerMoveScore;
   } else if (killers[1] == move) {
     return kKillerMoveScore - 1;
-  } */
+  }
 
   // check if this move was a natural counter to the previous move (caused a beta cutoff)
   // complimentary to killer move heuristic

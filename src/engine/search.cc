@@ -23,7 +23,6 @@ void Search::iterative_deepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
   move_history_.decay_move_history();
-  sel_depth_ = 0;
 
   // the starting ply from a root position is always zero
   const auto root_stack = &stack_[0];
@@ -35,6 +34,8 @@ void Search::iterative_deepening() {
   auto best_move = Move::null_move();
 
   for (int depth = 1; depth <= max_search_depth; depth++) {
+    sel_depth_ = 0;
+
     const int alpha = -eval::kInfiniteScore;
     const int beta = eval::kInfiniteScore;
 
@@ -258,7 +259,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.update_move_history(move, bad_quiets, state.turn, depth);
-            // move_history_.update_killer_move(move, ply);
+            move_history_.update_killer_move(move, ply);
           }
 
           // beta cutoff because the opponent would never allow this position to occur

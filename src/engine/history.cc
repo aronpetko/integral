@@ -8,6 +8,7 @@ const int &MoveHistory::get_history_score(Move move, Color turn) noexcept {
 }
 
 std::array<Move, 2> &MoveHistory::get_killers(int ply) {
+  assert(ply >= 0 && ply < kMaxPlyFromRoot);
   return killer_moves_[ply];
 }
 
