@@ -15,7 +15,7 @@ all: $(BUILD_DIR)
 	@echo Building $(EXE)...
 	@$(MAKE) -C $(BUILD_DIR) all
 	@echo Copying executable...
-	@copy $(BUILD_DIR)\integral.exe $(EXE)
+	@copy $(BUILD_DIR)\integral.exe $(EXE).exe
 
 $(BUILD_DIR):
 	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
