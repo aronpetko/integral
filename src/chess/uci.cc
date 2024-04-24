@@ -87,7 +87,7 @@ void test(Board &board, std::stringstream &input_stream) {
   }
 }
 
-void accept_commands() {
+void accept_commands(int arg_count, char **args) {
   std::cout << std::format("    v{}, written by {}\n", kEngineVersion, kEngineAuthor) << std::endl;
 
   // init attack lookups
@@ -99,6 +99,11 @@ void accept_commands() {
   Board board;
   board.set_from_fen(fen::kStartFen);
   Search search(board);
+
+  if (args[1] && std::string(args[1]) == "bench") {
+    const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
+    tests::bench_suite(depth);
+  }
 
   std::string input_line;
   while (input_line != "quit") {

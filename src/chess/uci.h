@@ -18,7 +18,7 @@ void go(Board &board, Search &search, std::stringstream &input_stream);
 
 void test(Board &board, std::stringstream &input_stream);
 
-void accept_commands();
+void accept_commands(int arg_count, char **args);
 
 }
 
