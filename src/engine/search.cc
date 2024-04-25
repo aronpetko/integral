@@ -18,11 +18,11 @@ Search::Search(Board &board) : board_(board), sel_depth_(0), searching(false), m
   }
 }
 
-template<SearchType type>
+template <SearchType type>
 void Search::iterative_deepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
-  move_history_.decay_move_history();
+  move_history_.decay();
 
   // the starting ply from a root position is always zero
   const auto root_stack = &stack_[0];
@@ -71,7 +71,7 @@ void Search::iterative_deepening() {
   stop();
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
@@ -129,16 +129,24 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   return best_score;
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
-  const auto &state = board_.get_state();
+  sel_depth_ = std::max(sel_depth_, stack->ply = ply);
 
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
   }
 
+  const auto &state = board_.get_state();
+
+  // ensure we never fall into quiescent search when the side to move is in check
+  if (state.in_check()) {
+    depth++;
+  }
+
   // search until a quiet position is found to evaluate when we've searched to the depth limit
-  if (depth <= 0) {
+  assert(depth >= 0);
+  if (depth == 0) {
     return quiescent_search<node_type>(ply, alpha, beta, stack);
   }
 
@@ -161,9 +169,36 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     }
   }
 
-  sel_depth_ = std::max(sel_depth_, stack->ply = ply);
+  if (state.in_check()) {
+    stack->static_eval = kScoreNone;
+  } else {
+    // use the tt entry's evaluation if possible
+    stack->static_eval = tt_entry.score != kScoreNone ? tt_entry.score : eval::evaluate(state);
+  }
 
   move_history_.clear_killers(ply + 1);
+
+  // null move pruning: forfeit a move to our opponent and prune if we still have the advantage
+  if (!in_pv_node && !state.in_check() && !state.move_played.is_null() && stack->static_eval >= beta) {
+    // avoid null move pruning a position with high zugzwang potential
+    const bool safe_to_nmp = (state.kingless_occupied(state.turn) & ~state.pawns(state.turn)) != 0;
+    if (safe_to_nmp) {
+      transposition_table.prefetch(board_.key_after(Move::null_move()));
+
+      // ensure the reduction doesn't give us a depth below 0
+      const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);
+
+      board_.make_null_move();
+      const int score = -search<NodeType::kNonPV>(depth - reduction, ply + 1, -beta, -beta + 1, stack->ahead());
+      board_.undo_move();
+
+      // if the result from our null window search around beta indicates that the opponent still doesn't gain an
+      // advantage from the null move, we prune this branch
+      if (score >= beta) {
+        return score >= eval::kMateScore - kMaxPlyFromRoot ? beta : score;
+      }
+    }
+  }
 
   // keep track of the original alpha for bound determination when updating the transposition table
   const int original_alpha = alpha;
@@ -177,6 +212,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, stack);
   Move move;
   while ((move = move_picker.next())) {
+    transposition_table.prefetch(board_.key_after(move));
+
     if (!board_.is_move_legal(move)) {
       continue;
     }
@@ -201,7 +238,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     // late move reduction: moves that are less likely to be good (due to the move ordering)
     // are searched at lower depths
     if (depth > 2 && moves_seen >= 1) {
-      const int reduction = lmr_table_[depth][moves_seen];
+      // ensure the reduction doesn't give us a depth below 0
+      const int reduction = std::clamp<int>(lmr_table_[depth][moves_seen], 0, new_depth - 1);
 
       // null window search at reduced depth to see if the move has potential
       score = -search<NodeType::kNonPV>(new_depth - reduction, ply + 1, -alpha - 1, -alpha, stack->ahead());
@@ -246,18 +284,13 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         if (in_pv_node) {
           stack->pv.clear();
           stack->pv.push(best_move);
-
-          // copy over the child's pv to this ply's pv
-          auto &child_pv = stack->ahead()->pv;
-          for (int child_pv_move = 0; child_pv_move < child_pv.length(); child_pv_move++) {
-            stack->pv.push(child_pv[child_pv_move]);
-          }
+          stack->pv.copy_over(stack->ahead()->pv);
         }
 
         alpha = score;
         if (alpha >= beta) {
           if (is_quiet) {
-            move_history_.update_move_history(move, bad_quiets, state.turn, depth);
+            move_history_.update_history(move, bad_quiets, state.turn, depth);
             move_history_.update_killer_move(move, ply);
           }
 
@@ -307,9 +340,7 @@ void Search::start(TimeManagement::Config &time_config) {
   set_time_config(time_config);
   time_mgmt_.start();
 
-  std::thread([this] {
-    iterative_deepening<SearchType::kRegular>();
-  }).detach();
+  std::thread([this] { iterative_deepening<SearchType::kRegular>(); }).detach();
 }
 
 void Search::bench(int depth) {
@@ -333,4 +364,10 @@ void Search::stop() {
 
 const TimeManagement &Search::get_time_management() {
   return time_mgmt_;
+}
+
+void Search::new_game() {
+  std::ranges::fill(stack_, Stack{});
+  transposition_table.clear();
+  move_history_.clear();
 }

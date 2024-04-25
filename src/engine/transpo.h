@@ -12,12 +12,13 @@ class TranspositionTable {
  public:
   struct Entry {
     enum Flag : U8 {
+      kNone,
       kExact,
       kLowerBound,
       kUpperBound
     };
 
-    Entry() : key(0), depth(0), flag(kExact), score(0), move(Move::null_move()) {}
+    Entry() : key(0), depth(0), flag(kNone), score(0), move(Move::null_move()) {}
 
     explicit Entry(U64 key, U8 depth, Flag flag, int score, Move move) : key(static_cast<U16>(key)), depth(depth), flag(flag), score(score), move(move) {}
 

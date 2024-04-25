@@ -27,6 +27,12 @@ struct PVLine {
     moves_.push(move);
   }
 
+  void copy_over(PVLine &pv) {
+    for (int i = 0; i < pv.length(); i++) {
+      push(pv[i]);
+    }
+  }
+
   [[nodiscard]] std::size_t length() const {
     return moves_.size();
   }
@@ -87,6 +93,8 @@ class Search {
 
   const TimeManagement &get_time_management();
 
+  void new_game();
+
  private:
   void set_time_config(TimeManagement::Config &time_config);
 
@@ -104,7 +112,7 @@ class Search {
   TimeManagement time_mgmt_;
   MoveHistory move_history_;
   std::array<Stack, kMaxPlyFromRoot + 1> stack_;
-  std::array<std::array<U16, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
+  std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   int sel_depth_;
   std::atomic_bool searching;
 };

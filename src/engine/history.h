@@ -19,14 +19,16 @@ class MoveHistory {
 
   void update_counter_move(Move prev_move, Move counter);
 
-  void update_move_history(Move move, List<Move, kMaxMoves>& bad_quiets, Color turn, int depth);
+  void update_history(Move move, List<Move, kMaxMoves>& bad_quiets, Color turn, int depth);
 
-  void decay_move_history();
+  void decay();
+
+  void clear();
 
   void clear_killers(int ply);
 
  private:
-  void penalize_move_history(List<Move, kMaxMoves>& moves, Color turn, int depth);
+  void penalize_history(List<Move, kMaxMoves>& moves, Color turn, int depth);
 
  private:
   const BoardState &state_;

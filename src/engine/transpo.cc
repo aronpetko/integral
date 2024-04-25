@@ -24,8 +24,10 @@ void TranspositionTable::clear() {
 }
 
 void TranspositionTable::save(const U64 &key, const Entry &entry, int ply) {
+  const int kDepthLenience = 4;
+
   auto &tt_entry = table_[index(key)];
-  if (!tt_entry.compare_key(key) || entry.depth >= tt_entry.depth || entry.flag == Entry::kExact) {
+  if (!tt_entry.compare_key(key) || entry.depth + kDepthLenience >= tt_entry.depth || entry.flag == Entry::kExact) {
     const auto old_move = tt_entry.move;
     tt_entry = entry;
 

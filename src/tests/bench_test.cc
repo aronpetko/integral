@@ -73,7 +73,7 @@ void bench_suite(int depth) {
   Search search(board);
   for (const auto &position : kBenchFens) {
     board.set_from_fen(position);
-    transposition_table.clear();
+    search.new_game();
 
     search.bench(depth);
 

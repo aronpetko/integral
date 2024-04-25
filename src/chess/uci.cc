@@ -134,7 +134,7 @@ void accept_commands(int arg_count, char **args) {
     } else if (command == "stop") {
       search.stop();
     } else if (command == "ucinewgame") {
-      transposition_table.clear();
+      search.new_game();
     } else if (command == "print") {
       board.print_pieces();
     } else if (command == "test") {
