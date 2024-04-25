@@ -18,8 +18,7 @@ Move &MoveHistory::get_counter(Move move) {
 }
 
 void MoveHistory::update_killer_move(Move move, int ply) {
-  if (move == killer_moves_[ply][0])
-    return;
+  if (move == killer_moves_[ply][0]) return;
 
   killer_moves_[ply][1] = killer_moves_[ply][0];
   killer_moves_[ply][0] = move;
@@ -33,41 +32,40 @@ void MoveHistory::update_counter_move(Move prev_move, Move counter) {
 }
 
 const int kHistoryGravity = 16384;
+const int kHistoryScale = 300;
+const int kHistoryOffset = 300;
+
+int history_bonus(int depth) {
+  return kHistoryScale * depth - kHistoryOffset;
+}
 
 void MoveHistory::update_history(Move move, List<Move, kMaxMoves> &bad_quiets, Color turn, int depth) {
   auto &move_history_score = butterfly_history_[turn][move.get_from()][move.get_to()];
 
   // apply a linear dampening to the bonus as the depth increases
-  const int bonus = 300 * depth - 300;
+  const int bonus = history_bonus(depth);
   const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryGravity;
   move_history_score += scaled_bonus;
 
-  // lower the score of the quiet moves that did not cause a beta cutoff
+  // lower the score of the quiet moves that failed to raise alpha
   // a good side effect of this is that moves that caused a beta cutoff earlier and were awarded a bonus but no longer
   // cause a beta cutoff are eventually "discarded"
   penalize_history(bad_quiets, turn, depth);
 }
 
 void MoveHistory::penalize_history(List<Move, kMaxMoves> &moves, Color turn, int depth) {
-  const int bonus = -(300 * depth - 300);
+  const int penalty = -history_bonus(depth);
   for (int i = 0; i < moves.size(); i++) {
-    const auto &move = moves[i];                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+    const auto &move = moves[i];
     auto &move_history_score = butterfly_history_[turn][move.get_from()][move.get_to()];
 
     // apply a linear dampening to the bonus (penalty here) as the depth increases
-    const int scaled_bonus = bonus - move_history_score * std::abs(bonus) / kHistoryGravity;
-    move_history_score += scaled_bonus;
+    const int scaled_penalty = penalty - move_history_score * std::abs(penalty) / kHistoryGravity;
+    move_history_score += scaled_penalty;
   }
 }
 
 void MoveHistory::decay() {
-  for (auto &sides : butterfly_history_) {
-    for (auto &move_scores : sides) {
-      for (int &score : move_scores) {
-        // score /= 2;
-      }
-    }
-  }
   for (auto &killers : killer_moves_) {
     killers.fill(Move::null_move());
   }

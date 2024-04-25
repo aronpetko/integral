@@ -154,6 +154,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   // moves are searched during the pv search, we attempt to guess which moves will be pv or non-pv nodes and re-search
   // depending on if we were wrong
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+  const bool in_root = ply == 0;
 
   // probe the transposition table to see if we have already evaluated this position
   const auto &tt_entry = transposition_table.probe(state.zobrist_key);
@@ -264,7 +265,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     board_.undo_move();
 
     time_mgmt_.update_nodes_searched();
-    if (ply == 0) {
+    if (in_root) {
       time_mgmt_.update_nodes_spent_table(move, time_mgmt_.get_nodes_searched() - prev_nodes_searched);
     }
 
