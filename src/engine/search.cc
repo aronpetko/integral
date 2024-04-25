@@ -221,6 +221,15 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
     const bool is_quiet = !move.is_tactical(state);
 
+    // no aggressive pruning when we could potentially be checkmated
+    if (best_score > -eval::kMateScore + kMaxPlyFromRoot) {
+      // late move pruning: skip (late) quiet moves if we've already searched the most promising moves
+      const int lmp_threshold = 3 + depth * depth;
+      if (is_quiet && !in_root && moves_seen >= lmp_threshold) {
+        continue;
+      }
+    }
+
     // ensure that the pv only contains moves down this path
     if (in_pv_node) {
       stack->ahead()->pv.clear();
