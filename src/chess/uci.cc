@@ -122,7 +122,7 @@ void accept_commands(int arg_count, char **args) {
 
       // todo: properly implement options
       std::cout << "option name Threads type spin default 1 min 1 max 1" << std::endl;
-      std::cout << "option name Hash type spin default 64 min 64 max 64" << std::endl;
+      std::cout << "option name Hash type spin default 16 min 16 max 16" << std::endl;
 
       std::cout << "uciok" << std::endl;
     } else if (command == "isready") {
