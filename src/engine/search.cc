@@ -177,6 +177,21 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     stack->static_eval = tt_entry.score != kScoreNone ? tt_entry.score : eval::evaluate(state);
   }
 
+  // use the tt entry's evaluation if possible
+  bool use_tt_eval = false;
+  if (tt_hit && tt_entry.score != kScoreNone) {
+    if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
+        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
+        tt_entry.flag == TranspositionTable::Entry::kExact) {
+      use_tt_eval = true;
+    }
+  }
+
+  const int static_eval = use_tt_eval ? tt_entry.score : eval::evaluate(state);
+  if (!state.in_check()) {
+    stack->static_eval = static_eval;
+  }
+
   move_history_.clear_killers(ply + 1);
 
   // null move pruning: forfeit a move to our opponent and prune if we still have the advantage
