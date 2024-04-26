@@ -170,13 +170,6 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     }
   }
 
-  if (state.in_check()) {
-    stack->static_eval = kScoreNone;
-  } else {
-    // use the tt entry's evaluation if possible
-    stack->static_eval = tt_entry.score != kScoreNone ? tt_entry.score : eval::evaluate(state);
-  }
-
   // use the tt entry's evaluation if possible
   bool use_tt_eval = false;
   if (tt_hit && tt_entry.score != kScoreNone) {
