@@ -183,6 +183,15 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   const int static_eval = use_tt_eval ? tt_entry.score : eval::evaluate(state);
   stack->static_eval = state.in_check() ? kScoreNone : static_eval;
 
+  // reverse (static) futility pruning: cutoff if we think the position can't fall below beta anytime soon
+  // the margin for this comparison is scaled based on how many ply we have left to search
+  if (depth <= 6 && !in_pv_node && !state.in_check() && static_eval < eval::kMateScore - kMaxPlyFromRoot) {
+    const int futility_margin = depth * 75;
+    if (static_eval - futility_margin >= beta) {
+      return static_eval;
+    }
+  }
+
   move_history_.clear_killers(ply + 1);
 
   // null move pruning: forfeit a move to our opponent and prune if we still have the advantage
