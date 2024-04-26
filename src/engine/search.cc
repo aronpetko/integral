@@ -188,9 +188,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   }
 
   const int static_eval = use_tt_eval ? tt_entry.score : eval::evaluate(state);
-  if (!state.in_check()) {
-    stack->static_eval = static_eval;
-  }
+  stack->static_eval = state.in_check() ? kScoreNone : static_eval;
 
   move_history_.clear_killers(ply + 1);
 
