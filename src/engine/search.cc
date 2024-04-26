@@ -221,11 +221,17 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
 
     const bool is_quiet = !move.is_tactical(state);
 
-    // no aggressive pruning when we could potentially be checkmated
-    if (best_score > -eval::kMateScore + kMaxPlyFromRoot) {
+    // pruning guards
+    if (!in_root && best_score > -eval::kMateScore + kMaxPlyFromRoot) {
       // late move pruning: skip (late) quiet moves if we've already searched the most promising moves
       const int lmp_threshold = 3 + depth * depth;
-      if (is_quiet && !in_root && moves_seen >= lmp_threshold) {
+      if (is_quiet && moves_seen >= lmp_threshold) {
+        continue;
+      }
+
+      // static exchange evaluation (SEE) pruning: skip moves that lose too much material
+      const int see_threshold = is_quiet ? -60 * depth : -130 * depth;
+      if (depth <= 8 && moves_seen >= 1 && !eval::static_exchange(move, see_threshold, state)) {
         continue;
       }
     }
