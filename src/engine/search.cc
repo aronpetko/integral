@@ -276,6 +276,12 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         continue;
       }
 
+      // futility pruning: skip (futile) quiet moves at near-leaf nodes when there's a low chance to raise alpha
+      const int futility_margin = 150 + 100 * depth;
+      if (depth <= 8 && !state.in_check() && is_quiet && static_eval + futility_margin < alpha) {
+        continue;
+      }
+
       // static exchange evaluation (SEE) pruning: skip moves that lose too much material
       const int see_threshold = is_quiet ? -60 * depth : -130 * depth;
       if (depth <= 8 && moves_seen >= 1 && !eval::static_exchange(move, see_threshold, state)) {
