@@ -39,7 +39,7 @@ void Search::iterative_deepening() {
 
     const int kAspirationWindowDepth = 4;
     const int kAspirationWindowDelta = 15;
-    
+
     int window = kAspirationWindowDepth;
     int alpha = -eval::kInfiniteScore;
     int beta = eval::kInfiniteScore;
@@ -57,16 +57,14 @@ void Search::iterative_deepening() {
       }
 
       if (score <= alpha) {
-        // we failed low which means 1) we don't have a move to play and 2)
+        // narrow beta to increase the chance of a fail hard
         beta = (alpha + beta) / 2;
 
-        // decrease alpha by the window size to expand the search range downwards
-        // ensures search encompasses potentially better moves that were previously outside the initial narrower window
+        // we failed low which means we don't have a move to play, so we widen alpha
         alpha = std::max(-eval::kInfiniteScore, alpha - window);
       } else if (score >= beta) {
         // we failed hard on a pv node, which is abnormal and requires further verification
-        // this adjustment allows the search to explore further along this promising path without cutting off due to an
-        // overly restrictive beta bound
+        // allows the search to explore further without cutting off early
         beta = std::min(eval::kInfiniteScore, beta + window);
       } else {
         // quit now, since the score fell within the bounds of the aspiration window
