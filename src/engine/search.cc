@@ -82,7 +82,7 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   // early cutoff in quiescent search since we're focused on evaluating quiet positions,
   // rather than exploring all possibilities
   const int static_eval = eval::evaluate(state);
-  if (static_eval >= beta) {
+  if (static_eval >= beta || ply >= kMaxPlyFromRoot) {
     return static_eval;
   }
 
@@ -183,35 +183,37 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   const int static_eval = use_tt_eval ? tt_entry.score : eval::evaluate(state);
   stack->static_eval = state.in_check() ? kScoreNone : static_eval;
 
-  // reverse (static) futility pruning: cutoff if we think the position can't fall below beta anytime soon
-  // the margin for this comparison is scaled based on how many ply we have left to search
-  if (depth <= 6 && !in_pv_node && !state.in_check() && static_eval < eval::kMateScore - kMaxPlyFromRoot) {
-    const int futility_margin = depth * 75;
-    if (static_eval - futility_margin >= beta) {
-      return static_eval;
-    }
-  }
-
   move_history_.clear_killers(ply + 1);
 
-  // null move pruning: forfeit a move to our opponent and prune if we still have the advantage
-  if (!in_pv_node && !state.in_check() && !state.move_played.is_null() && stack->static_eval >= beta) {
-    // avoid null move pruning a position with high zugzwang potential
-    const bool safe_to_nmp = (state.kingless_occupied(state.turn) & ~state.pawns(state.turn)) != 0;
-    if (safe_to_nmp) {
-      transposition_table.prefetch(board_.key_after(Move::null_move()));
+  if (!in_pv_node && !state.in_check()) {
+    // reverse (static) futility pruning: cutoff if we think the position can't fall below beta anytime soon
+    // the margin for this comparison is scaled based on how many ply we have left to search
+    if (depth <= 6 && static_eval < eval::kMateScore - kMaxPlyFromRoot) {
+      const int futility_margin = depth * 75;
+      if (static_eval - futility_margin >= beta) {
+        return static_eval;
+      }
+    }
+    
+    // null move pruning: forfeit a move to our opponent and prune if we still have the advantage
+    if (!state.move_played.is_null() && static_eval >= beta) {
+      // avoid null move pruning a position with high zugzwang potential
+      const BitBoard non_pawn_king_pieces = state.kingless_occupied(state.turn) & ~state.pawns(state.turn);
+      if (non_pawn_king_pieces) {
+        transposition_table.prefetch(board_.key_after(Move::null_move()));
 
-      // ensure the reduction doesn't give us a depth below 0
-      const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);
+        // ensure the reduction doesn't give us a depth below 0
+        const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);
 
-      board_.make_null_move();
-      const int score = -search<NodeType::kNonPV>(depth - reduction, ply + 1, -beta, -beta + 1, stack->ahead());
-      board_.undo_move();
+        board_.make_null_move();
+        const int score = -search<NodeType::kNonPV>(depth - reduction, ply + 1, -beta, -beta + 1, stack->ahead());
+        board_.undo_move();
 
-      // if the result from our null window search around beta indicates that the opponent still doesn't gain an
-      // advantage from the null move, we prune this branch
-      if (score >= beta) {
-        return score >= eval::kMateScore - kMaxPlyFromRoot ? beta : score;
+        // if the result from our null window search around beta indicates that the opponent still doesn't gain an
+        // advantage from the null move, we prune this branch
+        if (score >= beta) {
+          return score >= eval::kMateScore - kMaxPlyFromRoot ? beta : score;
+        }
       }
     }
   }
