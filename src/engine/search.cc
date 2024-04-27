@@ -31,15 +31,47 @@ void Search::iterative_deepening() {
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
-  auto best_move = Move::null_move();
+  Move best_move = Move::null_move();
+  int score = 0;
 
   for (int depth = 1; depth <= max_search_depth; depth++) {
     sel_depth_ = 0;
 
-    const int alpha = -eval::kInfiniteScore;
-    const int beta = eval::kInfiniteScore;
+    const int kAspirationWindowDepth = 4;
+    const int kAspirationWindowDelta = 15;
 
-    const int score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
+    int window = kAspirationWindowDepth;
+    int alpha = -eval::kInfiniteScore;
+    int beta = eval::kInfiniteScore;
+
+    if (depth >= kAspirationWindowDepth) {
+      alpha = std::max(-eval::kInfiniteScore, score - window);
+      beta = std::min(eval::kInfiniteScore, score + window);
+    }
+
+    while (searching && !time_mgmt_.soft_times_up(root_stack->best_move)) {
+
+
+      if (score <= alpha) {
+        // we failed low which means 1) we don't have a move to play and 2)
+        beta = (alpha + beta) / 2;
+
+        // decrease alpha by the window size to expand the search range downwards
+        // ensures search encompasses potentially better moves that were previously outside the initial narrower window
+        alpha = std::max(-eval::kInfiniteScore, alpha - window);
+      } else if (score >= beta) {
+        // we failed hard on a pv node, which is abnormal and requires further verification
+        // this adjustment allows the search to explore further along this promising path without cutting off due to an
+        // overly restrictive beta bound
+        beta = std::min(eval::kInfiniteScore, beta + window);
+      } else {
+        // quit now, since the score fell within the bounds of the aspiration window
+        break;
+      }
+
+      // widen the aspiration window for the next iteration if we fail low or hard again
+      window += window / 3;
+    }
 
     if (print_info) {
       const bool is_mate = eval::is_mate_score(score);
@@ -53,10 +85,6 @@ void Search::iterative_deepening() {
                                time_mgmt_.nodes_per_second(),
                                root_stack->pv.to_string())
                 << std::endl;
-    }
-
-    if (root_stack->best_move) {
-      best_move = root_stack->best_move;
     }
 
     if (!searching || time_mgmt_.soft_times_up(root_stack->best_move)) {
@@ -194,7 +222,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         return static_eval;
       }
     }
-    
+
     // null move pruning: forfeit a move to our opponent and prune if we still have the advantage
     if (!state.move_played.is_null() && static_eval >= beta) {
       // avoid null move pruning a position with high zugzwang potential
