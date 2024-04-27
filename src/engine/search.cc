@@ -50,7 +50,11 @@ void Search::iterative_deepening() {
     }
 
     while (searching && !time_mgmt_.soft_times_up(root_stack->best_move)) {
-
+      const int new_score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
+      if (root_stack->best_move) {
+        best_move = root_stack->best_move;
+        score = new_score;
+      }
 
       if (score <= alpha) {
         // we failed low which means 1) we don't have a move to play and 2)
