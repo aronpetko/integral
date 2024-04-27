@@ -31,15 +31,23 @@ void Search::iterative_deepening() {
   const int config_depth = time_mgmt_.get_config().depth;
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
-  auto best_move = Move::null_move();
+  Move best_move = Move::null_move();
+  int score = 0;
 
   for (int depth = 1; depth <= max_search_depth; depth++) {
     sel_depth_ = 0;
 
-    const int alpha = -eval::kInfiniteScore;
-    const int beta = eval::kInfiniteScore;
+    const int kAspirationWindowDepth = 4;
+    const int kAspirationWindowDelta = 15;
 
-    const int score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
+    int alpha = -eval::kInfiniteScore;
+    int beta = eval::kInfiniteScore;
+
+    const int new_score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
+    if (root_stack->best_move) {
+      best_move = root_stack->best_move;
+      score = new_score;
+    }
 
     if (print_info) {
       const bool is_mate = eval::is_mate_score(score);
@@ -53,10 +61,6 @@ void Search::iterative_deepening() {
                                time_mgmt_.nodes_per_second(),
                                root_stack->pv.to_string())
                 << std::endl;
-    }
-
-    if (root_stack->best_move) {
-      best_move = root_stack->best_move;
     }
 
     if (!searching || time_mgmt_.soft_times_up(root_stack->best_move)) {
@@ -194,7 +198,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         return static_eval;
       }
     }
-    
+
     // null move pruning: forfeit a move to our opponent and prune if we still have the advantage
     if (!state.move_played.is_null() && static_eval >= beta) {
       // avoid null move pruning a position with high zugzwang potential
