@@ -21,6 +21,9 @@ MovePicker::MovePicker(
       search_stack_(search_stack),
       moves_idx_(0) {}
 
+const int kBaseGoodCaptureScore = 1e8;
+const int kBaseBadCaptureScore = -1e8;
+
 Move MovePicker::next() {
   const auto &state = board_.get_state();
 
@@ -47,7 +50,7 @@ Move MovePicker::next() {
       moves_idx_++;
 
       // if the tactical move loses more than 1 pawn of material it's considered a bad capture
-      if (!eval::static_exchange(move, -100, state)) {
+      if ((type_ == MovePickerType::kQuiescence && score < 0) || score <= kBaseBadCaptureScore + 64) {
         bad_tacticals_.push(move, score);
         continue;
       }
@@ -66,18 +69,22 @@ Move MovePicker::next() {
   if (stage_ == Stage::kFirstKiller) {
     stage_ = Stage::kSecondKiller;
 
-    const auto first_killer = move_history_.get_killers(search_stack_->ply)[0];
-    if (first_killer && board_.is_move_pseudo_legal(first_killer)) {
-      return first_killer;
+    if (search_stack_) {
+      const auto first_killer = move_history_.get_killers(search_stack_->ply)[0];
+      if (first_killer && board_.is_move_pseudo_legal(first_killer)) {
+        return first_killer;
+      }
     }
   }
 
   if (stage_ == Stage::kSecondKiller) {
     stage_ = Stage::kGenerateQuiets;
 
-    const auto second_killer = move_history_.get_killers(search_stack_->ply)[1];
-    if (second_killer && board_.is_move_pseudo_legal(second_killer)) {
-      return second_killer;
+    if (search_stack_) {
+      const auto second_killer = move_history_.get_killers(search_stack_->ply)[1];
+      if (second_killer && board_.is_move_pseudo_legal(second_killer)) {
+        return second_killer;
+      }
     }
   }
 
@@ -121,10 +128,10 @@ Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
 
 template <MoveType move_type>
 void MovePicker::generate_and_score_moves(ScoredMoveList &list) {
-  const auto &killers = move_history_.get_killers(search_stack_->ply);
+  const auto &killers = move_history_.get_killers(search_stack_ ? search_stack_->ply : 0);
   list.moves = move_gen::moves(move_type, board_);
   for (int i = 0; i < list.moves.size(); i++) {
-    if (list.moves[i] == tt_move_ || list.moves[i] == killers[0] || list.moves[i] == killers[1]) {
+    if (list.moves[i] == tt_move_) {
       list.moves.erase(i);
       break;
     }
@@ -154,8 +161,6 @@ int MovePicker::score_move(Move &move) {
 
   // winning/neutral captures are searched next
   // losing captures are searched last
-  const int kBaseGoodCaptureScore = 1e8;
-  const int kBaseBadCaptureScore = -1e8;
   if (move.is_capture(state)) {
     const auto attacker = state.get_piece_type(from);
     const auto victim = state.get_piece_type(to);
@@ -171,7 +176,7 @@ int MovePicker::score_move(Move &move) {
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
   const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
-  const auto &killers = move_history_.get_killers(search_stack_->ply);
+  const auto &killers = move_history_.get_killers(search_stack_ ? search_stack_->ply : 0);
   if (killers[0] == move) {
     return kKillerMoveScore;
   } else if (killers[1] == move) {

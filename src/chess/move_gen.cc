@@ -352,6 +352,8 @@ List<Move, kMaxMoves> moves(MoveType move_type, Board &board) {
   BitBoard pawn_targets = targets;
   if (move_type & MoveType::kTactical) {  // promotions are tactical
     pawn_targets |= RankMask::kRank1 | RankMask::kRank8;
+  } else {
+    pawn_targets &= ~(RankMask::kRank1 | RankMask::kRank8);
   }
 
   const int pushed_pawn_distance = state.turn == Color::kWhite ? 8 : -8;
