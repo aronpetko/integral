@@ -38,14 +38,14 @@ class MovePicker {
   enum class Stage {
     kTTMove,
     kGenerateMoves,
-    kGenerateCaptures,
-    kGoodCaptures,
+    kGenerateTacticals,
+    kGoodTacticals,
     kFirstKiller,
     kSecondKiller,
     kCounterMove,
     kGenerateQuiets,
     kQuiets,
-    kBadCaptures,
+    kBadTacticals,
   };
 
   Board &board_;

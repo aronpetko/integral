@@ -28,7 +28,7 @@ Move MovePicker::next() {
   const auto &state = board_.get_state();
 
   if (stage_ == Stage::kTTMove) {
-    stage_ = Stage::kGenerateCaptures;
+    stage_ = Stage::kGenerateTacticals;
 
     if (tt_move_ && board_.is_move_pseudo_legal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || tt_move_.is_tactical(state)) {
@@ -37,12 +37,12 @@ Move MovePicker::next() {
     }
   }
 
-  if (stage_ == Stage::kGenerateCaptures) {
-    stage_ = Stage::kGoodCaptures;
+  if (stage_ == Stage::kGenerateTacticals) {
+    stage_ = Stage::kGoodTacticals;
     generate_and_score_moves<MoveType::kTactical>(tacticals_);
   }
 
-  if (stage_ == Stage::kGoodCaptures) {
+  if (stage_ == Stage::kGoodTacticals) {
     while (moves_idx_ < tacticals_.moves.size()) {
       const auto &move = selection_sort(tacticals_, moves_idx_);
       const int score = tacticals_.scores[moves_idx_];
@@ -58,7 +58,7 @@ Move MovePicker::next() {
       return move;
     }
 
-    // we only want to search the good captures in quiescent search
+    // we only want to search the good tactical moves in quiescent search
     if (type_ == MovePickerType::kQuiescence) {
       return Move::null_move();
     }
@@ -99,11 +99,11 @@ Move MovePicker::next() {
       return selection_sort(quiets_, moves_idx_++);
     }
 
-    stage_ = Stage::kBadCaptures;
+    stage_ = Stage::kBadTacticals;
     moves_idx_ = 0;
   }
 
-  if (stage_ == Stage::kBadCaptures) {
+  if (stage_ == Stage::kBadTacticals) {
     if (moves_idx_ < bad_tacticals_.moves.size()) {
       return selection_sort(bad_tacticals_, moves_idx_++);
     }
@@ -176,7 +176,7 @@ int MovePicker::score_move(Move &move) {
 
   // killer moves are searched next (moves that caused a beta cutoff at this ply)
   const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
-  const auto &killers = move_history_.get_killers(search_stack_ ? search_stack_->ply : 0);
+  const auto &killers = move_history_.get_killers(search_stack_->ply);
   if (killers[0] == move) {
     return kKillerMoveScore;
   } else if (killers[1] == move) {
