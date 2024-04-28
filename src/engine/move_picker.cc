@@ -44,13 +44,18 @@ Move MovePicker::next() {
 
   if (stage_ == Stage::kGoodTacticals) {
     while (moves_idx_ < tacticals_.moves.size()) {
-      const auto &move = selection_sort(tacticals_, moves_idx_);
+      const auto move = selection_sort(tacticals_, moves_idx_);
       const int score = tacticals_.scores[moves_idx_];
 
       moves_idx_++;
 
+      // we only want to search the good tactical moves in quiescent search
+      if (type_ == MovePickerType::kQuiescence && score < 0) {
+        return Move::null_move();
+      }
+
       // if the tactical move loses more than 1 pawn of material it's considered a bad capture
-      if ((type_ == MovePickerType::kQuiescence && score < 0) || score <= kBaseBadCaptureScore + 64) {
+      if (score <= kBaseBadCaptureScore + 64) {
         bad_tacticals_.push(move, score);
         continue;
       }
@@ -58,7 +63,7 @@ Move MovePicker::next() {
       return move;
     }
 
-    // we only want to search the good tactical moves in quiescent search
+    // stop searching since all good tacticals have been searched
     if (type_ == MovePickerType::kQuiescence) {
       return Move::null_move();
     }
@@ -95,8 +100,16 @@ Move MovePicker::next() {
   }
 
   if (stage_ == Stage::kQuiets) {
-    if (moves_idx_ < quiets_.moves.size()) {
-      return selection_sort(quiets_, moves_idx_++);
+    while (moves_idx_ < quiets_.moves.size()) {
+      const auto move = selection_sort(quiets_, moves_idx_);
+      moves_idx_++;
+
+      const auto &killers = move_history_.get_killers(search_stack_->ply);
+      if (killers[0] == move || killers[1] == move) {
+        continue;
+      }
+
+      return move;
     }
 
     stage_ = Stage::kBadTacticals;
@@ -128,7 +141,6 @@ Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
 
 template <MoveType move_type>
 void MovePicker::generate_and_score_moves(ScoredMoveList &list) {
-  const auto &killers = move_history_.get_killers(search_stack_ ? search_stack_->ply : 0);
   list.moves = move_gen::moves(move_type, board_);
   for (int i = 0; i < list.moves.size(); i++) {
     if (list.moves[i] == tt_move_) {
