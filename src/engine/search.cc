@@ -119,26 +119,15 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   const bool tt_hit = tt_entry.compare_key(state.zobrist_key);
   const auto tt_move = tt_hit ? tt_entry.move : Move::null_move();
 
-  if (!in_pv_node && tt_hit && tt_entry.score != kScoreNone) {
-    // saved scores from non-pv nodes must fall within the current alpha/beta window to allow early cutoff
-    if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
-        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
-        tt_entry.flag == TranspositionTable::Entry::kExact) {
-      return transposition_table.correct_score(tt_entry.score, ply);
-    }
-  }
-
   // use the tt entry's evaluation if possible
-  bool use_tt_eval = false;
-  if (tt_hit && tt_entry.score != kScoreNone) {
-    if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
-        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
-        tt_entry.flag == TranspositionTable::Entry::kExact) {
-      use_tt_eval = true;
-    }
+  const bool can_use_tt_eval = tt_hit && tt_entry.score != kScoreNone && tt_entry.can_use_score(alpha, beta);
+
+  // saved scores from non-pv nodes must fall within the current alpha/beta window to allow early cutoff
+  if (!in_pv_node && can_use_tt_eval) {
+    return transposition_table.correct_score(tt_entry.score, ply);
   }
 
-  const int static_eval = use_tt_eval ? tt_entry.score : eval::evaluate(state);
+  const int static_eval = can_use_tt_eval ? tt_entry.score : eval::evaluate(state);
 
   // early cutoff in quiescent search since we're focused on evaluating quiet positions,
   // rather than exploring all possibilities
@@ -147,7 +136,9 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   }
 
   // alpha can be updated if no cutoff occurred
-  const int original_alpha = alpha = std::max(alpha, static_eval);
+  alpha = std::max(alpha, static_eval);
+  // keep track of the original alpha for bound determination when updating the transposition table
+  const int original_alpha = alpha;
 
   int best_score = static_eval;
   Move best_move = Move::null_move();
@@ -158,6 +149,8 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
     if (!board_.is_move_legal(move)) {
       continue;
     }
+
+    transposition_table.prefetch(board_.key_after(move));
 
     board_.make_move(move);
     const int score = -quiescent_search<node_type>(ply + 1, -beta, -alpha, stack->ahead());
@@ -190,7 +183,8 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
     entry_flag = TranspositionTable::Entry::kUpperBound;
   }
 
-  // attempt to update the transposition table with the evaluation of this position
+  // since we're always updating the transposition table a depth 0, that means only quiescent search
+  // will use these entries and not the main search
   TranspositionTable::Entry new_tt_entry(state.zobrist_key, 0, entry_flag, best_score, best_move);
   transposition_table.save(state.zobrist_key, new_tt_entry, ply);
 
@@ -199,12 +193,6 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
 
 template <NodeType node_type>
 int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
-  sel_depth_ = std::max(sel_depth_, stack->ply = ply);
-
-  if (board_.is_draw(ply)) {
-    return eval::kDrawScore;
-  }
-
   const auto &state = board_.get_state();
 
   // ensure we never fall into quiescent search when the side to move is in check
@@ -222,33 +210,31 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   // moves are searched during the pv search, we attempt to guess which moves will be pv or non-pv nodes and re-search
   // depending on if we were wrong
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+  // the root node is also a pv node by default
   const bool in_root = ply == 0;
+
+  if (!in_root) {
+    sel_depth_ = std::max(sel_depth_, stack->ply = ply);
+
+    if (board_.is_draw(ply)) {
+      return eval::kDrawScore;
+    }
+  }
 
   // probe the transposition table to see if we have already evaluated this position
   const auto &tt_entry = transposition_table.probe(state.zobrist_key);
   const bool tt_hit = tt_entry.compare_key(state.zobrist_key);
   const auto tt_move = tt_hit ? tt_entry.move : Move::null_move();
 
-  if (!in_pv_node && tt_hit && tt_entry.depth >= depth && tt_entry.score != kScoreNone) {
-    // saved scores from non-pv nodes must fall within the current alpha/beta window to allow early cutoff
-    if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
-        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
-        tt_entry.flag == TranspositionTable::Entry::kExact) {
-      return transposition_table.correct_score(tt_entry.score, ply);
-    }
-  }
-
   // use the tt entry's evaluation if possible
-  bool use_tt_eval = false;
-  if (tt_hit && tt_entry.score != kScoreNone) {
-    if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
-        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
-        tt_entry.flag == TranspositionTable::Entry::kExact) {
-      use_tt_eval = true;
-    }
+  const bool can_use_tt_eval = tt_hit && tt_entry.score != kScoreNone && tt_entry.can_use_score(alpha, beta);
+
+  // saved scores from non-pv nodes must fall within the current alpha/beta window to allow early cutoff
+  if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
+    return transposition_table.correct_score(tt_entry.score, ply);
   }
 
-  const int static_eval = use_tt_eval ? tt_entry.score : eval::evaluate(state);
+  const int static_eval = can_use_tt_eval ? tt_entry.score : eval::evaluate(state);
   stack->static_eval = state.in_check() ? kScoreNone : static_eval;
 
   move_history_.clear_killers(ply + 1);
@@ -298,8 +284,6 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
   MovePicker move_picker(MovePickerType::kSearch, board_, tt_move, move_history_, stack);
   Move move;
   while ((move = move_picker.next())) {
-    transposition_table.prefetch(board_.key_after(move));
-
     if (!board_.is_move_legal(move)) {
       continue;
     }
@@ -326,6 +310,8 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         continue;
       }
     }
+
+    transposition_table.prefetch(board_.key_after(move));
 
     // ensure that the pv only contains moves down this path
     if (in_pv_node) {
