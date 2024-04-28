@@ -109,9 +109,39 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
 
   const auto &state = board_.get_state();
 
+  // a principal variation (pv) node is a node that falls between the [alpha, beta] window and one which most child
+  // moves are searched during the pv search, we attempt to guess which moves will be pv or non-pv nodes and re-search
+  // depending on if we were wrong
+  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+
+  // probe the transposition table to see if we have already evaluated this position
+  const auto &tt_entry = transposition_table.probe(state.zobrist_key);
+  const bool tt_hit = tt_entry.compare_key(state.zobrist_key);
+  const auto tt_move = tt_hit ? tt_entry.move : Move::null_move();
+
+  if (!in_pv_node && tt_hit && tt_entry.score != kScoreNone) {
+    // saved scores from non-pv nodes must fall within the current alpha/beta window to allow early cutoff
+    if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
+        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
+        tt_entry.flag == TranspositionTable::Entry::kExact) {
+      return transposition_table.correct_score(tt_entry.score, ply);
+    }
+  }
+
+  // use the tt entry's evaluation if possible
+  bool use_tt_eval = false;
+  if (tt_hit && tt_entry.score != kScoreNone) {
+    if (tt_entry.flag == TranspositionTable::Entry::kUpperBound && tt_entry.score <= alpha ||
+        tt_entry.flag == TranspositionTable::Entry::kLowerBound && tt_entry.score >= beta ||
+        tt_entry.flag == TranspositionTable::Entry::kExact) {
+      use_tt_eval = true;
+    }
+  }
+
+  const int static_eval = use_tt_eval ? tt_entry.score : eval::evaluate(state);
+
   // early cutoff in quiescent search since we're focused on evaluating quiet positions,
   // rather than exploring all possibilities
-  const int static_eval = eval::evaluate(state);
   if (static_eval >= beta || ply >= kMaxPlyFromRoot) {
     return static_eval;
   }
@@ -119,15 +149,10 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   // alpha can be updated if no cutoff occurred
   alpha = std::max(alpha, static_eval);
 
-  // a principal variation (pv) node is a node that falls between the [alpha, beta] window and one which most child
-  // moves are searched during the pv search, we attempt to guess which moves will be pv or non-pv nodes and re-search
-  // depending on if we were wrong
-  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
-
   int best_score = static_eval;
   Move best_move = Move::null_move();
 
-  MovePicker move_picker(MovePickerType::kQuiescence, board_, Move::null_move(), move_history_, stack);
+  MovePicker move_picker(MovePickerType::kQuiescence, board_, tt_move, move_history_, stack);
   Move move;
   while ((move = move_picker.next())) {
     if (!board_.is_move_legal(move)) {
