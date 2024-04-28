@@ -147,7 +147,7 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
   }
 
   // alpha can be updated if no cutoff occurred
-  alpha = std::max(alpha, static_eval);
+  const int original_alpha = alpha = std::max(alpha, static_eval);
 
   int best_score = static_eval;
   Move best_move = Move::null_move();
@@ -180,6 +180,19 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
       }
     }
   }
+
+  auto entry_flag = TranspositionTable::Entry::kExact;
+  if (alpha >= beta) {
+    // beta cutoff
+    entry_flag = TranspositionTable::Entry::kLowerBound;
+  } else if (alpha <= original_alpha) {
+    // alpha failed to raise
+    entry_flag = TranspositionTable::Entry::kUpperBound;
+  }
+
+  // attempt to update the transposition table with the evaluation of this position
+  TranspositionTable::Entry new_tt_entry(state.zobrist_key, 0, entry_flag, best_score, best_move);
+  transposition_table.save(state.zobrist_key, new_tt_entry, ply);
 
   return best_score;
 }
