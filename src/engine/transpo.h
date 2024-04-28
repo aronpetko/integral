@@ -26,6 +26,12 @@ class TranspositionTable {
       return static_cast<U16>(test_key) == key;
     }
 
+    [[nodiscard]] bool can_use_score(int alpha, int beta) const {
+      return (flag == TranspositionTable::Entry::kUpperBound && score <= alpha ||
+              flag == TranspositionTable::Entry::kLowerBound && score >= beta ||
+              flag == TranspositionTable::Entry::kExact);
+    }
+
     U16 key;
     U8 depth;
     Flag flag;
