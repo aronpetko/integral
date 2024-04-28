@@ -8,6 +8,11 @@
 struct ScoredMoveList {
   List<Move, kMaxMoves> moves;
   List<int, kMaxMoves> scores;
+
+  void push(Move move, int score) {
+    moves.push(move);
+    scores.push(score);
+  }
 };
 
 enum class MovePickerType {
@@ -25,7 +30,7 @@ class MovePicker {
   Move &selection_sort(ScoredMoveList &move_list, const int &index);
 
   template <MoveType move_type>
-  void generate_and_score_moves();
+  void generate_and_score_moves(ScoredMoveList &list);
 
   int score_move(Move &move);
 
@@ -33,7 +38,6 @@ class MovePicker {
   enum class Stage {
     kTTMove,
     kGenerateMoves,
-    kPlayMoves,
     kGenerateCaptures,
     kGoodCaptures,
     kFirstKiller,
@@ -50,7 +54,8 @@ class MovePicker {
   MoveHistory &move_history_;
   Search::Stack *search_stack_;
   Stage stage_;
-  ScoredMoveList scored_moves_;
+  ScoredMoveList tacticals_, bad_tacticals_;
+  ScoredMoveList quiets_;
   int moves_idx_;
 };
 

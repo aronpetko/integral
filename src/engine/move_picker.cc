@@ -11,8 +11,8 @@ const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kM
 }};
 // clang-format on
 
-MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history,
-                       Search::Stack *search_stack)
+MovePicker::MovePicker(
+    MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, Search::Stack *search_stack)
     : type_(type),
       board_(board),
       tt_move_(tt_move),
@@ -22,10 +22,11 @@ MovePicker::MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHist
       moves_idx_(0) {}
 
 Move MovePicker::next() {
-  if (stage_ == Stage::kTTMove) {
-    stage_ = Stage::kGenerateMoves;
+  const auto &state = board_.get_state();
 
-    auto &state = board_.get_state();
+  if (stage_ == Stage::kTTMove) {
+    stage_ = Stage::kGenerateCaptures;
+
     if (tt_move_ && board_.is_move_pseudo_legal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || tt_move_.is_tactical(state)) {
         return tt_move_;
@@ -33,25 +34,71 @@ Move MovePicker::next() {
     }
   }
 
-  if (stage_ == Stage::kGenerateMoves) {
-    stage_ = Stage::kPlayMoves;
+  if (stage_ == Stage::kGenerateCaptures) {
+    stage_ = Stage::kGoodCaptures;
+    generate_and_score_moves<MoveType::kTactical>(tacticals_);
+  }
+
+  if (stage_ == Stage::kGoodCaptures) {
+    while (moves_idx_ < tacticals_.moves.size()) {
+      const auto &move = selection_sort(tacticals_, moves_idx_);
+      const int score = tacticals_.scores[moves_idx_];
+
+      moves_idx_++;
+
+      // if the tactical move loses more than 1 pawn of material it's considered a bad capture
+      if (!eval::static_exchange(move, -100, state)) {
+        bad_tacticals_.push(move, score);
+        continue;
+      }
+
+      return move;
+    }
+
+    // we only want to search the good captures in quiescent search
     if (type_ == MovePickerType::kQuiescence) {
-      generate_and_score_moves<MoveType::kTactical>();
-    } else {
-      generate_and_score_moves<MoveType::kAll>();
+      return Move::null_move();
+    }
+
+    stage_ = Stage::kFirstKiller;
+  }
+
+  if (stage_ == Stage::kFirstKiller) {
+    stage_ = Stage::kSecondKiller;
+
+    const auto first_killer = move_history_.get_killers(search_stack_->ply)[0];
+    if (first_killer && board_.is_move_pseudo_legal(first_killer)) {
+      return first_killer;
     }
   }
 
-  if (stage_ == Stage::kPlayMoves) {
-    if (moves_idx_ < scored_moves_.moves.size()) {
-      const auto &move = selection_sort(scored_moves_, moves_idx_);
-      // see pruning in quiescent search
-      if (type_ == MovePickerType::kQuiescence && scored_moves_.scores[moves_idx_] < 0) {
-        return Move::null_move();
-      }
+  if (stage_ == Stage::kSecondKiller) {
+    stage_ = Stage::kGenerateQuiets;
 
-      moves_idx_++;
-      return move;
+    const auto second_killer = move_history_.get_killers(search_stack_->ply)[1];
+    if (second_killer && board_.is_move_pseudo_legal(second_killer)) {
+      return second_killer;
+    }
+  }
+
+  if (stage_ == Stage::kGenerateQuiets) {
+    stage_ = Stage::kQuiets;
+    moves_idx_ = 0;
+    generate_and_score_moves<MoveType::kQuiet>(quiets_);
+  }
+
+  if (stage_ == Stage::kQuiets) {
+    if (moves_idx_ < quiets_.moves.size()) {
+      return selection_sort(quiets_, moves_idx_++);
+    }
+
+    stage_ = Stage::kBadCaptures;
+    moves_idx_ = 0;
+  }
+
+  if (stage_ == Stage::kBadCaptures) {
+    if (moves_idx_ < bad_tacticals_.moves.size()) {
+      return selection_sort(bad_tacticals_, moves_idx_++);
     }
   }
 
@@ -73,16 +120,17 @@ Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
 }
 
 template <MoveType move_type>
-void MovePicker::generate_and_score_moves() {
-  scored_moves_.moves = move_gen::moves(move_type, board_);
-  for (int i = 0; i < scored_moves_.moves.size(); i++) {
-    if (scored_moves_.moves[i] == tt_move_) {
-      scored_moves_.moves.erase(i);
+void MovePicker::generate_and_score_moves(ScoredMoveList &list) {
+  const auto &killers = move_history_.get_killers(search_stack_->ply);
+  list.moves = move_gen::moves(move_type, board_);
+  for (int i = 0; i < list.moves.size(); i++) {
+    if (list.moves[i] == tt_move_ || list.moves[i] == killers[0] || list.moves[i] == killers[1]) {
+      list.moves.erase(i);
       break;
     }
   }
-  for (int i = 0; i < scored_moves_.moves.size(); i++) {
-    scored_moves_.scores.push(score_move(scored_moves_.moves[i]));
+  for (int i = 0; i < list.moves.size(); i++) {
+    list.scores.push(score_move(list.moves[i]));
   }
 }
 
