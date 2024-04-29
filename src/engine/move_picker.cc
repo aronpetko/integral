@@ -59,7 +59,7 @@ Move MovePicker::next() {
       }
 
       // if the tactical move loses more than 1 pawn of material it's considered a bad capture
-      if (score <= kBaseBadCaptureScore + 55) {
+      if (score <= kBaseBadCaptureScore + 64) {
         bad_tacticals_.push({move, score});
         continue;
       }
@@ -114,7 +114,7 @@ Move MovePicker::next() {
 
   if (stage_ == Stage::kBadTacticals) {
     if (moves_idx_ < bad_tacticals_.size()) {
-      return selection_sort(bad_tacticals_, moves_idx_++);
+      return bad_tacticals_[moves_idx_++].move;
     }
   }
 
@@ -138,14 +138,10 @@ void MovePicker::generate_and_score_moves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = move_history_.get_killers(search_stack_->ply);
   auto moves = move_gen::generate_moves(move_type, board_);
 
-  int i = 0;
-  while (i < moves.size()) {
+  for (int i = 0; i < moves.size(); i++) {
     auto move = moves[i];
-    if (move == tt_move_ || killers[0] == move || killers[1] == move) {
-      moves.erase(i);
-    } else {
+    if (move != tt_move_ && killers[0] != move && killers[1] != move) {
       list.push({move, score_move(move)});
-      i++;
     }
   }
 }
