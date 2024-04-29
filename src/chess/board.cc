@@ -17,12 +17,13 @@ void Board::set_from_fen(const std::string &fen_str) {
 bool Board::is_move_pseudo_legal(Move move) {
   const auto from = move.get_from(), to = move.get_to();
   const auto piece_type = state_.get_piece_type(from);
-  const Color us = state_.turn, them = flip_color(us);
+
+  const Color us = state_.turn;
   const bool is_white = us == Color::kWhite;
 
   const BitBoard &our_pieces = state_.occupied(us);
   if (!our_pieces.is_set(from) || our_pieces.is_set(to) ||
-      move.get_promotion_type() != PromotionType::kNone && piece_type != PieceType::kPawn) {
+      piece_type != PieceType::kPawn && move.get_promotion_type() != PromotionType::kNone) {
     return false;
   }
 

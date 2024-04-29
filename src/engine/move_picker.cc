@@ -100,16 +100,8 @@ Move MovePicker::next() {
   }
 
   if (stage_ == Stage::kQuiets) {
-    while (moves_idx_ < quiets_.moves.size()) {
-      const auto move = selection_sort(quiets_, moves_idx_);
-      moves_idx_++;
-
-      const auto &killers = move_history_.get_killers(search_stack_->ply);
-      if (killers[0] == move || killers[1] == move) {
-        continue;
-      }
-
-      return move;
+    if (moves_idx_ < quiets_.moves.size()) {
+      return selection_sort(quiets_, moves_idx_++);
     }
 
     stage_ = Stage::kBadTacticals;
@@ -141,15 +133,17 @@ Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
 
 template <MoveType move_type>
 void MovePicker::generate_and_score_moves(ScoredMoveList &list) {
+  const auto &killers = move_history_.get_killers(search_stack_->ply);
+
   list.moves = move_gen::moves(move_type, board_);
   for (int i = 0; i < list.moves.size(); i++) {
-    if (list.moves[i] == tt_move_) {
-      list.moves.erase(i);
-      break;
+    auto move = list.moves[i];
+    if (move == tt_move_ || killers[0] == move || killers[1] == move) {
+      list.moves.erase(i--);
+      continue;
     }
-  }
-  for (int i = 0; i < list.moves.size(); i++) {
-    list.scores.push(score_move(list.moves[i]));
+
+    list.scores.push(score_move(move));
   }
 }
 
