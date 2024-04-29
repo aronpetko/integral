@@ -136,24 +136,19 @@ Move &MovePicker::selection_sort(List<ScoredMove, kMaxMoves> &move_list, const i
 template <MoveType move_type>
 void MovePicker::generate_and_score_moves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = move_history_.get_killers(search_stack_->ply);
+  auto moves = move_gen::generate_moves(move_type, board_);
 
-  List<Move, kMaxMoves> moves;
-  move_gen::generate_moves(moves, move_type, board_);
-
-  List<ScoredMove, kMaxMoves> scored_moves;
-  for (int i = 0; i < moves.size(); i++) {
+  int i = 0;
+  while (i < moves.size()) {
     auto move = moves[i];
-    if (move != tt_move_ && killers[0] != move && killers[1] != move) {
-      scored_moves.push({move, score_move(move)});
+    if (move == tt_move_ || killers[0] == move || killers[1] == move) {
+      moves.erase(i);
+    } else {
+      list.push({move, score_move(move)});
+      i++;
     }
   }
-
-  for (int i = 0; i < scored_moves.size(); i++) {
-    const auto scored_move = scored_moves[i];
-    list.push({scored_move.move, scored_move.score});
-  }
 }
-
 
 int MovePicker::score_move(Move &move) {
   const auto from = move.get_from();

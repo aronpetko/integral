@@ -42,7 +42,7 @@ BitBoard &ray_between(Square first, Square second);
 // returns a bitboard with the set bits being the ray that the two squares lie on
 BitBoard &ray_intersecting(Square first, Square second);
 
-void generate_moves(List<Move, kMaxMoves>& move_list, MoveType move_type, Board &board);
+List<Move, kMaxMoves> generate_moves(MoveType move_type, Board &board);
 
 List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, Board &board);
 

@@ -144,8 +144,7 @@ enum class PerftType {
 
 template<PerftType type>
 U64 perft_internal(Board &board, int depth, int start_depth) {
-  List<Move, kMaxMoves> moves;
-  move_gen::generate_moves(moves, MoveType::kAll, board);
+  auto moves = move_gen::generate_moves(MoveType::kAll, board);
 
   auto &state = board.get_state();
   U64 total_nodes = 0;

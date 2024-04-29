@@ -5,6 +5,8 @@
 #include "history.h"
 #include "search.h"
 
+#include <algorithm>
+
 struct ScoredMove {
   Move move;
   int score;

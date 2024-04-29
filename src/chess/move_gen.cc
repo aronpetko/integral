@@ -320,7 +320,9 @@ BitBoard &ray_intersecting(Square first, Square second) {
   return ray_intersecting_masks[first][second];
 }
 
-void generate_moves(List<Move, kMaxMoves>& move_list, MoveType move_type, Board &board) {
+List<Move, kMaxMoves> generate_moves(MoveType move_type, Board &board) {
+  List<Move, kMaxMoves> move_list;
+
   auto &state = board.get_state();
 
   const BitBoard occupied = state.occupied();
@@ -341,7 +343,7 @@ void generate_moves(List<Move, kMaxMoves>& move_list, MoveType move_type, Board 
         move_list.push(Move(king_square, to));
       }
 
-      return;
+      return move_list;
     }
   }
 
@@ -475,19 +477,14 @@ void generate_moves(List<Move, kMaxMoves>& move_list, MoveType move_type, Board 
     const U8 to = possible_moves.pop_lsb();
     move_list.push(Move(king_square, to));
   }
+
+  return move_list;
 }
 
 List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, Board &board) {
   if (type == MoveType::kAll) return moves;
 
   auto &state = board.get_state();
-
-  const auto causes_check = [&board, &state](Move move) {
-    board.make_move(move);
-    const bool in_check = state.checkers != 0;
-    board.undo_move();
-    return in_check;
-  };
 
   List<Move, kMaxMoves> filtered;
   for (int i = 0; i < moves.size(); i++) {
@@ -499,7 +496,7 @@ List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, 
         filtered.push(move);
       }
     } else if (type == MoveType::kQuiet) {
-      if (!is_capture && !causes_check(move) && move.get_promotion_type() == PromotionType::kNone) {
+      if (!is_capture && move.get_promotion_type() == PromotionType::kNone) {
         filtered.push(move);
       }
     }

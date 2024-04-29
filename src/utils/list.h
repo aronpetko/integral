@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <array>
+#include <algorithm>
 
 template<class T, std::size_t length>
 class List {
@@ -30,6 +31,15 @@ class List {
   inline void push(T&& object) {
     assert(count_ < length);
     container_[count_++] = std::move(object);
+  }
+
+  inline void heapify() {
+    std::make_heap(container_.begin(), container_.begin() + count_);
+  }
+
+  inline T &heap_pop() {
+    std::pop_heap(container_.begin(), container_.begin() + count_--);
+    return container_[count_];
   }
 
   inline T &pop_back() {
