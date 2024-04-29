@@ -53,18 +53,19 @@ Move MovePicker::next() {
 
       moves_idx_++;
 
+      // if the tactical move loses more than 1 pawn of material it's considered a bad capture
+      // good captures are searched first, bad captures are searched last
+      const bool loses_material = !eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state);
+      if (!loses_material) {
+        return move;
+      }
+
       // we only want to search the good tactical moves in quiescent search
-      if (type_ == MovePickerType::kQuiescence && score < 0) {
+      if (type_ == MovePickerType::kQuiescence && loses_material) {
         return Move::null_move();
       }
 
-      // if the tactical move loses more than 1 pawn of material it's considered a bad capture
-      if (score <= kBaseBadCaptureScore + 64) {
-        bad_tacticals_.push({move, score});
-        continue;
-      }
-
-      return move;
+      bad_tacticals_.push({move, score});
     }
 
     // stop searching since all good tacticals have been searched
@@ -169,14 +170,7 @@ int MovePicker::score_move(Move &move) {
   if (move.is_capture(state)) {
     const auto attacker = state.get_piece_type(from);
     const auto victim = state.get_piece_type(to);
-    const int mvv_lva_score =
-        kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
-    // good captures are searched first, bad captures are searched last
-    if (eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state)) {
-      return kBaseGoodCaptureScore + mvv_lva_score;
-    } else {
-      return kBaseBadCaptureScore + mvv_lva_score;
-    }
+    return kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
   }
 
   // order moves that caused a beta cutoff by their own history score
