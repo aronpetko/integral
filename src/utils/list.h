@@ -38,9 +38,12 @@ class List {
   }
 
   inline void erase(int i) {
-    std::swap(back(), container_[i]);
-    --count_;
+    for (int j = count_ - 1; j > i; --j) {
+      container_[j] = container_[j - 1];  // Shift elements to the right
+    }
+    --count_;  // Reduce the size of the container
   }
+
 
   [[nodiscard]] inline int size() const {
     return count_;

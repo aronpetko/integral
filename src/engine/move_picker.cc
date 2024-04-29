@@ -136,13 +136,15 @@ void MovePicker::generate_and_score_moves(ScoredMoveList &list) {
   const auto &killers = move_history_.get_killers(search_stack_->ply);
 
   list.moves = move_gen::moves(move_type, board_);
-  for (int i = 0; i < list.moves.size(); i++) {
+  int i = 0;
+  while (i < list.moves.size()) {
     auto move = list.moves[i];
     if (move == tt_move_ || killers[0] == move || killers[1] == move) {
       list.moves.erase(i);
+    } else {
+      list.scores.push(score_move(move));
+      i++;
     }
-
-    list.scores.push(score_move(move));
   }
 }
 
