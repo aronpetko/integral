@@ -49,7 +49,7 @@ void Search::iterative_deepening() {
       beta = std::min(eval::kInfiniteScore, score + window);
     }
 
-    while (searching && !time_mgmt_.soft_times_up(root_stack->best_move)) {
+    while (true) {
       const int new_score = search<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
@@ -73,6 +73,10 @@ void Search::iterative_deepening() {
 
       // widen the aspiration window for the next iteration if we fail low or hard again
       window += window / 3;
+
+      if (!searching || time_mgmt_.soft_times_up(root_stack->best_move)) {
+        break;
+      }
     }
 
     if (print_info) {

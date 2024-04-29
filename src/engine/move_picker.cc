@@ -60,8 +60,7 @@ Move MovePicker::next() {
         return move;
       }
 
-      // we only want to search the good tactical moves in quiescent search
-      if (type_ == MovePickerType::kQuiescence && loses_material) {
+      if (type_ == MovePickerType::kQuiescence && score < 0) {
         return Move::null_move();
       }
 
