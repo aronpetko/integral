@@ -139,8 +139,7 @@ void MovePicker::generate_and_score_moves(ScoredMoveList &list) {
   for (int i = 0; i < list.moves.size(); i++) {
     auto move = list.moves[i];
     if (move == tt_move_ || killers[0] == move || killers[1] == move) {
-      list.moves.erase(i--);
-      continue;
+      list.moves.erase(i);
     }
 
     list.scores.push(score_move(move));
@@ -179,23 +178,6 @@ int MovePicker::score_move(Move &move) {
       return kBaseBadCaptureScore + mvv_lva_score;
     }
   }
-
-  // killer moves are searched next (moves that caused a beta cutoff at this ply)
-  const int kKillerMoveScore = kBaseGoodCaptureScore - 10;
-  const auto &killers = move_history_.get_killers(search_stack_->ply);
-  if (killers[0] == move) {
-    return kKillerMoveScore;
-  } else if (killers[1] == move) {
-    return kKillerMoveScore - 1;
-  }
-
-  // check if this move was a natural counter to the previous move (caused a beta cutoff)
-  // complimentary to killer move heuristic
-  /*const int kCounterMoveScore = kKillerMoveScore - 10;
-  if (move == move_history_.get_counter(state.move_played)) {
-    // counter moves should be searched right after killer moves
-    return kCounterMoveScore;
-  } */
 
   // order moves that caused a beta cutoff by their own history score
   // the higher the depth this move caused a cutoff the more likely it move will be ordered first
