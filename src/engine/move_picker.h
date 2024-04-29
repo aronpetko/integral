@@ -5,14 +5,9 @@
 #include "history.h"
 #include "search.h"
 
-struct ScoredMoveList {
-  List<Move, kMaxMoves> moves;
-  List<int, kMaxMoves> scores;
-
-  void push(Move move, int score) {
-    moves.push(move);
-    scores.push(score);
-  }
+struct ScoredMove {
+  Move move;
+  int score;
 };
 
 enum class MovePickerType {
@@ -27,10 +22,10 @@ class MovePicker {
   Move next();
 
  private:
-  Move &selection_sort(ScoredMoveList &move_list, const int &index);
+  Move &selection_sort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
 
   template <MoveType move_type>
-  void generate_and_score_moves(ScoredMoveList &list);
+  void generate_and_score_moves(List<ScoredMove, kMaxMoves> &list);
 
   int score_move(Move &move);
 
@@ -54,8 +49,8 @@ class MovePicker {
   MoveHistory &move_history_;
   Search::Stack *search_stack_;
   Stage stage_;
-  ScoredMoveList tacticals_, bad_tacticals_;
-  ScoredMoveList quiets_;
+  List<ScoredMove, kMaxMoves> tacticals_, bad_tacticals_;
+  List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
 };
 

@@ -43,9 +43,9 @@ Move MovePicker::next() {
   }
 
   if (stage_ == Stage::kGoodTacticals) {
-    while (moves_idx_ < tacticals_.moves.size()) {
+    while (moves_idx_ < tacticals_.size()) {
       const auto move = selection_sort(tacticals_, moves_idx_);
-      const int score = tacticals_.scores[moves_idx_];
+      const int score = tacticals_[moves_idx_].score;
 
       moves_idx_++;
 
@@ -56,7 +56,7 @@ Move MovePicker::next() {
 
       // if the tactical move loses more than 1 pawn of material it's considered a bad capture
       if (score <= kBaseBadCaptureScore + 64) {
-        bad_tacticals_.push(move, score);
+        bad_tacticals_.push({move, score});
         continue;
       }
 
@@ -100,7 +100,7 @@ Move MovePicker::next() {
   }
 
   if (stage_ == Stage::kQuiets) {
-    if (moves_idx_ < quiets_.moves.size()) {
+    if (moves_idx_ < quiets_.size()) {
       return selection_sort(quiets_, moves_idx_++);
     }
 
@@ -109,7 +109,7 @@ Move MovePicker::next() {
   }
 
   if (stage_ == Stage::kBadTacticals) {
-    if (moves_idx_ < bad_tacticals_.moves.size()) {
+    if (moves_idx_ < bad_tacticals_.size()) {
       return selection_sort(bad_tacticals_, moves_idx_++);
     }
   }
@@ -117,36 +117,37 @@ Move MovePicker::next() {
   return Move::null_move();
 }
 
-Move &MovePicker::selection_sort(ScoredMoveList &move_list, const int &index) {
-  int best_move_idx = index, best_move_score = move_list.scores[index];
-  for (int next = index + 1; next < move_list.moves.size(); next++) {
-    if (move_list.scores[next] > best_move_score) {
+Move &MovePicker::selection_sort(List<ScoredMove, kMaxMoves> &move_list, const int &index) {
+  int best_move_idx = index;
+  for (int next = index + 1; next < move_list.size(); ++next) {
+    if (move_list[next].score > move_list[best_move_idx].score) {
       best_move_idx = next;
-      best_move_score = move_list.scores[next];
     }
   }
-
-  std::swap(move_list.moves[index], move_list.moves[best_move_idx]);
-  std::swap(move_list.scores[index], move_list.scores[best_move_idx]);
-  return move_list.moves[index];
+  
+  std::swap(move_list[index], move_list[best_move_idx]);
+  return move_list[index].move;
 }
 
 template <MoveType move_type>
-void MovePicker::generate_and_score_moves(ScoredMoveList &list) {
+void MovePicker::generate_and_score_moves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = move_history_.get_killers(search_stack_->ply);
-
-  list.moves = move_gen::moves(move_type, board_);
-  int i = 0;
-  while (i < list.moves.size()) {
-    auto move = list.moves[i];
-    if (move == tt_move_ || killers[0] == move || killers[1] == move) {
-      list.moves.erase(i);
-    } else {
-      list.scores.push(score_move(move));
-      i++;
+  
+  auto moves = move_gen::moves(move_type, board_);
+  List<ScoredMove, kMaxMoves> scored_moves;
+  for (int i = 0; i < moves.size(); i++) {
+    auto move = moves[i];
+    if (move != tt_move_ && killers[0] != move && killers[1] != move) {
+      scored_moves.push({move, score_move(move)});
     }
   }
+
+  for (int i = 0; i < scored_moves.size(); i++) {
+    const auto scored_move = scored_moves[i];
+    list.push({scored_move.move, scored_move.score});
+  }
 }
+
 
 int MovePicker::score_move(Move &move) {
   const auto from = move.get_from();
