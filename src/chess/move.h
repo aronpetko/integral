@@ -44,6 +44,8 @@ class Move {
 
   [[nodiscard]] bool is_tactical(const BoardState &state) const;
 
+  [[nodiscard]] bool is_under_promotion() const;
+
   [[nodiscard]] constexpr inline bool is_null() const {
     return data_ == 0;
   }
