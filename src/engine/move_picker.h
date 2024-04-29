@@ -21,6 +21,8 @@ class MovePicker {
 
   Move next();
 
+  int stage();
+
  private:
   Move &selection_sort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
 
@@ -32,12 +34,10 @@ class MovePicker {
  private:
   enum class Stage {
     kTTMove,
-    kGenerateMoves,
     kGenerateTacticals,
     kGoodTacticals,
     kFirstKiller,
     kSecondKiller,
-    kCounterMove,
     kGenerateQuiets,
     kQuiets,
     kBadTacticals,

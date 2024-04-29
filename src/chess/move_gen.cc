@@ -320,9 +320,7 @@ BitBoard &ray_intersecting(Square first, Square second) {
   return ray_intersecting_masks[first][second];
 }
 
-List<Move, kMaxMoves> moves(MoveType move_type, Board &board) {
-  List<Move, kMaxMoves> move_list;
-
+void generate_moves(List<Move, kMaxMoves>& move_list, MoveType move_type, Board &board) {
   auto &state = board.get_state();
 
   const BitBoard occupied = state.occupied();
@@ -343,7 +341,7 @@ List<Move, kMaxMoves> moves(MoveType move_type, Board &board) {
         move_list.push(Move(king_square, to));
       }
 
-      return move_list;
+      return;
     }
   }
 
@@ -477,8 +475,6 @@ List<Move, kMaxMoves> moves(MoveType move_type, Board &board) {
     const U8 to = possible_moves.pop_lsb();
     move_list.push(Move(king_square, to));
   }
-
-  return move_list;
 }
 
 List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves, MoveType type, Board &board) {
