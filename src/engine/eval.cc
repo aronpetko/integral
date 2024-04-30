@@ -155,9 +155,9 @@ bool is_mate_score(int evaluation) {
 }
 
 int mate_in(int evaluation) {
-  if (evaluation > 0 && evaluation < kMateScore) { // mate in favor
+  if (evaluation > 0 && evaluation < kMateScore) {  // mate in favor
     return (kMateScore - evaluation + 1) / 2;
-  } else if (evaluation < 0 && evaluation > -kMateScore) { // mate against
+  } else if (evaluation < 0 && evaluation > -kMateScore) {  // mate against
     return -(kMateScore + evaluation) / 2;
   }
 
@@ -281,11 +281,10 @@ bool static_exchange(Move move, int threshold, const BoardState &state) {
       // if initially a knight captured a queen, the other side can gain 3 - 9 = -6 points (indicating they can only
       // gain a loss) if we flip it and initially a queen captured a knight, the other side can gain 9 - 3 = 6 points
       // (if they capture the queen back the least amount of points they lose is 3)
-      score = -score + attacker_value;
+      score = -score + 1 + attacker_value;
 
-      // if it's our opponents turn, we break only if the exchange is at a loss for them
-      // if it's our turn, we break only if the exchange is either neutral or a loss for us
-      if (score < (state.turn == winner)) {
+      // quit early if the exchange is lost or neutral
+      if (score <= 0) {
         break;
       }
     }
@@ -314,13 +313,13 @@ std::pair<int, int> evaluate_material(const BoardState &state) {
   const int bishop_count = (bishops & our_pieces).pop_count() - (bishops & their_pieces).pop_count();
   const int rook_count = (rooks & our_pieces).pop_count() - (rooks & their_pieces).pop_count();
   const int queen_count = (queens & our_pieces).pop_count() - (queens & their_pieces).pop_count();
-  
+
   mg_material += kMiddleGamePieceValues[PieceType::kPawn] * pawn_count;
   mg_material += kMiddleGamePieceValues[PieceType::kKnight] * knight_count;
   mg_material += kMiddleGamePieceValues[PieceType::kBishop] * bishop_count;
   mg_material += kMiddleGamePieceValues[PieceType::kRook] * rook_count;
   mg_material += kMiddleGamePieceValues[PieceType::kQueen] * queen_count;
-  
+
   eg_material += kEndGamePieceValues[PieceType::kPawn] * pawn_count;
   eg_material += kEndGamePieceValues[PieceType::kKnight] * knight_count;
   eg_material += kEndGamePieceValues[PieceType::kBishop] * bishop_count;

@@ -114,6 +114,7 @@ Move MovePicker::next() {
 
   if (stage_ == Stage::kBadTacticals) {
     if (moves_idx_ < bad_tacticals_.size()) {
+      // the bad tacticals are already sorted when we split them off in the good tacticals stage
       return bad_tacticals_[moves_idx_++].move;
     }
   }
@@ -128,7 +129,7 @@ Move &MovePicker::selection_sort(List<ScoredMove, kMaxMoves> &move_list, const i
       best_move_idx = next;
     }
   }
-  
+
   std::swap(move_list[index], move_list[best_move_idx]);
   return move_list[index].move;
 }
