@@ -349,7 +349,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
     } else {
       // if we didn't perform late move reduction, then we search this move at full depth with a null window search
       // if we don't expect it to be a pv move
-      needs_full_search = !in_pv_node || moves_seen >= lmr_move_threshold;
+      needs_full_search = !in_pv_node || moves_seen >= 1;
     }
 
     // either the move has potential from a reduced depth search or it's not expected to be a pv move
