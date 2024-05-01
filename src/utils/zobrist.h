@@ -8,7 +8,7 @@ class BoardState;
 class CastleRights;
 
 namespace zobrist {
-
+// clang-format off
 const U64 kRandomsArray[781] = {
     0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
     0x75834465489C0C89, 0x3290AC3A203001BF, 0x0FBBAD1F61042279, 0xE83A908FF2FB60CA,
@@ -207,6 +207,7 @@ const U64 kRandomsArray[781] = {
     0xCF3145DE0ADD4289, 0xD0E4427A5514FB72, 0x77C621CC9FB3A483, 0x67A34DAC4356550B,
     0xF8D626AAAF278509
 };
+// clang-format on
 
 enum Indices : int {
   kPieceStart = 0,
@@ -220,16 +221,19 @@ enum Indices : int {
   kTurn = 780,
 };
 
-U64 hash_turn(Color turn);
+U64 HashTurn(Color turn);
 
-U64 hash_square(Square square, const BoardState &state, Color color = Color::kNoColor, PieceType piece = PieceType::kNone);
+U64 HashSquare(Square square,
+               const BoardState &state,
+               Color color = Color::kNoColor,
+               PieceType piece = PieceType::kNone);
 
-U64 hash_castle_rights(const CastleRights &rights);
+U64 HashCastleRights(const CastleRights &rights);
 
-U64 hash_en_passant(const BoardState &state);
+U64 HashEnPassant(const BoardState &state);
 
-U64 generate_key(const BoardState &state);
+U64 GenerateKey(const BoardState &state);
 
-}
+}  // namespace zobrist
 
-#endif // INTEGRAL_ZOBRIST_H_
+#endif  // INTEGRAL_ZOBRIST_H_

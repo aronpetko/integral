@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_STRING_H
 #define INTEGRAL_STRING_H
 
-static std::vector<std::string> split_string(const std::string& input, char delimiter) {
+static std::vector<std::string> SplitString(const std::string& input, char delimiter) {
   std::vector<std::string> result;
   std::string token;
   std::istringstream token_stream(input);
@@ -13,7 +13,7 @@ static std::vector<std::string> split_string(const std::string& input, char deli
   return result;
 }
 
-static std::string remove_whitespace(const std::string& input) {
+static std::string RemoveWhitespace(const std::string& input) {
   std::string output;
   for (char c : input) {
     if (!std::isspace(static_cast<unsigned char>(c))) {

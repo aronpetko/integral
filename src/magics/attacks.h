@@ -11,17 +11,17 @@ const int kRookBlockerCombinations = 4096;
 extern std::array<std::array<BitBoard, kBishopBlockerCombinations>, Square::kSquareCount> bishop_attacks;
 extern std::array<std::array<BitBoard, kRookBlockerCombinations>, Square::kSquareCount> rook_attacks;
 
-BitBoard generate_bishop_mask(Square square);
+BitBoard GenerateBishopMask(Square square);
 
-BitBoard generate_rook_mask(Square square);
+BitBoard GenerateRookMask(Square square);
 
-BitBoard generate_bishop_moves(Square square, const BitBoard &occupied);
+BitBoard GenerateBishopMoves(Square square, const BitBoard &occupied);
 
-BitBoard generate_rook_moves(Square square, const BitBoard &occupied);
+BitBoard GenerateRookMoves(Square square, const BitBoard &occupied);
 
-std::vector<BitBoard> create_blockers(BitBoard moves);
+std::vector<BitBoard> CreateBlockers(BitBoard moves);
 
-void initialize();
+void Initialize();
 
 }
 

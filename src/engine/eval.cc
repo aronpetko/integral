@@ -2,8 +2,10 @@
 
 #include "../chess/move_gen.h"
 
-// evaluation is exactly the same as PeSTO's texel-tuned tables. using this evaluation over my own gained some +200 elo
-// this will likely be reverted (even if it lowers the elo), as I don't like the idea of using someone else's evaluation
+// Evaluation is exactly the same as PeSTO's texel-tuned tables. Using this
+// evaluation over my own gained some +200 elo. This will likely be reverted
+// (even if it lowers the elo), as I don't like the idea of using someone else's
+// evaluation
 namespace eval {
 
 // clang-format off
@@ -144,17 +146,17 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
         -53, -34, -21, -11, -28, -14, -24, -43
     }
 }};
-// clang-format on
 
 const std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
 const std::array<int, PieceType::kNumTypes> kMiddleGamePieceValues = {82, 337, 365, 477, 1025, 0};
 const std::array<int, PieceType::kNumTypes> kEndGamePieceValues = {94, 281, 297, 512, 936, 0};
+// clang-format on
 
-bool is_mate_score(int evaluation) {
+bool IsMateScore(int evaluation) {
   return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;
 }
 
-int mate_in(int evaluation) {
+int MateIn(int evaluation) {
   if (evaluation > 0 && evaluation < kMateScore) {  // mate in favor
     return (kMateScore - evaluation + 1) / 2;
   } else if (evaluation < 0 && evaluation > -kMateScore) {  // mate against
@@ -165,56 +167,64 @@ int mate_in(int evaluation) {
   return evaluation;
 }
 
-bool static_exchange(Move move, int threshold, const BoardState &state) {
-  const auto from = move.get_from();
-  const auto to = move.get_to();
+bool StaticExchange(Move move, int threshold, const BoardState &state) {
+  const auto from = move.GetFrom();
+  const auto to = move.GetTo();
 
-  const PieceType &from_piece = state.get_piece_type(from);
-  if (from_piece == PieceType::kPawn && to == state.en_passant ||    // ignore en passant captures
-      from_piece == PieceType::kKing && std::abs(from - to) == 2) {  // ignore castling moves
+  const PieceType &from_piece = state.GetPieceType(from);
+  if (from_piece == PieceType::kPawn &&
+          to == state.en_passant ||  // ignore en passant captures
+      from_piece == PieceType::kKing &&
+          std::abs(from - to) == 2) {  // ignore castling moves
     return threshold <= 0;
   }
 
-  // score represents the maximum number of points the opponent can gain with the next capture
-  int score = kSEEPieceScores[state.get_piece_type(to)] - threshold;
+  // score represents the maximum number of points the opponent can gain with
+  // the next capture
+  int score = kSEEPieceScores[state.GetPieceType(to)] - threshold;
   // if the captured piece is worth less than what we can give up, we lose
   if (score < 0) {
     return false;
   }
 
   score = kSEEPieceScores[from_piece] - score;
-  // if we captured a piece with equal/greater value than our capturing piece, we win
+  // if we captured a piece with equal/greater value than our capturing piece,
+  // we win
   if (score <= 0) {
     return true;
   }
 
-  const BitBoard &pawns = state.pawns();
-  const BitBoard &knights = state.knights();
-  const BitBoard &bishops = state.bishops();
-  const BitBoard &rooks = state.rooks();
-  const BitBoard &queens = state.queens();
-  const BitBoard &kings = state.kings();
+  const BitBoard &pawns = state.Pawns();
+  const BitBoard &knights = state.Knights();
+  const BitBoard &bishops = state.Bishops();
+  const BitBoard &rooks = state.Rooks();
+  const BitBoard &queens = state.Queens();
+  const BitBoard &kings = state.Kings();
 
-  BitBoard occupied = state.occupied();
-  occupied.clear_bit(from);
-  occupied.clear_bit(to);
+  BitBoard occupied = state.Occupied();
+  occupied.ClearBit(from);
+  occupied.ClearBit(to);
 
   // get all pieces that attack the capture square
-  auto pawn_attackers = (move_gen::pawn_attacks(to, state, Color::kWhite) & state.pawns(Color::kBlack)) |
-                        (move_gen::pawn_attacks(to, state, Color::kBlack) & state.pawns(Color::kWhite));
-  auto knight_attackers = move_gen::knight_moves(to) & state.knights();
+  auto pawn_attackers = (move_gen::PawnAttacks(to, state, Color::kWhite) &
+                         state.Pawns(Color::kBlack)) |
+                        (move_gen::PawnAttacks(to, state, Color::kBlack) &
+                         state.Pawns(Color::kWhite));
+  auto knight_attackers = move_gen::KnightMoves(to) & state.Knights();
 
-  BitBoard bishop_attacks = move_gen::bishop_moves(to, occupied);
-  BitBoard rook_attacks = move_gen::rook_moves(to, occupied);
+  BitBoard bishop_attacks = move_gen::BishopMoves(to, occupied);
+  BitBoard rook_attacks = move_gen::RookMoves(to, occupied);
 
   const BitBoard bishop_attackers = bishop_attacks & bishops;
   const BitBoard rook_attackers = rook_attacks & rooks;
   const BitBoard queen_attackers = (bishop_attacks | rook_attacks) & queens;
-  const BitBoard king_attackers = move_gen::king_attacks(to) & kings;
+  const BitBoard king_attackers = move_gen::KingAttacks(to) & kings;
 
-  // compute all attacking pieces for this square minus the captured and capturing piece
-  BitBoard all_attackers =
-      pawn_attackers | knight_attackers | bishop_attackers | rook_attackers | queen_attackers | king_attackers;
+  // compute all attacking pieces for this square minus the captured and
+  // capturing piece
+  BitBoard all_attackers = pawn_attackers | knight_attackers |
+                           bishop_attackers | rook_attackers | queen_attackers |
+                           king_attackers;
   all_attackers &= occupied;
 
   Color turn = state.turn;
@@ -222,18 +232,19 @@ bool static_exchange(Move move, int threshold, const BoardState &state) {
 
   // loop through all pieces that attack the capture square
   while (true) {
-    turn = flip_color(turn);
+    turn = FlipColor(turn);
     all_attackers &= occupied;
 
-    const BitBoard our_attackers = all_attackers & state.occupied(turn);
+    const BitBoard our_attackers = all_attackers & state.Occupied(turn);
     // if the current side to move has no attackers left, they lose
     if (!our_attackers) {
       break;
     }
 
-    // without considering piece values, the winner of an exchange is whoever has more attackers
-    // therefore we set the winner's side to the current side to move only after we check if they can attack
-    winner = flip_color(winner);
+    // without considering piece values, the winner of an exchange is whoever
+    // has more attackers therefore we set the winner's side to the current side
+    // to move only after we check if they can attack
+    winner = FlipColor(winner);
 
     // find the least valuable attacker
     BitBoard next_attacker;
@@ -241,46 +252,51 @@ bool static_exchange(Move move, int threshold, const BoardState &state) {
 
     if ((next_attacker = our_attackers & pawns)) {
       attacker_value = kSEEPieceScores[PieceType::kPawn];
-      occupied.clear_bit(next_attacker.get_lsb_pos());
+      occupied.ClearBit(next_attacker.GetLSB());
 
       // add pieces that were diagonal xray attacking the captured piece
-      bishop_attacks = move_gen::bishop_moves(to, occupied);
+      bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & knights)) {
       attacker_value = kSEEPieceScores[PieceType::kKnight];
-      occupied ^= BitBoard::from_square(next_attacker.get_lsb_pos());
+      occupied ^= BitBoard::FromSquare(next_attacker.GetLSB());
     } else if ((next_attacker = our_attackers & bishops)) {
       attacker_value = kSEEPieceScores[PieceType::kBishop];
-      occupied.clear_bit(next_attacker.get_lsb_pos());
+      occupied.ClearBit(next_attacker.GetLSB());
 
       // add pieces that were xray attacking the captured piece
-      bishop_attacks = move_gen::bishop_moves(to, occupied);
+      bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & rooks)) {
       attacker_value = kSEEPieceScores[PieceType::kRook];
-      occupied.clear_bit(next_attacker.get_lsb_pos());
+      occupied.ClearBit(next_attacker.GetLSB());
 
       // add pieces that were xray attacking the captured piece
-      rook_attacks = move_gen::rook_moves(to, occupied);
+      rook_attacks = move_gen::RookMoves(to, occupied);
       all_attackers |= rook_attacks & (rooks | queens);
     } else if ((next_attacker = our_attackers & queens)) {
       attacker_value = kSEEPieceScores[PieceType::kQueen];
-      occupied.clear_bit(next_attacker.get_lsb_pos());
+      occupied.ClearBit(next_attacker.GetLSB());
 
       // add pieces that were xray attacking the captured piece
-      rook_attacks = move_gen::rook_moves(to, occupied);
-      bishop_attacks = move_gen::bishop_moves(to, occupied);
-      all_attackers |= (rook_attacks & (queens | rooks)) | (bishop_attacks & (queens | bishops));
+      rook_attacks = move_gen::RookMoves(to, occupied);
+      bishop_attacks = move_gen::BishopMoves(to, occupied);
+      all_attackers |= (rook_attacks & (queens | rooks)) |
+                       (bishop_attacks & (queens | bishops));
     } else {
       // king: check if we capture a piece that our opponent is still attacking
-      return (all_attackers & state.occupied(flip_color(turn))) ? state.turn != winner : state.turn == winner;
+      return (all_attackers & state.Occupied(FlipColor(turn)))
+                 ? state.turn != winner
+                 : state.turn == winner;
     }
 
     if (next_attacker) {
-      // score represents how many points (in piece value) that the other side can gain after this capture
-      // if initially a knight captured a queen, the other side can gain 3 - 9 = -6 points (indicating they can only
-      // gain a loss) if we flip it and initially a queen captured a knight, the other side can gain 9 - 3 = 6 points
-      // (if they capture the queen back the least amount of points they lose is 3)
+      // score represents how many points (in piece value) that the other side
+      // can gain after this capture if initially a knight captured a queen, the
+      // other side can gain 3 - 9 = -6 points (indicating they can only gain a
+      // loss) if we flip it and initially a queen captured a knight, the other
+      // side can gain 9 - 3 = 6 points (if they capture the queen back the
+      // least amount of points they lose is 3)
       score = -score + 1 + attacker_value;
 
       // quit early if the exchange is lost or neutral
@@ -293,26 +309,31 @@ bool static_exchange(Move move, int threshold, const BoardState &state) {
   return state.turn == winner;
 }
 
-std::pair<int, int> evaluate_material(const BoardState &state) {
+std::pair<int, int> EvaluateMaterial(const BoardState &state) {
   int mg_material = 0;
   int eg_material = 0;
 
-  const Color us = state.turn, them = flip_color(us);
+  const Color us = state.turn, them = FlipColor(us);
 
-  const BitBoard our_pieces = state.occupied(us);
-  const BitBoard their_pieces = state.occupied(them);
+  const BitBoard our_pieces = state.Occupied(us);
+  const BitBoard their_pieces = state.Occupied(them);
 
-  const BitBoard pawns = state.pawns();
-  const BitBoard knights = state.knights();
-  const BitBoard bishops = state.bishops();
-  const BitBoard rooks = state.rooks();
-  const BitBoard queens = state.queens();
+  const BitBoard pawns = state.Pawns();
+  const BitBoard knights = state.Knights();
+  const BitBoard bishops = state.Bishops();
+  const BitBoard rooks = state.Rooks();
+  const BitBoard queens = state.Queens();
 
-  const int pawn_count = (pawns & our_pieces).pop_count() - (pawns & their_pieces).pop_count();
-  const int knight_count = (knights & our_pieces).pop_count() - (knights & their_pieces).pop_count();
-  const int bishop_count = (bishops & our_pieces).pop_count() - (bishops & their_pieces).pop_count();
-  const int rook_count = (rooks & our_pieces).pop_count() - (rooks & their_pieces).pop_count();
-  const int queen_count = (queens & our_pieces).pop_count() - (queens & their_pieces).pop_count();
+  const int pawn_count =
+      (pawns & our_pieces).PopCount() - (pawns & their_pieces).PopCount();
+  const int knight_count =
+      (knights & our_pieces).PopCount() - (knights & their_pieces).PopCount();
+  const int bishop_count =
+      (bishops & our_pieces).PopCount() - (bishops & their_pieces).PopCount();
+  const int rook_count =
+      (rooks & our_pieces).PopCount() - (rooks & their_pieces).PopCount();
+  const int queen_count =
+      (queens & our_pieces).PopCount() - (queens & their_pieces).PopCount();
 
   mg_material += kMiddleGamePieceValues[PieceType::kPawn] * pawn_count;
   mg_material += kMiddleGamePieceValues[PieceType::kKnight] * knight_count;
@@ -329,34 +350,39 @@ std::pair<int, int> evaluate_material(const BoardState &state) {
   return {mg_material, eg_material};
 }
 
-int evaluate(const BoardState &state) {
-  auto [middle_game_score, end_game_score] = evaluate_material(state);
+int Evaluate(const BoardState &state) {
+  auto [middle_game_score, end_game_score] = EvaluateMaterial(state);
 
   int middle_game_phase = 0;
-  middle_game_phase += kGamePhaseIncrements[PieceType::kPawn] * state.pawns().pop_count();
-  middle_game_phase += kGamePhaseIncrements[PieceType::kKnight] * state.knights().pop_count();
-  middle_game_phase += kGamePhaseIncrements[PieceType::kBishop] * state.bishops().pop_count();
-  middle_game_phase += kGamePhaseIncrements[PieceType::kRook] * state.rooks().pop_count();
-  middle_game_phase += kGamePhaseIncrements[PieceType::kQueen] * state.queens().pop_count();
+  middle_game_phase +=
+      kGamePhaseIncrements[PieceType::kPawn] * state.Pawns().PopCount();
+  middle_game_phase +=
+      kGamePhaseIncrements[PieceType::kKnight] * state.Knights().PopCount();
+  middle_game_phase +=
+      kGamePhaseIncrements[PieceType::kBishop] * state.Bishops().PopCount();
+  middle_game_phase +=
+      kGamePhaseIncrements[PieceType::kRook] * state.Rooks().PopCount();
+  middle_game_phase +=
+      kGamePhaseIncrements[PieceType::kQueen] * state.Queens().PopCount();
 
-  const Color us = state.turn, them = flip_color(us);
+  const Color us = state.turn, them = FlipColor(us);
 
-  BitBoard our_pieces = state.occupied(us);
+  BitBoard our_pieces = state.Occupied(us);
   while (our_pieces) {
-    const auto square = Square(our_pieces.pop_lsb());
-    const auto piece = state.get_piece_type(square);
+    const auto square = Square(our_pieces.PopLsb());
+    const auto piece = state.GetPieceType(square);
 
-    middle_game_score += kMiddleGameTables[piece][relative_square(square, us)];
-    end_game_score += kEndGameTables[piece][relative_square(square, us)];
+    middle_game_score += kMiddleGameTables[piece][RelativeSquare(square, us)];
+    end_game_score += kEndGameTables[piece][RelativeSquare(square, us)];
   }
 
-  BitBoard their_pieces = state.occupied(them);
+  BitBoard their_pieces = state.Occupied(them);
   while (their_pieces) {
-    const auto square = Square(their_pieces.pop_lsb());
-    const auto piece = state.get_piece_type(square);
+    const auto square = Square(their_pieces.PopLsb());
+    const auto piece = state.GetPieceType(square);
 
-    middle_game_score -= kMiddleGameTables[piece][relative_square(square, them)];
-    end_game_score -= kEndGameTables[piece][relative_square(square, them)];
+    middle_game_score -= kMiddleGameTables[piece][RelativeSquare(square, them)];
+    end_game_score -= kEndGameTables[piece][RelativeSquare(square, them)];
   }
 
   // tapered evaluation
@@ -365,7 +391,9 @@ int evaluate(const BoardState &state) {
   middle_game_phase = std::min(middle_game_phase, kMaxMiddleGamePhase);
   const int end_game_phase = kMaxMiddleGamePhase - middle_game_phase;
 
-  int score = (middle_game_score * middle_game_phase + end_game_score * end_game_phase) / kMaxMiddleGamePhase;
+  int score = (middle_game_score * middle_game_phase +
+               end_game_score * end_game_phase) /
+              kMaxMiddleGamePhase;
 
   const int kTempoBonus = 10;
   score += kTempoBonus;

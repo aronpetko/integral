@@ -1,27 +1,27 @@
 #include "board.h"
 
-Move Move::null_move() {
+Move Move::NullMove() {
   return Move(0, 0);
 }
 
 Move::operator bool() const {
-  return !is_null();
+  return !IsNull();
 }
 
-Move Move::from_str(const BoardState &state, std::string_view str) {
+Move Move::FromStr(const BoardState &state, std::string_view str) {
   const int kMinMoveLen = 4, kMaxMoveLen = 5;
-  if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen) return Move::null_move();
+  if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen) return Move::NullMove();
 
   const int from_rank = str[1] - '1', from_file = str[0] - 'a';
   const int to_rank = str[3] - '1', to_file = str[2] - 'a';
 
   if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 || from_file < 0 || from_file >= 8 ||
       to_file < 0 || to_file >= 8)
-    return Move::null_move();
+    return Move::NullMove();
   ;
 
-  const auto from = rank_file_to_square(from_rank, from_file);
-  const auto to = rank_file_to_square(to_rank, to_file);
+  const auto from = RankFileToSquare(from_rank, from_file);
+  const auto to = RankFileToSquare(to_rank, to_file);
 
   if (str.length() < kMaxMoveLen) return Move(from, to);
 
@@ -44,40 +44,40 @@ Move Move::from_str(const BoardState &state, std::string_view str) {
       promotion_type = PromotionType::kKnight;
       break;
     default:
-      return Move::null_move();
+      return Move::NullMove();
       ;
   }
 
   return Move(from, to, promotion_type);
 }
 
-bool Move::is_capture(const BoardState &state) const {
-  const auto from = get_from();
-  const auto to = get_to();
-  return state.get_piece_type(to) != PieceType::kNone ||
-         state.get_piece_type(from) == PieceType::kPawn && state.en_passant == to;
+bool Move::IsCapture(const BoardState &state) const {
+  const auto from = GetFrom();
+  const auto to = GetTo();
+  return state.GetPieceType(to) != PieceType::kNone ||
+         state.GetPieceType(from) == PieceType::kPawn && state.en_passant == to;
 }
 
-[[nodiscard]] bool Move::is_tactical(const BoardState &state) const {
-  return is_capture(state) || get_promotion_type() != PromotionType::kNone;
+[[nodiscard]] bool Move::IsTactical(const BoardState &state) const {
+  return IsCapture(state) || GetPromotionType() != PromotionType::kNone;
 }
 
-[[nodiscard]] bool Move::is_under_promotion() const {
-  const auto promo_type = get_promotion_type();
+[[nodiscard]] bool Move::IsUnderPromotion() const {
+  const auto promo_type = GetPromotionType();
   return promo_type != PromotionType::kNone && promo_type != PromotionType::kQueen &&
          promo_type != PromotionType::kKnight;
 }
 
-std::string Move::to_string() const {
+std::string Move::ToString() const {
   if (data_ == 0) return "null";
 
-  const auto from_rank = rank(get_from()), from_file = file(get_from());
-  const auto to_rank = rank(get_to()), to_file = file(get_to());
+  const auto from_rank = Rank(GetFrom()), from_file = File(GetFrom());
+  const auto to_rank = Rank(GetTo()), to_file = File(GetTo());
 
   std::string res = std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) + std::string(1, 'a' + to_file) +
                     std::to_string(to_rank + 1);
 
-  const auto promo_type = get_promotion_type();
+  const auto promo_type = GetPromotionType();
   switch (promo_type) {
     case PromotionType::kAny:
     case PromotionType::kQueen:

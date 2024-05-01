@@ -12,42 +12,42 @@ const int kScoreNone = -eval::kInfiniteScore;
 struct PVLine {
  public:
   PVLine() : moves_({}) {
-    clear();
+    Clear();
   }
 
   Move &operator[](int i) {
     return moves_[i];
   }
 
-  void clear() {
-    moves_.clear();
+  void Clear() {
+    moves_.Clear();
   }
 
-  void push(const Move &move) {
-    moves_.push(move);
+  void Push(const Move &move) {
+    moves_.Push(move);
   }
 
-  void copy_over(PVLine &pv) {
-    for (int i = 0; i < pv.length(); i++) {
-      push(pv[i]);
+  void CopyOver(PVLine &pv) {
+    for (int i = 0; i < pv.Length(); i++) {
+      Push(pv[i]);
     }
   }
 
-  [[nodiscard]] std::size_t length() const {
-    return moves_.size();
+  [[nodiscard]] std::size_t Length() const {
+    return moves_.Size();
   }
 
-  [[nodiscard]] std::string to_string() {
+  [[nodiscard]] std::string ToString() {
     std::string str;
-    for (int i = 0; i < moves_.size(); i++) {
-      str += moves_[i].to_string();
-      if (i < moves_.size() - 1) str += ' ';
+    for (int i = 0; i < moves_.Size(); i++) {
+      str += moves_[i].ToString();
+      if (i < moves_.Size() - 1) str += ' ';
     }
     return str;
   }
 
   friend std::ostream &operator<<(std::ostream &stream, PVLine &pv_line) {
-    return stream << pv_line.to_string();
+    return stream << pv_line.ToString();
   }
 
  private:
@@ -65,31 +65,31 @@ enum class SearchType {
 };
 
 struct SearchStack {
-  // the number of ply from root
+  // Number of ply from root
   int ply;
-  // evaluation of the position at this ply
+  // Evaluation of the position at this ply
   int static_eval;
-  // the best moves following down this ply
+  // Best moves following down this ply
   PVLine pv;
-  // the move with the best score
+  // The move with the best score
   Move best_move;
-  // the currently searched move at this ply
+  // Currently searched move at this ply
   Move move;
-  // the (colored) piece that is currently being moved
+  // (Colored) piece that is currently being moved
   int moved_piece;
 
   SearchStack()
       : static_eval(kScoreNone),
         ply(0),
-        best_move(Move::null_move()),
-        move(Move::null_move()),
+        best_move(Move::NullMove()),
+        move(Move::NullMove()),
         moved_piece(PieceType::kNone) {}
 
-  SearchStack *ahead(int amount = 1) {
+  SearchStack *Ahead(int amount = 1) {
     return this + amount;
   }
 
-  SearchStack *behind(int amount = 1) {
+  SearchStack *Behind(int amount = 1) {
     return this - amount;
   }
 };
@@ -97,27 +97,27 @@ class Search {
  public:
   explicit Search(Board &board);
 
-  void start(TimeManagement::Config &time_config);
+  void Start(TimeManagement::Config &time_config);
 
-  void stop();
+  void Stop();
 
-  void bench(int depth);
+  void Bench(int depth);
 
-  const TimeManagement &get_time_management();
+  const TimeManagement &GetTimeManagement();
 
-  void new_game();
+  void NewGame();
 
  private:
-  void set_time_config(TimeManagement::Config &time_config);
+  void SetTimeConfig(TimeManagement::Config &time_config);
 
-  template<SearchType type>
-  void iterative_deepening();
+  template <SearchType type>
+  void IterativeDeepening();
 
-  template<NodeType node_type>
-  int quiescent_search(int ply, int alpha, int beta, SearchStack *stack);
+  template <NodeType node_type>
+  int QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack);
 
-  template<NodeType node_type>
-  int search(int depth, int ply, int alpha, int beta, SearchStack *stack);
+  template <NodeType node_type>
+  int PVSearch(int depth, int ply, int alpha, int beta, SearchStack *stack);
 
  private:
   Board &board_;

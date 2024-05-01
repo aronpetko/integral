@@ -144,35 +144,35 @@ enum class PerftType {
 
 template<PerftType type>
 U64 perft_internal(Board &board, int depth, int start_depth) {
-  auto moves = move_gen::generate_moves(MoveType::kAll, board);
+  auto moves = move_gen::GenerateMoves(MoveType::kAll, board);
 
-  auto &state = board.get_state();
+  auto &state = board.GetState();
   U64 total_nodes = 0;
 
-  for (int i = 0; i < moves.size(); i++) {
+  for (int i = 0; i < moves.Size(); i++) {
     const auto move = moves[i];
-    if (!board.is_move_legal(move))
+    if (!board.IsMoveLegal(move))
       continue;
 
     U64 child_nodes;
     if (depth == 1) {
-      // bulk counting
+      // Bulk counting
       total_nodes += child_nodes = 1;
     } else {
-      board.make_move(move);
+      board.MakeMove(move);
       total_nodes += child_nodes = perft_internal<PerftType::kNormal>(board, depth - 1, start_depth);
-      board.undo_move();
+      board.UndoMove();
     }
 
     if (type == PerftType::kSplit && depth == start_depth) {
-      std::cout << std::format("{}: {}\n", move.to_string(), child_nodes);
+      std::cout << std::format("{}: {}\n", move.ToString(), child_nodes);
     }
   }
 
   return total_nodes;
 }
 
-void perft(Board &board, int depth) {
+void Perft(Board &board, int depth) {
   assert(depth >= 0);
 
   const auto start_time = std::chrono::steady_clock::now();
@@ -184,18 +184,18 @@ void perft(Board &board, int depth) {
             << std::endl;
 }
 
-void perft_suite() {
+void PerftSuite() {
   std::cout << "starting perft test" << std::endl;
   const auto start_time = std::chrono::steady_clock::now();
 
   Board board;
   for (const auto &perft_test : kPerftSuite) {
-    const auto test_data = split_string(perft_test, ';');
-    board.set_from_fen(test_data[0]);
+    const auto test_data = SplitString(perft_test, ';');
+    board.SetFromFen(test_data[0]);
 
     bool passed = true;
     for (int i = 1; i < test_data.size(); i++) {
-      const auto answer_data = split_string(test_data[i], ' ');
+      const auto answer_data = SplitString(test_data[i], ' ');
       const int test_depth = std::stoi(answer_data[0].substr(1));
       const int correct_nodes = std::stoi(answer_data[1]);
 

@@ -15,8 +15,8 @@ R"(
 )";
 // clang-format on
 
-inline void print_ascii_logo() {
+inline void PrintAsciiLogo() {
   std::cout << kIntegralAsciiLogo << std::endl;
 }
 
-#endif // INTEGRAL_ASCII_LOGO_H
+#endif  // INTEGRAL_ASCII_LOGO_H

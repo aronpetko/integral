@@ -18,15 +18,12 @@ class CastleRights {
   static constexpr int kKingsideIndex = 0;
   static constexpr int kQueensideIndex = 1;
 
-  static constexpr std::array<std::array<Square, 2>, 2> kRookSquares = {{
-    {Square::kH8, Square::kA8},
-    {Square::kH1, Square::kA1}
-  }};
+  static constexpr std::array<std::array<Square, 2>, 2> kRookSquares = {
+      {{Square::kH8, Square::kA8}, {Square::kH1, Square::kA1}}};
 
-  static constexpr std::array<std::array<U8, 2>, 2> kMasks = {{
-      {CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside},
-      {CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside}
-  }};
+  static constexpr std::array<std::array<U8, 2>, 2> kMasks = {
+      {{CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside},
+       {CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside}}};
 
   CastleRights() : rights_(0) {}
 
@@ -34,42 +31,43 @@ class CastleRights {
     return rights_ == other.rights_;
   }
 
-  [[nodiscard]] inline bool can_kingside_castle(Color turn) const {
+  [[nodiscard]] inline bool CanKingsideCastle(Color turn) const {
     return rights_ & kMasks[turn][kKingsideIndex];
   }
 
-  [[nodiscard]] inline bool can_queenside_castle(Color turn) const {
+  [[nodiscard]] inline bool CanQueensideCastle(Color turn) const {
     return rights_ & kMasks[turn][kQueensideIndex];
   }
 
-  [[nodiscard]] inline bool can_castle(Color turn) const {
-    return can_kingside_castle(turn) || can_queenside_castle(turn);
+  [[nodiscard]] inline bool CanCastle(Color turn) const {
+    return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
-  inline void set_can_kingside_castle(Color turn, bool value) {
+  inline void SetCanKingsideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kKingsideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  inline void set_can_queenside_castle(Color turn, bool value) {
+  inline void SetCanQueensideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  inline void set_both_rights(Color turn, bool value) {
-    const U8 mask = kMasks[turn][kKingsideIndex] | kMasks[turn][kQueensideIndex];
+  inline void SetBothRights(Color turn, bool value) {
+    const U8 mask =
+        kMasks[turn][kKingsideIndex] | kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  [[nodiscard]] inline Square get_kingside_rook(Color turn) const {
+  [[nodiscard]] inline Square GetKingsideRook(Color turn) const {
     return kRookSquares[turn][kKingsideIndex];
   }
 
-  [[nodiscard]] inline Square get_queenside_rook(Color turn) const {
+  [[nodiscard]] inline Square GetQueensideRook(Color turn) const {
     return kRookSquares[turn][kQueensideIndex];
   }
 
-  inline U8 get_rights() const {
+  inline U8 GetRights() const {
     return rights_;
   }
 
@@ -85,109 +83,111 @@ struct BoardState {
         checkers(0ULL),
         pinned(0ULL),
         en_passant(Square::kNoSquare),
-        move_played(Move::null_move()) {
+        move_played(Move::NullMove()) {
     piece_on_square.fill(PieceType::kNone);
   }
 
-  void place_piece(const U8 &square, const PieceType &piece_type, const Color &color) {
+  void PlacePiece(U8 square, PieceType piece_type, Color color) {
     piece_on_square[square] = piece_type;
-    piece_bbs[piece_type].set_bit(square);
-    side_bbs[color].set_bit(square);
+    piece_bbs[piece_type].SetBit(square);
+    side_bbs[color].SetBit(square);
   }
 
-  void remove_piece(const U8 &square) {
+  void RemovePiece(const U8 &square) {
     auto &piece_type = piece_on_square[square];
     if (piece_type != PieceType::kNone) {
-      piece_bbs[piece_type].clear_bit(square);
-      side_bbs[Color::kBlack].clear_bit(square);
-      side_bbs[Color::kWhite].clear_bit(square);
+      piece_bbs[piece_type].ClearBit(square);
+      side_bbs[Color::kBlack].ClearBit(square);
+      side_bbs[Color::kWhite].ClearBit(square);
       piece_type = PieceType::kNone;
     }
   }
 
-  [[nodiscard]] constexpr inline Color get_piece_color(const U8 &square) const {
-    if (side_bbs[Color::kWhite].is_set(square)) return Color::kWhite;
-    if (side_bbs[Color::kBlack].is_set(square)) return Color::kBlack;
+  [[nodiscard]] constexpr inline Color GetPieceColor(const U8 &square) const {
+    if (side_bbs[Color::kWhite].IsSet(square)) return Color::kWhite;
+    if (side_bbs[Color::kBlack].IsSet(square)) return Color::kBlack;
     return Color::kNoColor;
   }
 
-  [[nodiscard]] constexpr inline PieceType get_piece_type(const U8 &square) const {
+  [[nodiscard]] constexpr inline PieceType GetPieceType(
+      const U8 &square) const {
     return piece_on_square[square];
   }
 
-  [[nodiscard]] constexpr inline int get_piece_and_color(const U8 &square) const {
-    return piece_on_square[square] * 2 + get_piece_color(square);
+  [[nodiscard]] constexpr inline int GetPieceAndColor(const U8 &square) const {
+    return GetPieceType(square) * 2 + GetPieceColor(square);
   }
 
-  [[nodiscard]] constexpr inline bool piece_exists(Square square) const {
-    return get_piece_type(square) != PieceType::kNone;
+  [[nodiscard]] constexpr inline bool PieceExists(Square square) const {
+    return GetPieceType(square) != PieceType::kNone;
   }
 
-  [[nodiscard]] constexpr inline BitBoard occupied() const {
+  [[nodiscard]] constexpr inline BitBoard Occupied() const {
     return side_bbs[Color::kWhite] | side_bbs[Color::kBlack];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &occupied(Color side) const {
+  [[nodiscard]] constexpr inline const BitBoard &Occupied(Color side) const {
     return side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline BitBoard kingless_occupied() const {
-    return (side_bbs[Color::kWhite] | side_bbs[Color::kBlack]) & ~piece_bbs[kKing];
+  [[nodiscard]] constexpr inline BitBoard KinglessOccupied() const {
+    return (side_bbs[Color::kWhite] | side_bbs[Color::kBlack]) &
+           ~piece_bbs[kKing];
   }
 
-  [[nodiscard]] constexpr inline BitBoard kingless_occupied(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard KinglessOccupied(Color side) const {
     return side_bbs[side] ^ piece_bbs[kKing];
   }
 
-  [[nodiscard]] constexpr inline BitBoard pawns(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard Pawns(Color side) const {
     return piece_bbs[PieceType::kPawn] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &pawns() const {
+  [[nodiscard]] constexpr inline const BitBoard &Pawns() const {
     return piece_bbs[PieceType::kPawn];
   }
 
-  [[nodiscard]] constexpr inline BitBoard knights(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard Knights(Color side) const {
     return piece_bbs[PieceType::kKnight] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &knights() const {
+  [[nodiscard]] constexpr inline const BitBoard &Knights() const {
     return piece_bbs[PieceType::kKnight];
   }
 
-  [[nodiscard]] constexpr inline BitBoard bishops(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard Bishops(Color side) const {
     return piece_bbs[PieceType::kBishop] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &bishops() const {
+  [[nodiscard]] constexpr inline const BitBoard &Bishops() const {
     return piece_bbs[PieceType::kBishop];
   }
 
-  [[nodiscard]] constexpr inline BitBoard rooks(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard Rooks(Color side) const {
     return piece_bbs[PieceType::kRook] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &rooks() const {
+  [[nodiscard]] constexpr inline const BitBoard &Rooks() const {
     return piece_bbs[PieceType::kRook];
   }
 
-  [[nodiscard]] constexpr inline BitBoard queens(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard Queens(Color side) const {
     return piece_bbs[PieceType::kQueen] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &queens() const {
+  [[nodiscard]] constexpr inline const BitBoard &Queens() const {
     return piece_bbs[PieceType::kQueen];
   }
 
-  [[nodiscard]] constexpr inline BitBoard king(Color side) const {
+  [[nodiscard]] constexpr inline BitBoard King(Color side) const {
     return piece_bbs[PieceType::kKing] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &kings() const {
+  [[nodiscard]] constexpr inline const BitBoard &Kings() const {
     return piece_bbs[PieceType::kKing];
   }
 
-  [[nodiscard]] constexpr inline bool in_check() const {
+  [[nodiscard]] constexpr inline bool InCheck() const {
     return checkers != 0;
   }
 
@@ -208,45 +208,44 @@ class Board {
  public:
   Board();
 
-  inline BoardState &get_state() {
+  inline BoardState &GetState() {
     return state_;
   }
 
-  inline BoardState &get_prev_state() {
-    return history_.back();
+  inline BoardState &GetPrevState() {
+    return history_.Back();
   }
 
-  void set_from_fen(const std::string &fen_str);
+  void SetFromFen(const std::string &fen_str);
 
-  [[nodiscard]] bool is_move_pseudo_legal(Move move);
+  [[nodiscard]] bool IsMovePseudoLegal(Move move);
 
-  // assuming the move is pseudo legal
-  [[nodiscard]] bool is_move_legal(Move move);
+  [[nodiscard]] bool IsMoveLegal(Move move);
 
-  void make_move(Move move);
+  void MakeMove(Move move);
 
-  void make_null_move();
+  void MakeNullMove();
 
-  void undo_move();
+  void UndoMove();
 
-  U64 key_after(Move move);
+  U64 PredictKeyAfter(Move move);
 
-  [[nodiscard]] bool has_repeated(int ply);
+  [[nodiscard]] bool HasRepeated(int ply);
 
-  [[nodiscard]] bool is_draw(int ply);
+  [[nodiscard]] bool IsDraw(int ply);
 
-  void print_pieces();
+  void PrintPieces();
 
  private:
-  void handle_castling(Move move);
+  void HandleCastling(Move move);
 
-  void handle_promotions(Move move);
+  void HandlePromotions(Move move);
 
-  void calculate_king_attacks();
+  void CalculateKingThreats();
 
  private:
   BoardState state_;
   List<BoardState, kMaxGamePly> history_;
 };
 
-#endif // INTEGRAL_BOARD_H_
+#endif  // INTEGRAL_BOARD_H_

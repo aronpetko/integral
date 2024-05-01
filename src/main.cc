@@ -8,8 +8,9 @@
 int main(int arg_count, char **args) {
 #ifdef WIN32
   SetConsoleOutputCP(CP_UTF8);
-  SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+  SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE),
+                 ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 #endif
-  
-  uci::accept_commands(arg_count, args);
+
+  uci::AcceptCommands(arg_count, args);
 }

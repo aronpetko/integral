@@ -80,20 +80,20 @@ const std::array kSEESuite = {
 };
 // clang-format on
 
-void see_suite() {
+void SEESuite() {
   std::cout << "starting see test" << std::endl;
   const auto start_time = std::chrono::steady_clock::now();
 
   Board board;
   for (const auto &see_test : kSEESuite) {
-    const auto test_data = split_string(see_test, '|');
-    board.set_from_fen(test_data[0]);
+    const auto test_data = SplitString(see_test, '|');
+    board.SetFromFen(test_data[0]);
 
-    const auto move = Move::from_str(board.get_state(), remove_whitespace(test_data[1]));
+    const auto move = Move::FromStr(board.GetState(), RemoveWhitespace(test_data[1]));
     assert(move);
-    const bool answer = std::stoi(remove_whitespace(test_data[2])) >= 0;
+    const bool answer = std::stoi(RemoveWhitespace(test_data[2])) >= 0;
 
-    const bool passed = eval::static_exchange(move, 0, board.get_state()) == answer;
+    const bool passed = eval::StaticExchange(move, 0, board.GetState()) == answer;
     std::cout << std::format("{}\033[0m {}\n", passed ? "\033[32mpassed" : "\033[31mfailed", see_test);
   }
 

@@ -13,72 +13,72 @@ const U32 kFromMask = 0b000000000000111111;
 const U32 kToMask = 0b000000111111000000;
 const U32 kPromotionTypeMask = 0b000111000000000000;
 
-// bits 0-5: from
-// bits 6-11: to
-// bits 12-14: promotion piece type
+// Bits 0-5: from
+// Bits 6-11: to
+// Bits 12-14: promotion piece type
 class Move {
  public:
   constexpr Move() = default;
   constexpr ~Move() = default;
 
   constexpr explicit Move(U8 from, U8 to) : data_(0) {
-    set_from(from);
-    set_to(to);
+    SetFrom(from);
+    SetTo(to);
   }
 
   constexpr explicit Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {
-    set_promotion_type(promotion_type);
+    SetPromotionType(promotion_type);
   }
 
   constexpr bool operator==(const Move& other) const {
     return data_ == other.data_;
   }
 
-  [[nodiscard]] static Move null_move();
+  [[nodiscard]] static Move NullMove();
 
   operator bool() const;
 
-  static Move from_str(const BoardState &state, std::string_view str);
+  static Move FromStr(const BoardState &state, std::string_view str);
 
-  [[nodiscard]] bool is_capture(const BoardState &state) const;
+  [[nodiscard]] bool IsCapture(const BoardState &state) const;
 
-  [[nodiscard]] bool is_tactical(const BoardState &state) const;
+  [[nodiscard]] bool IsTactical(const BoardState &state) const;
 
-  [[nodiscard]] bool is_under_promotion() const;
+  [[nodiscard]] bool IsUnderPromotion() const;
 
-  [[nodiscard]] constexpr inline bool is_null() const {
+  [[nodiscard]] constexpr inline bool IsNull() const {
     return data_ == 0;
   }
 
-  [[nodiscard]] constexpr inline U16 get_data() const {
+  [[nodiscard]] constexpr inline U16 GetData() const {
     return data_;
   }
 
-  [[nodiscard]] constexpr inline Square get_from() const {
+  [[nodiscard]] constexpr inline Square GetFrom() const {
     return Square(data_ & kFromMask);
   }
 
-  [[nodiscard]] constexpr inline Square get_to() const {
+  [[nodiscard]] constexpr inline Square GetTo() const {
     return Square((data_ & kToMask) >> 6);
   }
 
-  [[nodiscard]] constexpr inline PromotionType get_promotion_type() const {
+  [[nodiscard]] constexpr inline PromotionType GetPromotionType() const {
     return PromotionType((data_ & kPromotionTypeMask) >> 12);
   }
 
-  constexpr inline void set_from(U8 from) {
+  constexpr inline void SetFrom(U8 from) {
     data_ |= static_cast<U32>(from);
   }
 
-  constexpr inline void set_to(U8 to) {
+  constexpr inline void SetTo(U8 to) {
     data_ |= static_cast<U32>(to) << 6;
   }
 
-  constexpr inline void set_promotion_type(PromotionType promotion_type) {
+  constexpr inline void SetPromotionType(PromotionType promotion_type) {
     data_ |= static_cast<U8>(promotion_type) << 12;
   }
 
-  [[nodiscard]] std::string to_string() const;
+  [[nodiscard]] std::string ToString() const;
 
  private:
   U16 data_;

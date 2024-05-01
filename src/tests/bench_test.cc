@@ -62,7 +62,7 @@ const std::array kBenchFens = {
 
 const int kDefaultBenchDepth = 10;
 
-void bench_suite(Board &board, Search &search, int depth) {
+void BenchSuite(Board &board, Search &search, int depth) {
   if (depth == 0) {
     depth = kDefaultBenchDepth;
   }
@@ -71,14 +71,14 @@ void bench_suite(Board &board, Search &search, int depth) {
   U64 nodes = 0, elapsed = 0;
 
   for (const auto &position : kBenchFens) {
-    board.set_from_fen(position);
+    board.SetFromFen(position);
 
-    search.new_game();
-    search.bench(depth);
+    search.NewGame();
+    search.Bench(depth);
 
-    const auto time_mgmt = search.get_time_management();
-    nodes += time_mgmt.get_nodes_searched();
-    elapsed += time_mgmt.time_elapsed();
+    const auto time_mgmt = search.GetTimeManagement();
+    nodes += time_mgmt.GetNodesSearched();
+    elapsed += time_mgmt.TimeElapsed();
   }
 
   std::cout << std::format("{} nodes {} nps",

@@ -18,16 +18,22 @@ class TranspositionTable {
       kUpperBound
     };
 
-    Entry() : key(0), depth(0), flag(kNone), score(0), move(Move::null_move()) {}
+    Entry() : key(0), depth(0), flag(kNone), score(0), move(Move::NullMove()) {}
 
-    explicit Entry(U64 key, U8 depth, Flag flag, int score, Move move) : key(static_cast<U16>(key)), depth(depth), flag(flag), score(score), move(move) {}
+    explicit Entry(U64 key, U8 depth, Flag flag, int score, Move move)
+        : key(static_cast<U16>(key)),
+          depth(depth),
+          flag(flag),
+          score(score),
+          move(move) {}
 
-    [[nodiscard]] bool compare_key(const U64 &test_key) const {
+    [[nodiscard]] bool CompareKey(const U64 &test_key) const {
       return static_cast<U16>(test_key) == key;
     }
 
-    [[nodiscard]] bool can_use_score(int alpha, int beta) const {
-      return (flag == TranspositionTable::Entry::kUpperBound && score <= alpha ||
+    [[nodiscard]] bool CanUseScore(int alpha, int beta) const {
+      return (flag == TranspositionTable::Entry::kUpperBound &&
+                  score <= alpha ||
               flag == TranspositionTable::Entry::kLowerBound && score >= beta ||
               flag == TranspositionTable::Entry::kExact);
     }
@@ -43,21 +49,21 @@ class TranspositionTable {
 
   TranspositionTable() : table_size_(0ULL), used_entries_(0ULL) {}
 
-  void resize(std::size_t mb_size);
+  void Resize(std::size_t mb_size);
 
-  void clear();
+  void Clear();
 
-  void save(const U64 &key, const Entry &entry, int ply);
+  void Save(const U64 &key, const Entry &entry, int ply);
 
-  void prefetch(const U64 &key) const;
+  void Prefetch(const U64 &key) const;
 
-  [[nodiscard]] const Entry &probe(const U64 &key) const;
+  [[nodiscard]] const Entry &Probe(const U64 &key) const;
 
-  [[nodiscard]] int correct_score(int evaluation, int ply) const;
+  [[nodiscard]] int CorrectScore(int score, int ply) const;
 
-  [[nodiscard]] U64 index(const U64 &key) const;
+  [[nodiscard]] U64 Index(const U64 &key) const;
 
-  [[nodiscard]] int hash_full() const;
+  [[nodiscard]] int HashFull() const;
 
  private:
   std::vector<Entry> table_;
@@ -67,4 +73,4 @@ class TranspositionTable {
 
 inline TranspositionTable transposition_table;
 
-#endif // INTEGRAL_TRANSPO_H_
+#endif  // INTEGRAL_TRANSPO_H_

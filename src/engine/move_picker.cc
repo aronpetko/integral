@@ -11,8 +11,11 @@ const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kM
 }};
 // clang-format on
 
-MovePicker::MovePicker(
-    MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, SearchStack *search_stack)
+MovePicker::MovePicker(MovePickerType type,
+                       Board &board,
+                       Move tt_move,
+                       MoveHistory &move_history,
+                       SearchStack *search_stack)
     : type_(type),
       board_(board),
       tt_move_(tt_move),
@@ -21,18 +24,14 @@ MovePicker::MovePicker(
       search_stack_(search_stack),
       moves_idx_(0) {}
 
-int MovePicker::stage() {
-  return static_cast<int>(stage_);
-}
-
-Move MovePicker::next() {
-  const auto &state = board_.get_state();
+Move MovePicker::Next() {
+  const auto &state = board_.GetState();
 
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateTacticals;
 
-    if (tt_move_ && board_.is_move_pseudo_legal(tt_move_)) {
-      if (type_ != MovePickerType::kQuiescence || tt_move_.is_tactical(state)) {
+    if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
+      if (type_ != MovePickerType::kQuiescence || tt_move_.IsTactical(state)) {
         return tt_move_;
       }
     }
@@ -40,33 +39,35 @@ Move MovePicker::next() {
 
   if (stage_ == Stage::kGenerateTacticals) {
     stage_ = Stage::kGoodTacticals;
-    generate_and_score_moves<MoveType::kTactical>(tacticals_);
+    GenerateAndScoreMoves<MoveType::kTactical>(tacticals_);
   }
 
   if (stage_ == Stage::kGoodTacticals) {
-    while (moves_idx_ < tacticals_.size()) {
-      const auto move = selection_sort(tacticals_, moves_idx_);
+    while (moves_idx_ < tacticals_.Size()) {
+      const auto move = SelectionSort(tacticals_, moves_idx_);
       const int score = tacticals_[moves_idx_].score;
 
       moves_idx_++;
 
-      // if the tactical move loses more than 1 pawn of material it's considered a bad capture
-      // good captures are searched first, bad captures are searched last
-      const bool loses_material = !eval::static_exchange(move, -eval::kSEEPieceScores[PieceType::kPawn], state);
-      if (!loses_material && !move.is_under_promotion()) {
+      // If the tactical move loses more than 1 pawn of material it's considered
+      // A bad capture good captures are searched first, bad captures are
+      // searched last
+      const bool loses_material = !eval::StaticExchange(
+          move, -eval::kSEEPieceScores[PieceType::kPawn], state);
+      if (!loses_material && !move.IsUnderPromotion()) {
         return move;
       }
 
       if (type_ == MovePickerType::kQuiescence && score < 0) {
-        return Move::null_move();
+        return Move::NullMove();
       }
 
-      bad_tacticals_.push({move, score});
+      bad_tacticals_.Push({move, score});
     }
 
-    // stop searching since all good tacticals have been searched
+    // Stop searching since all good tacticals have been searched
     if (type_ == MovePickerType::kQuiescence) {
-      return Move::null_move();
+      return Move::NullMove();
     }
 
     stage_ = Stage::kFirstKiller;
@@ -76,8 +77,8 @@ Move MovePicker::next() {
     stage_ = Stage::kSecondKiller;
 
     if (search_stack_) {
-      const auto first_killer = move_history_.get_killers(search_stack_->ply)[0];
-      if (first_killer && board_.is_move_pseudo_legal(first_killer)) {
+      const auto first_killer = move_history_.GetKillers(search_stack_->ply)[0];
+      if (first_killer && board_.IsMovePseudoLegal(first_killer)) {
         return first_killer;
       }
     }
@@ -87,8 +88,9 @@ Move MovePicker::next() {
     stage_ = Stage::kGenerateQuiets;
 
     if (search_stack_) {
-      const auto second_killer = move_history_.get_killers(search_stack_->ply)[1];
-      if (second_killer && board_.is_move_pseudo_legal(second_killer)) {
+      const auto second_killer =
+          move_history_.GetKillers(search_stack_->ply)[1];
+      if (second_killer && board_.IsMovePseudoLegal(second_killer)) {
         return second_killer;
       }
     }
@@ -97,12 +99,12 @@ Move MovePicker::next() {
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
     moves_idx_ = 0;
-    generate_and_score_moves<MoveType::kQuiet>(quiets_);
+    GenerateAndScoreMoves<MoveType::kQuiet>(quiets_);
   }
 
   if (stage_ == Stage::kQuiets) {
-    if (moves_idx_ < quiets_.size()) {
-      return selection_sort(quiets_, moves_idx_++);
+    if (moves_idx_ < quiets_.Size()) {
+      return SelectionSort(quiets_, moves_idx_++);
     }
 
     stage_ = Stage::kBadTacticals;
@@ -110,18 +112,20 @@ Move MovePicker::next() {
   }
 
   if (stage_ == Stage::kBadTacticals) {
-    if (moves_idx_ < bad_tacticals_.size()) {
-      // the bad tacticals are already sorted when we split them off in the good tacticals stage
+    if (moves_idx_ < bad_tacticals_.Size()) {
+      // The bad tacticals are already sorted when we split them off in the good
+      // tacticals stage
       return bad_tacticals_[moves_idx_++].move;
     }
   }
 
-  return Move::null_move();
+  return Move::NullMove();
 }
 
-Move &MovePicker::selection_sort(List<ScoredMove, kMaxMoves> &move_list, const int &index) {
+Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
+                                const int &index) {
   int best_move_idx = index;
-  for (int next = index + 1; next < move_list.size(); ++next) {
+  for (int next = index + 1; next < move_list.Size(); ++next) {
     if (move_list[next].score > move_list[best_move_idx].score) {
       best_move_idx = next;
     }
@@ -132,24 +136,24 @@ Move &MovePicker::selection_sort(List<ScoredMove, kMaxMoves> &move_list, const i
 }
 
 template <MoveType move_type>
-void MovePicker::generate_and_score_moves(List<ScoredMove, kMaxMoves> &list) {
-  const auto &killers = move_history_.get_killers(search_stack_->ply);
-  auto moves = move_gen::generate_moves(move_type, board_);
+void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
+  const auto &killers = move_history_.GetKillers(search_stack_->ply);
+  auto moves = move_gen::GenerateMoves(move_type, board_);
 
-  for (int i = 0; i < moves.size(); i++) {
+  for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
     if (move != tt_move_ && killers[0] != move && killers[1] != move) {
-      list.push({move, score_move(move)});
+      list.Push({move, ScoreMove(move)});
     }
   }
 }
 
-int MovePicker::score_move(Move &move) {
-  const auto from = move.get_from();
-  const auto to = move.get_to();
+int MovePicker::ScoreMove(Move &move) {
+  const auto from = move.GetFrom();
+  const auto to = move.GetTo();
 
-  // queen and knight promotions get priority
-  switch (move.get_promotion_type()) {
+  // Queen and knight promotions get priority
+  switch (move.GetPromotionType()) {
     case PromotionType::kNone:
       break;
     case PromotionType::kQueen:
@@ -160,17 +164,20 @@ int MovePicker::score_move(Move &move) {
       return -1e9;
   }
 
-  auto &state = board_.get_state();
+  auto &state = board_.GetState();
 
-  // winning/neutral captures are searched next
-  // losing captures are searched last
-  if (move.is_capture(state)) {
-    const auto attacker = state.get_piece_type(from);
-    const auto victim = state.get_piece_type(to);
-    return kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn ? PieceType::kPawn : victim][attacker];
+  // Winning/neutral captures are searched next
+  // Losing captures are searched last
+  if (move.IsCapture(state)) {
+    const auto attacker = state.GetPieceType(from);
+    const auto victim = state.GetPieceType(to);
+    return kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn
+                            ? PieceType::kPawn
+                            : victim][attacker];
   }
 
-  // order moves that caused a beta cutoff by their own history score
-  // the higher the depth this move caused a cutoff the more likely it move will be ordered first
-  return move_history_.get_history_score(move, state.turn);
+  // Order moves that caused a beta cutoff by their own history score
+  // The higher the depth this move caused a cutoff the more likely it move will
+  // be ordered first
+  return move_history_.GetHistoryScore(move, state.turn);
 }

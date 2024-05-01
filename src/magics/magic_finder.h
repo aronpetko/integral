@@ -5,10 +5,10 @@
 
 namespace magics::finder {
 
-MagicEntry find_magic(PieceType piece_type, Square square);
+MagicEntry FindMagic(PieceType piece_type, Square square);
 
-void generate_magics();
+void GenerateMagics();
 
-}
+}  // namespace magics::finder
 
-#endif // INTEGRAL_MAGICS_MAGIC_FINDER_H_
+#endif  // INTEGRAL_MAGICS_MAGIC_FINDER_H_

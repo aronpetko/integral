@@ -15,56 +15,56 @@ class List {
     return container_[i];
   }
 
-  inline T &back() {
+  inline T &Back() {
     return container_[count_ - 1];
   }
 
-  inline const T &at(int i) {
+  inline const T &At(int i) {
     return container_[i];
   }
 
-  inline void push(const T& object) {
+  inline void Push(const T& object) {
     assert(count_ < length);
     container_[count_++] = object;
   }
 
-  inline void push(T&& object) {
+  inline void Push(T&& object) {
     assert(count_ < length);
     container_[count_++] = std::move(object);
   }
 
-  inline void heapify() {
+  inline void Heapify() {
     std::make_heap(container_.begin(), container_.begin() + count_);
   }
 
-  inline T &heap_pop() {
+  inline T &HeapPop() {
     std::pop_heap(container_.begin(), container_.begin() + count_--);
     return container_[count_];
   }
 
-  inline T &pop_back() {
+  inline T &PopBack() {
     assert(count_ > 0);
     return container_[--count_];
   }
 
-  inline void erase(int i) {
-    std::swap(back(), container_[i]);
+  inline void Erase(int i) {
+    std::swap(Back(), container_[i]);
     --count_;
   }
 
-  [[nodiscard]] inline int size() const {
+  [[nodiscard]] inline int Size() const {
     return count_;
   }
 
-  [[nodiscard]] inline bool empty() const {
+  [[nodiscard]] inline bool Empty() const {
     return count_ == 0;
   }
 
-  [[nodiscard]] inline std::array<T, length> &data() {
+  [[nodiscard]] inline std::array<T, length> &Data() {
     return container_;
   }
 
-  inline void clear() {
+  inline void Clear() {
     count_ = 0;
   }
 

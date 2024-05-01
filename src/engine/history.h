@@ -15,19 +15,19 @@ class MoveHistory {
  public:
   explicit MoveHistory(const BoardState &state);
 
-  const short &get_history_score(Move move, Color turn) noexcept;
+  const short &GetHistoryScore(Move move, Color turn) noexcept;
 
-  std::array<Move, 2> &get_killers(int ply);
+  std::array<Move, 2> &GetKillers(int ply);
 
-  void update_killer_move(Move move, int ply);
+  void UpdateKillerMove(Move move, int ply);
 
-  void update_history(Move move, List<Move, kMaxMoves>& bad_quiets, Color turn, int depth);
+  void UpdateHistory(Move move, List<Move, kMaxMoves>& bad_quiets, Color turn, int depth);
 
-  void decay();
+  void Decay();
 
-  void clear();
+  void Clear();
 
-  void clear_killers(int ply);
+  void ClearKillers(int ply);
 
  private:
   const BoardState &state_;

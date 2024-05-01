@@ -1,8 +1,9 @@
 #ifndef INTEGRAL_MAGICS_PRECOMPUTED_H_
 #define INTEGRAL_MAGICS_PRECOMPUTED_H_
 
-#include "entry.h"
 #include <array>
+
+#include "entry.h"
 
 namespace magics {
 // clang-format off
@@ -140,6 +141,6 @@ constexpr std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {
     MagicEntry{0x0040201008040200ULL, 0x0040440812022420ULL, 58}
 };
 // clang-format on
-}
+}  // namespace magics
 
-#endif // INTEGRAL_MAGICS_PRECOMPUTED_H_
+#endif  // INTEGRAL_MAGICS_PRECOMPUTED_H_

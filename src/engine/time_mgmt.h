@@ -25,36 +25,36 @@ class TimeManagement {
 
   TimeManagement() = default;
 
-  const Config &get_config();
+  const Config &GetConfig();
 
-  void set_config(const Config &config);
+  void SetConfig(const Config &config);
 
-  void start();
+  void Start();
 
-  void stop();
+  void Stop();
 
-  void update_nodes_searched();
+  void UpdateNodesSearched();
 
-  void update_nodes_spent_table(Move move, const U64 &nodes_spent);
+  void UpdateNodesSpentTable(Move move, const U64 &nodes_spent);
 
-  [[nodiscard]] bool soft_times_up(Move pv_move);
+  [[nodiscard]] bool SoftTimesUp(Move pv_move);
 
-  [[nodiscard]] bool times_up() const;
+  [[nodiscard]] bool TimesUp() const;
 
-  [[nodiscard]] U64 nodes_per_second() const;
+  [[nodiscard]] U64 NodesPerSecond() const;
 
-  [[nodiscard]] U64 get_nodes_searched() const;
+  [[nodiscard]] U64 GetNodesSearched() const;
 
-  [[nodiscard]] U64 get_move_time() const;
+  [[nodiscard]] U64 GetMoveTime() const;
 
-  [[nodiscard]] U64 time_elapsed() const;
+  [[nodiscard]] U64 TimeElapsed() const;
 
-  [[nodiscard]] U64 calculate_hard_limit(Color turn) const;
+  [[nodiscard]] U64 CalculateHardLimit(Color turn) const;
 
-  [[nodiscard]] U64 calculate_soft_limit(Color turn, Move pv_move) const;
+  [[nodiscard]] U64 CalculateSoftLimit(Color turn, Move pv_move) const;
 
  private:
-  [[nodiscard]] int node_table_index(Move move) const;
+  [[nodiscard]] int NodeTableIndex(Move move) const;
 
  private:
   Config config_;
@@ -65,4 +65,4 @@ class TimeManagement {
   std::array<U64, 4096> nodes_spent_table_;
 };
 
-#endif // INTEGRAL_TIME_MGMT_H_
+#endif  // INTEGRAL_TIME_MGMT_H_

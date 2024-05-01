@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_TYPES_H_
 #define INTEGRAL_TYPES_H_
 
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 
 #include "list.h"
 
@@ -49,7 +49,7 @@ enum Color : U8 {
   kNoColor
 };
 
-inline Color flip_color(const Color &color) {
+inline Color FlipColor(const Color &color) {
   return Color(!color);
 }
 
@@ -71,4 +71,4 @@ enum Direction : int {
   kSouthWest
 };
 
-#endif // INTEGRAL_TYPES_H_
+#endif  // INTEGRAL_TYPES_H_

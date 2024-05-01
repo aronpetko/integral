@@ -9,14 +9,70 @@
 #include "../utils/types.h"
 
 enum Square : U16 {
-  kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
-  kA2, kB2, kC2, kD2, kE2, kF2, kG2, kH2,
-  kA3, kB3, kC3, kD3, kE3, kF3, kG3, kH3,
-  kA4, kB4, kC4, kD4, kE4, kF4, kG4, kH4,
-  kA5, kB5, kC5, kD5, kE5, kF5, kG5, kH5,
-  kA6, kB6, kC6, kD6, kE6, kF6, kG6, kH6,
-  kA7, kB7, kC7, kD7, kE7, kF7, kG7, kH7,
-  kA8, kB8, kC8, kD8, kE8, kF8, kG8, kH8,
+  kA1,
+  kB1,
+  kC1,
+  kD1,
+  kE1,
+  kF1,
+  kG1,
+  kH1,
+  kA2,
+  kB2,
+  kC2,
+  kD2,
+  kE2,
+  kF2,
+  kG2,
+  kH2,
+  kA3,
+  kB3,
+  kC3,
+  kD3,
+  kE3,
+  kF3,
+  kG3,
+  kH3,
+  kA4,
+  kB4,
+  kC4,
+  kD4,
+  kE4,
+  kF4,
+  kG4,
+  kH4,
+  kA5,
+  kB5,
+  kC5,
+  kD5,
+  kE5,
+  kF5,
+  kG5,
+  kH5,
+  kA6,
+  kB6,
+  kC6,
+  kD6,
+  kE6,
+  kF6,
+  kG6,
+  kH6,
+  kA7,
+  kB7,
+  kC7,
+  kD7,
+  kE7,
+  kF7,
+  kG7,
+  kH7,
+  kA8,
+  kB8,
+  kC8,
+  kD8,
+  kE8,
+  kF8,
+  kG8,
+  kH8,
   kNoSquare,
   kSquareCount = 64,
 };
@@ -68,55 +124,71 @@ static const std::array<FileMask, 8> kFileMasks = {
 constexpr U64 kDarkSquares = 0xAA55AA55AA55AA55ULL;
 constexpr U64 kLightSquares = 0x55AA55AA55AA55AAULL;
 
+inline int Rank(int square) {
+  return square >> 3;
+}
+
+inline int File(int square) {
+  return square & 7;
+}
+
+inline Square RankFileToSquare(int rank, int file) {
+  return Square(rank * kBoardLength + file);
+}
+
+inline Square RelativeSquare(Square square, Color side) {
+  return Square(square ^ (56 * side));
+}
+
 class BitBoard {
  public:
   constexpr BitBoard() : bitboard_(0ULL) {}
 
   constexpr BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
-  static BitBoard from_square(const U8 &square) {
+  static BitBoard FromSquare(const U8 &square) {
     return {1ULL << square};
   }
 
-  [[nodiscard]] constexpr inline U64 as_u64() const {
+  [[nodiscard]] constexpr inline U64 AsU64() const {
     return bitboard_;
   }
 
-  constexpr inline void set_bit(const U8 &square) {
+  constexpr inline void SetBit(const U8 &square) {
     bitboard_ |= (1ULL << square);
   }
 
-  constexpr inline void clear_bit(const U8 &square) {
+  constexpr inline void ClearBit(const U8 &square) {
     bitboard_ &= ~(1ULL << square);
   }
 
-  [[nodiscard]] constexpr inline bool is_set(const U8 &square) const {
-    return (bitboard_ >> square) & 1;
-  }
-
-  inline constexpr void move(const U8 &from, const U8 &to) {
+  inline constexpr void MoveBit(const U8 &from, const U8 &to) {
     bitboard_ ^= (1ULL << from) | (1ULL << to);
   }
 
-  [[nodiscard]] constexpr inline U8 get_lsb_pos() const {
+  [[nodiscard]] constexpr inline bool IsSet(const U8 &square) const {
+    return (bitboard_ >> square) & 1;
+  }
+
+  [[nodiscard]] constexpr inline U8 GetLSB() const {
     return std::countr_zero(bitboard_);
   }
 
-  [[nodiscard]] constexpr inline U8 get_msb_pos() const {
+  [[nodiscard]] constexpr inline U8 GetMSB() const {
     return 63 - std::countl_zero(bitboard_);
   }
 
-  constexpr inline U8 pop_lsb() {
-    const U8 lsb_pos = get_lsb_pos();
+  constexpr inline U8 PopLsb() {
+    const U8 lsb_pos = GetLSB();
     bitboard_ &= bitboard_ - 1;
     return lsb_pos;
   }
 
-  [[nodiscard]] constexpr inline int pop_count() const {
+  [[nodiscard]] constexpr inline int PopCount() const {
     return std::popcount(bitboard_);
   }
 
-  [[nodiscard]] constexpr inline bool more_than_one() const {
+  [[nodiscard]] constexpr inline bool MoreThanOne() const {
     return (bitboard_ & (bitboard_ - 1)) != 0;
   }
 
@@ -238,12 +310,23 @@ class BitBoard {
     return bitboard_ != 0ULL;
   }
 
+  void PrintBitBoard() {
+    for (int rank = 7; rank >= 0; rank--) {
+      for (int file = 0; file < 8; file++) {
+        const auto square = RankFileToSquare(rank, file);
+        std::cout << (IsSet(square) ? '1' : '0');
+        if (file < 7) std::cout << " ";  // Space separator for clarity
+      }
+      std::cout << std::endl;
+    }
+  }
+
  private:
   U64 bitboard_;
 };
 
-template<Direction dir>
-constexpr inline BitBoard shift(const BitBoard& bitboard) {
+template <Direction dir>
+constexpr inline BitBoard Shift(const BitBoard &bitboard) {
   if constexpr (dir == Direction::kNorth)
     return BitBoard(bitboard << 8);
   else if constexpr (dir == Direction::kSouth)
@@ -261,35 +344,8 @@ constexpr inline BitBoard shift(const BitBoard& bitboard) {
   else if constexpr (dir == Direction::kSouthWest)
     return BitBoard((bitboard >> 9) & ~FileMask::kFileH);
   else
-    return BitBoard(0); // default case to avoid compiler warnings, should not be reached
+    // Default case to avoid compiler warnings, should not be reached
+    return BitBoard(0);
 }
 
-inline int rank(int square) {
-  return square >> 3;
-}
-
-inline int file(int square) {
-  return square & 7;
-}
-
-inline Square rank_file_to_square(int rank, int file) {
-  return Square(rank * kBoardLength + file);
-}
-
-inline Square relative_square(Square square, Color side) {
-  return Square(square ^ (56 * side));
-}
-
-static void print_bb(BitBoard board) {
-  for (int rank = 7; rank >= 0; rank--) {
-    for (int file = 0; file < 8; file++) {
-      const auto square = rank_file_to_square(rank, file);
-      std::cout << (board.is_set(square) ? '1' : '0');
-      if (file < 7)
-        std::cout << " ";  // space separator for clarity
-    }
-    std::cout << std::endl;
-  }
-}
-
-#endif // INTEGRAL_BITBOARD_H_
+#endif  // INTEGRAL_BITBOARD_H_

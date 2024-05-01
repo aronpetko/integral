@@ -31,11 +31,11 @@ const std::unordered_map<PieceType, char> kPieceTypeToChar = {
     {PieceType::kKing, 'k'},
 };
 
-char get_piece_char(BoardState &state, Square square);
+char GetPieceChar(BoardState &state, Square square);
 
-BoardState string_to_board(std::string fen_str = kStartFen);
+BoardState StringToBoard(std::string fen_str = kStartFen);
 
-std::string board_to_string(BoardState &state);
+std::string BoardToString(BoardState &state);
 
 }
 

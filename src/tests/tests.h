@@ -13,13 +13,13 @@ class Search;
 
 namespace tests {
 
-void bench_suite(Board &board, Search &search, int depth);
+void BenchSuite(Board &board, Search &search, int depth);
 
-void see_suite();
+void SEESuite();
 
-void perft_suite();
+void PerftSuite();
 
-void perft(Board &board, int depth);
+void Perft(Board &board, int depth);
 
 }
 

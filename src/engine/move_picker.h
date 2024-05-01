@@ -1,11 +1,11 @@
 #ifndef INTEGRAL_MOVE_PICKER_H_
 #define INTEGRAL_MOVE_PICKER_H_
 
+#include <algorithm>
+
 #include "../chess/move_gen.h"
 #include "history.h"
 #include "search.h"
-
-#include <algorithm>
 
 struct ScoredMove {
   Move move;
@@ -19,19 +19,21 @@ enum class MovePickerType {
 
 class MovePicker {
  public:
-  MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, SearchStack *search_stack);
+  MovePicker(MovePickerType type,
+             Board &board,
+             Move tt_move,
+             MoveHistory &move_history,
+             SearchStack *search_stack);
 
-  Move next();
-
-  int stage();
+  Move Next();
 
  private:
-  Move &selection_sort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
+  Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
 
   template <MoveType move_type>
-  void generate_and_score_moves(List<ScoredMove, kMaxMoves> &list);
+  void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
 
-  int score_move(Move &move);
+  int ScoreMove(Move &move);
 
  private:
   enum class Stage {
