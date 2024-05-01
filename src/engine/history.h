@@ -20,6 +20,9 @@ class MoveHistory {
 
   short GetHistoryScore(Move move, Color turn) noexcept;
 
+  short GetContHistoryScore(Move move, int plies_ago,
+                                   SearchStack *stack) noexcept;
+
   std::array<Move, 2> &GetKillers(int ply);
 
   void UpdateKillerMove(Move move, int ply);
@@ -28,6 +31,11 @@ class MoveHistory {
                      List<Move, kMaxMoves> &bad_quiets,
                      Color turn,
                      int depth);
+
+  void UpdateContHistory(Move move,
+                         List<Move, kMaxMoves> &bad_quiets,
+                         int depth,
+                         SearchStack *stack);
 
   void Decay();
 

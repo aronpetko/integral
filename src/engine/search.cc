@@ -369,6 +369,10 @@ int Search::PVSearch(
       stack->Ahead()->pv.Clear();
     }
 
+    // Set the currently searched move in the stack for continuation history
+    stack->move = move;
+    stack->moved_piece = state.GetPieceAndColor(move.GetFrom());
+
     board_.MakeMove(move);
 
     const U64 prev_nodes_searched = time_mgmt_.GetNodesSearched();
@@ -444,6 +448,7 @@ int Search::PVSearch(
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.UpdateHistory(move, bad_quiets, state.turn, depth);
+            move_history_.UpdateContHistory(move, bad_quiets, depth, stack);
             move_history_.UpdateKillerMove(move, ply);
           }
 

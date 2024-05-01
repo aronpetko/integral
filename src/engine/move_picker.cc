@@ -178,5 +178,9 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return move_history_.GetHistoryScore(move, state.turn);
+  int history = move_history_.GetHistoryScore(move, state.turn);
+  history += move_history_.GetContHistoryScore(move, 1, search_stack_);
+  history += move_history_.GetContHistoryScore(move, 2, search_stack_);
+
+  return history;
 }
