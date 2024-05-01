@@ -444,6 +444,7 @@ int Search::PVSearch(
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.UpdateHistory(move, bad_quiets, state.turn, depth);
+            move_history_.UpdateContHistory(move, bad_quiets, depth, stack);
             move_history_.UpdateKillerMove(move, ply);
           }
 

@@ -10,7 +10,7 @@ namespace eval {
 
 // clang-format off
 const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = {{
-    // pawns
+    // Pawns
     {
         0,   0,   0,   0,   0,   0,  0,   0,
         98, 134,  61,  95,  68, 126, 34, -11,
@@ -21,7 +21,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = 
         -35,  -1, -20, -23, -15,  24, 38, -22,
         0,   0,   0,   0,   0,   0,  0,   0,
     },
-    // knights
+    // Knights
     {
         -167, -89, -34, -49,  61, -97, -15, -107,
         -73, -41,  72,  36,  23,  62,   7,  -17,
@@ -32,7 +32,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = 
         -29, -53, -12,  -3,  -1,  18, -14,  -19,
         -105, -21, -58, -33, -17, -28, -19,  -23,
     },
-    // bishops
+    // Bishops
     {
         -29,   4, -82, -37, -25, -42,   7,  -8,
         -26,  16, -18, -13,  30,  59,  18, -47,
@@ -43,7 +43,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = 
         4,  15,  16,   0,   7,  21,  33,   1,
         -33,  -3, -14, -21, -13, -12, -39, -21,
     },
-    // rooks
+    // Rooks
     {
         32,  42,  32,  51, 63,  9,  31,  43,
         27,  32,  58,  62, 80, 67,  26,  44,
@@ -54,7 +54,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = 
         -44, -16, -20,  -9, -1, 11,  -6, -71,
         -19, -13,   1,  17, 16,  7, -37, -26,
     },
-    // queens
+    // Queens
     {
         -28,   0,  29,  12,  59,  44,  43,  45,
         -24, -39,  -5,   1, -16,  57,  28,  54,
@@ -65,7 +65,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = 
         -35,  -8,  11,   2,   8,  15,  -3,   1,
         -1, -18,  -9,  10, -15, -25, -31, -50,
     },
-    // king
+    // King
     {
         -65,  23,  16, -15, -56, -34,   2,  13,
         29,  -1, -20,  -7,  -8,  -4, -38, -29,
@@ -79,7 +79,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = 
 }};
 
 const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
-    // pawns
+    // Pawns
     {
         0,   0,   0,   0,   0,   0,   0,   0,
         178, 173, 158, 134, 147, 132, 165, 187,
@@ -90,7 +90,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
         13,   8,   8,  10,  13,   0,   2,  -7,
         0,   0,   0,   0,   0,   0,   0,   0,
     },
-    // knights
+    // Knights
     {
         -58, -38, -13, -28, -31, -27, -63, -99,
         -25,  -8, -25,  -2,  -9, -25, -24, -52,
@@ -101,7 +101,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
         -42, -20, -10,  -5,  -2, -20, -23, -44,
         -29, -51, -23, -15, -22, -18, -50, -64,
     },
-    // bishops
+    // Bishops
     {
         -14, -21, -11,  -8, -7,  -9, -17, -24,
         -8,  -4,   7, -12, -3, -13,  -4, -14,
@@ -112,7 +112,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
         -14, -18,  -7,  -1,  4,  -9, -15, -27,
         -23,  -9, -23,  -5, -9, -16,  -5, -17,
     },
-    // rooks
+    // Rooks
     {
         13, 10, 18, 15, 12,  12,   8,   5,
         11, 13, 13, 11, -3,   3,   8,   3,
@@ -123,7 +123,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
         -6, -6,  0,  2, -9,  -9, -11,  -3,
         -9,  2,  3, -1, -5, -13,   4, -20,
     },
-    // queens
+    // Queens
     {
         -9,  22,  22,  27,  27,  19,  10,  20,
         -17,  20,  32,  41,  58,  25,  30,   0,
@@ -134,7 +134,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
         -22, -23, -30, -16, -16, -23, -36, -32,
         -33, -28, -22, -43,  -5, -32, -20, -41,
     },
-    // king
+    // King
     {
         -74, -35, -18, -18, -11,  15,   4, -17,
         -12,  17,  14,  17,  17,  38,  23,  11,
@@ -157,9 +157,9 @@ bool IsMateScore(int evaluation) {
 }
 
 int MateIn(int evaluation) {
-  if (evaluation > 0 && evaluation < kMateScore) {  // mate in favor
+  if (evaluation > 0 && evaluation < kMateScore) {  // Mate in favor
     return (kMateScore - evaluation + 1) / 2;
-  } else if (evaluation < 0 && evaluation > -kMateScore) {  // mate against
+  } else if (evaluation < 0 && evaluation > -kMateScore) {  // Mate against
     return -(kMateScore + evaluation) / 2;
   }
 
@@ -173,22 +173,22 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   const PieceType &from_piece = state.GetPieceType(from);
   if (from_piece == PieceType::kPawn &&
-          to == state.en_passant ||  // ignore en passant captures
+          to == state.en_passant ||  // Ignore en passant captures
       from_piece == PieceType::kKing &&
-          std::abs(from - to) == 2) {  // ignore castling moves
+          std::abs(from - to) == 2) {  // Ignore castling moves
     return threshold <= 0;
   }
 
-  // score represents the maximum number of points the opponent can gain with
+  // Score represents the maximum number of points the opponent can gain with
   // the next capture
   int score = kSEEPieceScores[state.GetPieceType(to)] - threshold;
-  // if the captured piece is worth less than what we can give up, we lose
+  // If the captured piece is worth less than what we can give up, we lose
   if (score < 0) {
     return false;
   }
 
   score = kSEEPieceScores[from_piece] - score;
-  // if we captured a piece with equal/greater value than our capturing piece,
+  // If we captured a piece with equal/greater value than our capturing piece,
   // we win
   if (score <= 0) {
     return true;
@@ -205,7 +205,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   occupied.ClearBit(from);
   occupied.ClearBit(to);
 
-  // get all pieces that attack the capture square
+  // Get all pieces that attack the capture square
   auto pawn_attackers = (move_gen::PawnAttacks(to, state, Color::kWhite) &
                          state.Pawns(Color::kBlack)) |
                         (move_gen::PawnAttacks(to, state, Color::kBlack) &
@@ -220,7 +220,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   const BitBoard queen_attackers = (bishop_attacks | rook_attacks) & queens;
   const BitBoard king_attackers = move_gen::KingAttacks(to) & kings;
 
-  // compute all attacking pieces for this square minus the captured and
+  // Compute all attacking pieces for this square minus the captured and
   // capturing piece
   BitBoard all_attackers = pawn_attackers | knight_attackers |
                            bishop_attackers | rook_attackers | queen_attackers |
@@ -230,23 +230,23 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   Color turn = state.turn;
   Color winner = state.turn;
 
-  // loop through all pieces that attack the capture square
+  // Loop through all pieces that attack the capture square
   while (true) {
     turn = FlipColor(turn);
     all_attackers &= occupied;
 
     const BitBoard our_attackers = all_attackers & state.Occupied(turn);
-    // if the current side to move has no attackers left, they lose
+    // If the current side to move has no attackers left, they lose
     if (!our_attackers) {
       break;
     }
 
-    // without considering piece values, the winner of an exchange is whoever
-    // has more attackers therefore we set the winner's side to the current side
-    // to move only after we check if they can attack
+    // Without considering piece values, the winner of an exchange is whoever
+    // has more attackers, therefore we set the winner's side to the current
+    // side to move only after we check if they can attack
     winner = FlipColor(winner);
 
-    // find the least valuable attacker
+    // Find the least valuable attacker
     BitBoard next_attacker;
     int attacker_value;
 
@@ -254,7 +254,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
       attacker_value = kSEEPieceScores[PieceType::kPawn];
       occupied.ClearBit(next_attacker.GetLSB());
 
-      // add pieces that were diagonal xray attacking the captured piece
+      // Add pieces that were diagonal xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & knights)) {
@@ -264,42 +264,40 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
       attacker_value = kSEEPieceScores[PieceType::kBishop];
       occupied.ClearBit(next_attacker.GetLSB());
 
-      // add pieces that were xray attacking the captured piece
+      // Add pieces that were xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & rooks)) {
       attacker_value = kSEEPieceScores[PieceType::kRook];
       occupied.ClearBit(next_attacker.GetLSB());
 
-      // add pieces that were xray attacking the captured piece
+      // Add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::RookMoves(to, occupied);
       all_attackers |= rook_attacks & (rooks | queens);
     } else if ((next_attacker = our_attackers & queens)) {
       attacker_value = kSEEPieceScores[PieceType::kQueen];
       occupied.ClearBit(next_attacker.GetLSB());
 
-      // add pieces that were xray attacking the captured piece
+      // Add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::RookMoves(to, occupied);
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= (rook_attacks & (queens | rooks)) |
                        (bishop_attacks & (queens | bishops));
     } else {
-      // king: check if we capture a piece that our opponent is still attacking
+      // King: check if we capture a piece that our opponent is still attacking
       return (all_attackers & state.Occupied(FlipColor(turn)))
                  ? state.turn != winner
                  : state.turn == winner;
     }
 
     if (next_attacker) {
-      // score represents how many points (in piece value) that the other side
-      // can gain after this capture if initially a knight captured a queen, the
-      // other side can gain 3 - 9 = -6 points (indicating they can only gain a
-      // loss) if we flip it and initially a queen captured a knight, the other
-      // side can gain 9 - 3 = 6 points (if they capture the queen back the
-      // least amount of points they lose is 3)
+      // Score represents how many points the other side can gain after this
+      // capture. If initially a knight captured a queen, the other side can
+      // gain 3 - 9 = -6 points. If we flip it and initially a queen captured a
+      // knight, the other side can gain 9 - 3 = 6 points
       score = -score + 1 + attacker_value;
 
-      // quit early if the exchange is lost or neutral
+      // Quit early if the exchange is lost or neutral
       if (score <= 0) {
         break;
       }
@@ -385,7 +383,7 @@ int Evaluate(const BoardState &state) {
     end_game_score -= kEndGameTables[piece][RelativeSquare(square, them)];
   }
 
-  // tapered evaluation
+  // Tapered evaluation
   const int kMaxMiddleGamePhase = 24;
 
   middle_game_phase = std::min(middle_game_phase, kMaxMiddleGamePhase);
