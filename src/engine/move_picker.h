@@ -19,7 +19,7 @@ enum class MovePickerType {
 
 class MovePicker {
  public:
-  MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, Search::Stack *search_stack);
+  MovePicker(MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, SearchStack *search_stack);
 
   Move next();
 
@@ -49,7 +49,7 @@ class MovePicker {
   Move tt_move_;
   MovePickerType type_;
   MoveHistory &move_history_;
-  Search::Stack *search_stack_;
+  SearchStack *search_stack_;
   Stage stage_;
   List<ScoredMove, kMaxMoves> tacticals_, bad_tacticals_;
   List<ScoredMove, kMaxMoves> quiets_;

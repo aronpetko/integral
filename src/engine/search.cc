@@ -106,7 +106,7 @@ void Search::iterative_deepening() {
 }
 
 template <NodeType node_type>
-int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
+int Search::quiescent_search(int ply, int alpha, int beta, SearchStack *stack) {
   if (board_.is_draw(ply)) {
     return eval::kDrawScore;
   }
@@ -196,7 +196,7 @@ int Search::quiescent_search(int ply, int alpha, int beta, Stack *stack) {
 }
 
 template <NodeType node_type>
-int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
+int Search::search(int depth, int ply, int alpha, int beta, SearchStack *stack) {
   const auto &state = board_.get_state();
 
   // ensure we never fall into quiescent search when the side to move is in check
@@ -393,6 +393,7 @@ int Search::search(int depth, int ply, int alpha, int beta, Stack *stack) {
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.update_history(move, bad_quiets, state.turn, depth);
+            // move_history_.update_cont_history(move, bad_quiets, depth, stack);
             move_history_.update_killer_move(move, ply);
           }
 
@@ -469,7 +470,7 @@ const TimeManagement &Search::get_time_management() {
 }
 
 void Search::new_game() {
-  std::ranges::fill(stack_, Stack{});
+  std::ranges::fill(stack_, SearchStack{});
   transposition_table.clear();
   move_history_.clear();
 }

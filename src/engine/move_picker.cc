@@ -12,7 +12,7 @@ const std::array<std::array<int, PieceType::kNumTypes>, PieceType::kNumTypes> kM
 // clang-format on
 
 MovePicker::MovePicker(
-    MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, Search::Stack *search_stack)
+    MovePickerType type, Board &board, Move tt_move, MoveHistory &move_history, SearchStack *search_stack)
     : type_(type),
       board_(board),
       tt_move_(tt_move),
@@ -20,9 +20,6 @@ MovePicker::MovePicker(
       move_history_(move_history),
       search_stack_(search_stack),
       moves_idx_(0) {}
-
-const int kBaseGoodCaptureScore = 1e8;
-const int kBaseBadCaptureScore = -1e8;
 
 int MovePicker::stage() {
   return static_cast<int>(stage_);

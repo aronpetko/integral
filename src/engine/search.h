@@ -64,25 +64,37 @@ enum class SearchType {
   kBench
 };
 
+struct SearchStack {
+  // the number of ply from root
+  int ply;
+  // evaluation of the position at this ply
+  int static_eval;
+  // the best moves following down this ply
+  PVLine pv;
+  // the move with the best score
+  Move best_move;
+  // the currently searched move at this ply
+  Move move;
+  // the (colored) piece that is currently being moved
+  int moved_piece;
+
+  SearchStack()
+      : static_eval(kScoreNone),
+        ply(0),
+        best_move(Move::null_move()),
+        move(Move::null_move()),
+        moved_piece(PieceType::kNone) {}
+
+  SearchStack *ahead(int amount = 1) {
+    return this + amount;
+  }
+
+  SearchStack *behind(int amount = 1) {
+    return this - amount;
+  }
+};
 class Search {
  public:
-  struct Stack {
-    [[maybe_unused]] int ply;
-    int static_eval;
-    PVLine pv;
-    Move best_move;
-
-    Stack() : static_eval(kScoreNone), ply(0), best_move(Move::null_move()) {}
-
-    Stack *ahead(int amount = 1) {
-      return this + amount;
-    }
-
-    Stack *behind(int amount = 1) {
-      return this - amount;
-    }
-  };
-
   explicit Search(Board &board);
 
   void start(TimeManagement::Config &time_config);
@@ -102,16 +114,16 @@ class Search {
   void iterative_deepening();
 
   template<NodeType node_type>
-  int quiescent_search(int ply, int alpha, int beta, Stack *stack);
+  int quiescent_search(int ply, int alpha, int beta, SearchStack *stack);
 
   template<NodeType node_type>
-  int search(int depth, int ply, int alpha, int beta, Stack *stack);
+  int search(int depth, int ply, int alpha, int beta, SearchStack *stack);
 
  private:
   Board &board_;
   TimeManagement time_mgmt_;
   MoveHistory move_history_;
-  std::array<Stack, kMaxPlyFromRoot + 1> stack_;
+  std::array<SearchStack, kMaxPlyFromRoot + 1> stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   int sel_depth_;
   std::atomic_bool searching;

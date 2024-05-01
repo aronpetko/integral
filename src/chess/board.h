@@ -115,6 +115,10 @@ struct BoardState {
     return piece_on_square[square];
   }
 
+  [[nodiscard]] constexpr inline int get_piece_and_color(const U8 &square) const {
+    return piece_on_square[square] * 2 + get_piece_color(square);
+  }
+
   [[nodiscard]] constexpr inline bool piece_exists(Square square) const {
     return get_piece_type(square) != PieceType::kNone;
   }

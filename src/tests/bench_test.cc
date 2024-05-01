@@ -62,19 +62,18 @@ const std::array kBenchFens = {
 
 const int kDefaultBenchDepth = 10;
 
-void bench_suite(int depth) {
+void bench_suite(Board &board, Search &search, int depth) {
   if (depth == 0) {
     depth = kDefaultBenchDepth;
   }
 
+  Board old_board = board;
   U64 nodes = 0, elapsed = 0;
 
-  Board board;
-  Search search(board);
   for (const auto &position : kBenchFens) {
     board.set_from_fen(position);
-    search.new_game();
 
+    search.new_game();
     search.bench(depth);
 
     const auto time_mgmt = search.get_time_management();
@@ -86,6 +85,8 @@ void bench_suite(int depth) {
                            nodes,
                            static_cast<U64>(nodes * 1000.0 / std::max(elapsed, 1ULL)))
             << std::endl;
+
+  board = old_board;
 }
 
 }  // namespace tests

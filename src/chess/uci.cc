@@ -95,18 +95,20 @@ void accept_commands(int arg_count, char **args) {
   const int kTTMbSize = 64;
   transposition_table.resize(kTTMbSize);
 
+  Board board;
+  board.set_from_fen(fen::kStartFen);
+
+  Search search(board);
+  search.new_game();
+
   if (args[1] && std::string(args[1]) == "bench") {
     const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
-    tests::bench_suite(depth);
+    tests::bench_suite(board, search, depth);
     return;
   }
 
   print_ascii_logo();
   std::cout << std::format("    v{}, written by {}\n", kEngineVersion, kEngineAuthor) << std::endl;
-
-  Board board;
-  board.set_from_fen(fen::kStartFen);
-  Search search(board);
 
   std::string input_line;
   while (input_line != "quit") {
@@ -143,7 +145,7 @@ void accept_commands(int arg_count, char **args) {
       // bench is its own command for OpenBench support
       int depth = 0;
       input_stream >> depth;
-      tests::bench_suite(depth);
+      tests::bench_suite(board, search, depth);
     }
   }
 }

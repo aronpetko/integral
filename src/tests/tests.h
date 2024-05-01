@@ -9,10 +9,11 @@
 #include "../utils/string.h"
 
 class Board;
+class Search;
 
 namespace tests {
 
-void bench_suite(int depth);
+void bench_suite(Board &board, Search &search, int depth);
 
 void see_suite();
 
