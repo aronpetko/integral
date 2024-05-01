@@ -21,6 +21,8 @@ Search::Search(Board &board)
           kBaseReduction + std::log(depth) * std::log(move) / kDivisor);
     }
   }
+
+  std::ranges::fill(stack_, SearchStack(&stack_));
 }
 
 template <SearchType type>
@@ -124,6 +126,7 @@ int Search::QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack) {
   }
 
   const auto &state = board_.GetState();
+  stack->ply = ply;
 
   // A principal variation (pv) node is a node that falls between the [alpha,
   // beta] window and one which most child moves are searched during the pv
@@ -191,7 +194,7 @@ int Search::QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack) {
       if (score > alpha) {
         alpha = score;
         if (alpha >= beta) {
-          // Beta cutoff: the opponent would never allow this position to occur
+          // Beta cutoff: The opponent would never allow this position to occur
           break;
         }
       }
@@ -220,6 +223,7 @@ template <NodeType node_type>
 int Search::PVSearch(
     int depth, int ply, int alpha, int beta, SearchStack *stack) {
   const auto &state = board_.GetState();
+  stack->ply = ply;
 
   // Ensure we never fall into quiescent search when in check
   if (state.InCheck()) {
@@ -242,7 +246,7 @@ int Search::PVSearch(
   const bool in_root = ply == 0;
 
   if (!in_root) {
-    sel_depth_ = std::max(sel_depth_, stack->ply = ply);
+    sel_depth_ = std::max(sel_depth_, ply);
 
     if (board_.IsDraw(ply)) {
       return eval::kDrawScore;
@@ -365,10 +369,6 @@ int Search::PVSearch(
       stack->Ahead()->pv.Clear();
     }
 
-    // Set the currently searched move in the stack for continuation history
-    stack->move = move;
-    stack->moved_piece = state.GetPieceAndColor(move.GetFrom());
-
     board_.MakeMove(move);
 
     const U64 prev_nodes_searched = time_mgmt_.GetNodesSearched();
@@ -444,11 +444,10 @@ int Search::PVSearch(
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.UpdateHistory(move, bad_quiets, state.turn, depth);
-            move_history_.UpdateContHistory(move, bad_quiets, depth, stack);
             move_history_.UpdateKillerMove(move, ply);
           }
 
-          // Beta cutoff: the opponent would never allow this position to occur
+          // Beta cutoff: The opponent would never allow this position to occur
           break;
         }
       }
@@ -523,7 +522,7 @@ const TimeManagement &Search::GetTimeManagement() {
 }
 
 void Search::NewGame() {
-  std::ranges::fill(stack_, SearchStack{});
+  std::ranges::fill(stack_, SearchStack(&stack_));
   transposition_table.Clear();
   move_history_.Clear();
 }

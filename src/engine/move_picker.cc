@@ -139,7 +139,6 @@ template <MoveType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = move_history_.GetKillers(search_stack_->ply);
   auto moves = move_gen::GenerateMoves(move_type, board_);
-
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
     if (move != tt_move_ && killers[0] != move && killers[1] != move) {
@@ -179,10 +178,5 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  int history = move_history_.GetHistoryScore(move, state.turn);
-  history += move_history_.GetContHistoryScore(move, 1, search_stack_);
-  history += move_history_.GetContHistoryScore(move, 2, search_stack_);
-  history += move_history_.GetContHistoryScore(move, 4, search_stack_);
-
-  return history;
+  return move_history_.GetHistoryScore(move, state.turn);
 }

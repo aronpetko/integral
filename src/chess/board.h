@@ -115,7 +115,8 @@ struct BoardState {
   }
 
   [[nodiscard]] constexpr inline int GetPieceAndColor(const U8 &square) const {
-    return GetPieceType(square) * 2 + GetPieceColor(square);
+    const auto piece = GetPieceType(square);
+    return piece != PieceType::kNone ? piece * 2 + GetPieceColor(square) : -1;
   }
 
   [[nodiscard]] constexpr inline bool PieceExists(Square square) const {

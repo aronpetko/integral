@@ -77,20 +77,30 @@ struct SearchStack {
   Move move;
   // (Colored) piece that is currently being moved
   int moved_piece;
+  // Parent stack array
+  std::array<SearchStack, kMaxPlyFromRoot + 1> *stack;
 
   SearchStack()
       : static_eval(kScoreNone),
         ply(0),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
-        moved_piece(PieceType::kNone) {}
+        moved_piece(-1) {}
+
+  explicit SearchStack(std::array<SearchStack, kMaxPlyFromRoot + 1> *stack)
+      : stack(stack),
+        static_eval(kScoreNone),
+        ply(0),
+        best_move(Move::NullMove()),
+        move(Move::NullMove()),
+        moved_piece(-1) {}
 
   SearchStack *Ahead(int amount = 1) {
-    return this + amount;
+    return &stack->at(ply + amount);
   }
 
   SearchStack *Behind(int amount = 1) {
-    return this - amount;
+    return &stack->at(ply - amount);
   }
 };
 class Search {
