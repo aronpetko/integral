@@ -252,7 +252,8 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       return eval::kDrawScore;
     }
 
-    // Mate Distance Pruning: Reduce the search space if we've already found a mate
+    // Mate Distance Pruning: Reduce the search space if we've already found a
+    // mate
     alpha = std::max(alpha, -eval::kMateScore + stack->ply);
     beta = std::min(beta, eval::kMateScore - stack->ply - 1);
 
@@ -322,6 +323,12 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
         }
       }
     }
+  }
+
+  // Internal Iterative Reduction: Move ordering is expected to be worse with no
+  // TT move, so we save time on searching this position now
+  if (depth >= 4 && !tt_move) {
+    depth--;
   }
 
   // Keep track of the original alpha for bound determination when updating the
