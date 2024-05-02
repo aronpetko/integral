@@ -95,7 +95,7 @@ void Search::IterativeDeepening() {
       }
     }
 
-    if (print_info) {
+    if (searching && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       std::cout << std::format(
                        "info depth {} seldepth {} {} {} nodes {} time {} nps "
@@ -225,6 +225,7 @@ int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
 template <NodeType node_type>
 int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   const auto &state = board_.GetState();
+  sel_depth_ = std::max(sel_depth_, stack->ply);
 
   // Ensure we never fall into quiescent search when in check
   if (state.InCheck()) {
@@ -247,10 +248,16 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   const bool in_root = stack->ply == 0;
 
   if (!in_root) {
-    sel_depth_ = std::max(sel_depth_, stack->ply);
-
     if (board_.IsDraw(stack->ply)) {
       return eval::kDrawScore;
+    }
+
+    // Mate Distance Pruning: Reduce the search space if we've already found a mate
+    alpha = std::max(alpha, -eval::kMateScore + stack->ply);
+    beta = std::min(beta, eval::kMateScore - stack->ply - 1);
+
+    if (alpha >= beta) {
+      return alpha;
     }
   }
 
