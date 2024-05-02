@@ -327,7 +327,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if (depth >= 4 && !tt_move) {
+  if (in_pv_node && depth >= 4 && !tt_move) {
     depth--;
   }
 
