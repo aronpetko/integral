@@ -142,8 +142,8 @@ enum class PerftType {
   kSplit
 };
 
-template<PerftType type>
-U64 perft_internal(Board &board, int depth, int start_depth) {
+template <PerftType type>
+U64 PertInternal(Board &board, int depth, int start_depth) {
   auto moves = move_gen::GenerateMoves(MoveType::kAll, board);
 
   auto &state = board.GetState();
@@ -151,8 +151,7 @@ U64 perft_internal(Board &board, int depth, int start_depth) {
 
   for (int i = 0; i < moves.Size(); i++) {
     const auto move = moves[i];
-    if (!board.IsMoveLegal(move))
-      continue;
+    if (!board.IsMoveLegal(move)) continue;
 
     U64 child_nodes;
     if (depth == 1) {
@@ -160,7 +159,8 @@ U64 perft_internal(Board &board, int depth, int start_depth) {
       total_nodes += child_nodes = 1;
     } else {
       board.MakeMove(move);
-      total_nodes += child_nodes = perft_internal<PerftType::kNormal>(board, depth - 1, start_depth);
+      total_nodes += child_nodes =
+          PertInternal<PerftType::kNormal>(board, depth - 1, start_depth);
       board.UndoMove();
     }
 
@@ -176,11 +176,14 @@ void Perft(Board &board, int depth) {
   assert(depth >= 0);
 
   const auto start_time = std::chrono::steady_clock::now();
-  const U64 nodes = perft_internal<PerftType::kSplit>(board, depth, depth);
-  const auto elapsed =
-      duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
+  const U64 nodes = PertInternal<PerftType::kSplit>(board, depth, depth);
+  const auto elapsed = duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start_time);
 
-  std::cout << std::format("info nodes {} time {} nps {}", nodes, elapsed * 1000.0, static_cast<U64>(nodes / elapsed))
+  std::cout << std::format("info nodes {} time {} nps {}",
+                           nodes,
+                           elapsed.count(),
+                           static_cast<U64>(nodes / elapsed.count() * 1000.0))
             << std::endl;
 }
 
@@ -199,17 +202,21 @@ void PerftSuite() {
       const int test_depth = std::stoi(answer_data[0].substr(1));
       const int correct_nodes = std::stoi(answer_data[1]);
 
-      if (perft_internal<PerftType::kNormal>(board, test_depth, test_depth) != correct_nodes) {
+      if (PertInternal<PerftType::kNormal>(board, test_depth, test_depth) !=
+          correct_nodes) {
         passed = false;
       }
     }
 
-    std::cout << std::format("{}\033[0m {}\n", passed ? "\033[32mpassed" : "\033[31mfailed", perft_test);
+    std::cout << std::format("{}\033[0m {}\n",
+                             passed ? "\033[32mpassed" : "\033[31mfailed",
+                             perft_test);
   }
 
-  const auto elapsed =
-      duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
-  std::cout << std::format("test finished in {}ms", static_cast<U64>(elapsed * 1000.0)) << std::endl;
+  const auto elapsed = duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start_time);
+  std::cout << std::format("test finished in {}ms", elapsed.count())
+            << std::endl;
 }
 
-}
+}  // namespace tests
