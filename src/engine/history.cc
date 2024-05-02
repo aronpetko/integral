@@ -23,7 +23,7 @@ inline int MoveIndex(Move move) {
 MoveHistory::MoveHistory(const BoardState &state)
     : state_(state),
       killer_moves_({}),
-      cont_history_(new ContinuationHistory),
+      cont_history_(std::make_unique<ContinuationHistory>()),
       butterfly_history_({}) {}
 
 int MoveHistory::GetHistoryScore(Move move, Color turn) noexcept {
@@ -108,6 +108,7 @@ void MoveHistory::UpdateContHistory(Move move,
   const int bonus = HistoryBonus(depth);
   update_cont_entry(move, 1, bonus);
   update_cont_entry(move, 2, bonus);
+  // update_cont_entry(move, 4, bonus);
 
   // Lower the score of the quiet moves that failed to raise alpha
   const int penalty = -bonus;
@@ -117,6 +118,7 @@ void MoveHistory::UpdateContHistory(Move move,
     // Apply a linear dampening to the penalty as the depth increases
     update_cont_entry(bad_quiet, 1, penalty);
     update_cont_entry(bad_quiet, 2, penalty);
+    // update_cont_entry(bad_quiet, 4, penalty);
   }
 }
 
@@ -127,25 +129,9 @@ void MoveHistory::Decay() {
 }
 
 void MoveHistory::Clear() {
-  for (auto &sides : butterfly_history_) {
-    for (auto &move_scores : sides) {
-      move_scores = 0;
-    }
-  }
-  for (auto &sides : *cont_history_) {
-    for (auto &move_scores : sides) {
-      for (auto &scores : move_scores) {
-        for (auto &score : scores) {
-          for (auto &s : score) {
-            s.fill(0);
-          }
-        }
-      }
-    }
-  }
-  for (auto &killers : killer_moves_) {
-    killers.fill(Move::NullMove());
-  }
+  butterfly_history_ = ButterflyHistory();
+  killer_moves_ = KillerMoves();
+  cont_history_ = std::make_unique<ContinuationHistory>();
 }
 
 void MoveHistory::ClearKillers(int ply) {

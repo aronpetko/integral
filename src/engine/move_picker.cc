@@ -183,6 +183,8 @@ int MovePicker::ScoreMove(Move &move) {
       move_history_.GetContHistoryScore(move, state.turn, 1, search_stack_);
   history +=
       move_history_.GetContHistoryScore(move, state.turn, 2, search_stack_);
+  //history +=
+  //    move_history_.GetContHistoryScore(move, state.turn, 4, search_stack_);
 
   return history;
 }
