@@ -289,7 +289,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
     // Null Move Pruning: Forfeit a move to our opponent and prune if we still
     // have the advantage
-    if (false) {
+    if (!state.move_played.IsNull() && static_eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
