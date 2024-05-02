@@ -22,7 +22,6 @@ class MoveHistory {
   int GetHistoryScore(Move move, Color turn) noexcept;
 
   int GetContHistoryScore(Move move,
-                          Color turn,
                           int plies_ago,
                           SearchStack *stack) noexcept;
 

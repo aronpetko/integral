@@ -31,16 +31,14 @@ int MoveHistory::GetHistoryScore(Move move, Color turn) noexcept {
 }
 
 int MoveHistory::GetContHistoryScore(Move move,
-                                     Color turn,
                                      int plies_ago,
                                      SearchStack *stack) noexcept {
   // Ensure the continuation history table exists for this move
   if (stack->ply >= plies_ago) {
-    const auto prev_move = stack->Behind(plies_ago)->move;
-    if (prev_move) {
-      const int piece = state_.GetPieceType(move.GetFrom());
-      const int to = move.GetTo();
-      return (*stack->Behind(plies_ago)->cont_entry)[turn][piece][to];
+    if (stack->Behind(plies_ago)->move) {
+      const auto piece = state_.GetPieceType(move.GetFrom());
+      const auto to = move.GetTo();
+      return (*stack->Behind(plies_ago)->cont_entry)[state_.turn][piece][to];
     }
   }
 
@@ -48,9 +46,12 @@ int MoveHistory::GetContHistoryScore(Move move,
 }
 
 ContinuationEntry *MoveHistory::GetContEntry(Move move, Color turn) noexcept {
-  if (!move) return nullptr;
-  const int from = move.GetFrom(), to = move.GetTo();
-  return &cont_history_->at(turn).at(state_.GetPieceType(from)).at(to);
+  if (!move) {
+    return nullptr;
+  }
+
+  const auto from = move.GetFrom(), to = move.GetTo();
+  return &(*cont_history_)[turn][state_.GetPieceType(from)][to];
 }
 
 std::array<Move, 2> &MoveHistory::GetKillers(int ply) {
@@ -97,8 +98,7 @@ void MoveHistory::UpdateContHistory(Move move,
 
     // Ensure the continuation history table exists for this move
     if (stack->ply >= plies_ago) {
-      const auto prev_move = stack->Behind(plies_ago)->move;
-      if (prev_move) {
+      if (stack->Behind(plies_ago)->move) {
         int &score = (*stack->Behind(plies_ago)->cont_entry)[turn][piece][to];
         score += ScaleBonus(score, bonus);
       }
@@ -108,7 +108,6 @@ void MoveHistory::UpdateContHistory(Move move,
   const int bonus = HistoryBonus(depth);
   update_cont_entry(move, 1, bonus);
   update_cont_entry(move, 2, bonus);
-  // update_cont_entry(move, 4, bonus);
 
   // Lower the score of the quiet moves that failed to raise alpha
   const int penalty = -bonus;
@@ -118,7 +117,6 @@ void MoveHistory::UpdateContHistory(Move move,
     // Apply a linear dampening to the penalty as the depth increases
     update_cont_entry(bad_quiet, 1, penalty);
     update_cont_entry(bad_quiet, 2, penalty);
-    // update_cont_entry(bad_quiet, 4, penalty);
   }
 }
 

@@ -50,7 +50,7 @@ Move MovePicker::Next() {
       moves_idx_++;
 
       // If the tactical move loses more than 1 pawn of material it's considered
-      // A bad capture good captures are searched first, bad captures are
+      // a bad capture. Good captures are searched first, bad captures are
       // searched last
       const bool loses_material = !eval::StaticExchange(
           move, -eval::kSEEPieceScores[PieceType::kPawn], state);
@@ -179,12 +179,8 @@ int MovePicker::ScoreMove(Move &move) {
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
   int history = move_history_.GetHistoryScore(move, state.turn);
-  history +=
-      move_history_.GetContHistoryScore(move, state.turn, 1, search_stack_);
-  history +=
-      move_history_.GetContHistoryScore(move, state.turn, 2, search_stack_);
-  //history +=
-  //    move_history_.GetContHistoryScore(move, state.turn, 4, search_stack_);
+  history += move_history_.GetContHistoryScore(move, 1, search_stack_);
+  history += move_history_.GetContHistoryScore(move, 2, search_stack_);
 
   return history;
 }

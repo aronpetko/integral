@@ -32,10 +32,8 @@ class TranspositionTable {
     }
 
     [[nodiscard]] bool CanUseScore(int alpha, int beta) const {
-      return (flag == TranspositionTable::Entry::kUpperBound &&
-                  score <= alpha ||
-              flag == TranspositionTable::Entry::kLowerBound && score >= beta ||
-              flag == TranspositionTable::Entry::kExact);
+      return (flag == kUpperBound && score <= alpha ||
+              flag == kLowerBound && score >= beta || flag == kExact);
     }
 
     U16 key;

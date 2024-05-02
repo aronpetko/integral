@@ -27,18 +27,18 @@ void TranspositionTable::Clear() {
   std::ranges::fill(table_, Entry{});
 }
 
-void TranspositionTable::Save(const U64 &key,
-                              const TranspositionTable::Entry &entry,
-                              int ply) {
+void TranspositionTable::Save(const U64 &key, const Entry &entry, int ply) {
   auto &tt_entry = table_[Index(key)];
-  if (!tt_entry.CompareKey(key) ||
-      entry.depth + kDepthLenience >= tt_entry.depth ||
+  const bool tt_hit = tt_entry.CompareKey(key);
+
+  if (!tt_hit || entry.depth + kDepthLenience >= tt_entry.depth ||
       entry.flag == Entry::kExact) {
     const Move old_move = tt_entry.move;
     tt_entry = entry;
 
-    // Keep the old move if there is no best move being saved
-    if (old_move && !entry.move) {
+    // Keep the old move if there is no best move being saved, or if the key
+    // doesn't match
+    if (!entry.move || !tt_hit) {
       tt_entry.move = old_move;
     }
 
