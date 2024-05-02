@@ -11,10 +11,12 @@ Search::Search(Board &board)
     : board_(board),
       sel_depth_(0),
       searching(false),
+      stack_({}),
       move_history_(board_.GetState()) {
   const double kBaseReduction = 0.39;
   const double kDivisor = 2.36;
 
+  // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
       lmr_table_[depth][move] = static_cast<int>(
@@ -22,7 +24,9 @@ Search::Search(Board &board)
     }
   }
 
-  std::ranges::fill(stack_, SearchStack(&stack_));
+  for (int i = 0; i < stack_.size(); i++) {
+    stack_[i] = SearchStack(i);
+  }
 }
 
 template <SearchType type>
@@ -58,7 +62,7 @@ void Search::IterativeDeepening() {
 
     while (true) {
       const int new_score =
-          PVSearch<NodeType::kPV>(depth, 0, alpha, beta, root_stack);
+          PVSearch<NodeType::kPV>(depth, alpha, beta, root_stack);
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
@@ -120,13 +124,12 @@ void Search::IterativeDeepening() {
 }
 
 template <NodeType node_type>
-int Search::QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack) {
-  if (board_.IsDraw(ply)) {
+int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
+  if (board_.IsDraw(stack->ply)) {
     return eval::kDrawScore;
   }
 
   const auto &state = board_.GetState();
-  stack->ply = ply;
 
   // A principal variation (pv) node is a node that falls between the [alpha,
   // beta] window and one which most child moves are searched during the pv
@@ -147,7 +150,7 @@ int Search::QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack) {
   // Saved scores from non-pv nodes must fall within the current alpha/beta
   // window to allow early cutoff
   if (!in_pv_node && can_use_tt_eval) {
-    return transposition_table.CorrectScore(tt_entry.score, ply);
+    return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
   const int static_eval =
@@ -155,7 +158,7 @@ int Search::QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack) {
 
   // Early cutoff in quiescent search since we're focused on evaluating quiet
   // positions, rather than exploring all possibilities
-  if (static_eval >= beta || ply >= kMaxPlyFromRoot) {
+  if (static_eval >= beta || stack->ply >= kMaxPlyFromRoot) {
     return static_eval;
   }
 
@@ -180,7 +183,7 @@ int Search::QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack) {
 
     board_.MakeMove(move);
     const int score =
-        -QuiescentSearch<node_type>(ply + 1, -beta, -alpha, stack->Ahead());
+        -QuiescentSearch<node_type>(-beta, -alpha, stack->Ahead());
     board_.UndoMove();
 
     time_mgmt_.UpdateNodesSearched();
@@ -214,16 +217,14 @@ int Search::QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack) {
   // only quiescent search will use these entries and not the main search
   TranspositionTable::Entry new_tt_entry(
       state.zobrist_key, 0, entry_flag, best_score, best_move);
-  transposition_table.Save(state.zobrist_key, new_tt_entry, ply);
+  transposition_table.Save(state.zobrist_key, new_tt_entry, stack->ply);
 
   return best_score;
 }
 
 template <NodeType node_type>
-int Search::PVSearch(
-    int depth, int ply, int alpha, int beta, SearchStack *stack) {
+int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   const auto &state = board_.GetState();
-  stack->ply = ply;
 
   // Ensure we never fall into quiescent search when in check
   if (state.InCheck()) {
@@ -234,7 +235,7 @@ int Search::PVSearch(
   // the depth limit
   assert(depth >= 0);
   if (depth == 0) {
-    return QuiescentSearch<node_type>(ply, alpha, beta, stack);
+    return QuiescentSearch<node_type>(alpha, beta, stack);
   }
 
   // A principal variation (pv) node is a node that falls between the [alpha,
@@ -243,12 +244,12 @@ int Search::PVSearch(
   // re-search depending on if we were wrong
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
   // The root node is also a pv node by default
-  const bool in_root = ply == 0;
+  const bool in_root = stack->ply == 0;
 
   if (!in_root) {
-    sel_depth_ = std::max(sel_depth_, ply);
+    sel_depth_ = std::max(sel_depth_, stack->ply);
 
-    if (board_.IsDraw(ply)) {
+    if (board_.IsDraw(stack->ply)) {
       return eval::kDrawScore;
     }
   }
@@ -266,14 +267,14 @@ int Search::PVSearch(
   // Saved scores from non-pv nodes must fall within the current alpha/beta
   // window to allow early cutoff
   if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
-    return transposition_table.CorrectScore(tt_entry.score, ply);
+    return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
   const int static_eval =
       can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
   stack->static_eval = state.InCheck() ? kScoreNone : static_eval;
 
-  move_history_.ClearKillers(ply + 1);
+  move_history_.ClearKillers(stack->ply + 1);
 
   if (!in_pv_node && !state.InCheck()) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
@@ -288,7 +289,7 @@ int Search::PVSearch(
 
     // Null Move Pruning: Forfeit a move to our opponent and prune if we still
     // have the advantage
-    if (!state.move_played.IsNull() && static_eval >= beta) {
+    if (false) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -303,7 +304,7 @@ int Search::PVSearch(
 
         board_.MakeNullMove();
         const int score = -PVSearch<NodeType::kNonPV>(
-            depth - reduction, ply + 1, -beta, -beta + 1, stack->Ahead());
+            depth - reduction, -beta, -beta + 1, stack->Ahead());
         board_.UndoMove();
 
         // If the result from our null window search around beta indicates that
@@ -369,12 +370,16 @@ int Search::PVSearch(
       stack->Ahead()->pv.Clear();
     }
 
+    // Set the currently searched move in the stack for continuation history
+    stack->move = move;
+    stack->cont_entry = move_history_.GetContEntry(move, state.turn);
+
     board_.MakeMove(move);
 
     const U64 prev_nodes_searched = time_mgmt_.GetNodesSearched();
     const int new_depth = depth - 1;
 
-    // Principal variation search (pvs)
+    // Principal Variation Search (PVS)
     bool needs_full_search;
     int score;
 
@@ -391,7 +396,7 @@ int Search::PVSearch(
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
-          new_depth - reduction, ply + 1, -alpha - 1, -alpha, stack->Ahead());
+          new_depth - reduction, -alpha - 1, -alpha, stack->Ahead());
       needs_full_search = score > alpha && reduction != 0;
     } else {
       // If we didn't perform late move reduction, then we search this move at
@@ -404,13 +409,13 @@ int Search::PVSearch(
     // expected to be a pv move hence, we search it with a null window
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
-          new_depth, ply + 1, -alpha - 1, -alpha, stack->Ahead());
+          new_depth, -alpha - 1, -alpha, stack->Ahead());
     }
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
-      score = -PVSearch<NodeType::kPV>(
-          new_depth, ply + 1, -beta, -alpha, stack->Ahead());
+      score =
+          -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack->Ahead());
     }
 
     board_.UndoMove();
@@ -444,7 +449,9 @@ int Search::PVSearch(
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.UpdateHistory(move, bad_quiets, state.turn, depth);
-            move_history_.UpdateKillerMove(move, ply);
+            move_history_.UpdateContHistory(
+                move, bad_quiets, state.turn, depth, stack);
+            move_history_.UpdateKillerMove(move, stack->ply);
           }
 
           // Beta cutoff: The opponent would never allow this position to occur
@@ -461,7 +468,7 @@ int Search::PVSearch(
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
-    return state.InCheck() ? -eval::kMateScore + ply : eval::kDrawScore;
+    return state.InCheck() ? -eval::kMateScore + stack->ply : eval::kDrawScore;
   }
 
   if (best_score != kScoreNone) {
@@ -478,7 +485,7 @@ int Search::PVSearch(
     // position
     TranspositionTable::Entry new_tt_entry(
         state.zobrist_key, depth, entry_flag, best_score, best_move);
-    transposition_table.Save(state.zobrist_key, new_tt_entry, ply);
+    transposition_table.Save(state.zobrist_key, new_tt_entry, stack->ply);
   }
 
   return best_score;
@@ -522,7 +529,9 @@ const TimeManagement &Search::GetTimeManagement() {
 }
 
 void Search::NewGame() {
-  std::ranges::fill(stack_, SearchStack(&stack_));
+  for (int i = 0; i < stack_.size(); i++) {
+    stack_[i] = SearchStack(i);
+  }
   transposition_table.Clear();
   move_history_.Clear();
 }

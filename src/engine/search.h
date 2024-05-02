@@ -75,34 +75,28 @@ struct SearchStack {
   Move best_move;
   // Currently searched move at this ply
   Move move;
-  // (Colored) piece that is currently being moved
-  int moved_piece;
-  // Parent stack array
-  std::array<SearchStack, kMaxPlyFromRoot + 1> *stack;
+  // Continuation history entry of the current move
+  ContinuationEntry *cont_entry;
 
-  SearchStack()
-      : static_eval(kScoreNone),
-        ply(0),
-        best_move(Move::NullMove()),
-        move(Move::NullMove()),
-        moved_piece(-1) {}
+  SearchStack() : SearchStack(0) {}
 
-  explicit SearchStack(std::array<SearchStack, kMaxPlyFromRoot + 1> *stack)
-      : stack(stack),
+  // Primary constructor
+  SearchStack(int ply)
+      : ply(ply),
         static_eval(kScoreNone),
-        ply(0),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
-        moved_piece(-1) {}
+        cont_entry(nullptr) {}
 
   SearchStack *Ahead(int amount = 1) {
-    return &stack->at(ply + amount);
+    return this + amount;
   }
 
   SearchStack *Behind(int amount = 1) {
-    return &stack->at(ply - amount);
+    return this - amount;
   }
 };
+
 class Search {
  public:
   explicit Search(Board &board);
@@ -124,10 +118,10 @@ class Search {
   void IterativeDeepening();
 
   template <NodeType node_type>
-  int QuiescentSearch(int ply, int alpha, int beta, SearchStack *stack);
+  int QuiescentSearch(int alpha, int beta, SearchStack *stack);
 
   template <NodeType node_type>
-  int PVSearch(int depth, int ply, int alpha, int beta, SearchStack *stack);
+  int PVSearch(int depth, int alpha, int beta, SearchStack *stack);
 
  private:
   Board &board_;

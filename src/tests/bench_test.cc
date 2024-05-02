@@ -87,6 +87,7 @@ void BenchSuite(Board &board, Search &search, int depth) {
             << std::endl;
 
   board = old_board;
+  search.NewGame();
 }
 
 }  // namespace tests
