@@ -2,12 +2,12 @@
 
 #include "search.h"
 
-const short kHistoryGravity = 16384;
-const short kHistoryScale = 300;
-const short kHistoryOffset = 300;
+const int kHistoryGravity = 16384;
+const int kHistoryScale = 130;
+const int kHistoryMaxBonus = 1159;
 
-short HistoryBonus(short depth) {
-  return kHistoryScale * depth - kHistoryOffset;
+int HistoryBonus(int depth) {
+  return std::min(kHistoryScale * depth, kHistoryMaxBonus);
 }
 
 // Linear interpolation of the bonus and maximum score
