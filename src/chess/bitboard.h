@@ -146,7 +146,7 @@ class BitBoard {
 
   constexpr BitBoard(U64 bitboard) : bitboard_(bitboard) {}
 
-  static BitBoard FromSquare(const U8 &square) {
+  static BitBoard FromSquare(U8 square) {
     return {1ULL << square};
   }
 
@@ -154,19 +154,19 @@ class BitBoard {
     return bitboard_;
   }
 
-  constexpr inline void SetBit(const U8 &square) {
+  constexpr inline void SetBit(U8 square) {
     bitboard_ |= (1ULL << square);
   }
 
-  constexpr inline void ClearBit(const U8 &square) {
+  constexpr inline void ClearBit(U8 square) {
     bitboard_ &= ~(1ULL << square);
   }
 
-  inline constexpr void MoveBit(const U8 &from, const U8 &to) {
+  inline constexpr void MoveBit(U8 from, U8 to) {
     bitboard_ ^= (1ULL << from) | (1ULL << to);
   }
 
-  [[nodiscard]] constexpr inline bool IsSet(const U8 &square) const {
+  [[nodiscard]] constexpr inline bool IsSet(U8 square) const {
     return (bitboard_ >> square) & 1;
   }
 

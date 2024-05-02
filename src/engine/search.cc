@@ -288,7 +288,8 @@ int Search::PVSearch(
 
     // Null Move Pruning: Forfeit a move to our opponent and prune if we still
     // have the advantage
-    if (!state.move_played.IsNull() && static_eval >= beta) {
+    // if (!state.move_played.IsNull() && static_eval >= beta) {
+    if (false) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -371,14 +372,14 @@ int Search::PVSearch(
 
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
-    stack->moved_piece = state.GetPieceAndColor(move.GetFrom());
+    stack->cont_entry = move_history_.GetContEntry(move, state.turn);
 
     board_.MakeMove(move);
 
     const U64 prev_nodes_searched = time_mgmt_.GetNodesSearched();
     const int new_depth = depth - 1;
 
-    // Principal variation search (pvs)
+    // Principal Variation Search (PVS)
     bool needs_full_search;
     int score;
 
@@ -448,7 +449,8 @@ int Search::PVSearch(
         if (alpha >= beta) {
           if (is_quiet) {
             move_history_.UpdateHistory(move, bad_quiets, state.turn, depth);
-            move_history_.UpdateContHistory(move, bad_quiets, depth, stack);
+            move_history_.UpdateContHistory(
+                move, bad_quiets, state.turn, depth, stack);
             move_history_.UpdateKillerMove(move, ply);
           }
 

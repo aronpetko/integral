@@ -10,18 +10,23 @@ class SearchStack;
 constexpr int kFromToCombinations = Square::kSquareCount * Square::kSquareCount;
 
 using KillerMoves = std::array<std::array<Move, 2>, kMaxPlyFromRoot>;
-using ButterflyHistory = std::array<std::array<short, kFromToCombinations>, 2>;
+using ButterflyHistory = std::array<std::array<int, kFromToCombinations>, 2>;
+using ContinuationEntry = std::array<std::array<std::array<int, 64>, 6>, 2>;
 using ContinuationHistory =
-    std::array<std::array<std::array<std::array<short, 64>, 12>, 64>, 12>;
+    std::array<std::array<std::array<ContinuationEntry, 64>, 6>, 2>;
 
 class MoveHistory {
  public:
   explicit MoveHistory(const BoardState &state);
 
-  short GetHistoryScore(Move move, Color turn) noexcept;
+  int GetHistoryScore(Move move, Color turn) noexcept;
 
-  short GetContHistoryScore(Move move, int plies_ago,
-                                   SearchStack *stack) noexcept;
+  int GetContHistoryScore(Move move,
+                          Color turn,
+                          int plies_ago,
+                          SearchStack *stack) noexcept;
+
+  ContinuationEntry *GetContEntry(Move move, Color turn) noexcept;
 
   std::array<Move, 2> &GetKillers(int ply);
 
@@ -34,6 +39,7 @@ class MoveHistory {
 
   void UpdateContHistory(Move move,
                          List<Move, kMaxMoves> &bad_quiets,
+                         Color turn,
                          int depth,
                          SearchStack *stack);
 
@@ -47,7 +53,7 @@ class MoveHistory {
   const BoardState &state_;
   KillerMoves killer_moves_;
   ButterflyHistory butterfly_history_;
-  ContinuationHistory cont_history_;
+  ContinuationHistory *cont_history_;
 };
 
 #endif  // INTEGRAL_HISTORY_H

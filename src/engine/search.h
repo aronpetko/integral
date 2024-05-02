@@ -79,6 +79,8 @@ struct SearchStack {
   int moved_piece;
   // Parent stack array
   std::array<SearchStack, kMaxPlyFromRoot + 1> *stack;
+  // Continuation history entry of the current move
+  ContinuationEntry *cont_entry;
 
   SearchStack()
       : static_eval(kScoreNone),

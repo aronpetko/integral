@@ -93,7 +93,7 @@ struct BoardState {
     side_bbs[color].SetBit(square);
   }
 
-  void RemovePiece(const U8 &square) {
+  void RemovePiece(U8 square) {
     auto &piece_type = piece_on_square[square];
     if (piece_type != PieceType::kNone) {
       piece_bbs[piece_type].ClearBit(square);
@@ -103,18 +103,17 @@ struct BoardState {
     }
   }
 
-  [[nodiscard]] constexpr inline Color GetPieceColor(const U8 &square) const {
+  [[nodiscard]] constexpr inline Color GetPieceColor(U8 square) const {
     if (side_bbs[Color::kWhite].IsSet(square)) return Color::kWhite;
     if (side_bbs[Color::kBlack].IsSet(square)) return Color::kBlack;
     return Color::kNoColor;
   }
 
-  [[nodiscard]] constexpr inline PieceType GetPieceType(
-      const U8 &square) const {
+  [[nodiscard]] constexpr inline PieceType GetPieceType(U8 square) const {
     return piece_on_square[square];
   }
 
-  [[nodiscard]] constexpr inline int GetPieceAndColor(const U8 &square) const {
+  [[nodiscard]] constexpr inline int GetPieceAndColor(U8 square) const {
     const auto piece = GetPieceType(square);
     return piece != PieceType::kNone ? piece * 2 + GetPieceColor(square) : -1;
   }

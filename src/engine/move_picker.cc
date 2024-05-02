@@ -179,8 +179,10 @@ int MovePicker::ScoreMove(Move &move) {
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
   int history = move_history_.GetHistoryScore(move, state.turn);
-  history += move_history_.GetContHistoryScore(move, 1, search_stack_);
-  history += move_history_.GetContHistoryScore(move, 2, search_stack_);
+  history +=
+      move_history_.GetContHistoryScore(move, state.turn, 1, search_stack_);
+  history +=
+      move_history_.GetContHistoryScore(move, state.turn, 2, search_stack_);
 
   return history;
 }
