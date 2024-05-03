@@ -276,12 +276,12 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
-  const int static_eval =
-      can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
-  stack->static_eval = state.InCheck() ? kScoreNone : static_eval;
-
   bool improving = false;
+
+  stack->static_eval = kScoreNone;
   if (!state.InCheck()) {
+    stack->static_eval = (can_use_tt_eval ? tt_entry.score : eval::Evaluate(state));;
+
     improving =
         (stack->ply >= 2 && stack->static_eval > (stack - 2)->static_eval &&
          (stack - 2)->static_eval != kScoreNone) ||
@@ -297,16 +297,16 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon the margin for this comparison is scaled
     // based on how many ply we have left to search
-    if (depth <= 6 && static_eval < kMateScore - kMaxPlyFromRoot) {
+    if (depth <= 6 && stack->static_eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = std::max(depth - improving, 0) * 75;
-      if (static_eval - futility_margin >= beta) {
-        return static_eval;
+      if (stack->static_eval - futility_margin >= beta) {
+        return stack->static_eval;
       }
     }
 
     // Null Move Pruning: Forfeit a move to our opponent and prune if we still
     // have the advantage
-    if (!state.move_played.IsNull() && static_eval >= beta) {
+    if (!state.move_played.IsNull() && stack->static_eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -373,7 +373,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       // there's a low chance to raise alpha
       const int futility_margin = 150 + 100 * depth;
       if (depth <= 8 && !state.InCheck() && is_quiet &&
-          static_eval + futility_margin < alpha) {
+          stack->static_eval + futility_margin < alpha) {
         continue;
       }
 
