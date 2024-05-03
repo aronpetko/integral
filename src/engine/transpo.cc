@@ -51,8 +51,8 @@ void TranspositionTable::Prefetch(const U64 &key) const {
   __builtin_prefetch(&Probe(key));
 }
 
-int TranspositionTable::CorrectScore(int score, int ply) const {
-  const int kRoughlyMate = eval::kMateScore - kMaxPlyFromRoot;
+int TranspositionTable::CorrectScore(Score score, int ply) const {
+  const int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
   if (score >= kRoughlyMate) {
     score -= ply;
   } else if (score <= -kRoughlyMate) {

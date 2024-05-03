@@ -7,7 +7,6 @@
 #include "time_mgmt.h"
 
 const int kMaxSearchDepth = 100;
-const int kScoreNone = -eval::kInfiniteScore;
 
 struct PVLine {
  public:
@@ -68,7 +67,7 @@ struct SearchStack {
   // Number of ply from root
   int ply;
   // Evaluation of the position at this ply
-  int static_eval;
+  Score static_eval;
   // Best moves following down this ply
   PVLine pv;
   // The move with the best score

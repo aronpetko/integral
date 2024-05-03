@@ -71,4 +71,11 @@ enum Direction : int {
   kSouthWest
 };
 
+using Score = std::int32_t;
+
+const Score kDrawScore = 0;
+const Score kMateScore = 1e8;
+const Score kInfiniteScore = 1e8 + 1;
+const Score kScoreNone = -kInfiniteScore;
+
 #endif  // INTEGRAL_TYPES_H_

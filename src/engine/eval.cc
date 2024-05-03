@@ -181,7 +181,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   // Score represents the maximum number of points the opponent can gain with
   // the next capture
-  int score = kSEEPieceScores[state.GetPieceType(to)] - threshold;
+  Score score = kSEEPieceScores[state.GetPieceType(to)] - threshold;
   // If the captured piece is worth less than what we can give up, we lose
   if (score < 0) {
     return false;
@@ -348,7 +348,7 @@ std::pair<int, int> EvaluateMaterial(const BoardState &state) {
   return {mg_material, eg_material};
 }
 
-int Evaluate(const BoardState &state) {
+Score Evaluate(const BoardState &state) {
   auto [middle_game_score, end_game_score] = EvaluateMaterial(state);
 
   int middle_game_phase = 0;
@@ -389,7 +389,7 @@ int Evaluate(const BoardState &state) {
   middle_game_phase = std::min(middle_game_phase, kMaxMiddleGamePhase);
   const int end_game_phase = kMaxMiddleGamePhase - middle_game_phase;
 
-  int score = (middle_game_score * middle_game_phase +
+  Score score = (middle_game_score * middle_game_phase +
                end_game_score * end_game_phase) /
               kMaxMiddleGamePhase;
 

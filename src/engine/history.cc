@@ -11,7 +11,7 @@ int HistoryBonus(int depth) {
 }
 
 // Linear interpolation of the bonus and maximum score
-int ScaleBonus(int score, int bonus) {
+int ScaleBonus(Score score, int bonus) {
   return bonus - score * std::abs(bonus) / kHistoryGravity;
 }
 

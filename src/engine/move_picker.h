@@ -9,7 +9,7 @@
 
 struct ScoredMove {
   Move move;
-  int score;
+  Score score;
 };
 
 enum class MovePickerType {

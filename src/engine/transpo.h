@@ -20,7 +20,7 @@ class TranspositionTable {
 
     Entry() : key(0), depth(0), flag(kNone), score(0), move(Move::NullMove()) {}
 
-    explicit Entry(U64 key, U8 depth, Flag flag, int score, Move move)
+    explicit Entry(U64 key, U8 depth, Flag flag, Score score, Move move)
         : key(static_cast<U16>(key)),
           depth(depth),
           flag(flag),
@@ -32,14 +32,15 @@ class TranspositionTable {
     }
 
     [[nodiscard]] bool CanUseScore(int alpha, int beta) const {
-      return (flag == kUpperBound && score <= alpha ||
+      return score != kScoreNone &&
+             (flag == kUpperBound && score <= alpha ||
               flag == kLowerBound && score >= beta || flag == kExact);
     }
 
     U16 key;
     U8 depth;
     Flag flag;
-    int score;
+    Score score;
     Move move;
   };
 
@@ -57,7 +58,7 @@ class TranspositionTable {
 
   [[nodiscard]] const Entry &Probe(const U64 &key) const;
 
-  [[nodiscard]] int CorrectScore(int score, int ply) const;
+  [[nodiscard]] int CorrectScore(Score score, int ply) const;
 
   [[nodiscard]] U64 Index(const U64 &key) const;
 

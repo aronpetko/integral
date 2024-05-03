@@ -17,16 +17,14 @@ void Board::SetFromFen(const std::string &fen_str) {
 
 bool Board::IsMovePseudoLegal(Move move) {
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto piece_type = state_.GetPieceType(from);
-
   const Color us = state_.turn;
-  const bool is_white = us == Color::kWhite;
 
   const BitBoard &our_pieces = state_.Occupied(us);
   if (!our_pieces.IsSet(from) || our_pieces.IsSet(to)) {
     return false;
   }
 
+  const auto piece_type = state_.GetPieceType(from);
   const auto promotion_type = move.GetPromotionType();
   if (piece_type != PieceType::kPawn &&
       promotion_type != PromotionType::kNone) {
@@ -37,6 +35,8 @@ bool Board::IsMovePseudoLegal(Move move) {
   const BitBoard occupied = our_pieces | their_pieces;
 
   if (piece_type == PieceType::kKing) {
+    const bool is_white = us == Color::kWhite;
+
     const int kKingsideCastleDist = -2;
     const int kQueensideCastleDist = 2;
 

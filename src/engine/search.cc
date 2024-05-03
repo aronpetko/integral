@@ -43,7 +43,7 @@ void Search::IterativeDeepening() {
   const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
 
   Move best_move = Move::NullMove();
-  int score = 0;
+  Score score = 0;
 
   for (int depth = 1; depth <= max_search_depth; depth++) {
     sel_depth_ = 0;
@@ -52,16 +52,16 @@ void Search::IterativeDeepening() {
     const int kAspirationWindowDelta = 15;
 
     int window = kAspirationWindowDepth;
-    int alpha = -eval::kInfiniteScore;
-    int beta = eval::kInfiniteScore;
+    int alpha = -kInfiniteScore;
+    int beta = kInfiniteScore;
 
     if (depth >= kAspirationWindowDepth) {
-      alpha = std::max(-eval::kInfiniteScore, score - window);
-      beta = std::min(eval::kInfiniteScore, score + window);
+      alpha = std::max(-kInfiniteScore, score - window);
+      beta = std::min(kInfiniteScore, score + window);
     }
 
     while (true) {
-      const int new_score =
+      const Score new_score =
           PVSearch<NodeType::kPV>(depth, alpha, beta, root_stack);
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
@@ -74,12 +74,12 @@ void Search::IterativeDeepening() {
 
         // We failed low which means we don't have a move to play, so we widen
         // alpha
-        alpha = std::max(-eval::kInfiniteScore, alpha - window);
+        alpha = std::max(-kInfiniteScore, alpha - window);
       } else if (score >= beta) {
         // We failed hard on a pv node, which is abnormal and requires further
         // verification allows the search to explore further without cutting off
         // early
-        beta = std::min(eval::kInfiniteScore, beta + window);
+        beta = std::min(kInfiniteScore, beta + window);
       } else {
         // Quit now, since the score fell within the bounds of the aspiration
         // window
@@ -126,7 +126,7 @@ void Search::IterativeDeepening() {
 template <NodeType node_type>
 int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
   if (board_.IsDraw(stack->ply)) {
-    return eval::kDrawScore;
+    return kDrawScore;
   }
 
   const auto &state = board_.GetState();
@@ -144,8 +144,7 @@ int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
   const auto tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
   // Use the tt entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry.score != kScoreNone &&
-                               tt_entry.CanUseScore(alpha, beta);
+  const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
 
   // Saved scores from non-pv nodes must fall within the current alpha/beta
   // window to allow early cutoff
@@ -168,7 +167,7 @@ int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
   // transposition table
   const int original_alpha = alpha;
 
-  int best_score = static_eval;
+  Score best_score = static_eval;
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
@@ -182,7 +181,7 @@ int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
     board_.MakeMove(move);
-    const int score =
+    const Score score =
         -QuiescentSearch<node_type>(-beta, -alpha, stack->Ahead());
     board_.UndoMove();
 
@@ -249,14 +248,15 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
   if (!in_root) {
     if (board_.IsDraw(stack->ply)) {
-      return eval::kDrawScore;
+      return kDrawScore;
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
     // mate
-    alpha = std::max(alpha, -eval::kMateScore + stack->ply);
-    beta = std::min(beta, eval::kMateScore - stack->ply - 1);
+    alpha = std::max(alpha, -kMateScore + stack->ply);
+    beta = std::min(beta, kMateScore - stack->ply - 1);
 
+    // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
       return alpha;
     }
@@ -269,8 +269,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   const auto tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
   // Use the tt entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry.score != kScoreNone &&
-                               tt_entry.CanUseScore(alpha, beta);
+  const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
 
   // Saved scores from non-pv nodes must fall within the current alpha/beta
   // window to allow early cutoff
@@ -288,7 +287,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon the margin for this comparison is scaled
     // based on how many ply we have left to search
-    if (depth <= 6 && static_eval < eval::kMateScore - kMaxPlyFromRoot) {
+    if (depth <= 6 && static_eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = depth * 75;
       if (static_eval - futility_margin >= beta) {
         return static_eval;
@@ -311,7 +310,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
         const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);
 
         board_.MakeNullMove();
-        const int score = -PVSearch<NodeType::kNonPV>(
+        const Score score = -PVSearch<NodeType::kNonPV>(
             depth - reduction, -beta, -beta + 1, stack->Ahead());
         board_.UndoMove();
 
@@ -319,7 +318,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
         // the opponent still doesn't gain an advantage from the null move, we
         // prune this branch
         if (score >= beta) {
-          return score >= eval::kMateScore - kMaxPlyFromRoot ? beta : score;
+          return score >= kMateScore - kMaxPlyFromRoot ? beta : score;
         }
       }
     }
@@ -338,7 +337,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   List<Move, kMaxMoves> bad_quiets;
 
   int moves_seen = 0;
-  int best_score = kScoreNone;
+  Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
@@ -352,7 +351,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     const bool is_quiet = !move.IsTactical(state);
 
     // Pruning guards
-    if (!in_root && best_score > -eval::kMateScore + kMaxPlyFromRoot) {
+    if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold = 3 + depth * depth;
@@ -395,7 +394,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
     // Principal Variation Search (PVS)
     bool needs_full_search;
-    int score;
+    Score score;
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
@@ -482,7 +481,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
-    return state.InCheck() ? -eval::kMateScore + stack->ply : eval::kDrawScore;
+    return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
   if (best_score != kScoreNone) {
