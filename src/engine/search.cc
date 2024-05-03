@@ -277,18 +277,17 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   }
 
   bool improving = false;
-
-  stack->static_eval = kScoreNone;
   if (!state.InCheck()) {
-    stack->static_eval = (can_use_tt_eval ? tt_entry.score : eval::Evaluate(state));;
+    stack->static_eval =
+        can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
 
-    improving =
-        (stack->ply >= 2 && stack->static_eval > (stack - 2)->static_eval &&
-         (stack - 2)->static_eval != kScoreNone) ||
-        (stack->ply >= 4 && stack->static_eval > (stack - 4)->static_eval &&
-         (stack - 4)->static_eval != kScoreNone);
+    if (stack->ply >= 2 && (stack - 2)->static_eval != kScoreNone) {
+      improving = stack->static_eval > (stack - 2)->static_eval;
+    } else if (stack->ply >= 4 && (stack - 4)->static_eval != kScoreNone) {
+      improving = stack->static_eval > (stack - 4)->static_eval;
+    }
   } else {
-    improving = true;
+    stack->static_eval = kScoreNone;
   }
 
   move_history_.ClearKillers(stack->ply + 1);
