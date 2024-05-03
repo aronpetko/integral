@@ -283,10 +283,12 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   bool improving = false;
   if (!state.InCheck()) {
     improving =
-        (stack->ply >= 2 && stack->static_eval >= (stack - 2)->static_eval &&
+        (stack->ply >= 2 && stack->static_eval > (stack - 2)->static_eval &&
          (stack - 2)->static_eval != kScoreNone) ||
-        (stack->ply >= 4 && stack->static_eval >= (stack - 4)->static_eval &&
+        (stack->ply >= 4 && stack->static_eval > (stack - 4)->static_eval &&
          (stack - 4)->static_eval != kScoreNone);
+  } else {
+    improving = true;
   }
 
   move_history_.ClearKillers(stack->ply + 1);
@@ -296,7 +298,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     // fall below beta anytime soon the margin for this comparison is scaled
     // based on how many ply we have left to search
     if (depth <= 6 && static_eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = (depth - improving) * 75;
+      const int futility_margin = std::max(depth - improving, 0) * 75;
       if (static_eval - futility_margin >= beta) {
         return static_eval;
       }
