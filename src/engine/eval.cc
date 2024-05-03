@@ -162,7 +162,6 @@ int MateIn(int evaluation) {
   } else if (evaluation < 0 && evaluation > -kMateScore) {  // Mate against
     return -(kMateScore + evaluation) / 2;
   }
-
   // not a mate score
   return evaluation;
 }

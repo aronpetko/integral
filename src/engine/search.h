@@ -80,20 +80,12 @@ struct SearchStack {
   SearchStack() : SearchStack(0) {}
 
   // Primary constructor
-  SearchStack(int ply)
+  explicit SearchStack(int ply)
       : ply(ply),
         static_eval(kScoreNone),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
         cont_entry(nullptr) {}
-
-  SearchStack *Ahead(int amount = 1) {
-    return this + amount;
-  }
-
-  SearchStack *Behind(int amount = 1) {
-    return this - amount;
-  }
 };
 
 class Search {

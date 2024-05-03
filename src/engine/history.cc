@@ -35,10 +35,10 @@ int MoveHistory::GetContHistoryScore(Move move,
                                      SearchStack *stack) noexcept {
   // Ensure the continuation history table exists for this move
   if (stack->ply >= plies_ago) {
-    if (stack->Behind(plies_ago)->move) {
+    if ((stack - plies_ago)->move) {
       const auto piece = state_.GetPieceType(move.GetFrom());
       const auto to = move.GetTo();
-      return (*stack->Behind(plies_ago)->cont_entry)[state_.turn][piece][to];
+      return (*(stack - plies_ago)->cont_entry)[state_.turn][piece][to];
     }
   }
 
@@ -98,8 +98,8 @@ void MoveHistory::UpdateContHistory(Move move,
 
     // Ensure the continuation history table exists for this move
     if (stack->ply >= plies_ago) {
-      if (stack->Behind(plies_ago)->move) {
-        int &score = (*stack->Behind(plies_ago)->cont_entry)[turn][piece][to];
+      if ((stack - plies_ago)->move) {
+        int &score = (*(stack - plies_ago)->cont_entry)[turn][piece][to];
         score += ScaleBonus(score, bonus);
       }
     }

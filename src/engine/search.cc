@@ -181,8 +181,7 @@ int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
     board_.MakeMove(move);
-    const Score score =
-        -QuiescentSearch<node_type>(-beta, -alpha, stack->Ahead());
+    const Score score = -QuiescentSearch<node_type>(-beta, -alpha, stack + 1);
     board_.UndoMove();
 
     time_mgmt_.UpdateNodesSearched();
@@ -281,6 +280,15 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
   stack->static_eval = state.InCheck() ? kScoreNone : static_eval;
 
+  bool improving = false;
+  if (!state.InCheck()) {
+    improving =
+        (stack->ply >= 2 && stack->static_eval >= (stack - 2)->static_eval &&
+         (stack - 2)->static_eval != kScoreNone) ||
+        (stack->ply >= 4 && stack->static_eval >= (stack - 4)->static_eval &&
+         (stack - 4)->static_eval != kScoreNone);
+  }
+
   move_history_.ClearKillers(stack->ply + 1);
 
   if (!in_pv_node && !state.InCheck()) {
@@ -288,7 +296,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     // fall below beta anytime soon the margin for this comparison is scaled
     // based on how many ply we have left to search
     if (depth <= 6 && static_eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = depth * 75;
+      const int futility_margin = (depth - improving) * 75;
       if (static_eval - futility_margin >= beta) {
         return static_eval;
       }
@@ -311,7 +319,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
         board_.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
-            depth - reduction, -beta, -beta + 1, stack->Ahead());
+            depth - reduction, -beta, -beta + 1, stack + 1);
         board_.UndoMove();
 
         // If the result from our null window search around beta indicates that
@@ -380,7 +388,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
     // Ensure that the pv only contains moves down this path
     if (in_pv_node) {
-      stack->Ahead()->pv.Clear();
+      (stack + 1)->pv.Clear();
     }
 
     // Set the currently searched move in the stack for continuation history
@@ -409,7 +417,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
-          new_depth - reduction, -alpha - 1, -alpha, stack->Ahead());
+          new_depth - reduction, -alpha - 1, -alpha, (stack + 1));
       needs_full_search = score > alpha && reduction != 0;
     } else {
       // If we didn't perform late move reduction, then we search this move at
@@ -421,14 +429,13 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a pv move hence, we search it with a null window
     if (needs_full_search) {
-      score = -PVSearch<NodeType::kNonPV>(
-          new_depth, -alpha - 1, -alpha, stack->Ahead());
+      score =
+          -PVSearch<NodeType::kNonPV>(new_depth, -alpha - 1, -alpha, stack + 1);
     }
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
-      score =
-          -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack->Ahead());
+      score = -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack + 1);
     }
 
     board_.UndoMove();
@@ -455,7 +462,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
         if (in_pv_node) {
           stack->pv.Clear();
           stack->pv.Push(best_move);
-          stack->pv.CopyOver(stack->Ahead()->pv);
+          stack->pv.CopyOver((stack + 1)->pv);
         }
 
         alpha = score;
