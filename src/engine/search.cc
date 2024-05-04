@@ -126,7 +126,7 @@ void Search::IterativeDeepening() {
 template <NodeType node_type>
 int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
   if (board_.IsDraw(stack->ply)) {
-    return kDrawScore;
+    return 1 - (time_mgmt_.GetNodesSearched() & 2);
   }
 
   const auto &state = board_.GetState();
@@ -247,7 +247,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
   if (!in_root) {
     if (board_.IsDraw(stack->ply)) {
-      return kDrawScore;
+      return 1 - (time_mgmt_.GetNodesSearched() & 2);
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
@@ -276,10 +276,20 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
+  Score eval;
+
   bool improving = false;
   if (!state.InCheck()) {
-    stack->static_eval =
-        can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
+    if (tt_hit) {
+      stack->static_eval = eval =
+          tt_entry.score != kScoreNone ? tt_entry.score : eval::Evaluate(state);
+
+      if (can_use_tt_eval) {
+        eval = transposition_table.CorrectScore(tt_entry.score, stack->ply);
+      }
+    } else {
+      stack->static_eval = eval = eval::Evaluate(state);
+    }
 
     if (stack->ply >= 2 && (stack - 2)->static_eval != kScoreNone) {
       improving = stack->static_eval > (stack - 2)->static_eval;
@@ -287,7 +297,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
   } else {
-    stack->static_eval = kScoreNone;
+    stack->static_eval = eval = kScoreNone;
   }
 
   move_history_.ClearKillers(stack->ply + 1);
@@ -296,16 +306,16 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon the margin for this comparison is scaled
     // based on how many ply we have left to search
-    if (depth <= 6 && stack->static_eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = std::max(depth - improving, 0) * 75;
-      if (stack->static_eval - futility_margin >= beta) {
-        return stack->static_eval;
+    if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
+      const int futility_margin = (depth - improving) * 75;
+      if (eval - futility_margin >= beta) {
+        return eval;
       }
     }
 
     // Null Move Pruning: Forfeit a move to our opponent and prune if we still
     // have the advantage
-    if (!state.move_played.IsNull() && stack->static_eval >= beta) {
+    if (!state.move_played.IsNull() && eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -372,7 +382,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       // there's a low chance to raise alpha
       const int futility_margin = 150 + 100 * depth;
       if (depth <= 8 && !state.InCheck() && is_quiet &&
-          stack->static_eval + futility_margin < alpha) {
+          eval + futility_margin < alpha) {
         continue;
       }
 
