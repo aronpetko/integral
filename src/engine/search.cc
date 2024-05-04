@@ -290,6 +290,12 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     } else {
       stack->static_eval = eval = eval::Evaluate(state);
     }
+
+    if (stack->ply >= 2 && (stack - 2)->static_eval != kScoreNone) {
+      improving = stack->static_eval > (stack - 2)->static_eval;
+    } else if (stack->ply >= 4 && (stack - 4)->static_eval != kScoreNone) {
+      improving = stack->static_eval > (stack - 4)->static_eval;
+    }
   } else {
     stack->static_eval = eval = kScoreNone;
   }
@@ -301,7 +307,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     // fall below beta anytime soon the margin for this comparison is scaled
     // based on how many ply we have left to search
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = (depth - improving) * 75;
+      const int futility_margin = depth * 75;
       if (eval - futility_margin >= beta) {
         return eval;
       }
@@ -367,7 +373,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = 3 + depth * depth;
+      const int lmp_threshold = (3 + depth * depth) / (improving + 1);
       if (is_quiet && moves_seen >= lmp_threshold) {
         continue;
       }
