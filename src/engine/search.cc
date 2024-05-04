@@ -298,6 +298,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     }
   } else {
     stack->static_eval = eval = kScoreNone;
+    improving = true;
   }
 
   move_history_.ClearKillers(stack->ply + 1);
