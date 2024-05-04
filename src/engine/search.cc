@@ -290,15 +290,8 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     } else {
       stack->static_eval = eval = eval::Evaluate(state);
     }
-
-    if (stack->ply >= 2 && (stack - 2)->static_eval != kScoreNone) {
-      improving = stack->static_eval > (stack - 2)->static_eval;
-    } else if (stack->ply >= 4 && (stack - 4)->static_eval != kScoreNone) {
-      improving = stack->static_eval > (stack - 4)->static_eval;
-    }
   } else {
     stack->static_eval = eval = kScoreNone;
-    improving = true;
   }
 
   move_history_.ClearKillers(stack->ply + 1);
