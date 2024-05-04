@@ -126,7 +126,7 @@ void Search::IterativeDeepening() {
 template <NodeType node_type>
 int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
   if (board_.IsDraw(stack->ply)) {
-    return 1 - (time_mgmt_.GetNodesSearched() & 2);
+    return kDrawScore;
   }
 
   const auto &state = board_.GetState();
@@ -247,7 +247,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
   if (!in_root) {
     if (board_.IsDraw(stack->ply)) {
-      return 1 - (time_mgmt_.GetNodesSearched() & 2);
+      return kDrawScore;
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
