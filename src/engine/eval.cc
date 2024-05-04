@@ -289,17 +289,15 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
                  : state.turn == winner;
     }
 
-    if (next_attacker) {
-      // Score represents how many points the other side can gain after this
-      // capture. If initially a knight captured a queen, the other side can
-      // gain 3 - 9 = -6 points. If we flip it and initially a queen captured a
-      // knight, the other side can gain 9 - 3 = 6 points
-      score = -score + 1 + attacker_value;
+    // Score represents how many points the other side can gain after this
+    // capture. If initially a knight captured a queen, the other side can
+    // gain 3 - 9 = -6 points. If we flip it and initially a queen captured a
+    // knight, the other side can gain 9 - 3 = 6 points
+    score = -score + 1 + attacker_value;
 
-      // Quit early if the exchange is lost or neutral
-      if (score <= 0) {
-        break;
-      }
+    // Quit early if the exchange is lost or neutral
+    if (score <= 0) {
+      break;
     }
   }
 

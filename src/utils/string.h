@@ -1,7 +1,12 @@
 #ifndef INTEGRAL_STRING_H
 #define INTEGRAL_STRING_H
 
-static std::vector<std::string> SplitString(const std::string& input, char delimiter) {
+#include <vector>
+#include <string>
+#include <sstream>
+
+static std::vector<std::string> SplitString(const std::string& input,
+                                            char delimiter) {
   std::vector<std::string> result;
   std::string token;
   std::istringstream token_stream(input);
@@ -23,4 +28,8 @@ static std::string RemoveWhitespace(const std::string& input) {
   return output;
 }
 
-#endif // INTEGRAL_STRING_H
+inline std::string_view BoolToString(bool value) {
+  return value ? "true" : "false";
+}
+
+#endif  // INTEGRAL_STRING_H

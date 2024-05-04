@@ -8,7 +8,28 @@
 #include "../tests/tests.h"
 #include "move_gen.h"
 
+#define INT_OPTION(name, value, min, max) options[name] = Option(name, value, min, max)
+#define STRING_OPTION(name, value) options[name] = Option(name, value)
+
 namespace uci {
+
+std::unordered_map<std::string_view, Option> options;
+
+template <typename T>
+Option &GetOption(std::string_view option) {
+  return options[option];
+}
+
+void InitializeOptions() {
+  INT_OPTION("Hash", 64, 0, 1024);
+  INT_OPTION("Threads", 1, 1, 1);
+}
+
+void PrintOptions() {
+  for (const auto &[_, option] : options) {
+    std::cout << option.ToString() << std::endl;
+  }
+}
 
 void Position(Board &board, std::stringstream &input_stream) {
   std::string position_type;
@@ -25,7 +46,8 @@ void Position(Board &board, std::stringstream &input_stream) {
   board.SetFromFen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves");
+  while (input_stream >> dummy && dummy != "moves")
+    ;
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -90,6 +112,9 @@ void Test(Board &board, std::stringstream &input_stream) {
 
 void AcceptCommands(int arg_count, char **args) {
   move_gen::InitializeAttacks();
+
+  InitializeOptions();
+  PrintOptions();
 
   const int kTTMbSize = 64;
   transposition_table.Resize(kTTMbSize);
