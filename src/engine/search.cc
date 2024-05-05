@@ -326,6 +326,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
 
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
+        stack->cont_entry = nullptr;
 
         // Ensure the reduction doesn't give us a depth below 0
         const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);

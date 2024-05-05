@@ -8,27 +8,11 @@
 #include "../tests/tests.h"
 #include "move_gen.h"
 
-#define INT_OPTION(name, value, min, max) options[name] = Option(name, value, min, max)
-#define STRING_OPTION(name, value) options[name] = Option(name, value)
-
 namespace uci {
 
-std::unordered_map<std::string_view, Option> options;
-
-template <typename T>
-Option &GetOption(std::string_view option) {
-  return options[option];
-}
-
 void InitializeOptions() {
-  INT_OPTION("Hash", 64, 0, 1024);
-  INT_OPTION("Threads", 1, 1, 1);
-}
-
-void PrintOptions() {
-  for (const auto &[_, option] : options) {
-    std::cout << option.ToString() << std::endl;
-  }
+  AddOption("Hash", 64, 0, 1024);
+  AddOption("Threads", 1, 1, 1);
 }
 
 void Position(Board &board, std::stringstream &input_stream) {
@@ -114,7 +98,6 @@ void AcceptCommands(int arg_count, char **args) {
   move_gen::InitializeAttacks();
 
   InitializeOptions();
-  PrintOptions();
 
   const int kTTMbSize = 64;
   transposition_table.Resize(kTTMbSize);
@@ -147,13 +130,7 @@ void AcceptCommands(int arg_count, char **args) {
     if (command == "uci") {
       std::cout << std::format("id name {}", kEngineName) << std::endl;
       std::cout << std::format("id author {}", kEngineAuthor) << std::endl;
-
-      // TODO: properly implement options
-      std::cout << "option name Threads type spin default 1 min 1 max 1"
-                << std::endl;
-      std::cout << "option name Hash type spin default 16 min 16 max 16"
-                << std::endl;
-
+      PrintOptions();
       std::cout << "uciok" << std::endl;
     } else if (command == "isready") {
       std::cout << "readyok" << std::endl;
