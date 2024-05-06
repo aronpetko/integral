@@ -70,11 +70,8 @@ class Option {
   }
 
   [[nodiscard]] std::string ToString() const {
-    auto str = std::format("option name {} type {} default {} value {}",
-                           name_,
-                           type_,
-                           default_,
-                           value_);
+    auto str = std::format(
+        "option name {} type {} default {}", name_, type_, default_);
 
     if (type_ == "spin") {
       str += std::format(" min {} max {}", min_, max_);
