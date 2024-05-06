@@ -18,24 +18,9 @@ class Option {
 
   explicit Option(
       std::string_view name,
-      double value,
-      double min,
-      double max,
-      std::function<void(Option &)> callback = [](Option &) {})
-      : name_(name),
-        type_("spin"),
-        default_(std::to_string(value)),
-        min_(min),
-        max_(max),
-        callback_(std::move(callback)) {
-    value_ = default_;
-  }
-
-  explicit Option(
-      std::string_view name,
       int value,
-      double min,
-      double max,
+      int min,
+      int max,
       std::function<void(Option &)> callback = [](Option &) {})
       : name_(name),
         type_("spin"),
@@ -104,7 +89,7 @@ class Option {
   // Values are stored as a string for easy conversion
   std::string value_, default_;
   // Should only be used with spin types
-  double min_, max_;
+  int min_, max_;
   // Function to call when the value is changed
   std::function<void(Option &)> callback_;
 };
@@ -115,26 +100,16 @@ template <typename T>
 inline void AddOption(
     std::string_view name,
     T value,
-    double min,
-    double max,
+    int min,
+    int max,
     std::function<void(Option &)> callback = [](Option &) {});
-
-// Specialization for double (spin option)
-template <>
-inline void AddOption<double>(std::string_view name,
-                              double value,
-                              double min,
-                              double max,
-                              std::function<void(Option &)> callback) {
-  options[name] = Option(name, value, min, max, std::move(callback));
-}
 
 // Specialization for int (spin option)
 template <>
 inline void AddOption<int>(std::string_view name,
                            int value,
-                           double min,
-                           double max,
+                           int min,
+                           int max,
                            std::function<void(Option &)> callback) {
   options[name] = Option(name, value, min, max, std::move(callback));
 }
