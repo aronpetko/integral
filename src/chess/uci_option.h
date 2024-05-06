@@ -2,6 +2,7 @@
 #define INTEGRAL_UCI_OPTION_H
 
 #include <format>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -15,44 +16,72 @@ class Option {
  public:
   Option() : min_(0), max_(0) {}
 
-  explicit Option(std::string_view name, double value, double min, double max)
+  explicit Option(
+      std::string_view name,
+      double value,
+      double min,
+      double max,
+      std::function<void(Option &)> callback = [](Option &) {})
       : name_(name),
         type_("spin"),
         default_(std::to_string(value)),
         min_(min),
-        max_(max) {
+        max_(max),
+        callback_(std::move(callback)) {
     value_ = default_;
   }
 
-  explicit Option(std::string_view name, int value, double min, double max)
+  explicit Option(
+      std::string_view name,
+      int value,
+      double min,
+      double max,
+      std::function<void(Option &)> callback = [](Option &) {})
       : name_(name),
         type_("spin"),
         default_(std::to_string(value)),
         min_(min),
-        max_(max) {
+        max_(max),
+        callback_(std::move(callback)) {
     value_ = default_;
   }
 
-  explicit Option(std::string_view name, bool value)
-      : name_(name), type_("check"), default_(BoolToString(value)) {
+  explicit Option(
+      std::string_view name,
+      bool value,
+      std::function<void(Option &)> callback = [](Option &) {})
+      : name_(name),
+        type_("check"),
+        default_(BoolToString(value)),
+        callback_(std::move(callback)) {
     value_ = default_;
   }
 
-  explicit Option(std::string_view name, std::string_view value)
-      : name_(name), type_("string"), default_(value) {
+  explicit Option(
+      std::string_view name,
+      std::string_view value,
+      std::function<void(Option &)> callback = [](Option &) {})
+      : name_(name),
+        type_("string"),
+        default_(value),
+        callback_(std::move(callback)) {
     value_ = default_;
   }
 
   void SetValue(std::string_view value) {
     value_ = value;
+    callback_(*this);
   }
 
   template <typename T>
   [[nodiscard]] T GetValue() const {
     if constexpr (std::is_integral<T>::value) {
       return T(std::stoi(value_));
+    } else if constexpr (std::is_same<T, bool>::value) {
+      return StringToBool(value_);
+    } else {
+      return T(value_);
     }
-    return T(value_);
   }
 
   [[nodiscard]] std::string ToString() const {
@@ -76,46 +105,68 @@ class Option {
   std::string value_, default_;
   // Should only be used with spin types
   double min_, max_;
+  // Function to call when the value is changed
+  std::function<void(Option &)> callback_;
 };
 
 inline std::unordered_map<std::string_view, Option> options;
 
 template <typename T>
-inline void AddOption(std::string_view name, T value, double min, double max);
+inline void AddOption(
+    std::string_view name,
+    T value,
+    double min,
+    double max,
+    std::function<void(Option &)> callback = [](Option &) {});
 
+// Specialization for double (spin option)
 template <>
 inline void AddOption<double>(std::string_view name,
                               double value,
                               double min,
-                              double max) {
-  options[name] = Option(name, value, min, max);
+                              double max,
+                              std::function<void(Option &)> callback) {
+  options[name] = Option(name, value, min, max, std::move(callback));
 }
 
+// Specialization for int (spin option)
 template <>
 inline void AddOption<int>(std::string_view name,
                            int value,
                            double min,
-                           double max) {
-  options[name] = Option(name, value, min, max);
+                           double max,
+                           std::function<void(Option &)> callback) {
+  options[name] = Option(name, value, min, max, std::move(callback));
 }
 
 template <typename T>
-inline void AddOption(std::string_view name, T value);
+inline void AddOption(
+    std::string_view name,
+    T value,
+    std::function<void(Option &)> callback = [](Option &) {});
 
 // Specialization for boolean (check option)
 template <>
-inline void AddOption<bool>(std::string_view name, bool value) {
-  options[name] = Option(name, value);
+inline void AddOption<bool>(std::string_view name,
+                            bool value,
+                            std::function<void(Option &)> callback) {
+  options[name] = Option(name, value, std::move(callback));
 }
 
 // Specialization for string (string option)
 template <>
-inline void AddOption<std::string_view>(std::string_view name,
-                                        std::string_view value) {
-  options[name] = Option(name, value);
+inline void AddOption<std::string_view>(
+    std::string_view name,
+    std::string_view value,
+    std::function<void(Option &)> callback) {
+  options[name] = Option(name, value, std::move(callback));
 }
 
-inline void PrintOptions() {
+static Option &GetOption(std::string_view option) {
+  return options[option];
+}
+
+static void PrintOptions() {
   for (const auto &[_, option] : options) {
     std::cout << option.ToString() << std::endl;
   }

@@ -1,5 +1,5 @@
-#ifndef INTEGRAL_SRC_LIST_H
-#define INTEGRAL_SRC_LIST_H
+#ifndef INTEGRAL_LIST_H
+#define INTEGRAL_LIST_H
 
 #include <cassert>
 #include <array>
@@ -73,4 +73,4 @@ class List {
   int count_ = 0;
 };
 
-#endif  // INTEGRAL_SRC_LIST_H
+#endif  // INTEGRAL_LIST_H

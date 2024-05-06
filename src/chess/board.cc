@@ -6,7 +6,7 @@
 
 Board::Board() : history_() {}
 
-void Board::SetFromFen(const std::string &fen_str) {
+void Board::SetFromFen(std::string_view fen_str) {
   // Reset history everytime we parse from fen, since they will be re-applied
   // when the moves are made
   history_.Clear();

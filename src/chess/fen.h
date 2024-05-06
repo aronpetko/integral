@@ -33,7 +33,7 @@ const std::unordered_map<PieceType, char> kPieceTypeToChar = {
 
 char GetPieceChar(BoardState &state, Square square);
 
-BoardState StringToBoard(std::string fen_str = kStartFen);
+BoardState StringToBoard(std::string_view fen_str = kStartFen);
 
 std::string BoardToString(BoardState &state);
 

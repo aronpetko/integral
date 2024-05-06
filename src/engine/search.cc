@@ -195,7 +195,7 @@ int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
       if (score > alpha) {
         alpha = score;
         if (alpha >= beta) {
-          // Beta cutoff: The opponent would never allow this position to occur
+          // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         }
       }
@@ -488,7 +488,7 @@ int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
             move_history_.UpdateKillerMove(move, stack->ply);
           }
 
-          // Beta cutoff: The opponent would never allow this position to occur
+          // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         }
       }

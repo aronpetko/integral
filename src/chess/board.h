@@ -216,7 +216,7 @@ class Board {
     return history_.Back();
   }
 
-  void SetFromFen(const std::string &fen_str);
+  void SetFromFen(std::string_view fen_str);
 
   [[nodiscard]] bool IsMovePseudoLegal(Move move);
 

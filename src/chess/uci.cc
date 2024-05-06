@@ -11,7 +11,9 @@
 namespace uci {
 
 void InitializeOptions() {
-  AddOption("Hash", 64, 0, 1024);
+  AddOption("Hash", 64, 0, 1024, [](Option &option) {
+    transposition_table.Resize(option.GetValue<int>());
+  });
   AddOption("Threads", 1, 1, 1);
 }
 
@@ -68,6 +70,7 @@ void Go(Board &board, Search &search, std::stringstream &input_stream) {
       input_stream >> depth;
       tests::Perft(board, depth);
       return;
+    } else if (option == "setoption") {
     }
   }
 
@@ -91,6 +94,23 @@ void Test(Board &board, std::stringstream &input_stream) {
   } else {
     tests::PerftSuite();
     tests::SEESuite();
+  }
+}
+
+void SetOption(std::stringstream &input_stream) {
+  std::string arg;
+  input_stream >> arg;
+
+  if (arg == "name") {
+    std::string name;
+    input_stream >> name;
+
+    input_stream >> arg;
+    if (arg == "value") {
+      std::string value;
+      input_stream >> value;
+      GetOption(name).SetValue(value);
+    }
   }
 }
 
@@ -151,6 +171,8 @@ void AcceptCommands(int arg_count, char **args) {
       int depth = 0;
       input_stream >> depth;
       tests::BenchSuite(board, search, depth);
+    } else if (command == "setoption") {
+      SetOption(input_stream);
     }
   }
 }

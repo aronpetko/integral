@@ -16,11 +16,10 @@ char GetPieceChar(BoardState &state, Square square) {
   return kPieceToChar[state.GetPieceColor(square)][state.GetPieceType(square)];
 }
 
-BoardState StringToBoard(std::string fen_str) {
+BoardState StringToBoard(std::string_view fen_str) {
   BoardState state;
-  auto &pieces = state.piece_bbs;
 
-  std::istringstream stream(fen_str);
+  std::istringstream stream((std::string(fen_str)));
 
   std::string position;
   stream >> position;
