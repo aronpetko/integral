@@ -4,7 +4,7 @@
 #include "move.h"
 #include "move_gen.h"
 
-Board::Board() : history_() {}
+Board::Board() : history_({}) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
   // Reset history everytime we parse from fen, since they will be re-applied
@@ -192,7 +192,6 @@ void Board::MakeMove(Move move) {
 
   // Used for zobrist hashing later
   bool move_is_double_push = false;
-
   if (piece_type == PieceType::kPawn) {
     new_fifty_move_clock = 0;
 

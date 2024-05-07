@@ -124,7 +124,7 @@ void Search::IterativeDeepening() {
 }
 
 template <NodeType node_type>
-int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
+Score Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
   if (board_.IsDraw(stack->ply)) {
     return kDrawScore;
   }
@@ -221,7 +221,7 @@ int Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
 }
 
 template <NodeType node_type>
-int Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
+Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
 

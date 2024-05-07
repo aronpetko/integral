@@ -49,7 +49,6 @@ ContinuationEntry *MoveHistory::GetContEntry(Move move, Color turn) noexcept {
   if (!move) {
     return nullptr;
   }
-
   const auto from = move.GetFrom(), to = move.GetTo();
   return &(*cont_history_)[turn][state_.GetPieceType(from)][to];
 }
@@ -59,10 +58,10 @@ std::array<Move, 2> &MoveHistory::GetKillers(int ply) {
   return killer_moves_[ply];
 }
 void MoveHistory::UpdateKillerMove(Move move, int ply) {
-  if (move == killer_moves_[ply][0]) return;
-
-  killer_moves_[ply][1] = killer_moves_[ply][0];
-  killer_moves_[ply][0] = move;
+  if (move != killer_moves_[ply][0]) {
+    killer_moves_[ply][1] = killer_moves_[ply][0];
+    killer_moves_[ply][0] = move;
+  }
 }
 
 void MoveHistory::UpdateHistory(Move move,
@@ -78,10 +77,8 @@ void MoveHistory::UpdateHistory(Move move,
   // Lower the score of the quiet moves that failed to raise alpha
   const int penalty = -bonus;
   for (int i = 0; i < bad_quiets.Size(); i++) {
-    const auto &bad_quiet = bad_quiets[i];
-
     // Apply a linear dampening to the penalty as the depth increases
-    int &bad_quiet_score = butterfly_history_[turn][MoveIndex(bad_quiet)];
+    int &bad_quiet_score = butterfly_history_[turn][MoveIndex(bad_quiets[i])];
     bad_quiet_score += ScaleBonus(bad_quiet_score, penalty);
   }
 }
@@ -112,11 +109,9 @@ void MoveHistory::UpdateContHistory(Move move,
   // Lower the score of the quiet moves that failed to raise alpha
   const int penalty = -bonus;
   for (int i = 0; i < bad_quiets.Size(); i++) {
-    const auto &bad_quiet = bad_quiets[i];
-
     // Apply a linear dampening to the penalty as the depth increases
-    update_cont_entry(bad_quiet, 1, penalty);
-    update_cont_entry(bad_quiet, 2, penalty);
+    update_cont_entry(bad_quiets[i], 1, penalty);
+    update_cont_entry(bad_quiets[i], 2, penalty);
   }
 }
 

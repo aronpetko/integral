@@ -72,7 +72,6 @@ class Option {
   [[nodiscard]] std::string ToString() const {
     auto str = std::format(
         "option name {} type {} default {}", name_, type_, default_);
-
     if (type_ == "spin") {
       str += std::format(" min {} max {}", min_, max_);
     }
@@ -135,7 +134,7 @@ inline void AddOption<std::string_view>(
 }
 
 static Option &GetOption(std::string_view option) {
-  return options[option];
+  return options[ToLowercase(std::string(option))];
 }
 
 static void PrintOptions() {

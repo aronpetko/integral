@@ -109,10 +109,10 @@ class Search {
   void IterativeDeepening();
 
   template <NodeType node_type>
-  int QuiescentSearch(int alpha, int beta, SearchStack *stack);
+  Score QuiescentSearch(int alpha, int beta, SearchStack *stack);
 
   template <NodeType node_type>
-  int PVSearch(int depth, int alpha, int beta, SearchStack *stack);
+  Score PVSearch(int depth, int alpha, int beta, SearchStack *stack);
 
  private:
   Board &board_;
