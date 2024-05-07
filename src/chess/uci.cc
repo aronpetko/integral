@@ -11,7 +11,7 @@
 namespace uci {
 
 void InitializeOptions() {
-  AddOption("Hash", 64, 0, 1024, [](Option &option) {
+  AddOption("Hash", 64, 1, 1024, [](Option &option) {
     transposition_table.Resize(option.GetValue<int>());
   });
   AddOption("Threads", 1, 1, 1);
