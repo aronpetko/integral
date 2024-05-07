@@ -505,22 +505,20 @@ Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
     return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score != kScoreNone) {
-    auto entry_flag = TranspositionTable::Entry::kExact;
-    if (alpha >= beta) {
-      // Beta cutoff
-      entry_flag = TranspositionTable::Entry::kLowerBound;
-    } else if (alpha <= original_alpha) {
-      // Alpha failed to raise
-      entry_flag = TranspositionTable::Entry::kUpperBound;
-    }
-
-    // Attempt to update the transposition table with the evaluation of this
-    // position
-    TranspositionTable::Entry new_tt_entry(
-        state.zobrist_key, depth, entry_flag, best_score, best_move);
-    transposition_table.Save(state.zobrist_key, new_tt_entry, stack->ply);
+  auto entry_flag = TranspositionTable::Entry::kExact;
+  if (alpha >= beta) {
+    // Beta cutoff
+    entry_flag = TranspositionTable::Entry::kLowerBound;
+  } else if (alpha <= original_alpha) {
+    // Alpha failed to raise
+    entry_flag = TranspositionTable::Entry::kUpperBound;
   }
+
+  // Attempt to update the transposition table with the evaluation of this
+  // position
+  TranspositionTable::Entry new_tt_entry(
+      state.zobrist_key, depth, entry_flag, best_score, best_move);
+  transposition_table.Save(state.zobrist_key, new_tt_entry, stack->ply);
 
   return best_score;
 }
