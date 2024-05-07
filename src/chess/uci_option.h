@@ -4,8 +4,8 @@
 #include <format>
 #include <functional>
 #include <iostream>
+#include <map>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 #include "../utils/string.h"
@@ -90,7 +90,16 @@ class Option {
   std::function<void(Option &)> callback_;
 };
 
-inline std::unordered_map<std::string_view, Option> options;
+struct CaseInsensitive {
+  bool operator()(std::string_view one, std::string_view two) const {
+    return std::lexicographical_compare(
+        one.begin(), one.end(), two.begin(), two.end(), [](char c1, char c2) {
+          return tolower(c1) < tolower(c2);
+        });
+  }
+};
+
+inline std::map<std::string_view, Option, CaseInsensitive> options;
 
 template <typename T>
 inline void AddOption(
@@ -134,7 +143,7 @@ inline void AddOption<std::string_view>(
 }
 
 static Option &GetOption(std::string_view option) {
-  return options[ToLowercase(std::string(option))];
+  return options[option];
 }
 
 static void PrintOptions() {
