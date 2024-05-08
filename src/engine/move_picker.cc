@@ -122,6 +122,13 @@ Move MovePicker::Next() {
   return Move::NullMove();
 }
 
+void MovePicker::SkipQuiets() {
+  if (stage_ == Stage::kQuiets) {
+    stage_ = Stage::kBadTacticals;
+    moves_idx_ = 0;
+  }
+}
+
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
                                 const int &index) {
   int best_move_idx = index;

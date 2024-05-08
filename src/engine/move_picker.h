@@ -27,6 +27,8 @@ class MovePicker {
 
   Move Next();
 
+  void SkipQuiets();
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
 

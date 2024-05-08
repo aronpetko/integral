@@ -378,6 +378,7 @@ Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       // the most promising moves
       const int lmp_threshold = (3 + depth * depth) / (2 - improving);
       if (is_quiet && moves_seen >= lmp_threshold) {
+        move_picker.SkipQuiets();
         continue;
       }
 
@@ -386,6 +387,7 @@ Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       const int futility_margin = 150 + 100 * depth;
       if (depth <= 8 && !state.InCheck() && is_quiet &&
           eval + futility_margin < alpha) {
+        move_picker.SkipQuiets();
         continue;
       }
 
