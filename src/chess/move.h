@@ -26,11 +26,12 @@ class Move {
     SetTo(to);
   }
 
-  constexpr explicit Move(U8 from, U8 to, PromotionType promotion_type) : Move(from, to) {
+  constexpr explicit Move(U8 from, U8 to, PromotionType promotion_type)
+      : Move(from, to) {
     SetPromotionType(promotion_type);
   }
 
-  constexpr bool operator==(const Move& other) const {
+  constexpr bool operator==(const Move &other) const {
     return data_ == other.data_;
   }
 
@@ -84,4 +85,4 @@ class Move {
   U16 data_;
 };
 
-#endif // INTEGRAL_MOVE_H_
+#endif  // INTEGRAL_MOVE_H_

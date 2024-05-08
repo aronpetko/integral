@@ -526,30 +526,4 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
   return move_list;
 }
 
-List<Move, kMaxMoves> filter_moves(List<Move, kMaxMoves> &moves,
-                                   MoveType type,
-                                   Board &board) {
-  if (type == MoveType::kAll) return moves;
-
-  auto &state = board.GetState();
-
-  List<Move, kMaxMoves> filtered;
-  for (int i = 0; i < moves.Size(); i++) {
-    const auto move = moves[i];
-    const bool IsCapture = move.IsCapture(state);
-
-    if (type == MoveType::kCaptures) {
-      if (IsCapture) {
-        filtered.Push(move);
-      }
-    } else if (type == MoveType::kQuiet) {
-      if (!IsCapture && move.GetPromotionType() == PromotionType::kNone) {
-        filtered.Push(move);
-      }
-    }
-  }
-
-  return filtered;
-}
-
 }  // namespace move_gen

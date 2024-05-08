@@ -387,8 +387,8 @@ Score Evaluate(const BoardState &state) {
   const int end_game_phase = kMaxMiddleGamePhase - middle_game_phase;
 
   Score score = (middle_game_score * middle_game_phase +
-               end_game_score * end_game_phase) /
-              kMaxMiddleGamePhase;
+                 end_game_score * end_game_phase) /
+                kMaxMiddleGamePhase;
 
   const int kTempoBonus = 10;
   score += kTempoBonus;

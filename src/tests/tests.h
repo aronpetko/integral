@@ -1,11 +1,12 @@
 #ifndef INTEGRAL_TESTS_H
 #define INTEGRAL_TESTS_H
 
-#include <ranges>
+#include <chrono>
 #include <format>
+#include <ranges>
 #include <sstream>
 #include <vector>
-#include <chrono>
+
 #include "../utils/string.h"
 
 class Board;
@@ -21,6 +22,6 @@ void PerftSuite();
 
 void Perft(Board &board, int depth);
 
-}
+}  // namespace tests
 
-#endif // INTEGRAL_TESTS_H
+#endif  // INTEGRAL_TESTS_H

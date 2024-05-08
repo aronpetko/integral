@@ -10,13 +10,14 @@ Move::operator bool() const {
 
 Move Move::FromStr(const BoardState &state, std::string_view str) {
   const int kMinMoveLen = 4, kMaxMoveLen = 5;
-  if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen) return Move::NullMove();
+  if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)
+    return Move::NullMove();
 
   const int from_rank = str[1] - '1', from_file = str[0] - 'a';
   const int to_rank = str[3] - '1', to_file = str[2] - 'a';
 
-  if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 || from_file < 0 || from_file >= 8 ||
-      to_file < 0 || to_file >= 8)
+  if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 ||
+      from_file < 0 || from_file >= 8 || to_file < 0 || to_file >= 8)
     return Move::NullMove();
   ;
 
@@ -64,7 +65,8 @@ bool Move::IsCapture(const BoardState &state) const {
 
 [[nodiscard]] bool Move::IsUnderPromotion() const {
   const auto promo_type = GetPromotionType();
-  return promo_type != PromotionType::kNone && promo_type != PromotionType::kQueen &&
+  return promo_type != PromotionType::kNone &&
+         promo_type != PromotionType::kQueen &&
          promo_type != PromotionType::kKnight;
 }
 
@@ -74,8 +76,9 @@ std::string Move::ToString() const {
   const auto from_rank = Rank(GetFrom()), from_file = File(GetFrom());
   const auto to_rank = Rank(GetTo()), to_file = File(GetTo());
 
-  std::string res = std::string(1, 'a' + from_file) + std::to_string(from_rank + 1) + std::string(1, 'a' + to_file) +
-                    std::to_string(to_rank + 1);
+  std::string res = std::string(1, 'a' + from_file) +
+                    std::to_string(from_rank + 1) +
+                    std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);
 
   const auto promo_type = GetPromotionType();
   switch (promo_type) {

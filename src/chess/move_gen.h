@@ -32,20 +32,26 @@ BitBoard GetAttackedSquares(const BoardState &state, Color attacker);
 
 BitBoard GetAttackersTo(const BoardState &state, Square square, Color attacker);
 
-BitBoard GetAttackersTo(const BoardState &state, Square square, const BitBoard &occupied, Color attacker);
+BitBoard GetAttackersTo(const BoardState &state,
+                        Square square,
+                        const BitBoard &occupied,
+                        Color attacker);
 
-BitBoard GetSlidingAttackersTo(const BoardState &state, Square square, const BitBoard &occupied, Color attacker);
+BitBoard GetSlidingAttackersTo(const BoardState &state,
+                               Square square,
+                               const BitBoard &occupied,
+                               Color attacker);
 
-// Returns a bitboard with the set bits being sliding attacks between the two squares
+// Returns a bitboard with the set bits being sliding attacks between the two
+// squares
 BitBoard &RayBetween(Square first, Square second);
 
-// Returns a bitboard with the set bits being the ray that the two squares lie on
+// Returns a bitboard with the set bits being the ray that the two squares lie
+// on
 BitBoard &RayIntersecting(Square first, Square second);
 
 List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board);
 
-List<Move, kMaxMoves> FilterMoves(List<Move, kMaxMoves> &moves, MoveType type, Board &board);
+}  // namespace move_gen
 
-} // namespace move_gen
-
-#endif // INTEGRAL_MOVE_GEN_H_
+#endif  // INTEGRAL_MOVE_GEN_H_

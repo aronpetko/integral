@@ -65,7 +65,8 @@ BoardState StringToBoard(std::string_view fen_str) {
   stream >> en_passant;
 
   if (en_passant != "-") {
-    state.en_passant = Square(RankFileToSquare(en_passant[1] - '1', en_passant[0] - 'a'));
+    state.en_passant =
+        Square(RankFileToSquare(en_passant[1] - '1', en_passant[0] - 'a'));
   }
 
   stream >> state.fifty_moves_clock;
@@ -78,7 +79,8 @@ BoardState StringToBoard(std::string_view fen_str) {
 std::string BoardToString(BoardState &state) {
   std::string output;
 
-  // Fen notation starts with black pieces, so we begin at the 8th rank (0-indexed)
+  // Fen notation starts with black pieces, so we begin at the 8th rank
+  // (0-indexed)
   for (int rank = 7; rank >= 0; rank--) {
     int empty = 0;
 
@@ -90,11 +92,9 @@ std::string BoardToString(BoardState &state) {
         empty++;
     }
 
-    if (empty)
-      output.append(std::to_string(empty));
+    if (empty) output.append(std::to_string(empty));
 
-    if (rank)
-      output.push_back('/');
+    if (rank) output.push_back('/');
   }
 
   // Move turn
@@ -124,4 +124,4 @@ std::string BoardToString(BoardState &state) {
   return output;
 }
 
-}
+}  // namespace fen

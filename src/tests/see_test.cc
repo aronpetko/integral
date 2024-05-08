@@ -89,17 +89,25 @@ void SEESuite() {
     const auto test_data = SplitString(see_test, '|');
     board.SetFromFen(test_data[0]);
 
-    const auto move = Move::FromStr(board.GetState(), RemoveWhitespace(test_data[1]));
+    const auto move =
+        Move::FromStr(board.GetState(), RemoveWhitespace(test_data[1]));
     assert(move);
     const bool answer = std::stoi(RemoveWhitespace(test_data[2])) >= 0;
 
-    const bool passed = eval::StaticExchange(move, 0, board.GetState()) == answer;
-    std::cout << std::format("{}\033[0m {}\n", passed ? "\033[32mpassed" : "\033[31mfailed", see_test);
+    const bool passed =
+        eval::StaticExchange(move, 0, board.GetState()) == answer;
+    std::cout << std::format("{}\033[0m {}\n",
+                             passed ? "\033[32mpassed" : "\033[31mfailed",
+                             see_test);
   }
 
-  const auto elapsed =
-      duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count() / 1000.0;
-  std::cout << std::format("test finished in {}ms", static_cast<U64>(elapsed * 1000.0)) << std::endl;
+  const auto elapsed = duration_cast<std::chrono::milliseconds>(
+                           std::chrono::steady_clock::now() - start_time)
+                           .count() /
+                       1000.0;
+  std::cout << std::format("test finished in {}ms",
+                           static_cast<U64>(elapsed * 1000.0))
+            << std::endl;
 }
 
 }  // namespace tests

@@ -1,9 +1,9 @@
 #ifndef INTEGRAL_UCI_H_
 #define INTEGRAL_UCI_H_
 
-#include "uci_option.h"
 #include "board.h"
 #include "fen.h"
+#include "uci_option.h"
 
 class Search;
 

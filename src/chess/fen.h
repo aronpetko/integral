@@ -10,7 +10,8 @@
 
 namespace fen {
 
-const std::string kStartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const std::string kStartFen =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 const std::unordered_map<char, PieceType> kCharToPieceType = {
     {'p', PieceType::kPawn},
@@ -37,6 +38,6 @@ BoardState StringToBoard(std::string_view fen_str = kStartFen);
 
 std::string BoardToString(BoardState &state);
 
-}
+}  // namespace fen
 
-#endif // INTEGRAL_FEN_H_
+#endif  // INTEGRAL_FEN_H_

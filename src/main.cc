@@ -1,4 +1,3 @@
-#include "ascii_logo.h"
 #include "chess/uci.h"
 
 #ifdef WIN32

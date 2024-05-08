@@ -118,7 +118,7 @@ class Search {
   Board &board_;
   TimeManagement time_mgmt_;
   MoveHistory move_history_;
-  std::array<SearchStack, kMaxPlyFromRoot + 1> stack_;
+  std::array<SearchStack, kMaxPlyFromRoot + 4> stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   int sel_depth_;
   std::atomic_bool searching;

@@ -1,11 +1,11 @@
 #ifndef INTEGRAL_LIST_H
 #define INTEGRAL_LIST_H
 
-#include <cassert>
-#include <array>
 #include <algorithm>
+#include <array>
+#include <cassert>
 
-template<class T, std::size_t length>
+template <class T, std::size_t length>
 class List {
  public:
   List() : count_(0) {}
@@ -23,12 +23,12 @@ class List {
     return container_[i];
   }
 
-  inline void Push(const T& object) {
+  inline void Push(const T &object) {
     assert(count_ < length);
     container_[count_++] = object;
   }
 
-  inline void Push(T&& object) {
+  inline void Push(T &&object) {
     assert(count_ < length);
     container_[count_++] = std::move(object);
   }

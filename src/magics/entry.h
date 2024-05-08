@@ -11,6 +11,6 @@ struct MagicEntry {
   int shift;
 };
 
-}
+}  // namespace magics
 
-#endif // INTEGRAL_MAGICS_ENTRY_H_
+#endif  // INTEGRAL_MAGICS_ENTRY_H_
