@@ -183,7 +183,8 @@ void Perft(Board &board, int depth) {
   std::cout << std::format("info nodes {} time {} nps {}",
                            nodes,
                            elapsed.count(),
-                           static_cast<U64>(nodes / elapsed.count() * 1000.0))
+                           static_cast<U64>(nodes * 1000.0 /
+                                            std::max(1LL, elapsed.count())))
             << std::endl;
 }
 

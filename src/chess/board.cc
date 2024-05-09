@@ -233,9 +233,8 @@ void Board::MakeMove(Move move) {
         state_.en_passant = Square::kNoSquare;
       }
     }
-  }
-  // If ep square was set from the previous move, we xor it out
-  else if (state_.en_passant != Square::kNoSquare) {
+  } else if (state_.en_passant != Square::kNoSquare) {
+    // If ep square was set from the previous move, we xor it out
     state_.zobrist_key ^= zobrist::HashEnPassant(state_);
     state_.en_passant = Square::kNoSquare;
   }

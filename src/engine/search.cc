@@ -34,7 +34,7 @@ template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
-  move_history_.Decay();
+  move_history_.ClearKillers();
 
   // The first stack entry is at 4, since search looks in the past 4 plies
   const auto root_stack = &stack_[4];
@@ -100,7 +100,7 @@ void Search::IterativeDeepening() {
       const bool is_mate = eval::IsMateScore(score);
       std::cout << std::format(
                        "info depth {} seldepth {} {} {} nodes {} time {} nps "
-                       "{} PV {}",
+                       "{} pv {}",
                        depth,
                        sel_depth_,
                        is_mate ? "mate" : "cp",
@@ -133,7 +133,7 @@ Score Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
   const auto &state = board_.GetState();
 
   // A principal variation (PV) node is a node that falls between the [alpha,
-  // beta] window and one which most child moves are searched during the pv
+  // beta] window and one which most child moves are searched during the PV
   // search. We attempt to guess which moves will be PV or non-pv nodes and
   // re-search depending on if we were wrong
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
@@ -239,7 +239,7 @@ Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   }
 
   // A principal variation (PV) node is a node that falls between the [alpha,
-  // beta] window and one which most child moves are searched during the pv
+  // beta] window and one which most child moves are searched during the PV
   // search. We attempt to guess which moves will be PV or non-pv nodes and
   // re-search depending on if we were wrong
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
@@ -438,7 +438,7 @@ Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       needs_full_search = score > alpha && reduction != 0;
     } else {
       // If we didn't perform late move reduction, then we search this move at
-      // full depth with a null window search if we don't expect it to be a pv
+      // full depth with a null window search if we don't expect it to be a PV
       // move
       needs_full_search = !in_pv_node || moves_seen >= 1;
     }
@@ -475,7 +475,7 @@ Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
       if (score > alpha) {
         stack->best_move = best_move = move;
 
-        // Only update the PV line if this node was expected to be in the pv
+        // Only update the PV line if this node was expected to be in the PV
         if (in_pv_node) {
           stack->pv.Clear();
           stack->pv.Push(best_move);

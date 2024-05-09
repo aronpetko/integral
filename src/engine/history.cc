@@ -111,7 +111,7 @@ void MoveHistory::UpdateContHistory(Move move,
   }
 }
 
-void MoveHistory::Decay() {
+void MoveHistory::ClearKillers() {
   for (auto &killers : killer_moves_) {
     killers.fill(Move::NullMove());
   }

@@ -42,9 +42,9 @@ class MoveHistory {
                          int depth,
                          SearchStack *stack);
 
-  void Decay();
-
   void Clear();
+
+  void ClearKillers();
 
   void ClearKillers(int ply);
 
