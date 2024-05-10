@@ -99,7 +99,7 @@ void Search::IterativeDeepening() {
     if (searching && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       std::cout << std::format(
-                       "info depth {} seldepth {} {} {} nodes {} time {} nps "
+                       "info depth {} seldepth {} score {} {} nodes {} time {} nps "
                        "{} pv {}",
                        depth,
                        sel_depth_,
