@@ -2,17 +2,17 @@
 
 #include <thread>
 
-TimeManagement::TimeManagement(const TimeManagement::Config &config)
+TimeManagement::TimeManagement(const TimeConfig &config)
     : config_(config),
       current_move_time_(0),
       nodes_searched_(0),
       nodes_spent_table_({}) {}
 
-const TimeManagement::Config &TimeManagement::GetConfig() {
+const TimeConfig &TimeManagement::GetConfig() {
   return config_;
 }
 
-void TimeManagement::SetConfig(const TimeManagement::Config &config) {
+void TimeManagement::SetConfig(const TimeConfig &config) {
   config_ = config;
 }
 
@@ -60,7 +60,7 @@ void TimeManagement::UpdateNodesSpentTable(Move move, const U64 &nodes_spent) {
 bool TimeManagement::TimesUp() const {
   if (times_up_) return true;
   if (config_.depth) return false;
-  const int kElapsedCheckInterval = 2047;
+  constexpr int kElapsedCheckInterval = 2047;
   if (nodes_searched_ & kElapsedCheckInterval)
     return TimeElapsed() >= CalculateHardLimit(config_.turn);
   return false;

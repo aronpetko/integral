@@ -31,7 +31,7 @@ class TranspositionTable {
       return static_cast<U16>(test_key) == key;
     }
 
-    [[nodiscard]] bool CanUseScore(int alpha, int beta) const {
+    [[nodiscard]] bool CanUseScore(Score alpha, Score beta) const {
       return score != kScoreNone &&
              (flag == kUpperBound && score <= alpha ||
               flag == kLowerBound && score >= beta || flag == kExact);

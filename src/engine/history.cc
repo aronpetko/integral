@@ -2,9 +2,9 @@
 
 #include "search.h"
 
-const int kHistoryGravity = 16384;
-const int kHistoryScale = 130;
-const int kHistoryMaxBonus = 1159;
+constexpr int kHistoryGravity = 16384;
+constexpr int kHistoryScale = 130;
+constexpr int kHistoryMaxBonus = 1159;
 
 int HistoryBonus(int depth) {
   return std::min(kHistoryScale * depth, kHistoryMaxBonus);

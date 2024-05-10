@@ -6,8 +6,6 @@
 #include "history.h"
 #include "time_mgmt.h"
 
-const int kMaxSearchDepth = 100;
-
 struct PVLine {
  public:
   PVLine() : moves_({}) {
@@ -92,7 +90,7 @@ class Search {
  public:
   explicit Search(Board &board);
 
-  void Start(TimeManagement::Config &time_config);
+  void Start(TimeConfig &time_config);
 
   void Stop();
 
@@ -103,16 +101,16 @@ class Search {
   void NewGame();
 
  private:
-  void SetTimeConfig(TimeManagement::Config &time_config);
+  void SetTimeConfig(TimeConfig &time_config);
 
   template <SearchType type>
   void IterativeDeepening();
 
   template <NodeType node_type>
-  Score QuiescentSearch(int alpha, int beta, SearchStack *stack);
+  Score QuiescentSearch(Score alpha, Score beta, SearchStack *stack);
 
   template <NodeType node_type>
-  Score PVSearch(int depth, int alpha, int beta, SearchStack *stack);
+  Score PVSearch(int depth, Score alpha, Score beta, SearchStack *stack);
 
  private:
   Board &board_;

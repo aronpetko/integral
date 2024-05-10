@@ -46,7 +46,7 @@ void Position(Board &board, std::stringstream &input_stream) {
 }
 
 void Go(Board &board, Search &search, std::stringstream &input_stream) {
-  TimeManagement::Config time_config{};
+  TimeConfig time_config;
 
   std::string option;
   while (input_stream >> option) {
@@ -69,14 +69,7 @@ void Go(Board &board, Search &search, std::stringstream &input_stream) {
       input_stream >> depth;
       tests::Perft(board, depth);
       return;
-    } else if (option == "setoption") {
     }
-  }
-
-  time_config.turn = board.GetState().turn;
-
-  if (option.empty()) {
-    time_config.depth = kMaxSearchDepth;
   }
 
   search.Start(time_config);
@@ -118,7 +111,7 @@ void AcceptCommands(int arg_count, char **args) {
 
   InitializeOptions();
 
-  const int kTTMbSize = 64;
+  constexpr int kTTMbSize = 64;
   transposition_table.Resize(kTTMbSize);
 
   Board board;

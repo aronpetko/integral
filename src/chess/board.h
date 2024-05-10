@@ -10,8 +10,8 @@
 #include "../utils/zobrist.h"
 #include "bitboard.h"
 
-const int kMaxPlyFromRoot = 256;
-const int kMaxGamePly = 1024;
+constexpr int kMaxPlyFromRoot = 256;
+constexpr int kMaxGamePly = 1024;
 
 class CastleRights {
  public:

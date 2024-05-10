@@ -49,12 +49,12 @@ void Search::IterativeDeepening() {
   for (int depth = 1; depth <= max_search_depth; depth++) {
     sel_depth_ = 0;
 
-    const int kAspirationWindowDepth = 4;
-    const int kAspirationWindowDelta = 15;
+    constexpr int kAspirationWindowDepth = 4;
+    constexpr int kAspirationWindowDelta = 15;
 
     int window = kAspirationWindowDepth;
-    int alpha = -kInfiniteScore;
-    int beta = kInfiniteScore;
+    Score alpha = -kInfiniteScore;
+    Score beta = kInfiniteScore;
 
     if (depth >= kAspirationWindowDepth) {
       alpha = std::max(-kInfiniteScore, score - window);
@@ -81,8 +81,7 @@ void Search::IterativeDeepening() {
         fail_hard_count = 0;
       } else if (score >= beta) {
         // We failed hard on a PV node, which is abnormal and requires further
-        // verification allows the search to explore further without cutting off
-        // early
+        // verification
         beta = std::min(kInfiniteScore, beta + window);
         fail_hard_count = std::min(fail_hard_count + 1, 2);
       } else {
@@ -129,12 +128,13 @@ void Search::IterativeDeepening() {
 }
 
 template <NodeType node_type>
-Score Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
+Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
   if (board_.IsDraw(stack->ply)) {
     return kDrawScore;
   }
 
   const auto &state = board_.GetState();
+  sel_depth_ = std::max(sel_depth_, stack->ply);
 
   // A principal variation (PV) node is a node that falls between the [alpha,
   // beta] window and one which most child moves are searched during the PV
@@ -226,7 +226,7 @@ Score Search::QuiescentSearch(int alpha, int beta, SearchStack *stack) {
 }
 
 template <NodeType node_type>
-Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
+Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
@@ -529,11 +529,11 @@ Score Search::PVSearch(int depth, int alpha, int beta, SearchStack *stack) {
   return best_score;
 }
 
-void Search::SetTimeConfig(TimeManagement::Config &time_config) {
+void Search::SetTimeConfig(TimeConfig &time_config) {
   time_mgmt_ = TimeManagement(time_config);
 }
 
-void Search::Start(TimeManagement::Config &time_config) {
+void Search::Start(TimeConfig &time_config) {
   if (searching) return;
   searching = true;
 
@@ -547,7 +547,7 @@ void Search::Bench(int depth) {
   if (searching) return;
   searching = true;
 
-  TimeManagement::Config time_config{};
+  TimeConfig time_config{};
   time_config.depth = depth;
 
   SetTimeConfig(time_config);

@@ -4,30 +4,30 @@
 #include <array>
 #include <chrono>
 #include <condition_variable>
-#include <thread>
 
 #include "../chess/board.h"
 #include "../utils/types.h"
 
+constexpr int kMaxSearchDepth = 100;
+
+struct TimeConfig {
+  int depth;
+  int move_time;
+  std::array<int, 2> time;
+  std::array<int, 2> increment;
+
+  TimeConfig() : depth(kMaxSearchDepth), move_time(0), time({}), increment({}) {}
+};
+
 class TimeManagement {
  public:
-  struct Config {
-    int depth;
-    int move_time;
-    std::array<int, 2> time;
-    std::array<int, 2> increment;
-    Color turn;
-
-    Config() : depth(0), move_time(0), time({}), increment({}) {}
-  };
-
-  explicit TimeManagement(const Config &config);
+  explicit TimeManagement(const TimeConfig &config);
 
   TimeManagement() = default;
 
-  const Config &GetConfig();
+  const TimeConfig &GetConfig();
 
-  void SetConfig(const Config &config);
+  void SetConfig(const TimeConfig &config);
 
   void Start();
 
@@ -57,7 +57,7 @@ class TimeManagement {
   [[nodiscard]] int NodeTableIndex(Move move) const;
 
  private:
-  Config config_;
+  TimeConfig config_;
   std::chrono::steady_clock::time_point start_time_, end_time_;
   U64 current_move_time_;
   U64 nodes_searched_;

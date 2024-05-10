@@ -5,7 +5,7 @@
 
 namespace eval {
 
-const std::array<Score, PieceType::kNumTypes + 1> kSEEPieceScores = {
+constexpr std::array<Score, PieceType::kNumTypes + 1> kSEEPieceScores = {
     100,  // pawn
     300,  // knight
     300,  // bishop

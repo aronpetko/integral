@@ -37,8 +37,8 @@ bool Board::IsMovePseudoLegal(Move move) {
   if (piece_type == PieceType::kKing) {
     const bool is_white = us == Color::kWhite;
 
-    const int kKingsideCastleDist = -2;
-    const int kQueensideCastleDist = 2;
+    constexpr int kKingsideCastleDist = -2;
+    constexpr int kQueensideCastleDist = 2;
 
     // Note: the only way move_dist is ever 2 or -2 is from
     // move_gen::CastlingMoves allowing it
@@ -103,8 +103,8 @@ bool Board::IsMoveLegal(Move move) {
 
   const auto piece_type = state_.GetPieceType(from);
   if (piece_type == PieceType::kKing) {
-    const int kKingsideCastleDist = -2;
-    const int kQueensideCastleDist = 2;
+    constexpr int kKingsideCastleDist = -2;
+    constexpr int kQueensideCastleDist = 2;
 
     // Note: the only way move_dist is ever 2 or -2 is from
     // move_gen::CastlingMoves allowing it
@@ -212,7 +212,7 @@ void Board::MakeMove(Move move) {
       state_.en_passant = Square::kNoSquare;
     } else {
       // Setting en passant target if pawn moved two squares
-      const int kDoublePushDist = 16;
+      constexpr int kDoublePushDist = 16;
       if ((from ^ to) == kDoublePushDist) {
         // Xor out previous en passant square (if it exists)
         // We will xor in new en passant square after the turn has been updated
@@ -420,8 +420,8 @@ void Board::HandleCastling(Move move) {
             zobrist::HashSquare(rook_to, state_, state_.turn, PieceType::kRook);
       };
 
-      const int kKingsideCastleDist = -2;
-      const int kQueensideCastleDist = 2;
+      constexpr int kKingsideCastleDist = -2;
+      constexpr int kQueensideCastleDist = 2;
 
       // Note: the only way move_dist is ever 2 or -2 is from
       // move_gen::CastlingMoves allowing it
