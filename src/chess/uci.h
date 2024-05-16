@@ -17,7 +17,7 @@ void Position(Board &board, std::stringstream &input_stream);
 
 void Go(Board &board, Search &search, std::stringstream &input_stream);
 
-void Test(Board &board, std::stringstream &input_stream);
+void Test(std::stringstream &input_stream);
 
 void SetOption(std::stringstream &input_stream);
 

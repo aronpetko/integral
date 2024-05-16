@@ -27,9 +27,9 @@ class MoveHistory {
 
   ContinuationEntry *GetContEntry(Move move, Color turn) noexcept;
 
-  std::array<Move, 2> &GetKillers(int ply);
+  std::array<Move, 2> &GetKillers(U32 ply);
 
-  void UpdateKillerMove(Move move, int ply);
+  void UpdateKillerMove(Move move, U32 ply);
 
   void UpdateHistory(Move move,
                      List<Move, kMaxMoves> &bad_quiets,
@@ -46,7 +46,7 @@ class MoveHistory {
 
   void ClearKillers();
 
-  void ClearKillers(int ply);
+  void ClearKillers(U32 ply);
 
  private:
   const BoardState &state_;

@@ -271,7 +271,6 @@ void Board::MakeMove(Move move) {
   }
 
   state_.fifty_moves_clock = new_fifty_move_clock;
-  state_.move_played = move;
 
   CalculateKingThreats();
 }
@@ -297,7 +296,6 @@ void Board::MakeNullMove() {
   state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
 
   state_.fifty_moves_clock++;
-  state_.move_played = Move::NullMove();
 
   CalculateKingThreats();
 }
@@ -339,7 +337,7 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasRepeated(int ply) {
+bool Board::HasRepeated(U32 ply) {
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
 
   bool hit_before_root = false;
@@ -354,7 +352,7 @@ bool Board::HasRepeated(int ply) {
   return false;
 }
 
-bool Board::IsDraw(int ply) {
+bool Board::IsDraw(U32 ply) {
   if (state_.fifty_moves_clock >= 100 || HasRepeated(ply)) {
     return true;
   }

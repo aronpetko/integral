@@ -10,7 +10,7 @@
 Search::Search(Board &board)
     : board_(board),
       sel_depth_(0),
-      searching(false),
+      searching_(false),
       stack_({}),
       move_history_(board_.GetState()) {
   const double kBaseReduction = 0.39;
@@ -34,19 +34,19 @@ template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
+  nodes_searched_ = 0;
+
   move_history_.ClearKillers();
+  time_mgmt_.Start();
 
   // The first stack entry is at 4, since search looks in the past 4 plies
   const auto root_stack = &stack_[4];
   root_stack->best_move = Move::NullMove();
 
-  const int config_depth = time_mgmt_.GetConfig().depth;
-  const int max_search_depth = config_depth ? config_depth : kMaxSearchDepth;
-
   Move best_move = Move::NullMove();
   Score score = 0;
 
-  for (int depth = 1; depth <= max_search_depth; depth++) {
+  for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     sel_depth_ = 0;
 
     constexpr int kAspirationWindowDepth = 4;
@@ -64,8 +64,8 @@ void Search::IterativeDeepening() {
     int fail_hard_count = 0;
 
     while (true) {
-      const Score new_score =
-          PVSearch<NodeType::kPV>(depth - fail_hard_count, alpha, beta, root_stack);
+      const Score new_score = PVSearch<NodeType::kPV>(
+          depth - fail_hard_count, alpha, beta, root_stack);
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
@@ -83,7 +83,12 @@ void Search::IterativeDeepening() {
         // We failed hard on a PV node, which is abnormal and requires further
         // verification
         beta = std::min(kInfiniteScore, beta + window);
-        fail_hard_count = std::min(fail_hard_count + 1, 2);
+
+        // Spend less time searching as we expand the search window, unless
+        // we're absolutely winning
+        if (alpha < 2000) {
+          fail_hard_count = std::min(fail_hard_count + 1, 2);
+        }
       } else {
         // Quit now, since the score fell within the bounds of the aspiration
         // window
@@ -94,28 +99,29 @@ void Search::IterativeDeepening() {
       // hard again
       window += window / 3;
 
-      if (!searching || time_mgmt_.SoftTimesUp(root_stack->best_move)) {
+      if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
         break;
       }
     }
 
-    if (searching && print_info) {
+    if (searching_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
-      std::cout << std::format(
-                       "info depth {} seldepth {} {} {} nodes {} time {} nps "
-                       "{} pv {}",
-                       depth,
-                       sel_depth_,
-                       is_mate ? "mate" : "cp",
-                       is_mate ? eval::MateIn(score) : score,
-                       time_mgmt_.GetNodesSearched(),
-                       time_mgmt_.TimeElapsed(),
-                       time_mgmt_.NodesPerSecond(),
-                       root_stack->pv.ToString())
-                << std::endl;
+      std::cout
+          << std::format(
+                 "info depth {} seldepth {} score {} {} nodes {} time {} nps "
+                 "{} pv {}",
+                 depth,
+                 sel_depth_,
+                 is_mate ? "mate" : "cp",
+                 is_mate ? eval::MateIn(score) : score,
+                 nodes_searched_,
+                 time_mgmt_.TimeElapsed(),
+                 nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
+                 root_stack->pv.ToString())
+          << std::endl;
     }
 
-    if (!searching || time_mgmt_.SoftTimesUp(root_stack->best_move)) {
+    if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
       break;
     }
   }
@@ -185,12 +191,13 @@ Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
 
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
+    nodes_searched_++;
+
     board_.MakeMove(move);
     const Score score = -QuiescentSearch<node_type>(-beta, -alpha, stack + 1);
     board_.UndoMove();
 
-    time_mgmt_.UpdateNodesSearched();
-    if (time_mgmt_.TimesUp()) {
+    if (ShouldQuit()) {
       break;
     }
 
@@ -257,8 +264,8 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
     // mate
-    alpha = std::max(alpha, -kMateScore + stack->ply);
-    beta = std::min(beta, kMateScore - stack->ply - 1);
+    alpha = std::max<Score>(alpha, -kMateScore + stack->ply);
+    beta = std::min<Score>(beta, kMateScore - stack->ply - 1);
 
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
@@ -311,7 +318,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
 
   if (!in_pv_node && !state.InCheck()) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
-    // fall below beta anytime soon the margin for this comparison is scaled
+    // fall below beta anytime soon. The margin for this comparison is scaled
     // based on how many ply we have left to search
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = depth * 75;
@@ -320,9 +327,9 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
       }
     }
 
-    // Null Move Pruning: Forfeit a move to our opponent and prune if we still
+    // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!state.move_played.IsNull() && eval >= beta) {
+    if (!(stack - 1)->move.IsNull() && eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -418,7 +425,9 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
 
     board_.MakeMove(move);
 
-    const U64 prev_nodes_searched = time_mgmt_.GetNodesSearched();
+    nodes_searched_++;
+
+    const U32 prev_nodes_searched = nodes_searched_;
     const int new_depth = depth - 1;
 
     // Principal Variation Search (PVS)
@@ -461,13 +470,12 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
 
     board_.UndoMove();
 
-    time_mgmt_.UpdateNodesSearched();
     if (in_root) {
-      time_mgmt_.UpdateNodesSpentTable(
-          move, time_mgmt_.GetNodesSearched() - prev_nodes_searched);
+      U32 &nodes_spent = time_mgmt_.NodesSpent(move);
+      nodes_spent += nodes_searched_ - prev_nodes_searched;
     }
 
-    if (time_mgmt_.TimesUp()) {
+    if (!searching_ || (time_mgmt_.TimesUp() && (nodes_searched_ & 2047))) {
       break;
     }
 
@@ -533,9 +541,13 @@ void Search::SetTimeConfig(TimeConfig &time_config) {
   time_mgmt_ = TimeManagement(time_config);
 }
 
+bool Search::ShouldQuit() const {
+  return !searching_ || ((nodes_searched_ & 2047) && time_mgmt_.TimesUp());
+}
+
 void Search::Start(TimeConfig &time_config) {
-  if (searching) return;
-  searching = true;
+  if (searching_) return;
+  searching_ = true;
 
   SetTimeConfig(time_config);
   time_mgmt_.Start();
@@ -544,8 +556,8 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 void Search::Bench(int depth) {
-  if (searching) return;
-  searching = true;
+  if (searching_) return;
+  searching_ = true;
 
   TimeConfig time_config{};
   time_config.depth = depth;
@@ -559,7 +571,7 @@ void Search::Bench(int depth) {
 
 void Search::Stop() {
   time_mgmt_.Stop();
-  searching = false;
+  searching_ = false;
 }
 
 const TimeManagement &Search::GetTimeManagement() {
@@ -571,6 +583,11 @@ void Search::NewGame() {
     // First four search stacks are "padding" for histories
     stack_[i] = SearchStack(std::max(0, i - 4));
   }
+
   transposition_table.Clear();
   move_history_.Clear();
+}
+
+U64 Search::GetNodesSearched() const {
+  return nodes_searched_;
 }
