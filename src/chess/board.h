@@ -10,8 +10,8 @@
 #include "../utils/zobrist.h"
 #include "bitboard.h"
 
-const int kMaxPlyFromRoot = 256;
-const int kMaxGamePly = 1024;
+constexpr int kMaxPlyFromRoot = 256;
+constexpr int kMaxGamePly = 1024;
 
 class CastleRights {
  public:
@@ -82,8 +82,7 @@ struct BoardState {
         turn(Color::kWhite),
         checkers(0ULL),
         pinned(0ULL),
-        en_passant(Square::kNoSquare),
-        move_played(Move::NullMove()) {
+        en_passant(Square::kNoSquare) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -199,7 +198,6 @@ struct BoardState {
   Square en_passant;
   CastleRights castle_rights;
   U64 zobrist_key;
-  Move move_played;
   BitBoard checkers;
   BitBoard pinned;
 };
@@ -230,9 +228,9 @@ class Board {
 
   U64 PredictKeyAfter(Move move);
 
-  [[nodiscard]] bool HasRepeated(int ply);
+  [[nodiscard]] bool HasRepeated(U32 ply);
 
-  [[nodiscard]] bool IsDraw(int ply);
+  [[nodiscard]] bool IsDraw(U32 ply);
 
   void PrintPieces();
 

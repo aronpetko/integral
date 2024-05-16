@@ -5,7 +5,7 @@
 #include "bitboard.h"
 #include "board.h"
 
-const int kMaxMoves = 256;
+constexpr int kMaxMoves = 256;
 
 namespace move_gen {
 

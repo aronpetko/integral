@@ -1,96 +1,82 @@
 #include "time_mgmt.h"
 
-#include <thread>
+#include "search.h"
 
-TimeManagement::TimeManagement(const TimeManagement::Config &config)
-    : config_(config),
-      current_move_time_(0),
-      nodes_searched_(0),
-      nodes_spent_table_({}) {}
-
-const TimeManagement::Config &TimeManagement::GetConfig() {
-  return config_;
-}
-
-void TimeManagement::SetConfig(const TimeManagement::Config &config) {
-  config_ = config;
+TimeManagement::TimeManagement(const TimeConfig &config)
+    : config_(config), nodes_spent_({}) {
+  // Determine the structure of the time management from the config
+  if (config.infinite) {
+    type_ = TimeType::kInfinite;
+  } else if (config.depth != 0) {
+    type_ = TimeType::kDepth;
+  } else {
+    type_ = TimeType::kTimed;
+  }
 }
 
 void TimeManagement::Start() {
-  times_up_ = false;
-  start_time_ = std::chrono::steady_clock::now();
-  nodes_spent_table_.fill(0ULL);
+  start_time_ = GetCurrentTime();
+  nodes_spent_.fill(0);
 }
 
 void TimeManagement::Stop() {
-  times_up_ = true;
-  end_time_ = std::chrono::steady_clock::now();
+  end_time_ = GetCurrentTime();
 }
 
-[[nodiscard]] U64 TimeManagement::CalculateHardLimit(Color turn) const {
-  return config_.move_time
-             ? config_.move_time
-             : config_.time[turn] / 20 + config_.increment[turn] / 2;
-}
-
-[[nodiscard]] U64 TimeManagement::CalculateSoftLimit(Color turn,
-                                                     Move pv_move) const {
-  if (config_.move_time) return config_.move_time;
-
-  // Taken from chessatron
-  const auto best_move_fraction =
-      static_cast<double>(nodes_spent_table_[NodeTableIndex(pv_move)]) /
-      std::max(1ULL, nodes_searched_);
-  const auto hard_limit = CalculateHardLimit(turn);
-  return ((hard_limit / 10) * 3) * (1.6 - best_move_fraction) * 1.5;
-}
-
-int TimeManagement::NodeTableIndex(Move move) const {
-  return move.GetData() & (nodes_spent_table_.size() - 1);
-}
-
-void TimeManagement::UpdateNodesSearched() {
-  nodes_searched_++;
-}
-
-void TimeManagement::UpdateNodesSpentTable(Move move, const U64 &nodes_spent) {
-  nodes_spent_table_[NodeTableIndex(move)] += nodes_spent;
+int TimeManagement::GetSearchDepth() const {
+  switch (type_) {
+    case TimeType::kInfinite:
+      return std::numeric_limits<int>::max();
+    case TimeType::kDepth:
+      return config_.depth;
+    case TimeType::kTimed:
+      return kMaxSearchDepth;
+    default:
+      // Silence compiler warnings
+      return 0;
+  }
 }
 
 bool TimeManagement::TimesUp() const {
-  if (times_up_) return true;
-  if (config_.depth) return false;
-  const int kElapsedCheckInterval = 2047;
-  if (nodes_searched_ & kElapsedCheckInterval)
-    return TimeElapsed() >= CalculateHardLimit(config_.turn);
-  return false;
+  if (type_ != TimeType::kTimed) {
+    return false;
+  }
+
+  return TimeElapsed() >= GetHardLimit();
 }
 
-bool TimeManagement::SoftTimesUp(Move pv_move) {
-  if (!pv_move) return TimesUp();
-  return config_.depth == 0 &&
-         TimeElapsed() >= CalculateSoftLimit(config_.turn, pv_move);
+bool TimeManagement::ShouldStop(Move best_move, U32 nodes_searched) {
+  if (type_ != TimeType::kTimed) {
+    return false;
+  }
+
+  if (config_.move_time != 0) {
+    return TimesUp();
+  }
+
+  return TimeElapsed() >= GetSoftLimit(best_move, nodes_searched);
 }
 
-U64 TimeManagement::NodesPerSecond() const {
-  const U64 elapsed =
-      times_up_ && config_.depth == 0
-          ? duration_cast<std::chrono::milliseconds>(end_time_ - start_time_)
-                .count()
-          : TimeElapsed();
-  return nodes_searched_ * 1000.0 / std::max(elapsed, 1ULL);
-}
-
-U64 TimeManagement::GetNodesSearched() const {
-  return nodes_searched_;
-}
-
-U64 TimeManagement::GetMoveTime() const {
-  return current_move_time_;
+U32 &TimeManagement::NodesSpent(Move move) {
+  return nodes_spent_[move.GetData() & 4095];
 }
 
 U64 TimeManagement::TimeElapsed() const {
-  return duration_cast<std::chrono::milliseconds>(
-             std::chrono::steady_clock::now() - start_time_)
-      .count();
+  return std::max<U64>(1, GetCurrentTime() - start_time_);
+}
+
+U64 TimeManagement::GetHardLimit() const {
+  assert(type_ == TimeType::kTimed);
+
+  if (config_.move_time != 0) {
+    return config_.move_time;
+  }
+
+  return config_.time_left / 20 + config_.increment / 2;
+}
+
+U64 TimeManagement::GetSoftLimit(Move best_move, U32 nodes_searched) {
+  const auto percentage_spent =
+      NodesSpent(best_move) / std::max<double>(1, nodes_searched);
+  return GetHardLimit() * 0.3 * (1.6 - percentage_spent) * 1.5;
 }

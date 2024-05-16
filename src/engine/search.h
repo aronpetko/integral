@@ -6,7 +6,7 @@
 #include "history.h"
 #include "time_mgmt.h"
 
-const int kMaxSearchDepth = 100;
+constexpr int kMaxSearchDepth = 100;
 
 struct PVLine {
  public:
@@ -65,7 +65,7 @@ enum class SearchType {
 
 struct SearchStack {
   // Number of ply from root
-  int ply;
+  U32 ply;
   // Evaluation of the position at this ply
   Score static_eval;
   // Best moves following down this ply
@@ -79,8 +79,7 @@ struct SearchStack {
 
   SearchStack() : SearchStack(0) {}
 
-  // Primary constructor
-  explicit SearchStack(int ply)
+  explicit SearchStack(U32 ply)
       : ply(ply),
         static_eval(kScoreNone),
         best_move(Move::NullMove()),
@@ -92,7 +91,7 @@ class Search {
  public:
   explicit Search(Board &board);
 
-  void Start(TimeManagement::Config &time_config);
+  void Start(TimeConfig &time_config);
 
   void Stop();
 
@@ -102,17 +101,21 @@ class Search {
 
   void NewGame();
 
+  U64 GetNodesSearched() const;
+
  private:
-  void SetTimeConfig(TimeManagement::Config &time_config);
+  void SetTimeConfig(TimeConfig &time_config);
+
+  bool ShouldQuit() const;
 
   template <SearchType type>
   void IterativeDeepening();
 
   template <NodeType node_type>
-  Score QuiescentSearch(int alpha, int beta, SearchStack *stack);
+  Score QuiescentSearch(Score alpha, Score beta, SearchStack *stack);
 
   template <NodeType node_type>
-  Score PVSearch(int depth, int alpha, int beta, SearchStack *stack);
+  Score PVSearch(int depth, Score alpha, Score beta, SearchStack *stack);
 
  private:
   Board &board_;
@@ -120,8 +123,9 @@ class Search {
   MoveHistory move_history_;
   std::array<SearchStack, kMaxPlyFromRoot + 4> stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
-  int sel_depth_;
-  std::atomic_bool searching;
+  U32 sel_depth_;
+  U64 nodes_searched_;
+  std::atomic_bool searching_;
 };
 
 #endif  // INTEGRAL_SEARCH_H_

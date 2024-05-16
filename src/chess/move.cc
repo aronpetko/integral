@@ -9,7 +9,7 @@ Move::operator bool() const {
 }
 
 Move Move::FromStr(const BoardState &state, std::string_view str) {
-  const int kMinMoveLen = 4, kMaxMoveLen = 5;
+  constexpr int kMinMoveLen = 4, kMaxMoveLen = 5;
   if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)
     return Move::NullMove();
 

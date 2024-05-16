@@ -88,7 +88,7 @@ enum RankMask : U64 {
   kRank8 = 0xFF00000000000000ULL
 };
 
-[[maybe_unused]] static const std::array<RankMask, 8> kRankMasks = {
+[[maybe_unused]] static constexpr std::array<RankMask, 8> kRankMasks = {
     RankMask::kRank1,
     RankMask::kRank2,
     RankMask::kRank3,
@@ -110,7 +110,7 @@ enum FileMask : U64 {
   kFileA = 0x0101010101010101ULL
 };
 
-static const std::array<FileMask, 8> kFileMasks = {
+static constexpr std::array<FileMask, 8> kFileMasks = {
     FileMask::kFileA,
     FileMask::kFileB,
     FileMask::kFileC,

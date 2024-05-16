@@ -3,7 +3,7 @@
 #include "eval.h"
 #include "search.h"
 
-const int kDepthLenience = 4;
+constexpr int kDepthLenience = 4;
 
 TranspositionTable::TranspositionTable(std::size_t mb_size)
     : table_size_(mb_size), used_entries_(0) {
@@ -27,7 +27,7 @@ void TranspositionTable::Clear() {
   std::ranges::fill(table_, Entry{});
 }
 
-void TranspositionTable::Save(const U64 &key, const Entry &entry, int ply) {
+void TranspositionTable::Save(const U64 &key, const Entry &entry, U32 ply) {
   auto &tt_entry = table_[Index(key)];
   const bool tt_hit = tt_entry.CompareKey(key);
 
@@ -51,8 +51,8 @@ void TranspositionTable::Prefetch(const U64 &key) const {
   __builtin_prefetch(&Probe(key));
 }
 
-int TranspositionTable::CorrectScore(Score score, int ply) const {
-  const int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
+int TranspositionTable::CorrectScore(Score score, U32 ply) const {
+  constexpr int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
   if (score >= kRoughlyMate) {
     score -= ply;
   } else if (score <= -kRoughlyMate) {

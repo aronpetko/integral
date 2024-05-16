@@ -4,65 +4,72 @@
 #include <array>
 #include <chrono>
 #include <condition_variable>
-#include <thread>
+
+using std::chrono::duration_cast;
 
 #include "../chess/board.h"
 #include "../utils/types.h"
 
+struct TimeConfig {
+  bool infinite = false;
+  int depth = 0;
+  int move_time = 0;
+  int time_left = 0;
+  int increment = 0;
+};
+
+using SteadyClock = std::chrono::steady_clock;
+using TimeStamp = U32;
+
+static U64 GetCurrentTime() {
+  const auto duration = SteadyClock::now().time_since_epoch();
+  return duration_cast<std::chrono::milliseconds>(duration).count();
+}
+
+enum class TimeType {
+  // Search in accordance with the time parameters passed
+  kTimed,
+  // Search up to a certain depth
+  kDepth,
+  // Search until a "stop" command
+  kInfinite
+};
+
 class TimeManagement {
  public:
-  struct Config {
-    int depth;
-    int move_time;
-    std::array<int, 2> time;
-    std::array<int, 2> increment;
-    Color turn;
-
-    Config() : depth(0), move_time(0), time({}), increment({}) {}
-  };
-
-  explicit TimeManagement(const Config &config);
+  explicit TimeManagement(const TimeConfig &config);
 
   TimeManagement() = default;
-
-  const Config &GetConfig();
-
-  void SetConfig(const Config &config);
 
   void Start();
 
   void Stop();
 
-  void UpdateNodesSearched();
+  // Determines if the search should end if we are confident that this move
+  // shouldn't be searched further (soft limit)
+  [[nodiscard]] bool ShouldStop(Move best_move, U32 nodes_searched);
 
-  void UpdateNodesSpentTable(Move move, const U64 &nodes_spent);
-
-  [[nodiscard]] bool SoftTimesUp(Move pv_move);
-
+  // Determine if the search must give up now to avoid losing
   [[nodiscard]] bool TimesUp() const;
 
-  [[nodiscard]] U64 NodesPerSecond() const;
+  [[nodiscard]] int GetSearchDepth() const;
 
-  [[nodiscard]] U64 GetNodesSearched() const;
-
-  [[nodiscard]] U64 GetMoveTime() const;
+  [[nodiscard]] U32 &NodesSpent(Move move);
 
   [[nodiscard]] U64 TimeElapsed() const;
 
-  [[nodiscard]] U64 CalculateHardLimit(Color turn) const;
+ private:
+  [[nodiscard]] U64 GetHardLimit() const;
 
-  [[nodiscard]] U64 CalculateSoftLimit(Color turn, Move pv_move) const;
+  [[nodiscard]] U64 GetSoftLimit(Move best_move, U32 nodes_searched);
 
  private:
-  [[nodiscard]] int NodeTableIndex(Move move) const;
-
- private:
-  Config config_;
-  std::chrono::steady_clock::time_point start_time_, end_time_;
-  U64 current_move_time_;
-  U64 nodes_searched_;
-  bool times_up_;
-  std::array<U64, 4096> nodes_spent_table_;
+  TimeConfig config_;
+  TimeType type_;
+  TimeStamp start_time_, end_time_;
+  // Table that keeps track of how many nodes were spent searching a particular
+  // move
+  std::array<U32, 4096> nodes_spent_;
 };
 
 #endif  // INTEGRAL_TIME_MGMT_H_

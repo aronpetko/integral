@@ -2,9 +2,9 @@
 
 #include "search.h"
 
-const int kHistoryGravity = 16384;
-const int kHistoryScale = 130;
-const int kHistoryMaxBonus = 1159;
+constexpr int kHistoryGravity = 16384;
+constexpr int kHistoryScale = 130;
+constexpr int kHistoryMaxBonus = 1159;
 
 int HistoryBonus(int depth) {
   return std::min(kHistoryScale * depth, kHistoryMaxBonus);
@@ -51,11 +51,11 @@ ContinuationEntry *MoveHistory::GetContEntry(Move move, Color turn) noexcept {
   return &(*cont_history_)[turn][state_.GetPieceType(from)][to];
 }
 
-std::array<Move, 2> &MoveHistory::GetKillers(int ply) {
+std::array<Move, 2> &MoveHistory::GetKillers(U32 ply) {
   assert(ply >= 0 && ply < kMaxPlyFromRoot);
   return killer_moves_[ply];
 }
-void MoveHistory::UpdateKillerMove(Move move, int ply) {
+void MoveHistory::UpdateKillerMove(Move move, U32 ply) {
   if (move != killer_moves_[ply][0]) {
     killer_moves_[ply][1] = killer_moves_[ply][0];
     killer_moves_[ply][0] = move;
@@ -123,6 +123,6 @@ void MoveHistory::Clear() {
   cont_history_ = std::make_unique<ContinuationHistory>();
 }
 
-void MoveHistory::ClearKillers(int ply) {
+void MoveHistory::ClearKillers(U32 ply) {
   killer_moves_[ply].fill(Move::NullMove());
 }

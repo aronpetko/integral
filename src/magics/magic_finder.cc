@@ -68,7 +68,7 @@ MagicEntry FindMagic(PieceType piece_type, Square square) {
 
 void GenerateMagics() {
   std::cout
-      << "const std::array<MagicEntry, Square::kSquareCount> kRookMagics = {"
+      << "constexpr std::array<MagicEntry, Square::kSquareCount> kRookMagics = {"
       << std::endl;
 
   for (int square = 0; square < Square::kSquareCount; square++) {
@@ -89,7 +89,7 @@ void GenerateMagics() {
   std::cout << "};" << std::endl << std::endl;
 
   std::cout
-      << "const std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {"
+      << "constexpr std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {"
       << std::endl;
 
   for (int square = 0; square < Square::kSquareCount; square++) {

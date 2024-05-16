@@ -9,7 +9,7 @@
 namespace eval {
 
 // clang-format off
-const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = {{
+constexpr std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = {{
     // Pawns
     {
         0,   0,   0,   0,   0,   0,  0,   0,
@@ -78,7 +78,7 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kMiddleGameTables = 
     }
 }};
 
-const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
+constexpr std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
     // Pawns
     {
         0,   0,   0,   0,   0,   0,   0,   0,
@@ -147,9 +147,9 @@ const std::array<std::array<int, 64>, PieceType::kNumTypes> kEndGameTables = {{
     }
 }};
 
-const std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
-const std::array<int, PieceType::kNumTypes> kMiddleGamePieceValues = {82, 337, 365, 477, 1025, 0};
-const std::array<int, PieceType::kNumTypes> kEndGamePieceValues = {94, 281, 297, 512, 936, 0};
+constexpr std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
+constexpr std::array<int, PieceType::kNumTypes> kMiddleGamePieceValues = {82, 337, 365, 477, 1025, 0};
+constexpr std::array<int, PieceType::kNumTypes> kEndGamePieceValues = {94, 281, 297, 512, 936, 0};
 // clang-format on
 
 bool IsMateScore(int evaluation) {
@@ -381,7 +381,7 @@ Score Evaluate(const BoardState &state) {
   }
 
   // Tapered evaluation
-  const int kMaxMiddleGamePhase = 24;
+  constexpr int kMaxMiddleGamePhase = 24;
 
   middle_game_phase = std::min(middle_game_phase, kMaxMiddleGamePhase);
   const int end_game_phase = kMaxMiddleGamePhase - middle_game_phase;
@@ -390,7 +390,7 @@ Score Evaluate(const BoardState &state) {
                  end_game_score * end_game_phase) /
                 kMaxMiddleGamePhase;
 
-  const int kTempoBonus = 10;
+  constexpr int kTempoBonus = 10;
   score += kTempoBonus;
 
   return score;

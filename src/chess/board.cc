@@ -37,8 +37,8 @@ bool Board::IsMovePseudoLegal(Move move) {
   if (piece_type == PieceType::kKing) {
     const bool is_white = us == Color::kWhite;
 
-    const int kKingsideCastleDist = -2;
-    const int kQueensideCastleDist = 2;
+    constexpr int kKingsideCastleDist = -2;
+    constexpr int kQueensideCastleDist = 2;
 
     // Note: the only way move_dist is ever 2 or -2 is from
     // move_gen::CastlingMoves allowing it
@@ -103,8 +103,8 @@ bool Board::IsMoveLegal(Move move) {
 
   const auto piece_type = state_.GetPieceType(from);
   if (piece_type == PieceType::kKing) {
-    const int kKingsideCastleDist = -2;
-    const int kQueensideCastleDist = 2;
+    constexpr int kKingsideCastleDist = -2;
+    constexpr int kQueensideCastleDist = 2;
 
     // Note: the only way move_dist is ever 2 or -2 is from
     // move_gen::CastlingMoves allowing it
@@ -212,7 +212,7 @@ void Board::MakeMove(Move move) {
       state_.en_passant = Square::kNoSquare;
     } else {
       // Setting en passant target if pawn moved two squares
-      const int kDoublePushDist = 16;
+      constexpr int kDoublePushDist = 16;
       if ((from ^ to) == kDoublePushDist) {
         // Xor out previous en passant square (if it exists)
         // We will xor in new en passant square after the turn has been updated
@@ -271,7 +271,6 @@ void Board::MakeMove(Move move) {
   }
 
   state_.fifty_moves_clock = new_fifty_move_clock;
-  state_.move_played = move;
 
   CalculateKingThreats();
 }
@@ -297,7 +296,6 @@ void Board::MakeNullMove() {
   state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
 
   state_.fifty_moves_clock++;
-  state_.move_played = Move::NullMove();
 
   CalculateKingThreats();
 }
@@ -339,7 +337,7 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasRepeated(int ply) {
+bool Board::HasRepeated(U32 ply) {
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
 
   bool hit_before_root = false;
@@ -354,7 +352,7 @@ bool Board::HasRepeated(int ply) {
   return false;
 }
 
-bool Board::IsDraw(int ply) {
+bool Board::IsDraw(U32 ply) {
   if (state_.fifty_moves_clock >= 100 || HasRepeated(ply)) {
     return true;
   }
@@ -420,8 +418,8 @@ void Board::HandleCastling(Move move) {
             zobrist::HashSquare(rook_to, state_, state_.turn, PieceType::kRook);
       };
 
-      const int kKingsideCastleDist = -2;
-      const int kQueensideCastleDist = 2;
+      constexpr int kKingsideCastleDist = -2;
+      constexpr int kQueensideCastleDist = 2;
 
       // Note: the only way move_dist is ever 2 or -2 is from
       // move_gen::CastlingMoves allowing it

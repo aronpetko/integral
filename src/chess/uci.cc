@@ -32,7 +32,8 @@ void Position(Board &board, std::stringstream &input_stream) {
   board.SetFromFen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves");
+  while (input_stream >> dummy && dummy != "moves")
+    ;
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -46,43 +47,46 @@ void Position(Board &board, std::stringstream &input_stream) {
 }
 
 void Go(Board &board, Search &search, std::stringstream &input_stream) {
-  TimeManagement::Config time_config{};
+  TimeConfig time_config;
+  std::array<int, 2> time_left = {};
+  std::array<int, 2> increment = {};
 
   std::string option;
   while (input_stream >> option) {
     if (option == "wtime") {
-      input_stream >> time_config.time[Color::kWhite];
+      input_stream >> time_left[Color::kWhite];
     } else if (option == "btime") {
-      input_stream >> time_config.time[Color::kBlack];
+      input_stream >> time_left[Color::kBlack];
     } else if (option == "winc") {
-      input_stream >> time_config.increment[Color::kWhite];
+      input_stream >> increment[Color::kWhite];
     } else if (option == "binc") {
-      input_stream >> time_config.increment[Color::kBlack];
+      input_stream >> increment[Color::kBlack];
     } else if (option == "movetime") {
       input_stream >> time_config.move_time;
     } else if (option == "depth") {
       input_stream >> time_config.depth;
     } else if (option == "infinite") {
-      time_config.depth = kMaxSearchDepth;
+      time_config.infinite = true;
     } else if (option == "perft") {
       int depth;
       input_stream >> depth;
       tests::Perft(board, depth);
       return;
-    } else if (option == "setoption") {
     }
   }
 
-  time_config.turn = board.GetState().turn;
-
   if (option.empty()) {
-    time_config.depth = kMaxSearchDepth;
+    time_config.infinite = true;
   }
+
+  const Color turn = board.GetState().turn;
+  time_config.time_left = time_left[turn];
+  time_config.increment = increment[turn];
 
   search.Start(time_config);
 }
 
-void Test(Board &board, std::stringstream &input_stream) {
+void Test(std::stringstream &input_stream) {
   std::string type;
   input_stream >> type;
 
@@ -118,7 +122,7 @@ void AcceptCommands(int arg_count, char **args) {
 
   InitializeOptions();
 
-  const int kTTMbSize = 64;
+  constexpr int kTTMbSize = 64;
   transposition_table.Resize(kTTMbSize);
 
   Board board;
@@ -164,7 +168,7 @@ void AcceptCommands(int arg_count, char **args) {
     } else if (command == "print") {
       board.PrintPieces();
     } else if (command == "test") {
-      Test(board, input_stream);
+      Test(input_stream);
     } else if (command == "bench") {
       // Bench is its own command for OpenBench support
       int depth = 0;
