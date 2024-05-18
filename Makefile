@@ -28,7 +28,7 @@ EXE ?= integral
 # Default target executed when no arguments are given to make.
 default_target: all
 
-.PHONY: default_target all clean distclean
+.PHONY: default_target all clean distclean debug
 
 all: $(BUILD_DIR)/Makefile
 	@echo Building $(EXE)...
@@ -55,6 +55,9 @@ clean:
 distclean:
 	@echo Removing build directory...
 	@$(RMDIR_CMD) $(BUILD_DIR)
+
+debug:
+	@echo CC=$(CC)
 
 # Tell make to run all targets independently
 MAKEFLAGS += --no-print-directory
