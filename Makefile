@@ -1,64 +1,40 @@
-# Detect the operating system
+# Detect OS using Makefile system name
 ifeq ($(OS),Windows_NT)
-    DETECTED_OS := Windows
+	detected_OS := Windows
 else
-    DETECTED_OS := $(shell uname -s)
+	detected_OS := $(shell uname -s)
 endif
 
-# Default compiler settings
-CC=gcc
-CXX=g++
+# Define CMake build directory
+BUILD_DIR := build
 
-# Output binary name
-ifeq ($(DETECTED_OS),Windows)
-    EXE ?= integral.exe
-else
-    EXE ?= integral
-endif
+# Default target executed when no arguments are given to make.
+default_target: all
 
-# Build directory
-BUILD_DIR=build
-
-# Standard targets
-.PHONY: all clean debug
+.PHONY: default_target all clean distclean
 
 all: $(BUILD_DIR)/Makefile
-	@echo Building $(EXE)...
+	@echo Building Integral...
 	@$(MAKE) -C $(BUILD_DIR) all
-	@echo Copying executable...
-ifeq ($(DETECTED_OS),Windows)
-	@copy $(BUILD_DIR)\$(EXE) $(EXE)
-else
-	@cp $(BUILD_DIR)/$(EXE) $(EXE)
-endif
 
-$(BUILD_DIR)/Makefile: $(BUILD_DIR)
-	@echo "Configuring CMake..."
-ifeq ($(DETECTED_OS),Windows)
-	@cmd /c configure_cmake.bat
-else
-	@sh configure_cmake.sh
-endif
-
-$(BUILD_DIR):
-ifeq ($(DETECTED_OS),Windows)
-	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
-else
+$(BUILD_DIR)/Makefile:
+	@echo Creating build directory...
 	@mkdir -p $(BUILD_DIR)
+	@echo Running CMake...
+ifeq ($(detected_OS),Linux)
+	@cd $(BUILD_DIR) && cmake -D CMAKE_C_COMPILER=$(CC) -D CMAKE_CXX_COMPILER=$(CXX) ..
+endif
+ifeq ($(detected_OS),Windows)
+	@cd $(BUILD_DIR) && cmake -G "MinGW Makefiles" -D CMAKE_C_COMPILER=$(CC) -D CMAKE_CXX_COMPILER=$(CXX) ..
 endif
 
 clean:
-ifeq ($(DETECTED_OS),Windows)
-	@if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
-	@if exist $(EXE) del /f /q $(EXE)
-else
-	@rm -rf $(BUILD_DIR)
-	@rm -f $(EXE)
-endif
+	@echo Cleaning...
+	@$(MAKE) -C $(BUILD_DIR) clean
 
-debug:
-	@echo CC=$(CC)
-	@echo CXX=$(CXX)
-	@echo DETECTED_OS=$(DETECTED_OS)
-	@echo BUILD_DIR=$(BUILD_DIR)
-	@echo EXE=$(EXE)
+distclean:
+	@echo Removing build directory...
+	@rm -rf $(BUILD_DIR)
+
+# Tell make to run all targets independently
+MAKEFLAGS += --no-print-directory
