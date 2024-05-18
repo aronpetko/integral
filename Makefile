@@ -11,8 +11,6 @@ else
     EXE ?= integral
 endif
 
-# Output binary name, default is 'integral.exe' or 'integral' based on OS
-
 # Build directory
 BUILD_DIR=build
 
@@ -51,10 +49,6 @@ else
 	@rm -rf $(BUILD_DIR)
 	@rm -f $(EXE)
 endif
-
-debug:
-	@echo Debugging with CC=$(CC)
-	@$(MAKE) all BUILD_TYPE=Debug
 
 x86_64:
 	@echo Building with x86-64 optimizations...
