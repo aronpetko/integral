@@ -180,12 +180,12 @@ void Perft(Board &board, int depth) {
   const auto elapsed = duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_time);
 
-  std::cout << std::format(
-      "info nodes {} time {} nps {}",
-      nodes,
-      elapsed.count(),
-      static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed.count(), 1)));
-  << std::endl;
+  std::cout << std::format("info nodes {} time {} nps {}",
+                           nodes,
+                           elapsed.count(),
+                           static_cast<U64>(nodes * 1000 /
+                                            std::max<U64>(elapsed.count(), 1)))
+            << std::endl;
 }
 
 void PerftSuite() {
