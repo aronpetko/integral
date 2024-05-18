@@ -65,7 +65,7 @@ enum class SearchType {
 
 struct SearchStack {
   // Number of ply from root
-  U32 ply;
+  U16 ply;
   // Evaluation of the position at this ply
   Score static_eval;
   // Best moves following down this ply
@@ -79,7 +79,7 @@ struct SearchStack {
 
   SearchStack() : SearchStack(0) {}
 
-  explicit SearchStack(U32 ply)
+  explicit SearchStack(U16 ply)
       : ply(ply),
         static_eval(kScoreNone),
         best_move(Move::NullMove()),
@@ -123,7 +123,7 @@ class Search {
   MoveHistory move_history_;
   std::array<SearchStack, kMaxPlyFromRoot + 4> stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
-  U32 sel_depth_;
+  U16 sel_depth_;
   U64 nodes_searched_;
   std::atomic_bool searching_;
 };

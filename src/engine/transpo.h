@@ -52,13 +52,13 @@ class TranspositionTable {
 
   void Clear();
 
-  void Save(const U64 &key, const Entry &entry, U32 ply);
+  void Save(const U64 &key, const Entry &entry, U16 ply);
 
   void Prefetch(const U64 &key) const;
 
   [[nodiscard]] const Entry &Probe(const U64 &key) const;
 
-  [[nodiscard]] int CorrectScore(Score score, U32 ply) const;
+  [[nodiscard]] int CorrectScore(Score score, U16 ply) const;
 
   [[nodiscard]] U64 Index(const U64 &key) const;
 

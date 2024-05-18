@@ -337,7 +337,7 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasRepeated(U32 ply) {
+bool Board::HasRepeated(U16 ply) {
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
 
   bool hit_before_root = false;
@@ -352,7 +352,7 @@ bool Board::HasRepeated(U32 ply) {
   return false;
 }
 
-bool Board::IsDraw(U32 ply) {
+bool Board::IsDraw(U16 ply) {
   if (state_.fifty_moves_clock >= 100 || HasRepeated(ply)) {
     return true;
   }

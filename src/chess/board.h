@@ -228,9 +228,9 @@ class Board {
 
   U64 PredictKeyAfter(Move move);
 
-  [[nodiscard]] bool HasRepeated(U32 ply);
+  [[nodiscard]] bool HasRepeated(U16 ply);
 
-  [[nodiscard]] bool IsDraw(U32 ply);
+  [[nodiscard]] bool IsDraw(U16 ply);
 
   void PrintPieces();
 

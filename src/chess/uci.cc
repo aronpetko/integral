@@ -11,7 +11,7 @@
 namespace uci {
 
 void InitializeOptions() {
-  AddOption("Hash", 64, 1, 1024, [](Option &option) {
+  AddOption("Hash", 64, 1, 1048576, [](Option &option) {
     transposition_table.Resize(option.GetValue<int>());
   });
   AddOption("Threads", 1, 1, 1);
@@ -32,8 +32,7 @@ void Position(Board &board, std::stringstream &input_stream) {
   board.SetFromFen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves")
-    ;
+  while (input_stream >> dummy && dummy != "moves");
 
   std::string move_input;
   while (input_stream >> move_input) {

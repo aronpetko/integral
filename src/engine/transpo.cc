@@ -3,6 +3,8 @@
 #include "eval.h"
 #include "search.h"
 
+// When saving a TT entry, we usually want to prefer newer entries only if
+// they've been searched deeper. This lenience allows a maximum of four
 constexpr int kDepthLenience = 4;
 
 TranspositionTable::TranspositionTable(std::size_t mb_size)
@@ -27,7 +29,7 @@ void TranspositionTable::Clear() {
   std::ranges::fill(table_, Entry{});
 }
 
-void TranspositionTable::Save(const U64 &key, const Entry &entry, U32 ply) {
+void TranspositionTable::Save(const U64 &key, const Entry &entry, U16 ply) {
   auto &tt_entry = table_[Index(key)];
   const bool tt_hit = tt_entry.CompareKey(key);
 
@@ -51,7 +53,7 @@ void TranspositionTable::Prefetch(const U64 &key) const {
   __builtin_prefetch(&Probe(key));
 }
 
-int TranspositionTable::CorrectScore(Score score, U32 ply) const {
+int TranspositionTable::CorrectScore(Score score, U16 ply) const {
   constexpr int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
   if (score >= kRoughlyMate) {
     score -= ply;
