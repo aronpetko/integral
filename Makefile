@@ -16,11 +16,15 @@ endif
 # Build directory
 BUILD_DIR=build
 
+# CMake build option
+CMAKE_BUILD_OPTION ?= Release
+BUILD_TYPE ?=
+
 # Standard targets
-.PHONY: all clean debug
+.PHONY: all clean debug build_x86_64 build_x86_64_modern build_x86_64_bmi2
 
 all: $(BUILD_DIR)
-	@echo Building $(EXE)...
+	@echo Building $(EXE) with $(BUILD_TYPE)...
 	@$(MAKE) -C $(BUILD_DIR) all
 ifeq ($(detected_OS),Windows)
 	@echo Copying executable...
@@ -36,8 +40,8 @@ ifeq ($(detected_OS),Windows)
 else
 	@mkdir -p $(BUILD_DIR)
 endif
-	@echo Configuring CMake...
-	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) ..
+	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE)...
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -D$(BUILD_TYPE)=ON ..
 
 clean:
 ifeq ($(detected_OS),Windows)
@@ -49,4 +53,21 @@ else
 endif
 
 debug:
-	@echo CC=$(CC)
+	@echo Debugging with CC=$(CC)
+	@$(MAKE) all BUILD_TYPE=Debug
+
+x86_64:
+	@echo Building with x86-64 optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_X86_64
+
+x86_64_modern:
+	@echo Building with x86-64 modern optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_MODERN
+
+x86_64_bmi2:
+	@echo Building with x86-64 bmi2 optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_BMI2
+
+native:
+	@echo Building with native optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_NATIVE

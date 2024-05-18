@@ -78,7 +78,8 @@ Move MovePicker::Next() {
 
     if (search_stack_) {
       const auto first_killer = move_history_.GetKillers(search_stack_->ply)[0];
-      if (first_killer && board_.IsMovePseudoLegal(first_killer)) {
+      if (first_killer && first_killer != tt_move_ &&
+          board_.IsMovePseudoLegal(first_killer)) {
         return first_killer;
       }
     }
@@ -90,7 +91,8 @@ Move MovePicker::Next() {
     if (search_stack_) {
       const auto second_killer =
           move_history_.GetKillers(search_stack_->ply)[1];
-      if (second_killer && board_.IsMovePseudoLegal(second_killer)) {
+      if (second_killer && second_killer != tt_move_ &&
+          board_.IsMovePseudoLegal(second_killer)) {
         return second_killer;
       }
     }
