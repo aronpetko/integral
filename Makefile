@@ -19,7 +19,7 @@ endif
 BUILD_DIR := build
 
 # Default compiler settings
-CC ?= gcc
+CC = gcc
 CXX ?= g++
 
 # Output binary name, default is 'Integral'
