@@ -22,7 +22,7 @@ BUILD_DIR=build
 # Standard targets
 .PHONY: all clean debug
 
-all: $(BUILD_DIR)
+all: $(BUILD_DIR)/Makefile
 	@echo Building $(EXE)...
 	@$(MAKE) -C $(BUILD_DIR) all
 	@echo Copying executable...
@@ -32,14 +32,26 @@ else
 	@cp $(BUILD_DIR)/$(EXE) $(EXE)
 endif
 
+$(BUILD_DIR)/Makefile: $(BUILD_DIR)
+	@echo "Configuring CMake..."
+	@if [ -f CMakeLists.txt ]; then \
+		echo "CMakeLists.txt found"; \
+	else \
+		echo "Error: CMakeLists.txt not found"; \
+		exit 1; \
+	fi
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) ..
+	@if [ ! -f $(BUILD_DIR)/Makefile ]; then \
+		echo "Error: Makefile not generated in $(BUILD_DIR)"; \
+		exit 1; \
+	fi
+
 $(BUILD_DIR):
 ifeq ($(DETECTED_OS),Windows)
 	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
 else
 	@mkdir -p $(BUILD_DIR)
 endif
-	@echo Configuring CMake...
-	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) ..
 
 clean:
 ifeq ($(DETECTED_OS),Windows)
@@ -52,4 +64,7 @@ endif
 
 debug:
 	@echo CC=$(CC)
+	@echo CXX=$(CXX)
 	@echo DETECTED_OS=$(DETECTED_OS)
+	@echo BUILD_DIR=$(BUILD_DIR)
+	@echo EXE=$(EXE)
