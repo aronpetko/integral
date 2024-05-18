@@ -1,5 +1,5 @@
 # !/bin/sh
-if [ -f ../CMakeLists.txt ]; then
+if [ -f CMakeLists.txt ]; then
     echo "CMakeLists.txt found"
 else
     echo "Error: CMakeLists.txt not found"
