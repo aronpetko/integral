@@ -31,7 +31,7 @@ To compile Integral, enter the following commands in a terminal:
 ```shell
 git clone https://github.com/aronpetko/integral
 cd integral
-make
+make [native|x86_64_modern|x86_64|]
 ```
 
 ## Rating
