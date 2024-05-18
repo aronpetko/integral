@@ -8,6 +8,10 @@ endif
 # Define CMake build directory
 BUILD_DIR := build
 
+# Default compiler settings
+CC ?= gcc
+CXX ?= g++
+
 # Default target executed when no arguments are given to make.
 default_target: all
 
