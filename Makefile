@@ -16,10 +16,10 @@ BUILD_DIR=build
 
 # CMake build option
 CMAKE_BUILD_OPTION ?= Release
-BUILD_TYPE ?=
+BUILD_TYPE ?= BUILD_NATIVE
 
 # Standard targets
-.PHONY: all clean debug build_x86_64 build_x86_64_modern build_x86_64_bmi2
+.PHONY: all clean debug build_x86_64 build_x86_64_modern build_x86_64_bmi2 native
 
 all: $(BUILD_DIR)
 	@echo Building $(EXE) with $(BUILD_TYPE)...
