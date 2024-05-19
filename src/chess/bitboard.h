@@ -170,16 +170,16 @@ class BitBoard {
     return (bitboard_ >> square) & 1;
   }
 
-  [[nodiscard]] constexpr inline U8 GetLSB() const {
+  [[nodiscard]] constexpr inline U8 GetLsb() const {
     return std::countr_zero(bitboard_);
   }
 
-  [[nodiscard]] constexpr inline U8 GetMSB() const {
+  [[nodiscard]] constexpr inline U8 GetMsb() const {
     return 63 - std::countl_zero(bitboard_);
   }
 
   constexpr inline U8 PopLsb() {
-    const U8 lsb_pos = GetLSB();
+    const U8 lsb_pos = GetLsb();
     bitboard_ &= bitboard_ - 1;
     return lsb_pos;
   }

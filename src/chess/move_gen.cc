@@ -373,7 +373,7 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
   if (state.checkers) {
     // Only king moves are legal if there's multiple pieces checking the king
     if (state.checkers.MoreThanOne()) {
-      const auto king_square = Square(state.King(state.turn).GetLSB());
+      const auto king_square = Square(state.King(state.turn).GetLsb());
 
       auto possible_moves = KingMoves(king_square, state) & targets;
       while (possible_moves) {
@@ -515,7 +515,7 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
   }
 
   BitBoard king = state.King(state.turn);
-  const auto king_square = Square(king.GetLSB());
+  const auto king_square = Square(king.GetLsb());
 
   auto possible_moves = KingMoves(king_square, state) & targets;
   while (possible_moves) {

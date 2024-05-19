@@ -99,7 +99,7 @@ bool Board::IsMoveLegal(Move move) {
   const auto to = Square(move.GetTo());
 
   const BitBoard king_mask = state_.King(us);
-  const auto king_square = Square(king_mask.GetLSB());
+  const auto king_square = Square(king_mask.GetLsb());
 
   const auto piece_type = state_.GetPieceType(from);
   if (piece_type == PieceType::kKing) {
@@ -160,7 +160,7 @@ bool Board::IsMoveLegal(Move move) {
 
   // Only legal move left is to either take the piece that's causing check or
   // block its path
-  const auto checking_piece = Square(state_.checkers.GetLSB());
+  const auto checking_piece = Square(state_.checkers.GetLsb());
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
@@ -511,7 +511,7 @@ void Board::CalculateKingThreats() {
   const BitBoard our_pieces = state_.Occupied(us);
   const BitBoard their_pieces = state_.Occupied(them);
 
-  const auto king_square = Square(state_.King(us).GetLSB());
+  const auto king_square = Square(state_.King(us).GetLsb());
 
   // Calculate the pieces that are attacking the king
   state_.checkers =

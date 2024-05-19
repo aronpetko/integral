@@ -89,31 +89,31 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
     if ((next_attacker = our_attackers & pawns)) {
       attacker_value = kSEEPieceScores[PieceType::kPawn];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were diagonal xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & knights)) {
       attacker_value = kSEEPieceScores[PieceType::kKnight];
-      occupied ^= BitBoard::FromSquare(next_attacker.GetLSB());
+      occupied ^= BitBoard::FromSquare(next_attacker.GetLsb());
     } else if ((next_attacker = our_attackers & bishops)) {
       attacker_value = kSEEPieceScores[PieceType::kBishop];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & rooks)) {
       attacker_value = kSEEPieceScores[PieceType::kRook];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::RookMoves(to, occupied);
       all_attackers |= rook_attacks & (rooks | queens);
     } else if ((next_attacker = our_attackers & queens)) {
       attacker_value = kSEEPieceScores[PieceType::kQueen];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::RookMoves(to, occupied);
@@ -144,8 +144,73 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
 constexpr std::array kPieceValues = {100, 300, 305, 500, 900};
 
-int EvaluateMaterial(const BoardState &state) {
-  int material = 0;
+// clang-format off
+constexpr std::array<std::array<Score, Square::kSquareCount>, PieceType::kNumTypes> kPieceSquareTables = {{
+  { // Pawns
+    0,   0,  0,  0,  0,  0,  0,  0,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    10, 10, 20, 30, 30, 20, 10, 10,
+    5,  5, 10, 25, 25, 10,  5,  5,
+    0,  0,  0, 20, 20,  0,  0,  0,
+    5, -5,-10,  0,  0,-10, -5,  5,
+    5, 10, 10,-20,-20, 10, 10,  5,
+    0,  0,  0,  0,  0,  0,  0,  0
+  },
+  { // Knights
+    -50,-40,-30,-30,-30,-30,-40,-50,
+    -40,-20,  0,  0,  0,  0,-20,-40,
+    -30,  0, 10, 15, 15, 10,  0,-30,
+    -30,  5, 15, 20, 20, 15,  5,-30,
+    -30,  0, 15, 20, 20, 15,  0,-30,
+    -30,  5, 10, 15, 15, 10,  5,-30,
+    -40,-20,  0,  5,  5,  0,-20,-40,
+    -50,-40,-30,-30,-30,-30,-40,-50,
+  }, // Bishops
+  {
+    -20,-10,-10,-10,-10,-10,-10,-20,
+    -10,  0,  0,  0,  0,  0,  0,-10,
+    -10,  0,  5, 10, 10,  5,  0,-10,
+    -10,  5,  5, 10, 10,  5,  5,-10,
+    -10,  0, 10, 10, 10, 10,  0,-10,
+    -10, 10, 10, 10, 10, 10, 10,-10,
+    -10,  5,  0,  0,  0,  0,  5,-10,
+    -20,-10,-10,-10,-10,-10,-10,-20,
+  },
+  { // Rooks
+     0,  0,  0,  0,  0,  0,  0,  0,
+     5, 10, 10, 10, 10, 10, 10,  5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+     0,  0,  0,  5,  5,  0,  0,  0
+  },
+  { // Queens
+    -20,-10,-10, -5, -5,-10,-10,-20,
+    -10,  0,  0,  0,  0,  0,  0,-10,
+    -10,  0,  5,  5,  5,  5,  0,-10,
+    -5,   0,  5,  5,  5,  5,  0, -5,
+     0,   0,  5,  5,  5,  5,  0, -5,
+    -10,  5,  5,  5,  5,  5,  0,-10,
+    -10,  0,  5,  0,  0,  0,  0,-10,
+    -20,-10,-10, -5, -5,-10,-10,-20
+  },
+  { // King
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -20,-30,-30,-40,-40,-30,-30,-20,
+    -10,-20,-20,-20,-20,-20,-20,-10,
+     20, 20,  0,  0,  0,  0, 20, 20,
+     20, 30, 10,  0,  0, 10, 30, 20
+  },
+}};
+// clang-format on
+
+Score EvaluateMaterial(const BoardState &state) {
+  Score material = 0;
 
   const Color us = state.turn, them = FlipColor(us);
 
@@ -178,9 +243,31 @@ int EvaluateMaterial(const BoardState &state) {
   return material;
 }
 
+Score EvaluatePieceSquares(const BoardState &state) {
+  const Color us = state.turn, them = FlipColor(us);
+
+  Score score = 0;
+
+  BitBoard our_pieces = state.Occupied(us);
+  while (our_pieces) {
+    const auto square = Square(our_pieces.PopLsb());
+    const auto piece_type = state.GetPieceType(square);
+    score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
+  }
+
+  BitBoard their_pieces = state.Occupied(them);
+  while (their_pieces) {
+    const auto square = Square(their_pieces.PopLsb());
+    const auto piece_type = state.GetPieceType(square);
+    score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
+  }
+
+  return score;
+}
+
 Score Evaluate(const BoardState &state) {
-  const int kTempoBonus = 10;
-  return EvaluateMaterial(state) + kTempoBonus;
+  constexpr Score kTempoBonus = 10;
+  return EvaluateMaterial(state) + EvaluatePieceSquares(state) + kTempoBonus;
 }
 
 }  // namespace eval
