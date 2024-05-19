@@ -61,33 +61,33 @@ void Search::IterativeDeepening() {
       beta = std::min(kInfiniteScore, score + window);
     }
 
-    int fail_hard_count = 0;
+    int fail_high_count = 0;
 
     while (true) {
       const Score new_score = PVSearch<NodeType::kPV>(
-          depth - fail_hard_count, alpha, beta, root_stack);
+          depth - fail_high_count, alpha, beta, root_stack);
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
       }
 
       if (score <= alpha) {
-        // Narrow beta to increase the chance of a fail hard
+        // Narrow beta to increase the chance of a fail high
         beta = (alpha + beta) / 2;
 
         // We failed low which means we don't have a move to play, so we widen
         // alpha
         alpha = std::max(-kInfiniteScore, alpha - window);
-        fail_hard_count = 0;
+        fail_high_count = 0;
       } else if (score >= beta) {
-        // We failed hard on a PV node, which is abnormal and requires further
+        // We failed high on a PV node, which is abnormal and requires further
         // verification
         beta = std::min(kInfiniteScore, beta + window);
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
         if (alpha < 2000) {
-          fail_hard_count = std::min(fail_hard_count + 1, 2);
+          fail_high_count = std::min(fail_high_count + 1, 2);
         }
       } else {
         // Quit now, since the score fell within the bounds of the aspiration
@@ -96,7 +96,7 @@ void Search::IterativeDeepening() {
       }
 
       // Widen the aspiration window for the next iteration if we fail low or
-      // hard again
+      // high again
       window += window / 3;
 
       if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
