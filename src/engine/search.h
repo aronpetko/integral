@@ -101,12 +101,12 @@ class Search {
 
   void NewGame();
 
-  U64 GetNodesSearched() const;
+  [[nodiscard]] U64 GetNodesSearched() const;
 
  private:
   void SetTimeConfig(TimeConfig &time_config);
 
-  bool ShouldQuit() const;
+  [[nodiscard]] bool ShouldQuit() const;
 
   template <SearchType type>
   void IterativeDeepening();

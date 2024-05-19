@@ -553,7 +553,7 @@ void Search::Bench(int depth) {
   if (searching_) return;
   searching_ = true;
 
-  TimeConfig time_config{};
+  TimeConfig time_config;
   time_config.depth = depth;
 
   SetTimeConfig(time_config);
