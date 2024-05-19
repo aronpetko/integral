@@ -179,7 +179,8 @@ int EvaluateMaterial(const BoardState &state) {
 }
 
 Score Evaluate(const BoardState &state) {
-  return EvaluateMaterial(state);
+  const int kTempoBonus = 10;
+  return EvaluateMaterial(state) + kTempoBonus;
 }
 
 }  // namespace eval
