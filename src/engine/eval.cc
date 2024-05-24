@@ -207,11 +207,14 @@ constexpr std::array<std::array<Score, Square::kSquareCount>, PieceType::kNumTyp
      20, 30, 10,  0,  0, 10, 30, 20
   },
 }};
+
+constexpr std::array<Score, 9> kKnightMobility = {5, 23, 29, 36, 40, 48, 48, 51};
+constexpr std::array<Score, 15> kRookMobility = {-10, -5, 0, 5, 5, 10, 13, 18, 25, 34, 38, 42, 47, 50, 55};
+constexpr std::array<Score, 14> kBishopMobility = {3, 12, 21, 23, 31, 39, 46, 50, 50, 53, 56, 60, 59, 92};
 // clang-format on
 
 Score EvaluateMaterial(const BoardState &state) {
-  Score material = 0;
-
+  Score score = 0;
   const Color us = state.turn, them = FlipColor(us);
 
   const BitBoard our_pieces = state.Occupied(us);
@@ -234,19 +237,18 @@ Score EvaluateMaterial(const BoardState &state) {
   const int queen_count =
       (queens & our_pieces).PopCount() - (queens & their_pieces).PopCount();
 
-  material += kPieceValues[PieceType::kPawn] * pawn_count;
-  material += kPieceValues[PieceType::kKnight] * knight_count;
-  material += kPieceValues[PieceType::kBishop] * bishop_count;
-  material += kPieceValues[PieceType::kRook] * rook_count;
-  material += kPieceValues[PieceType::kQueen] * queen_count;
+  score += kPieceValues[PieceType::kPawn] * pawn_count;
+  score += kPieceValues[PieceType::kKnight] * knight_count;
+  score += kPieceValues[PieceType::kBishop] * bishop_count;
+  score += kPieceValues[PieceType::kRook] * rook_count;
+  score += kPieceValues[PieceType::kQueen] * queen_count;
 
-  return material;
+  return score;
 }
 
 Score EvaluatePieceSquares(const BoardState &state) {
-  const Color us = state.turn, them = FlipColor(us);
-
   Score score = 0;
+  const Color us = state.turn, them = FlipColor(us);
 
   BitBoard our_pieces = state.Occupied(us);
   while (our_pieces) {
@@ -265,9 +267,68 @@ Score EvaluatePieceSquares(const BoardState &state) {
   return score;
 }
 
+Score EvaluateKnights(const BoardState &state) {
+  Score score = 0;
+  const Color us = state.turn, them = FlipColor(us);
+
+  BitBoard our_knights = state.Knights(us);
+  while (our_knights) {
+    const auto square = Square(our_knights.PopLsb());
+    score += kKnightMobility[move_gen::KnightMoves(square).PopCount()];
+  }
+
+  BitBoard their_knights = state.Knights(them);
+  while (their_knights) {
+    const auto square = Square(their_knights.PopLsb());
+    score -= kKnightMobility[move_gen::KnightMoves(square).PopCount()];
+  }
+
+  return score;
+}
+
+Score EvaluateRooks(const BoardState &state) {
+  Score score = 0;
+  const Color us = state.turn, them = FlipColor(us);
+
+  BitBoard our_rooks = state.Rooks(us);
+  while (our_rooks) {
+    const auto square = Square(our_rooks.PopLsb());
+    score += kRookMobility[move_gen::KnightMoves(square).PopCount()];
+  }
+
+  BitBoard their_rooks = state.Rooks(them);
+  while (their_rooks) {
+    const auto square = Square(their_rooks.PopLsb());
+    score -= kRookMobility[move_gen::KnightMoves(square).PopCount()];
+  }
+
+  return score;
+}
+
+Score EvaluateBishops(const BoardState &state) {
+  Score score = 0;
+  const Color us = state.turn, them = FlipColor(us);
+
+  BitBoard our_bishops = state.Bishops(us);
+  while (our_bishops) {
+    const auto square = Square(our_bishops.PopLsb());
+    score += kBishopMobility[move_gen::KnightMoves(square).PopCount()];
+  }
+
+  BitBoard their_bishops = state.Bishops(them);
+  while (their_bishops) {
+    const auto square = Square(their_bishops.PopLsb());
+    score -= kBishopMobility[move_gen::KnightMoves(square).PopCount()];
+  }
+
+  return score;
+}
+
 Score Evaluate(const BoardState &state) {
   constexpr Score kTempoBonus = 10;
-  return EvaluateMaterial(state) + EvaluatePieceSquares(state) + kTempoBonus;
+  return EvaluateMaterial(state) + EvaluatePieceSquares(state) +
+         EvaluateKnights(state) + EvaluateRooks(state) +
+         EvaluateBishops(state) + kTempoBonus;
 }
 
 }  // namespace eval
