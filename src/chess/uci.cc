@@ -175,6 +175,8 @@ void AcceptCommands(int arg_count, char **args) {
       tests::BenchSuite(board, search, depth);
     } else if (command == "setoption") {
       SetOption(input_stream);
+    } else if (command == "eval" || command == "evaluate") {
+      std::cout << eval::Evaluate(board.GetState()) << std::endl;
     }
   }
 }

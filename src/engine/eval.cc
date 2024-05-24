@@ -270,17 +270,21 @@ Score EvaluatePieceSquares(const BoardState &state) {
 Score EvaluateKnights(const BoardState &state) {
   Score score = 0;
   const Color us = state.turn, them = FlipColor(us);
+  const BitBoard our_pieces = state.Occupied(us),
+                 their_pieces = state.Occupied(them);
 
   BitBoard our_knights = state.Knights(us);
   while (our_knights) {
     const auto square = Square(our_knights.PopLsb());
-    score += kKnightMobility[move_gen::KnightMoves(square).PopCount()];
+    const auto moves = move_gen::KnightMoves(square) & ~our_pieces;
+    score += kKnightMobility[moves.PopCount()];
   }
 
   BitBoard their_knights = state.Knights(them);
   while (their_knights) {
     const auto square = Square(their_knights.PopLsb());
-    score -= kKnightMobility[move_gen::KnightMoves(square).PopCount()];
+    const auto moves = move_gen::KnightMoves(square) & ~their_pieces;
+    score -= kKnightMobility[moves.PopCount()];
   }
 
   return score;
@@ -289,18 +293,22 @@ Score EvaluateKnights(const BoardState &state) {
 Score EvaluateRooks(const BoardState &state) {
   Score score = 0;
   const Color us = state.turn, them = FlipColor(us);
-  const BitBoard occupied = state.Occupied();
+  const BitBoard our_pieces = state.Occupied(us),
+                 their_pieces = state.Occupied(them),
+                 occupied = our_pieces | their_pieces;
 
   BitBoard our_rooks = state.Rooks(us);
   while (our_rooks) {
     const auto square = Square(our_rooks.PopLsb());
-    score += kRookMobility[move_gen::RookMoves(square, occupied).PopCount()];
+    const auto moves = move_gen::RookMoves(square, occupied) & ~our_pieces;
+    score += kRookMobility[moves.PopCount()];
   }
 
   BitBoard their_rooks = state.Rooks(them);
   while (their_rooks) {
     const auto square = Square(their_rooks.PopLsb());
-    score -= kRookMobility[move_gen::RookMoves(square, occupied).PopCount()];
+    const auto moves = move_gen::RookMoves(square, occupied) & ~their_pieces;
+    score -= kRookMobility[moves.PopCount()];
   }
 
   return score;
@@ -309,18 +317,22 @@ Score EvaluateRooks(const BoardState &state) {
 Score EvaluateBishops(const BoardState &state) {
   Score score = 0;
   const Color us = state.turn, them = FlipColor(us);
-  const BitBoard occupied = state.Occupied();
+  const BitBoard our_pieces = state.Occupied(us),
+                 their_pieces = state.Occupied(them),
+                 occupied = our_pieces | their_pieces;
 
   BitBoard our_bishops = state.Bishops(us);
   while (our_bishops) {
     const auto square = Square(our_bishops.PopLsb());
-    score += kBishopMobility[move_gen::BishopMoves(square, occupied).PopCount()];
+    const auto moves = move_gen::BishopMoves(square, occupied) & ~our_pieces;
+    score += kBishopMobility[moves.PopCount()];
   }
 
   BitBoard their_bishops = state.Bishops(them);
   while (their_bishops) {
     const auto square = Square(their_bishops.PopLsb());
-    score -= kBishopMobility[move_gen::BishopMoves(square, occupied).PopCount()];
+    const auto moves = move_gen::BishopMoves(square, occupied) & ~their_pieces;
+    score -= kBishopMobility[moves.PopCount()];
   }
 
   return score;

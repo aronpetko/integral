@@ -20,9 +20,9 @@ static bool IsMateScore(int evaluation) {
 }
 
 static int MateIn(int evaluation) {
-  if (evaluation > 0 && evaluation < kMateScore) {  // Mate in favor
+  if (evaluation > 0 && evaluation <= kMateScore) {  // Mate in favor
     return (kMateScore - evaluation + 1) / 2;
-  } else if (evaluation < 0 && evaluation > -kMateScore) {  // Mate against
+  } else if (evaluation < 0 && evaluation >= -kMateScore) {  // Mate against
     return -(kMateScore + evaluation) / 2;
   }
   // not a mate score
