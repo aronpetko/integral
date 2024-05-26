@@ -57,8 +57,8 @@ void Search::IterativeDeepening() {
     Score beta = kInfiniteScore;
 
     if (depth >= kAspirationWindowDepth) {
-      alpha = std::max(-kInfiniteScore, score - window);
-      beta = std::min(kInfiniteScore, score + window);
+      alpha = std::max<Score>(-kInfiniteScore, score - window);
+      beta = std::min<Score>(kInfiniteScore, score + window);
     }
 
     int fail_high_count = 0;
@@ -77,12 +77,12 @@ void Search::IterativeDeepening() {
 
         // We failed low which means we don't have a move to play, so we widen
         // alpha
-        alpha = std::max(-kInfiniteScore, alpha - window);
+        alpha = std::max<Score>(-kInfiniteScore, alpha - window);
         fail_high_count = 0;
       } else if (score >= beta) {
         // We failed high on a PV node, which is abnormal and requires further
         // verification
-        beta = std::min(kInfiniteScore, beta + window);
+        beta = std::min<Score>(kInfiniteScore, beta + window);
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
@@ -161,7 +161,7 @@ Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
     return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
-  const int static_eval =
+  const Score static_eval =
       can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
 
   // Early beta cutoff

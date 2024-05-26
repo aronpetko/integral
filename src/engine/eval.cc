@@ -142,79 +142,104 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   return state.turn == winner;
 }
 
-constexpr std::array kPieceValues = {100, 300, 305, 500, 900};
-
 // clang-format off
-constexpr std::array<std::array<Score, Square::kSquareCount>, PieceType::kNumTypes> kPieceSquareTables = {{
+constexpr std::array<ScorePair, PieceType::kNumTypes> kPieceValues = {
+    PAIR(100, 110),  // Pawn
+    PAIR(300, 280),  // Knight
+    PAIR(305, 295),  // Bishop
+    PAIR(500, 520),  // Rook
+    PAIR(900, 880),  // Queen
+    PAIR(0, 0)       // King
+};
+
+using PieceSquareTable = std::array<std::array<ScorePair, Square::kSquareCount>,
+                                    PieceType::kNumTypes>;
+
+constexpr PieceSquareTable kPieceSquareTables = {{
   { // Pawns
-    0,   0,  0,  0,  0,  0,  0,  0,
-    50, 50, 50, 50, 50, 50, 50, 50,
-    10, 10, 20, 30, 30, 20, 10, 10,
-    5,  5, 10, 25, 25, 10,  5,  5,
-    0,  0,  0, 20, 20,  0,  0,  0,
-    5, -5,-10,  0,  0,-10, -5,  5,
-    5, 10, 10,-20,-20, 10, 10,  5,
-    0,  0,  0,  0,  0,  0,  0,  0
+    PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0),
+    PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50),
+    PAIR(10, 20), PAIR(10, 20), PAIR(20, 30), PAIR(30, 40), PAIR(30, 40), PAIR(20, 30), PAIR(10, 20), PAIR(10, 20),
+    PAIR(5, 10), PAIR(5, 15), PAIR(10, 25), PAIR(25, 35), PAIR(25, 35), PAIR(10, 25), PAIR(5, 15), PAIR(5, 10),
+    PAIR(0, 5), PAIR(0, 10), PAIR(0, 20), PAIR(20, 30), PAIR(20, 30), PAIR(0, 20), PAIR(0, 10), PAIR(0, 5),
+    PAIR(5, 0), PAIR(-5, 5), PAIR(-10, 10), PAIR(0, 20), PAIR(0, 20), PAIR(-10, 10), PAIR(-5, 5), PAIR(5, 0),
+    PAIR(5, 5), PAIR(10, 10), PAIR(10, 10), PAIR(-20, -5), PAIR(-20, -5), PAIR(10, 10), PAIR(10, 10), PAIR(5, 5),
+    PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0)
   },
   { // Knights
-    -50,-40,-30,-30,-30,-30,-40,-50,
-    -40,-20,  0,  0,  0,  0,-20,-40,
-    -30,  0, 10, 15, 15, 10,  0,-30,
-    -30,  5, 15, 20, 20, 15,  5,-30,
-    -30,  0, 15, 20, 20, 15,  0,-30,
-    -30,  5, 10, 15, 15, 10,  5,-30,
-    -40,-20,  0,  5,  5,  0,-20,-40,
-    -50,-40,-30,-30,-30,-30,-40,-50,
+     PAIR(-50, -50), PAIR(-40, -40), PAIR(-30, -30), PAIR(-30, -30), PAIR(-30, -30), PAIR(-30, -30), PAIR(-40, -40), PAIR(-50, -50),
+     PAIR(-40, -40), PAIR(-20, -20), PAIR(0, 5), PAIR(0, 5), PAIR(0, 5), PAIR(0, 5), PAIR(-20, -20), PAIR(-40, -40),
+     PAIR(-30, -30), PAIR(0, 5), PAIR(10, 20), PAIR(15, 25), PAIR(15, 25), PAIR(10, 20), PAIR(0, 5), PAIR(-30, -30),
+     PAIR(-30, -30), PAIR(5, 10), PAIR(15, 25), PAIR(20, 30), PAIR(20, 30), PAIR(15, 25), PAIR(5, 10), PAIR(-30, -30),
+     PAIR(-30, -30), PAIR(0, 5), PAIR(15, 25), PAIR(20, 30), PAIR(20, 30), PAIR(15, 25), PAIR(0, 5), PAIR(-30, -30),
+     PAIR(-30, -30), PAIR(5, 10), PAIR(10, 20), PAIR(15, 25), PAIR(15, 25), PAIR(10, 20), PAIR(5, 10), PAIR(-30, -30),
+     PAIR(-40, -40), PAIR(-20, -20), PAIR(0, 5), PAIR(5, 10), PAIR(5, 10), PAIR(0, 5), PAIR(-20, -20), PAIR(-40, -40),
+     PAIR(-50, -50), PAIR(-40, -40), PAIR(-30, -30), PAIR(-30, -30), PAIR(-30, -30), PAIR(-30, -30), PAIR(-40, -40), PAIR(-50, -50)
   }, // Bishops
   {
-    -20,-10,-10,-10,-10,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5, 10, 10,  5,  0,-10,
-    -10,  5,  5, 10, 10,  5,  5,-10,
-    -10,  0, 10, 10, 10, 10,  0,-10,
-    -10, 10, 10, 10, 10, 10, 10,-10,
-    -10,  5,  0,  0,  0,  0,  5,-10,
-    -20,-10,-10,-10,-10,-10,-10,-20,
+     PAIR(-20, -20), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-20, -20),
+     PAIR(-10, -10), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(-10, -10),
+     PAIR(-10, -10), PAIR(0, 5), PAIR(5, 10), PAIR(10, 15), PAIR(10, 15), PAIR(5, 10), PAIR(0, 5), PAIR(-10, -10),
+     PAIR(-10, -10), PAIR(5, 10), PAIR(5, 15), PAIR(10, 25), PAIR(10, 25), PAIR(5, 15), PAIR(5, 10), PAIR(-10, -10),
+     PAIR(-10, -10), PAIR(0, 5), PAIR(10, 15), PAIR(10, 25), PAIR(10, 25), PAIR(10, 15), PAIR(0, 5), PAIR(-10, -10),
+     PAIR(-10, -10), PAIR(10, 10), PAIR(10, 15), PAIR(10, 15), PAIR(10, 15), PAIR(10, 15), PAIR(10, 10), PAIR(-10, -10),
+     PAIR(-10, -10), PAIR(5, 0), PAIR(0, 5), PAIR(0, 10), PAIR(0, 10), PAIR(0, 5), PAIR(5, 0), PAIR(-10, -10),
+     PAIR(-20, -20), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-10, -10), PAIR(-20, -20)
   },
   { // Rooks
-     0,  0,  0,  0,  0,  0,  0,  0,
-     5, 10, 10, 10, 10, 10, 10,  5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-     0,  0,  0,  5,  5,  0,  0,  0
+     PAIR(0, 10), PAIR(0, 15), PAIR(0, 15), PAIR(0, 20), PAIR(0, 20), PAIR(0, 15), PAIR(0, 10), PAIR(0, 5),
+     PAIR(5, 5), PAIR(10, 10), PAIR(10, 10), PAIR(10, 15), PAIR(10, 15), PAIR(10, 10), PAIR(10, 5), PAIR(5, 0),
+     PAIR(-5, 5), PAIR(0, 10), PAIR(0, 10), PAIR(0, 10), PAIR(0, 10), PAIR(0, 10), PAIR(0, 5), PAIR(-5, 0),
+     PAIR(-5, 0), PAIR(0, 5), PAIR(0, 10), PAIR(0, 10), PAIR(0, 10), PAIR(0, 5), PAIR(0, 0), PAIR(-5, -5),
+     PAIR(-5, -5), PAIR(0, 0), PAIR(0, 5), PAIR(0, 5), PAIR(0, 5), PAIR(0, 0), PAIR(-5, -5), PAIR(-5, -10),
+     PAIR(-5, -10), PAIR(0, -5), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, -5), PAIR(-5, -10), PAIR(-5, -15),
+     PAIR(-5, -15), PAIR(0, -10), PAIR(0, -5), PAIR(0, 0), PAIR(0, 0), PAIR(0, -5), PAIR(-5, -10), PAIR(-5, -20),
+     PAIR(0, -20), PAIR(0, -15), PAIR(0, -10), PAIR(5, -5), PAIR(5, -5), PAIR(0, -10), PAIR(0, -15), PAIR(0, -20)
   },
   { // Queens
-    -20,-10,-10, -5, -5,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5,  5,  5,  5,  0,-10,
-    -5,   0,  5,  5,  5,  5,  0, -5,
-     0,   0,  5,  5,  5,  5,  0, -5,
-    -10,  5,  5,  5,  5,  5,  0,-10,
-    -10,  0,  5,  0,  0,  0,  0,-10,
-    -20,-10,-10, -5, -5,-10,-10,-20
+     PAIR(-20, -20), PAIR(-10, -10), PAIR(-10, -10), PAIR(-5, -5), PAIR(-5, -5), PAIR(-10, -10), PAIR(-10, -10), PAIR(-20, -20),
+     PAIR(-10, -10), PAIR(0, 5), PAIR(0, 5), PAIR(0, 5), PAIR(0, 5), PAIR(0, 5), PAIR(0, 5), PAIR(-10, -10),
+     PAIR(-10, -5), PAIR(0, 10), PAIR(5, 10), PAIR(5, 10), PAIR(5, 10), PAIR(5, 10), PAIR(0, 10), PAIR(-10, -5),
+     PAIR(-5, 0), PAIR(0, 10), PAIR(5, 15), PAIR(5, 20), PAIR(5, 20), PAIR(5, 15), PAIR(0, 10), PAIR(-5, 0),
+     PAIR(0, 5), PAIR(0, 15), PAIR(5, 20), PAIR(5, 25), PAIR(5, 25), PAIR(5, 20), PAIR(0, 15), PAIR(-5, 5),
+     PAIR(-10, -5), PAIR(5, 10), PAIR(5, 20), PAIR(5, 20), PAIR(5, 20), PAIR(5, 20), PAIR(0, 10), PAIR(-10, -5),
+     PAIR(-10, -10), PAIR(0, 5), PAIR(0, 10), PAIR(0, 10), PAIR(0, 10), PAIR(0, 10), PAIR(0, 5), PAIR(-10, -10),
+     PAIR(-20, -20), PAIR(-10, -10), PAIR(-10, -5), PAIR(-5, 0), PAIR(-5, 0), PAIR(-10, -5), PAIR(-10, -10), PAIR(-20, -20)
   },
   { // King
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -20,-30,-30,-40,-40,-30,-30,-20,
-    -10,-20,-20,-20,-20,-20,-20,-10,
-     20, 20,  0,  0,  0,  0, 20, 20,
-     20, 30, 10,  0,  0, 10, 30, 20
+     PAIR(-30, 30), PAIR(-40, 40), PAIR(-40, 40), PAIR(-50, 50), PAIR(-50, 50), PAIR(-40, 40), PAIR(-40, 40), PAIR(-30, 30),
+     PAIR(-30, 20), PAIR(-40, 20), PAIR(-40, 30), PAIR(-50, 40), PAIR(-50, 40), PAIR(-40, 30), PAIR(-40, 20), PAIR(-30, 20),
+     PAIR(-30, 10), PAIR(-40, 10), PAIR(-40, 20), PAIR(-50, 30), PAIR(-50, 30), PAIR(-40, 20), PAIR(-40, 10), PAIR(-30, 10),
+     PAIR(-30, 0), PAIR(-40, 5), PAIR(-40, 15), PAIR(-50, 30), PAIR(-50, 30), PAIR(-40, 15), PAIR(-40, 5), PAIR(-30, 0),
+     PAIR(-20, -10), PAIR(-30, 0), PAIR(-30, 10), PAIR(-40, 20), PAIR(-40, 20), PAIR(-30, 10), PAIR(-30, 0), PAIR(-20, -10),
+     PAIR(-10, -20), PAIR(-20, -5), PAIR(-20, 5), PAIR(-20, 10), PAIR(-20, 10), PAIR(-20, 5), PAIR(-20, -5), PAIR(-10, -20),
+     PAIR(20, -30), PAIR(20, -10), PAIR(0, -10), PAIR(0, 0), PAIR(0, 0), PAIR(0, -10), PAIR(20, -10), PAIR(20, -30),
+     PAIR(20, -50), PAIR(30, -30), PAIR(10, -30), PAIR(0, -20), PAIR(0, -20), PAIR(10, -30), PAIR(30, -30), PAIR(20, -50)
   },
 }};
 
-constexpr std::array<Score, 9> kKnightMobility = {5, 23, 29, 36, 40, 48, 48, 51};
-constexpr std::array<Score, 15> kRookMobility = {-10, -5, 0, 5, 5, 10, 13, 18, 25, 34, 38, 42, 47, 50, 55};
-constexpr std::array<Score, 14> kBishopMobility = {3, 12, 21, 23, 31, 39, 46, 50, 50, 53, 56, 60, 59, 92};
+constexpr std::array<ScorePair, 9> kKnightMobility = {
+    PAIR(-5, -20), PAIR(5, 10), PAIR(23, 28), PAIR(29, 34), PAIR(36, 41),
+    PAIR(40, 45), PAIR(48, 53), PAIR(48, 53), PAIR(51, 56)
+};
+
+constexpr std::array<ScorePair, 15> kRookMobility = {
+    PAIR(-10, 0), PAIR(-5, 5), PAIR(0, 10), PAIR(5, 15), PAIR(5, 15),
+    PAIR(10, 20), PAIR(13, 23), PAIR(18, 28), PAIR(25, 35), PAIR(34, 44),
+    PAIR(38, 48), PAIR(42, 52), PAIR(47, 57), PAIR(50, 60), PAIR(55, 65)
+};
+
+constexpr std::array<ScorePair, 14> kBishopMobility = {
+    PAIR(3, 8), PAIR(12, 17), PAIR(21, 26), PAIR(23, 28),
+    PAIR(31, 36), PAIR(39, 44), PAIR(46, 51), PAIR(50, 55),
+    PAIR(50, 55), PAIR(53, 58), PAIR(56, 61), PAIR(60, 65),
+    PAIR(59, 64), PAIR(92, 97)
+};
+
+constexpr std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
 
-Score EvaluateMaterial(const BoardState &state) {
-  Score score = 0;
+std::pair<ScorePair, int> EvaluateMaterialAndPhase(const BoardState &state) {
   const Color us = state.turn, them = FlipColor(us);
 
   const BitBoard our_pieces = state.Occupied(us);
@@ -237,17 +262,24 @@ Score EvaluateMaterial(const BoardState &state) {
   const int queen_count =
       (queens & our_pieces).PopCount() - (queens & their_pieces).PopCount();
 
+  ScorePair score;
   score += kPieceValues[PieceType::kPawn] * pawn_count;
   score += kPieceValues[PieceType::kKnight] * knight_count;
   score += kPieceValues[PieceType::kBishop] * bishop_count;
   score += kPieceValues[PieceType::kRook] * rook_count;
   score += kPieceValues[PieceType::kQueen] * queen_count;
 
-  return score;
+  int phase = 0;
+  phase += kGamePhaseIncrements[PieceType::kKnight] * knights.PopCount();
+  phase += kGamePhaseIncrements[PieceType::kBishop] * bishops.PopCount();
+  phase += kGamePhaseIncrements[PieceType::kRook] * rooks.PopCount();
+  phase += kGamePhaseIncrements[PieceType::kQueen] * queens.PopCount();
+
+  return {score, phase};
 }
 
-Score EvaluatePieceSquares(const BoardState &state) {
-  Score score = 0;
+ScorePair EvaluatePieceSquares(const BoardState &state) {
+  ScorePair score;
   const Color us = state.turn, them = FlipColor(us);
 
   BitBoard our_pieces = state.Occupied(us);
@@ -267,8 +299,8 @@ Score EvaluatePieceSquares(const BoardState &state) {
   return score;
 }
 
-Score EvaluateKnights(const BoardState &state) {
-  Score score = 0;
+ScorePair EvaluateKnights(const BoardState &state) {
+  ScorePair score;
   const Color us = state.turn, them = FlipColor(us);
   const BitBoard our_pieces = state.Occupied(us),
                  their_pieces = state.Occupied(them);
@@ -290,8 +322,8 @@ Score EvaluateKnights(const BoardState &state) {
   return score;
 }
 
-Score EvaluateRooks(const BoardState &state) {
-  Score score = 0;
+ScorePair EvaluateRooks(const BoardState &state) {
+  ScorePair score;
   const Color us = state.turn, them = FlipColor(us);
   const BitBoard our_pieces = state.Occupied(us),
                  their_pieces = state.Occupied(them),
@@ -314,8 +346,8 @@ Score EvaluateRooks(const BoardState &state) {
   return score;
 }
 
-Score EvaluateBishops(const BoardState &state) {
-  Score score = 0;
+ScorePair EvaluateBishops(const BoardState &state) {
+  ScorePair score;
   const Color us = state.turn, them = FlipColor(us);
   const BitBoard our_pieces = state.Occupied(us),
                  their_pieces = state.Occupied(them),
@@ -339,10 +371,21 @@ Score EvaluateBishops(const BoardState &state) {
 }
 
 Score Evaluate(const BoardState &state) {
+  const int kEndGamePhase = 24;
+
+  auto [material_score, phase] = EvaluateMaterialAndPhase(state);
+  ScorePair score_pair = material_score + EvaluatePieceSquares(state) +
+                         EvaluateKnights(state) + EvaluateRooks(state) +
+                         EvaluateBishops(state);
+
   constexpr Score kTempoBonus = 10;
-  return EvaluateMaterial(state) + EvaluatePieceSquares(state) +
-         EvaluateKnights(state) + EvaluateRooks(state) +
-         EvaluateBishops(state) + kTempoBonus;
+
+  // Tapered evaluation
+  Score evaluation = std::lerp(score_pair.MiddleGame(),
+                               score_pair.EndGame(),
+                               (phase - kEndGamePhase) / kEndGamePhase) +
+                     kTempoBonus;
+  return evaluation + kTempoBonus;
 }
 
 }  // namespace eval

@@ -49,7 +49,7 @@ enum Color : U8 {
   kNoColor
 };
 
-inline Color FlipColor(const Color &color) {
+inline Color FlipColor(const Color& color) {
   return Color(!color);
 }
 
@@ -71,11 +71,83 @@ enum Direction : int {
   kSouthWest
 };
 
-using Score = std::int32_t;
+#include <cstdint>
+
+using Score = std::int16_t;
+
+class ScorePair {
+ public:
+  constexpr ScorePair() : score_(0) {}
+
+  constexpr ScorePair(Score middle_game, Score end_game)
+      : score_(Pack(middle_game, end_game)) {}
+
+  constexpr explicit ScorePair(std::int32_t score_pair) : score_(score_pair) {}
+
+  constexpr operator std::int32_t() const {
+    return score_;
+  }
+
+  [[nodiscard]] constexpr static std::int32_t Pack(Score middle_game,
+                                                   Score end_game) {
+    return static_cast<std::int32_t>(static_cast<std::uint32_t>(end_game) << 16) + middle_game;
+  }
+
+  // Extract the upper 16 bits
+  [[nodiscard]] constexpr Score MiddleGame() const {
+    return static_cast<Score>(score_);
+  }
+
+  // Extract the lower 16 bits
+  [[nodiscard]] constexpr Score EndGame() const {
+    return static_cast<Score>(static_cast<std::int32_t>(score_ + 0x8000) >> 16);
+  }
+
+  constexpr ScorePair operator+(const ScorePair& other) const {
+    return ScorePair(score_ + other.score_);
+  }
+
+  constexpr ScorePair operator-(const ScorePair& other) const {
+    return ScorePair(score_ - other.score_);
+  }
+
+  constexpr ScorePair operator*(const ScorePair& other) const {
+    return ScorePair(score_ * other.score_);
+  }
+
+  constexpr ScorePair operator*(Score scalar) const {
+    return ScorePair(score_ * scalar);
+  }
+
+  constexpr ScorePair& operator+=(const ScorePair& other) {
+    *this = *this + other;
+    return *this;
+  }
+
+  constexpr ScorePair& operator-=(const ScorePair& other) {
+    *this = *this - other;
+    return *this;
+  }
+
+  constexpr ScorePair& operator*=(const ScorePair& other) {
+    *this = *this * other;
+    return *this;
+  }
+
+  constexpr ScorePair& operator*=(Score scalar) {
+    *this = *this * scalar;
+    return *this;
+  }
+
+ private:
+  std::int32_t score_;
+};
+
+#define PAIR(middle_game, end_game) ScorePair(middle_game, end_game)
 
 const Score kDrawScore = 0;
-const Score kMateScore = 1e8;
-const Score kInfiniteScore = 1e8 + 1;
+const Score kMateScore = std::numeric_limits<Score>::max() - 1;
+const Score kInfiniteScore = std::numeric_limits<Score>::max();
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_
