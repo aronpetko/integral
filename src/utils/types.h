@@ -72,15 +72,18 @@ enum Direction : int {
 };
 
 #include <cstdint>
+#include <iostream>
 
-using Score = std::int32_t;
+using Score = std::int16_t;
 
 class ScorePair {
  public:
   constexpr ScorePair() : score_(0) {}
 
   constexpr ScorePair(Score middle_game, Score end_game)
-      : score_(Pack(middle_game, end_game)) {}
+      : score_(Pack(middle_game, end_game)) {
+
+  }
 
   constexpr explicit ScorePair(std::int32_t score_pair) : score_(score_pair) {}
 
@@ -93,14 +96,14 @@ class ScorePair {
     return static_cast<std::int32_t>(static_cast<std::uint32_t>(end_game) << 16) + middle_game;
   }
 
-  // Extract the upper 16 bits
+  // Extract the lower 16 bits
   [[nodiscard]] constexpr Score MiddleGame() const {
     return static_cast<Score>(score_);
   }
 
-  // Extract the lower 16 bits
+  // Extract the upper 16 bits
   [[nodiscard]] constexpr Score EndGame() const {
-    return static_cast<Score>(static_cast<std::int32_t>(score_ + 0x8000) >> 16);
+    return static_cast<Score>((score_ >> 16) & 0xFFFF);
   }
 
   constexpr ScorePair operator+(const ScorePair& other) const {
@@ -116,6 +119,10 @@ class ScorePair {
   }
 
   constexpr ScorePair operator*(Score scalar) const {
+    return ScorePair(score_ * scalar);
+  }
+
+  constexpr ScorePair operator*(int scalar) const {
     return ScorePair(score_ * scalar);
   }
 
@@ -139,11 +146,21 @@ class ScorePair {
     return *this;
   }
 
+  constexpr ScorePair& operator*=(int scalar) {
+    *this = *this * scalar;
+    return *this;
+  }
+
  private:
   std::int32_t score_;
 };
 
 #define PAIR(middle_game, end_game) ScorePair(middle_game, end_game)
+
+// Compile-time checks
+static_assert(ScorePair::Pack(1, 2) == 0x20001, "Pack function failed!");
+static_assert(ScorePair(1, 2).MiddleGame() == 1, "MiddleGame unpacking failed!");
+static_assert(ScorePair(1, 2).EndGame() == 2, "EndGame unpacking failed!");
 
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<Score>::max() - 1;

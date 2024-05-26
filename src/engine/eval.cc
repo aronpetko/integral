@@ -287,6 +287,8 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     const auto square = Square(our_pieces.PopLsb());
     const auto piece_type = state.GetPieceType(square);
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
+
+   // std::cout << score.MiddleGame() << " " << score.EndGame() << " | " << square <<std::endl;
   }
 
   BitBoard their_pieces = state.Occupied(them);
@@ -383,20 +385,18 @@ Score Evaluate(const BoardState &state) {
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
   // Tapered evaluation
-  double evaluation_double =
+  double lerped_eval =
       std::lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
 
   // Add tempo bonus in a larger type to avoid overflow
-  constexpr int kTempoBonus = 10;
-  int evaluation_int = static_cast<int>(evaluation_double) + kTempoBonus;
+  constexpr Score kTempoBonus = 10;
+  auto evaluation = static_cast<Score>(lerped_eval + kTempoBonus);
 
-  // Clamp the value to the range of int16_t to prevent undefined behavior
-  constexpr int kMaxScore = kMateScore;
-  constexpr int kMinScore = -kMateScore;
-  evaluation_int = std::clamp(evaluation_int, kMinScore, kMaxScore);
+  constexpr Score kMaxScore = kMateScore;
+  constexpr Score kMinScore = -kMateScore;
+  evaluation = std::clamp(evaluation, kMinScore, kMaxScore);
 
-  // Convert safely to Score
-  return static_cast<Score>(evaluation_int);
+  return evaluation;
 }
 
 }  // namespace eval
