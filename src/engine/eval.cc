@@ -373,20 +373,30 @@ ScorePair EvaluateBishops(const BoardState &state) {
 Score Evaluate(const BoardState &state) {
   const int kMaxPhase = 24;
 
+  // Use int for intermediate calculations to prevent overflow
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
-  ScorePair score_pair = material_score + EvaluatePieceSquares(state) +
-                         EvaluateKnights(state) + EvaluateRooks(state) +
-                         EvaluateBishops(state);
+  auto score_pair = material_score + EvaluatePieceSquares(state) +
+                    EvaluateKnights(state) + EvaluateRooks(state) +
+                    EvaluateBishops(state);
 
   phase = std::min(phase, kMaxPhase);
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
   // Tapered evaluation
-  Score evaluation =
+  double evaluation_double =
       std::lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
 
-  constexpr Score kTempoBonus = 10;
-  return evaluation + kTempoBonus;
+  // Add tempo bonus in a larger type to avoid overflow
+  constexpr int kTempoBonus = 10;
+  int evaluation_int = static_cast<int>(evaluation_double) + kTempoBonus;
+
+  // Clamp the value to prevent undefined behavior
+  constexpr int kMaxScore = kMateScore;
+  constexpr int kMinScore = -kMateScore;
+  evaluation_int = std::clamp(evaluation_int, kMinScore, kMaxScore);
+
+  // Convert safely to Score
+  return static_cast<Score>(evaluation_int);
 }
 
 }  // namespace eval
