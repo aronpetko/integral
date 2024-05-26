@@ -390,7 +390,7 @@ Score Evaluate(const BoardState &state) {
   constexpr int kTempoBonus = 10;
   int evaluation_int = static_cast<int>(evaluation_double) + kTempoBonus;
 
-  // Clamp the value to prevent undefined behavior
+  // Clamp the value to the range of int16_t to prevent undefined behavior
   constexpr int kMaxScore = kMateScore;
   constexpr int kMinScore = -kMateScore;
   evaluation_int = std::clamp(evaluation_int, kMinScore, kMaxScore);
