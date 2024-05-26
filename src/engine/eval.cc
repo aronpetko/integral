@@ -371,6 +371,10 @@ ScorePair EvaluateBishops(const BoardState &state) {
   return score;
 }
 
+double Lerp(double a, double b, double f) {
+  return a * (1.0 - f) + (b * f);
+}
+
 Score Evaluate(const BoardState &state) {
   const int kMaxPhase = 24;
 
@@ -385,7 +389,7 @@ Score Evaluate(const BoardState &state) {
 
   // Tapered evaluation
   double lerped_eval =
-      std::lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
+      Lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
 
   // Add tempo bonus in a larger type to avoid overflow
   constexpr Score kTempoBonus = 10;
