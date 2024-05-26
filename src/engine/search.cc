@@ -1,6 +1,6 @@
 #include "search.h"
 
-#include <format>
+#include <fmt/format.h>
 #include <iomanip>
 
 #include "move_picker.h"
@@ -49,10 +49,10 @@ void Search::IterativeDeepening() {
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     sel_depth_ = 0;
 
-    constexpr int kAspirationWindowDepth = 4;
-    constexpr int kAspirationWindowDelta = 15;
+    constexpr short kAspirationWindowDepth = 4;
+    constexpr short kAspirationWindowDelta = 15;
 
-    int window = kAspirationWindowDepth;
+    short window = kAspirationWindowDepth;
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
@@ -86,8 +86,8 @@ void Search::IterativeDeepening() {
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
-        if (alpha < 2000) {
-          fail_high_count = std::min(fail_high_count + 1, 2);
+        if (alpha < 2000 && fail_high_count < 2) {
+          ++fail_high_count;
         }
       } else {
         // Quit now, since the score fell within the bounds of the aspiration
@@ -107,7 +107,7 @@ void Search::IterativeDeepening() {
     if (searching_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       std::cout
-          << std::format(
+          << fmt::format(
                  "info depth {} seldepth {} score {} {} nodes {} time {} nps "
                  "{} pv {}",
                  depth,
@@ -127,7 +127,7 @@ void Search::IterativeDeepening() {
   }
 
   if (print_info) {
-    std::cout << std::format("bestmove {}", best_move.ToString()) << std::endl;
+    std::cout << fmt::format("bestmove {}", best_move.ToString()) << std::endl;
   }
 
   Stop();

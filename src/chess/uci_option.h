@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_UCI_OPTION_H
 #define INTEGRAL_UCI_OPTION_H
 
-#include <format>
+#include <fmt/format.h>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -70,10 +70,10 @@ class Option {
   }
 
   [[nodiscard]] std::string ToString() const {
-    auto str = std::format(
+    auto str = fmt::format(
         "option name {} type {} default {}", name_, type_, default_);
     if (type_ == "spin") {
-      str += std::format(" min {} max {}", min_, max_);
+      str += fmt::format(" min {} max {}", min_, max_);
     }
     return str;
   }

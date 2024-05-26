@@ -1,5 +1,4 @@
 #include "eval.h"
-
 #include "../chess/move_gen.h"
 
 namespace eval {

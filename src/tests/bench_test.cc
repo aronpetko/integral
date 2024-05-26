@@ -81,7 +81,7 @@ void BenchSuite(Board &board, Search &search, int depth) {
     elapsed += time_mgmt.TimeElapsed();
   }
 
-  std::cout << std::format(
+  std::cout << fmt::format(
                    "{} nodes {} nps",
                    nodes,
                    static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)))

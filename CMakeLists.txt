@@ -53,6 +53,11 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 endif()
 
+add_subdirectory(third-party/fmt)
+include_directories(third-party/fmt/include)
+add_definitions(-DFMT_HEADER_ONLY)
+
 # Collect source files
 file(GLOB SOURCES "src/*.cc" "src/magics/*.cc" "src/chess/*.cc" "src/engine/*.cc" "src/utils/*.cc" "src/tests/*.cc")
+
 add_executable(integral ${SOURCES})
