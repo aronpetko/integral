@@ -45,7 +45,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGoodTacticals) {
     while (moves_idx_ < tacticals_.Size()) {
       const auto move = SelectionSort(tacticals_, moves_idx_);
-      const Score score = tacticals_[moves_idx_].score;
+      const int score = tacticals_[moves_idx_].score;
 
       moves_idx_++;
 
