@@ -378,12 +378,14 @@ Score Evaluate(const BoardState &state) {
                          EvaluateKnights(state) + EvaluateRooks(state) +
                          EvaluateBishops(state);
 
-  constexpr Score kTempoBonus = 10;
+  phase = std::min(phase, kMaxPhase);
 
   // Tapered evaluation
   Score evaluation = std::lerp(score_pair.MiddleGame(),
                                score_pair.EndGame(),
                                (kMaxPhase - phase) / kMaxPhase);
+
+  constexpr Score kTempoBonus = 10;
   return evaluation + kTempoBonus;
 }
 

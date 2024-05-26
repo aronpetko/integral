@@ -119,6 +119,10 @@ class ScorePair {
     return ScorePair(score_ * scalar);
   }
 
+  constexpr ScorePair operator*(int scalar) const {
+    return ScorePair(score_ * scalar);
+  }
+
   constexpr ScorePair& operator+=(const ScorePair& other) {
     *this = *this + other;
     return *this;
@@ -135,6 +139,11 @@ class ScorePair {
   }
 
   constexpr ScorePair& operator*=(Score scalar) {
+    *this = *this * scalar;
+    return *this;
+  }
+
+  constexpr ScorePair& operator*=(int scalar) {
     *this = *this * scalar;
     return *this;
   }
