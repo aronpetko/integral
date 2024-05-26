@@ -383,7 +383,7 @@ Score Evaluate(const BoardState &state) {
   // Tapered evaluation
   Score evaluation = std::lerp(score_pair.MiddleGame(),
                                score_pair.EndGame(),
-                               (phase - kMaxPhase) / kMaxPhase);
+                               (kMaxPhase - phase) / kMaxPhase);
   return evaluation + kTempoBonus;
 }
 
