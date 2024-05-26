@@ -74,16 +74,15 @@ enum Direction : int {
 #include <cstdint>
 #include <iostream>
 
-using Score = std::int16_t;
+using Score = std::int32_t;
+using TaperedScore = std::int16_t;
 
 class ScorePair {
  public:
   constexpr ScorePair() : score_(0) {}
 
-  constexpr ScorePair(Score middle_game, Score end_game)
-      : score_(Pack(middle_game, end_game)) {
-
-  }
+  constexpr ScorePair(TaperedScore middle_game, TaperedScore end_game)
+      : score_(Pack(middle_game, end_game)) {}
 
   constexpr explicit ScorePair(std::int32_t score_pair) : score_(score_pair) {}
 
@@ -91,19 +90,19 @@ class ScorePair {
     return score_;
   }
 
-  [[nodiscard]] constexpr static std::int32_t Pack(Score middle_game,
-                                                   Score end_game) {
+  [[nodiscard]] constexpr static std::int32_t Pack(TaperedScore middle_game,
+                                                   TaperedScore end_game) {
     return static_cast<std::int32_t>(static_cast<std::uint32_t>(end_game) << 16) + middle_game;
   }
 
   // Extract the lower 16 bits
-  [[nodiscard]] constexpr Score MiddleGame() const {
-    return static_cast<Score>(score_);
+  [[nodiscard]] constexpr TaperedScore MiddleGame() const {
+    return static_cast<TaperedScore>(score_);
   }
 
   // Extract the upper 16 bits
-  [[nodiscard]] constexpr Score EndGame() const {
-    return static_cast<Score>((score_ >> 16) & 0xFFFF);
+  [[nodiscard]] constexpr TaperedScore EndGame() const {
+    return static_cast<TaperedScore>((score_ >> 16) & 0xFFFF);
   }
 
   constexpr ScorePair operator+(const ScorePair& other) const {
@@ -116,10 +115,6 @@ class ScorePair {
 
   constexpr ScorePair operator*(const ScorePair& other) const {
     return ScorePair(score_ * other.score_);
-  }
-
-  constexpr ScorePair operator*(Score scalar) const {
-    return ScorePair(score_ * scalar);
   }
 
   constexpr ScorePair operator*(int scalar) const {
@@ -138,11 +133,6 @@ class ScorePair {
 
   constexpr ScorePair& operator*=(const ScorePair& other) {
     *this = *this * other;
-    return *this;
-  }
-
-  constexpr ScorePair& operator*=(Score scalar) {
-    *this = *this * scalar;
     return *this;
   }
 

@@ -53,12 +53,12 @@ void Search::IterativeDeepening() {
     constexpr short kAspirationWindowDelta = 15;
 
     short window = kAspirationWindowDepth;
-    Score alpha = -kInfiniteScore;
-    Score beta = kInfiniteScore;
+    int alpha = -kInfiniteScore;
+    int beta = kInfiniteScore;
 
     if (depth >= kAspirationWindowDepth) {
-      alpha = std::max<Score>(-kInfiniteScore, score - window);
-      beta = std::min<Score>(kInfiniteScore, score + window);
+      alpha = std::max<int>(-kInfiniteScore, score - window);
+      beta = std::min<int>(kInfiniteScore, score + window);
     }
 
     int fail_high_count = 0;
@@ -77,12 +77,12 @@ void Search::IterativeDeepening() {
 
         // We failed low which means we don't have a move to play, so we widen
         // alpha
-        alpha = std::max<Score>(-kInfiniteScore, alpha - window);
+        alpha = std::max<int>(-kInfiniteScore, alpha - window);
         fail_high_count = 0;
       } else if (score >= beta) {
         // We failed high on a PV node, which is abnormal and requires further
         // verification
-        beta = std::min<Score>(kInfiniteScore, beta + window);
+        beta = std::min<int>(kInfiniteScore, beta + window);
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
