@@ -371,7 +371,7 @@ ScorePair EvaluateBishops(const BoardState &state) {
 }
 
 Score Evaluate(const BoardState &state) {
-  const int kEndGamePhase = 24;
+  const int kMaxPhase = 24;
 
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
   ScorePair score_pair = material_score + EvaluatePieceSquares(state) +
@@ -383,8 +383,7 @@ Score Evaluate(const BoardState &state) {
   // Tapered evaluation
   Score evaluation = std::lerp(score_pair.MiddleGame(),
                                score_pair.EndGame(),
-                               (phase - kEndGamePhase) / kEndGamePhase) +
-                     kTempoBonus;
+                               (phase - kMaxPhase) / kMaxPhase);
   return evaluation + kTempoBonus;
 }
 
