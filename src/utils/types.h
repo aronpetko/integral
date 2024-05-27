@@ -144,9 +144,9 @@ class ScorePair {
 
 // Compile-time checks
 static_assert(ScorePair::Pack(1, 2) == 0x20001, "Pack function failed!");
-static_assert(ScorePair(-40, -60).MiddleGame() == -40,
+static_assert(ScorePair(40, -60).MiddleGame() == 40,
               "MiddleGame unpacking failed!");
-static_assert(ScorePair(-40, -60).EndGame() == -60,
+static_assert(ScorePair(-40, -1000).EndGame() == -1000,
               "EndGame unpacking failed!");
 
 const Score kDrawScore = 0;

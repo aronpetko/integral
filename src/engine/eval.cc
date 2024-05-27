@@ -287,6 +287,7 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     const auto square = Square(our_pieces.PopLsb());
     const auto piece_type = state.GetPieceType(square);
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
+    std::cout << kPieceSquareTables[piece_type][RelativeSquare(square, us)].MiddleGame() << " " << kPieceSquareTables[piece_type][RelativeSquare(square, us)].EndGame() << std::endl;
   }
 
   BitBoard their_pieces = state.Occupied(them);
