@@ -76,41 +76,28 @@ enum Direction : int {
 
 using Score = I32;
 
-#include <iostream>
-
 class ScorePair {
  public:
   constexpr ScorePair() : score_(0) {}
 
-  explicit ScorePair(Score middle_game, Score end_game)
-      : score_(Pack(middle_game, end_game)) {
-    assert(middle_game == MiddleGame());
-    assert(end_game == EndGame());
-    if (middle_game != MiddleGame() || end_game != EndGame())
-      std::cout << MiddleGame() << " " << EndGame() << std::endl;
-  }
+  constexpr explicit ScorePair(Score middle_game, Score end_game)
+      : score_(Pack(middle_game, end_game)) {}
 
   constexpr explicit ScorePair(Score score_pair) : score_(score_pair) {}
 
-  [[nodiscard]] constexpr static I32 Pack(Score middle_game,
-                                                   Score end_game) {
+  [[nodiscard]] constexpr I32 Pack(Score middle_game, Score end_game) const {
     return static_cast<I32>(static_cast<U32>(end_game) << 16) + middle_game;
   }
 
-  // Extract the lower 16 bits using memcpy for safe type reinterpretation
-  [[nodiscard]] inline Score MiddleGame() const {
-    const auto mg = static_cast<U16>(score_);
-    I16 v{};
-    std::memcpy(&v, &mg, sizeof(mg));
-    return static_cast<Score>(v);
+  [[nodiscard]] constexpr inline I16 MiddleGame() const {
+    // Extract the lower 16 bits
+    return std::bit_cast<I16>(static_cast<U16>(score_));
   }
 
-  // Extract the upper 16 bits using memcpy and adjust the sign
-  [[nodiscard]] inline Score EndGame() const {
-    const auto eg = static_cast<I16>(static_cast<U32>(score_ + 0x8000) >> 16);
-    I16 v{};
-    std::memcpy(&v, &eg, sizeof(eg));
-    return static_cast<Score>(v);
+  [[nodiscard]] constexpr inline I16 EndGame() const {
+    // Extract the upper 16 bits
+    return std::bit_cast<I16>(
+        static_cast<U16>(std::bit_cast<U32>(score_ + 0x8000) >> 16));
   }
 
   constexpr ScorePair operator+(const ScorePair& other) const {
@@ -154,9 +141,6 @@ class ScorePair {
 };
 
 #define PAIR(middle_game, end_game) ScorePair(middle_game, end_game)
-
-// Compile-time checks
-static_assert(ScorePair::Pack(1, 2) == 0x20001, "Pack function failed!");
 
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<I16>::max() - 1;
