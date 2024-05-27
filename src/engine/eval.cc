@@ -379,7 +379,7 @@ Score Evaluate(const BoardState &state) {
 
   // Use int for intermediate calculations to prevent overflow
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
-  auto score_pair = material_score;
+  auto score_pair = material_score + EvaluatePieceSquares(state);
 
   phase = std::min(phase, kMaxPhase);
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
