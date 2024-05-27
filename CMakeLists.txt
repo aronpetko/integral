@@ -28,18 +28,6 @@ endif()
 option(BUILD_NATIVE "Build with native optimizations" ON)
 
 if(BUILD_NATIVE)
-    # Check for AVX512 support
-    check_cxx_compiler_flag("-mavx512f -mavx512bw" COMPILER_SUPPORTS_AVX512BW)
-    if(COMPILER_SUPPORTS_AVX512BW)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_AVX512 -mavx512f -mavx512bw")
-    else()
-        # Check for AVX2 support
-        check_cxx_compiler_flag("-mavx2 -mbmi" COMPILER_SUPPORTS_AVX2)
-        if(COMPILER_SUPPORTS_AVX2)
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_AVX2 -mavx2 -mbmi")
-        endif()
-    endif()
-
     # General native flags
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 endif()
