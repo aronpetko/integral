@@ -76,12 +76,19 @@ enum Direction : int {
 
 using Score = I32;
 
+#include <iostream>
+
 class ScorePair {
  public:
   constexpr ScorePair() : score_(0) {}
 
-  constexpr ScorePair(Score middle_game, Score end_game)
-      : score_(Pack(middle_game, end_game)) {}
+  explicit ScorePair(Score middle_game, Score end_game)
+      : score_(Pack(middle_game, end_game)) {
+    assert(middle_game == MiddleGame());
+    assert(end_game == EndGame());
+    if (middle_game != MiddleGame() || end_game != EndGame())
+      std::cout << MiddleGame() << " " << EndGame() << std::endl;
+  }
 
   constexpr explicit ScorePair(Score score_pair) : score_(score_pair) {}
 

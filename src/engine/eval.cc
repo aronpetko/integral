@@ -143,7 +143,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 }
 
 // clang-format off
-constexpr std::array<ScorePair, PieceType::kNumTypes> kPieceValues = {
+const std::array<ScorePair, PieceType::kNumTypes> kPieceValues = {
     PAIR(100, 110),  // Pawn
     PAIR(300, 280),  // Knight
     PAIR(305, 295),  // Bishop
@@ -155,7 +155,7 @@ constexpr std::array<ScorePair, PieceType::kNumTypes> kPieceValues = {
 using PieceSquareTable = std::array<std::array<ScorePair, Square::kSquareCount>,
                                     PieceType::kNumTypes>;
 
-constexpr PieceSquareTable kPieceSquareTables = {{
+const PieceSquareTable kPieceSquareTables = {{
   { // Pawns
     PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0),
     PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50), PAIR(50, 50),
@@ -218,18 +218,18 @@ constexpr PieceSquareTable kPieceSquareTables = {{
   },
 }};
 
-constexpr std::array<ScorePair, 9> kKnightMobility = {
+const std::array<ScorePair, 9> kKnightMobility = {
     PAIR(-5, -20), PAIR(5, 10), PAIR(23, 28), PAIR(29, 34), PAIR(36, 41),
     PAIR(40, 45), PAIR(48, 53), PAIR(48, 53), PAIR(51, 56)
 };
 
-constexpr std::array<ScorePair, 15> kRookMobility = {
+const std::array<ScorePair, 15> kRookMobility = {
     PAIR(-10, 0), PAIR(-5, 5), PAIR(0, 10), PAIR(5, 15), PAIR(5, 15),
     PAIR(10, 20), PAIR(13, 23), PAIR(18, 28), PAIR(25, 35), PAIR(34, 44),
     PAIR(38, 48), PAIR(42, 52), PAIR(47, 57), PAIR(50, 60), PAIR(55, 65)
 };
 
-constexpr std::array<ScorePair, 14> kBishopMobility = {
+const std::array<ScorePair, 14> kBishopMobility = {
     PAIR(3, 8), PAIR(12, 17), PAIR(21, 26), PAIR(23, 28),
     PAIR(31, 36), PAIR(39, 44), PAIR(46, 51), PAIR(50, 55),
     PAIR(50, 55), PAIR(53, 58), PAIR(56, 61), PAIR(60, 65),
