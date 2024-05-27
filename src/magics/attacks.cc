@@ -3,8 +3,8 @@
 
 namespace magics::attacks {
 
-std::array<std::array<BitBoard, kBishopBlockerCombinations>, Square::kSquareCount> bishop_attacks{};
-std::array<std::array<BitBoard, kRookBlockerCombinations>, Square::kSquareCount> rook_attacks{};
+std::array<std::array<BitBoard, kBishopBlockerCombinations>, Squares::kSquareCount> bishop_attacks{};
+std::array<std::array<BitBoard, kRookBlockerCombinations>, Squares::kSquareCount> rook_attacks{};
 
 template<Direction Dir>
 int DistanceToEdge(int square) {
@@ -64,7 +64,7 @@ std::vector<BitBoard> CreateBlockers(BitBoard moves) {
   SetBits.reserve(moves.PopCount());
 
   // Store the indices (from the LSB) of each set bit in the moves bitboard
-  for (int square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < Squares::kSquareCount; square++) {
     if (moves.IsSet(square)) {
       SetBits.push_back(square);
     }
@@ -114,7 +114,7 @@ BitBoard GenerateRookMoves(Square square, const BitBoard &occupied) {
 
 void Initialize() {
   // Initialize the mask + blocker combinations for bishops and rooks
-  for (int square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < Squares::kSquareCount; square++) {
     // Compute the attack and blocker combinations for bishops
     auto entry = kBishopMagics[square];
     auto blockers = attacks::CreateBlockers(entry.mask);

@@ -17,7 +17,7 @@ int ScaleBonus(Score score, int bonus) {
 
 // Flatten the move to an index
 inline int MoveIndex(Move move) {
-  return move.GetFrom() * Square::kSquareCount + move.GetTo();
+  return move.GetFrom() * Squares::kSquareCount + move.GetTo();
 }
 
 MoveHistory::MoveHistory(const BoardState &state)

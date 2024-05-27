@@ -56,7 +56,7 @@ MagicEntry FindMagic(PieceType piece_type, Square square) {
   for (std::size_t i = 0; i < 1000000; i++) {
     const auto candidate =
         random_magic_number() & random_magic_number() & random_magic_number();
-    const auto shift = Square::kSquareCount - relevant_bits;
+    const auto shift = Squares::kSquareCount - relevant_bits;
 
     if (TryMagic(candidate, shift, relevant_bits, blockers, piece_attacks)) {
       return {move_mask.AsU64(), candidate, shift};
@@ -68,10 +68,10 @@ MagicEntry FindMagic(PieceType piece_type, Square square) {
 
 void GenerateMagics() {
   std::cout
-      << "constexpr std::array<MagicEntry, Square::kSquareCount> kRookMagics = {"
+      << "constexpr std::array<MagicEntry, Squares::kSquareCount> kRookMagics = {"
       << std::endl;
 
-  for (int square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < Squares::kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kRook, Square(square));
     std::cout << "  "
               << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
@@ -79,7 +79,7 @@ void GenerateMagics() {
                              magic_entry.magic,
                              magic_entry.shift);
 
-    if (square < Square::kSquareCount - 1) {
+    if (square < Squares::kSquareCount - 1) {
       std::cout << ",";
     }
 
@@ -89,10 +89,10 @@ void GenerateMagics() {
   std::cout << "};" << std::endl << std::endl;
 
   std::cout
-      << "constexpr std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {"
+      << "constexpr std::array<MagicEntry, Squares::kSquareCount> kBishopMagics = {"
       << std::endl;
 
-  for (int square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < Squares::kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kBishop, Square(square));
     std::cout << "  "
               << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
@@ -100,7 +100,7 @@ void GenerateMagics() {
                              magic_entry.magic,
                              magic_entry.shift);
 
-    if (square < Square::kSquareCount - 1) {
+    if (square < Squares::kSquareCount - 1) {
       std::cout << ",";
     }
 

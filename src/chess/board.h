@@ -19,7 +19,7 @@ class CastleRights {
   static constexpr int kQueensideIndex = 1;
 
   static constexpr std::array<std::array<Square, 2>, 2> kRookSquares = {
-      {{Square::kH8, Square::kA8}, {Square::kH1, Square::kA1}}};
+      {{Squares::kH8, Squares::kA8}, {Squares::kH1, Squares::kA1}}};
 
   static constexpr std::array<std::array<U8, 2>, 2> kMasks = {
       {{CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside},
@@ -82,7 +82,7 @@ struct BoardState {
         turn(Color::kWhite),
         checkers(0ULL),
         pinned(0ULL),
-        en_passant(Square::kNoSquare) {
+        en_passant(Squares::kNoSquare) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -192,7 +192,7 @@ struct BoardState {
 
   std::array<BitBoard, PieceType::kNumTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
-  std::array<PieceType, Square::kSquareCount> piece_on_square;
+  std::array<PieceType, Squares::kSquareCount> piece_on_square;
   Color turn;
   U16 fifty_moves_clock;
   Square en_passant;

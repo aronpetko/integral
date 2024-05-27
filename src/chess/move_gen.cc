@@ -15,7 +15,7 @@ inline std::array<std::array<BitBoard, 64>, 64> ray_intersecting_masks;
 void InitializeAttacks() {
   magics::attacks::Initialize();
 
-  for (int square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < Squares::kSquareCount; square++) {
     const BitBoard src_mask = BitBoard::FromSquare(square);
 
     knight_masks[square] |= (src_mask & ~FileMask::kFileH) << 17;
@@ -54,7 +54,7 @@ void InitializeAttacks() {
     const BitBoard src_rook_rays =
         magics::attacks::GenerateRookMoves(Square(square), 0ULL);
 
-    for (int other_square = 0; other_square < Square::kSquareCount;
+    for (int other_square = 0; other_square < Squares::kSquareCount;
          other_square++) {
       if (square == other_square) {
         continue;
@@ -252,25 +252,25 @@ BitBoard CastlingMoves(Color side, const BoardState &state) {
 
   if (side == Color::kWhite) {
     if (state.castle_rights.CanKingsideCastle(Color::kWhite)) {
-      if (!occupied.IsSet(Square::kF1) && !occupied.IsSet(Square::kG1))
-        moves.SetBit(Square::kG1);
+      if (!occupied.IsSet(Squares::kF1) && !occupied.IsSet(Squares::kG1))
+        moves.SetBit(Squares::kG1);
     }
 
     if (state.castle_rights.CanQueensideCastle(Color::kWhite)) {
-      if (!occupied.IsSet(Square::kD1) && !occupied.IsSet(Square::kC1) &&
-          !occupied.IsSet(Square::kB1))
-        moves.SetBit(Square::kC1);
+      if (!occupied.IsSet(Squares::kD1) && !occupied.IsSet(Squares::kC1) &&
+          !occupied.IsSet(Squares::kB1))
+        moves.SetBit(Squares::kC1);
     }
   } else {
     if (state.castle_rights.CanKingsideCastle(Color::kBlack)) {
-      if (!occupied.IsSet(Square::kF8) && !occupied.IsSet(Square::kG8))
-        moves.SetBit(Square::kG8);
+      if (!occupied.IsSet(Squares::kF8) && !occupied.IsSet(Squares::kG8))
+        moves.SetBit(Squares::kG8);
     }
 
     if (state.castle_rights.CanQueensideCastle(Color::kBlack)) {
-      if (!occupied.IsSet(Square::kD8) && !occupied.IsSet(Square::kC8) &&
-          !occupied.IsSet(Square::kB8))
-        moves.SetBit(Square::kC8);
+      if (!occupied.IsSet(Squares::kD8) && !occupied.IsSet(Squares::kC8) &&
+          !occupied.IsSet(Squares::kB8))
+        moves.SetBit(Squares::kC8);
     }
   }
 
@@ -285,25 +285,25 @@ BitBoard GetAttackedSquares(const BoardState &state, Color attacker) {
 
   BitBoard knights = state.Knights(attacker);
   while (knights) {
-    attacked |= KnightMoves(Square(knights.PopLsb()));
+    attacked |= KnightMoves(knights.PopLsb());
   }
 
   BitBoard queens = state.Queens(attacker);
 
   BitBoard bishops = state.Bishops(attacker) | queens;
   while (bishops) {
-    attacked |= BishopMoves(Square(bishops.PopLsb()), occupied);
+    attacked |= BishopMoves(bishops.PopLsb(), occupied);
   }
 
   BitBoard rooks = state.Rooks(attacker) | queens;
   while (rooks) {
-    attacked |= RookMoves(Square(rooks.PopLsb()), occupied);
+    attacked |= RookMoves(rooks.PopLsb(), occupied);
   }
 
   BitBoard king = state.King(attacker);
   if (king) {
     // King is only in one position
-    attacked |= KingAttacks(Square(king.PopLsb()));
+    attacked |= KingAttacks(king.PopLsb());
   }
 
   return attacked;
@@ -377,11 +377,11 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
   if (state.checkers) {
     // Only king moves are legal if there's multiple pieces checking the king
     if (state.checkers.MoreThanOne()) {
-      const auto king_square = Square(state.King(state.turn).GetLsb());
+      const auto king_square = state.King(state.turn).GetLsb();
 
       auto possible_moves = KingMoves(king_square, state) & targets;
       while (possible_moves) {
-        const U8 to = possible_moves.PopLsb();
+        const Square to = possible_moves.PopLsb();
         move_list.Push(Move(king_square, to));
       }
 
@@ -389,7 +389,7 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
     }
   }
 
-  const BitBoard en_passant_mask = state.en_passant != Square::kNoSquare
+  const BitBoard en_passant_mask = state.en_passant != Squares::kNoSquare
                                        ? BitBoard::FromSquare(state.en_passant)
                                        : 0;
 
@@ -406,8 +406,8 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
   BitBoard single_pawn_moves_copy = single_pawn_moves;
 
   while (single_pawn_moves_copy) {
-    const U8 to = single_pawn_moves_copy.PopLsb(), to_rank = Rank(to);
-    const U8 from = to - pushed_pawn_distance;
+    const Square to = single_pawn_moves_copy.PopLsb(), to_rank = Rank(to);
+    const Square from = to - pushed_pawn_distance;
 
     if (to_rank == kNumRanks - 1 || to_rank == 0) {
       move_list.Push(Move(from, to, PromotionType::kQueen));
@@ -427,8 +427,8 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
   double_pawn_moves &= targets & ~occupied;
 
   while (double_pawn_moves) {
-    const U8 to = double_pawn_moves.PopLsb();
-    const U8 from = to - pushed_pawn_distance * 2;
+    const Square to = double_pawn_moves.PopLsb();
+    const Square from = to - pushed_pawn_distance * 2;
     move_list.Push(Move(from, to));
   }
 
@@ -441,8 +441,8 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
     BitBoard left_pawn_captures =
         AllLeftPawnAttacks(state.turn, state) & pawn_capture_targets;
     while (left_pawn_captures) {
-      const U8 to = left_pawn_captures.PopLsb(), to_rank = Rank(to);
-      const U8 from = to - left_pawn_capture_dist;
+      const Square to = left_pawn_captures.PopLsb(), to_rank = Rank(to);
+      const Square from = to - left_pawn_capture_dist;
 
       if (to_rank == kNumRanks - 1 || to_rank == 0) {
         move_list.Push(Move(from, to, PromotionType::kQueen));
@@ -458,8 +458,8 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
     BitBoard right_pawn_captures =
         AllRightPawnAttacks(state.turn, state) & pawn_capture_targets;
     while (right_pawn_captures) {
-      const U8 to = right_pawn_captures.PopLsb(), to_rank = Rank(to);
-      const U8 from = to - right_pawn_capture_dist;
+      const Square to = right_pawn_captures.PopLsb(), to_rank = Rank(to);
+      const Square from = to - right_pawn_capture_dist;
 
       if (to_rank == kNumRanks - 1 || to_rank == 0) {
         move_list.Push(Move(from, to, PromotionType::kQueen));
@@ -475,54 +475,54 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
 
   BitBoard knights = state.Knights(state.turn) & ~state.pinned;
   while (knights) {
-    const auto from = Square(knights.PopLsb());
+    const auto from = knights.PopLsb();
 
     auto possible_moves = KnightMoves(from) & targets;
     while (possible_moves) {
-      const U8 to = possible_moves.PopLsb();
+      const Square to = possible_moves.PopLsb();
       move_list.Push(Move(from, to));
     }
   }
 
   BitBoard bishops = state.Bishops(state.turn);
   while (bishops) {
-    const auto from = Square(bishops.PopLsb());
+    const auto from = bishops.PopLsb();
 
     auto possible_moves = BishopMoves(from, occupied) & targets;
     while (possible_moves) {
-      const U8 to = possible_moves.PopLsb();
+      const Square to = possible_moves.PopLsb();
       move_list.Push(Move(from, to));
     }
   }
 
   BitBoard rooks = state.Rooks(state.turn);
   while (rooks) {
-    const auto from = Square(rooks.PopLsb());
+    const auto from = rooks.PopLsb();
 
     auto possible_moves = RookMoves(from, occupied) & targets;
     while (possible_moves) {
-      const U8 to = possible_moves.PopLsb();
+      const Square to = possible_moves.PopLsb();
       move_list.Push(Move(from, to));
     }
   }
 
   BitBoard queens = state.Queens(state.turn);
   while (queens) {
-    const auto from = Square(queens.PopLsb());
+    const auto from = queens.PopLsb();
 
     auto possible_moves = QueenMoves(from, occupied) & targets;
     while (possible_moves) {
-      const U8 to = possible_moves.PopLsb();
+      const Square to = possible_moves.PopLsb();
       move_list.Push(Move(from, to));
     }
   }
 
   BitBoard king = state.King(state.turn);
-  const auto king_square = Square(king.GetLsb());
+  const auto king_square = king.GetLsb();
 
   auto possible_moves = KingMoves(king_square, state) & targets;
   while (possible_moves) {
-    const U8 to = possible_moves.PopLsb();
+    const Square to = possible_moves.PopLsb();
     move_list.Push(Move(king_square, to));
   }
 

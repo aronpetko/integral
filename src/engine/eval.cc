@@ -152,7 +152,7 @@ constexpr std::array<ScorePair, PieceType::kNumTypes> kPieceValues = {
     PAIR(0, 0)       // King
 };
 
-using PieceSquareTable = std::array<std::array<ScorePair, Square::kSquareCount>,
+using PieceSquareTable = std::array<std::array<ScorePair, Squares::kSquareCount>,
                                     PieceType::kNumTypes>;
 
 constexpr PieceSquareTable kPieceSquareTables = {{
@@ -294,14 +294,14 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
   BitBoard our_pieces = state.Occupied(us);
   while (our_pieces) {
-    const auto square = Square(our_pieces.PopLsb());
+    const auto square = our_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
   }
 
   BitBoard their_pieces = state.Occupied(them);
   while (their_pieces) {
-    const auto square = Square(their_pieces.PopLsb());
+    const auto square = their_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
     score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
   }
@@ -317,14 +317,14 @@ ScorePair EvaluateKnights(const BoardState &state) {
 
   BitBoard our_knights = state.Knights(us);
   while (our_knights) {
-    const auto square = Square(our_knights.PopLsb());
+    const auto square = our_knights.PopLsb();
     const auto moves = move_gen::KnightMoves(square) & ~our_pieces;
     score += kKnightMobility[moves.PopCount()];
   }
 
   BitBoard their_knights = state.Knights(them);
   while (their_knights) {
-    const auto square = Square(their_knights.PopLsb());
+    const auto square = their_knights.PopLsb();
     const auto moves = move_gen::KnightMoves(square) & ~their_pieces;
     score -= kKnightMobility[moves.PopCount()];
   }
@@ -341,14 +341,14 @@ ScorePair EvaluateRooks(const BoardState &state) {
 
   BitBoard our_rooks = state.Rooks(us);
   while (our_rooks) {
-    const auto square = Square(our_rooks.PopLsb());
+    const auto square = our_rooks.PopLsb();
     const auto moves = move_gen::RookMoves(square, occupied) & ~our_pieces;
     score += kRookMobility[moves.PopCount()];
   }
 
   BitBoard their_rooks = state.Rooks(them);
   while (their_rooks) {
-    const auto square = Square(their_rooks.PopLsb());
+    const auto square = their_rooks.PopLsb();
     const auto moves = move_gen::RookMoves(square, occupied) & ~their_pieces;
     score -= kRookMobility[moves.PopCount()];
   }
@@ -365,14 +365,14 @@ ScorePair EvaluateBishops(const BoardState &state) {
 
   BitBoard our_bishops = state.Bishops(us);
   while (our_bishops) {
-    const auto square = Square(our_bishops.PopLsb());
+    const auto square = our_bishops.PopLsb();
     const auto moves = move_gen::BishopMoves(square, occupied) & ~our_pieces;
     score += kBishopMobility[moves.PopCount()];
   }
 
   BitBoard their_bishops = state.Bishops(them);
   while (their_bishops) {
-    const auto square = Square(their_bishops.PopLsb());
+    const auto square = their_bishops.PopLsb();
     const auto moves = move_gen::BishopMoves(square, occupied) & ~their_pieces;
     score -= kBishopMobility[moves.PopCount()];
   }
@@ -389,14 +389,14 @@ ScorePair EvaluateQueens(const BoardState &state) {
 
   BitBoard our_queens = state.Queens(us);
   while (our_queens) {
-    const auto square = Square(our_queens.PopLsb());
+    const auto square = our_queens.PopLsb();
     const auto moves = move_gen::QueenMoves(square, occupied) & ~our_pieces;
     score += kQueenMobility[moves.PopCount()];
   }
 
   BitBoard their_queens = state.Queens(them);
   while (their_queens) {
-    const auto square = Square(their_queens.PopLsb());
+    const auto square = their_queens.PopLsb();
     const auto moves = move_gen::QueenMoves(square, occupied) & ~their_pieces;
     score -= kQueenMobility[moves.PopCount()];
   }
