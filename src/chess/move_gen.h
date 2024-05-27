@@ -22,6 +22,8 @@ BitBoard &BishopMoves(Square square, const BitBoard &occupied);
 
 BitBoard &RookMoves(Square square, const BitBoard &occupied);
 
+BitBoard QueenMoves(Square square, const BitBoard &occupied);
+
 BitBoard KingMoves(Square square, const BoardState &state);
 
 BitBoard &KingAttacks(Square square);

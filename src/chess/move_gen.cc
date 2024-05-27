@@ -229,6 +229,10 @@ BitBoard &RookMoves(Square square, const BitBoard &occupied) {
   return magics::attacks::rook_attacks[square][magic_index.AsU64()];
 }
 
+BitBoard QueenMoves(Square square, const BitBoard &occupied) {
+  return BishopMoves(square, occupied) | RookMoves(square, occupied);
+}
+
 BitBoard KingMoves(Square square, const BoardState &state) {
   BitBoard moves = KingAttacks(square);
 
@@ -506,8 +510,7 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
   while (queens) {
     const auto from = Square(queens.PopLsb());
 
-    auto possible_moves =
-        (RookMoves(from, occupied) | BishopMoves(from, occupied)) & targets;
+    auto possible_moves = QueenMoves(from, occupied) & targets;
     while (possible_moves) {
       const U8 to = possible_moves.PopLsb();
       move_list.Push(Move(from, to));

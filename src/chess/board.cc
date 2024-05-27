@@ -78,8 +78,7 @@ bool Board::IsMovePseudoLegal(Move move) {
       possible_moves = move_gen::RookMoves(from, occupied);
       break;
     case PieceType::kQueen:
-      possible_moves = move_gen::BishopMoves(from, occupied) |
-                       move_gen::RookMoves(from, occupied);
+      possible_moves = move_gen::QueenMoves(from, occupied);
       break;
     case PieceType::kKing:
       possible_moves = move_gen::KingAttacks(from);
