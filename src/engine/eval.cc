@@ -1,4 +1,5 @@
 #include "eval.h"
+
 #include "../chess/move_gen.h"
 
 namespace eval {
@@ -286,8 +287,6 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     const auto square = Square(our_pieces.PopLsb());
     const auto piece_type = state.GetPieceType(square);
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
-
-   // std::cout << score.MiddleGame() << " " << score.EndGame() << " | " << square <<std::endl;
   }
 
   BitBoard their_pieces = state.Occupied(them);
@@ -387,19 +386,11 @@ Score Evaluate(const BoardState &state) {
   phase = std::min(phase, kMaxPhase);
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
-  // Tapered evaluation
-  double lerped_eval =
+  double tapered_eval =
       Lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
 
-  // Add tempo bonus in a larger type to avoid overflow
   constexpr Score kTempoBonus = 10;
-  auto evaluation = static_cast<Score>(lerped_eval + kTempoBonus);
-
-  constexpr Score kMaxScore = kMateScore;
-  constexpr Score kMinScore = -kMateScore;
-  evaluation = std::clamp(evaluation, kMinScore, kMaxScore);
-
-  return evaluation;
+  return static_cast<Score>(tapered_eval + kTempoBonus);
 }
 
 }  // namespace eval

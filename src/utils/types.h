@@ -75,34 +75,33 @@ enum Direction : int {
 #include <iostream>
 
 using Score = std::int32_t;
-using TaperedScore = std::int16_t;
 
 class ScorePair {
  public:
   constexpr ScorePair() : score_(0) {}
 
-  constexpr ScorePair(TaperedScore middle_game, TaperedScore end_game)
+  constexpr ScorePair(Score middle_game, Score end_game)
       : score_(Pack(middle_game, end_game)) {}
 
-  constexpr explicit ScorePair(std::int32_t score_pair) : score_(score_pair) {}
+  constexpr explicit ScorePair(Score score_pair) : score_(score_pair) {}
 
   constexpr operator std::int32_t() const {
     return score_;
   }
 
-  [[nodiscard]] constexpr static std::int32_t Pack(TaperedScore middle_game,
-                                                   TaperedScore end_game) {
-    return static_cast<std::int32_t>(static_cast<std::uint32_t>(end_game) << 16) + middle_game;
+  [[nodiscard]] constexpr static std::int32_t Pack(Score middle_game,
+                                                   Score end_game) {
+    return (static_cast<std::int32_t>(end_game) << 16) | (static_cast<std::uint16_t>(middle_game));
   }
 
   // Extract the lower 16 bits
-  [[nodiscard]] constexpr TaperedScore MiddleGame() const {
-    return static_cast<TaperedScore>(score_);
+  [[nodiscard]] constexpr Score MiddleGame() const {
+    return static_cast<Score>(static_cast<std::int16_t>(score_ & 0xFFFF));
   }
 
   // Extract the upper 16 bits
-  [[nodiscard]] constexpr TaperedScore EndGame() const {
-    return static_cast<TaperedScore>((score_ >> 16) & 0xFFFF);
+  [[nodiscard]] constexpr Score EndGame() const {
+    return static_cast<Score>(score_ >> 16);
   }
 
   constexpr ScorePair operator+(const ScorePair& other) const {
@@ -149,12 +148,14 @@ class ScorePair {
 
 // Compile-time checks
 static_assert(ScorePair::Pack(1, 2) == 0x20001, "Pack function failed!");
-static_assert(ScorePair(1, 2).MiddleGame() == 1, "MiddleGame unpacking failed!");
-static_assert(ScorePair(1, 2).EndGame() == 2, "EndGame unpacking failed!");
+static_assert(ScorePair(-40, -60).MiddleGame() == -40,
+              "MiddleGame unpacking failed!");
+static_assert(ScorePair(-40, -60).EndGame() == -60,
+              "EndGame unpacking failed!");
 
 const Score kDrawScore = 0;
-const Score kMateScore = std::numeric_limits<Score>::max() - 1;
-const Score kInfiniteScore = std::numeric_limits<Score>::max();
+const Score kMateScore = std::numeric_limits<std::int16_t>::max() - 1;
+const Score kInfiniteScore = std::numeric_limits<std::int16_t>::max();
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_
