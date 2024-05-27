@@ -89,31 +89,31 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
     if ((next_attacker = our_attackers & pawns)) {
       attacker_value = kSEEPieceScores[PieceType::kPawn];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were diagonal xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & knights)) {
       attacker_value = kSEEPieceScores[PieceType::kKnight];
-      occupied ^= BitBoard::FromSquare(next_attacker.GetLSB());
+      occupied ^= BitBoard::FromSquare(next_attacker.GetLsb());
     } else if ((next_attacker = our_attackers & bishops)) {
       attacker_value = kSEEPieceScores[PieceType::kBishop];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & rooks)) {
       attacker_value = kSEEPieceScores[PieceType::kRook];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::RookMoves(to, occupied);
       all_attackers |= rook_attacks & (rooks | queens);
     } else if ((next_attacker = our_attackers & queens)) {
       attacker_value = kSEEPieceScores[PieceType::kQueen];
-      occupied.ClearBit(next_attacker.GetLSB());
+      occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::RookMoves(to, occupied);
