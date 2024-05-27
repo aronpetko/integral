@@ -85,10 +85,6 @@ class ScorePair {
 
   constexpr explicit ScorePair(Score score_pair) : score_(score_pair) {}
 
-  constexpr operator std::int32_t() const {
-    return score_;
-  }
-
   [[nodiscard]] constexpr static std::int32_t Pack(Score middle_game,
                                                    Score end_game) {
     return (static_cast<std::int32_t>(end_game) << 16) | (static_cast<std::uint16_t>(middle_game));
@@ -105,38 +101,38 @@ class ScorePair {
   }
 
   constexpr ScorePair operator+(const ScorePair& other) const {
-    return ScorePair(score_ + other.score_);
+    return ScorePair{score_ + other.score_};
   }
 
   constexpr ScorePair operator-(const ScorePair& other) const {
-    return ScorePair(score_ - other.score_);
+    return ScorePair{score_ - other.score_};
   }
 
   constexpr ScorePair operator*(const ScorePair& other) const {
-    return ScorePair(score_ * other.score_);
+    return ScorePair{score_ * other.score_};
   }
 
   constexpr ScorePair operator*(int scalar) const {
-    return ScorePair(score_ * scalar);
+    return ScorePair{score_ * scalar};
   }
 
   constexpr ScorePair& operator+=(const ScorePair& other) {
-    *this = *this + other;
+    score_ += other.score_;
     return *this;
   }
 
   constexpr ScorePair& operator-=(const ScorePair& other) {
-    *this = *this - other;
+    score_ -= other.score_;
     return *this;
   }
 
   constexpr ScorePair& operator*=(const ScorePair& other) {
-    *this = *this * other;
+    score_ *= other.score_;
     return *this;
   }
 
   constexpr ScorePair& operator*=(int scalar) {
-    *this = *this * scalar;
+    score_ *= scalar;
     return *this;
   }
 
