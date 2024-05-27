@@ -34,7 +34,7 @@ U64 HashSquare(Square square,
    */
 
   const int piece_idx =
-      Square::kSquareCount * (static_cast<int>(piece) * 2 + color) +
+      Squares::kSquareCount * (static_cast<int>(piece) * 2 + color) +
       kNumRanks * Rank(square) + File(square);
   return kRandomsArray[piece_idx];
 }
@@ -53,7 +53,7 @@ U64 HashCastleRights(const CastleRights &rights) {
 }
 
 U64 HashEnPassant(const BoardState &state) {
-  if (state.en_passant == Square::kNoSquare) return 0ULL;
+  if (state.en_passant == Squares::kNoSquare) return 0ULL;
   const auto ep_square = state.en_passant;
 
   // If our pawn can capture the en passant
@@ -73,7 +73,7 @@ U64 HashEnPassant(const BoardState &state) {
 
 U64 GenerateKey(const BoardState &state) {
   U64 pieces = 0;
-  for (int square = 0; square < Square::kSquareCount; square++)
+  for (int square = 0; square < Squares::kSquareCount; square++)
     if (state.PieceExists(Square(square)))
       pieces ^= HashSquare(Square(square), state);
 

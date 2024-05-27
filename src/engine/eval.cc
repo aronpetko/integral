@@ -152,7 +152,7 @@ constexpr std::array<ScorePair, PieceType::kNumTypes> kPieceValues = {
     PAIR(0, 0)       // King
 };
 
-using PieceSquareTable = std::array<std::array<ScorePair, Square::kSquareCount>,
+using PieceSquareTable = std::array<std::array<ScorePair, Squares::kSquareCount>,
                                     PieceType::kNumTypes>;
 
 constexpr PieceSquareTable kPieceSquareTables = {{
@@ -219,22 +219,32 @@ constexpr PieceSquareTable kPieceSquareTables = {{
 }};
 
 constexpr std::array<ScorePair, 9> kKnightMobility = {
-    PAIR(-5, -20), PAIR(5, 10), PAIR(23, 28), PAIR(29, 34), PAIR(36, 41),
-    PAIR(40, 45), PAIR(48, 53), PAIR(48, 53), PAIR(51, 56)
+  PAIR(-5, -20), PAIR(5, 10), PAIR(23, 28), PAIR(29, 34), PAIR(36, 41),
+  PAIR(40, 45), PAIR(48, 53), PAIR(48, 53), PAIR(51, 56)
 };
 
 constexpr std::array<ScorePair, 15> kRookMobility = {
-    PAIR(-10, 0), PAIR(-5, 5), PAIR(0, 10), PAIR(5, 15), PAIR(5, 15),
-    PAIR(10, 20), PAIR(13, 23), PAIR(18, 28), PAIR(25, 35), PAIR(34, 44),
-    PAIR(38, 48), PAIR(42, 52), PAIR(47, 57), PAIR(50, 60), PAIR(55, 65)
+  PAIR(-10, 0), PAIR(-5, 5), PAIR(0, 10), PAIR(5, 15), PAIR(5, 15),
+  PAIR(10, 20), PAIR(13, 23), PAIR(18, 28), PAIR(25, 35), PAIR(34, 44),
+  PAIR(38, 48), PAIR(42, 52), PAIR(47, 57), PAIR(50, 60), PAIR(55, 65)
 };
 
 constexpr std::array<ScorePair, 14> kBishopMobility = {
-    PAIR(3, 8), PAIR(12, 17), PAIR(21, 26), PAIR(23, 28),
-    PAIR(31, 36), PAIR(39, 44), PAIR(46, 51), PAIR(50, 55),
-    PAIR(50, 55), PAIR(53, 58), PAIR(56, 61), PAIR(60, 65),
-    PAIR(59, 64), PAIR(92, 97)
+  PAIR(3, 8), PAIR(12, 17), PAIR(21, 26), PAIR(23, 28),
+  PAIR(31, 36), PAIR(39, 44), PAIR(46, 51), PAIR(50, 55),
+  PAIR(50, 55), PAIR(53, 58), PAIR(56, 61), PAIR(60, 65),
+  PAIR(59, 64), PAIR(92, 97)
 };
+
+constexpr std::array<ScorePair, 28> kQueenMobility = {{
+  PAIR(-71, -25), PAIR(-70, -84), PAIR(-73, -50), PAIR(-70, -35),
+  PAIR(-67, -35), PAIR(-63, -26), PAIR(-59, -20), PAIR(-61, 1),
+  PAIR(-59, 12),  PAIR(-55, 14),  PAIR(-55, 27),  PAIR(-55, 34),
+  PAIR(-53, 42),  PAIR(-52, 49),  PAIR(-50, 54),  PAIR(-49, 59),
+  PAIR(-46, 64),  PAIR(-49, 77),  PAIR(-44, 81),  PAIR(-42, 82),
+  PAIR(-35, 84),  PAIR(-30, 84),  PAIR(-28, 84),  PAIR(-15, 80),
+  PAIR(-2, 66),   PAIR(52, 49),   PAIR(64, 43),   PAIR(189, -16)
+}};
 
 constexpr std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
@@ -284,14 +294,14 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
   BitBoard our_pieces = state.Occupied(us);
   while (our_pieces) {
-    const auto square = Square(our_pieces.PopLsb());
+    const auto square = our_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
   }
 
   BitBoard their_pieces = state.Occupied(them);
   while (their_pieces) {
-    const auto square = Square(their_pieces.PopLsb());
+    const auto square = their_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
     score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
   }
@@ -307,14 +317,14 @@ ScorePair EvaluateKnights(const BoardState &state) {
 
   BitBoard our_knights = state.Knights(us);
   while (our_knights) {
-    const auto square = Square(our_knights.PopLsb());
+    const auto square = our_knights.PopLsb();
     const auto moves = move_gen::KnightMoves(square) & ~our_pieces;
     score += kKnightMobility[moves.PopCount()];
   }
 
   BitBoard their_knights = state.Knights(them);
   while (their_knights) {
-    const auto square = Square(their_knights.PopLsb());
+    const auto square = their_knights.PopLsb();
     const auto moves = move_gen::KnightMoves(square) & ~their_pieces;
     score -= kKnightMobility[moves.PopCount()];
   }
@@ -331,14 +341,14 @@ ScorePair EvaluateRooks(const BoardState &state) {
 
   BitBoard our_rooks = state.Rooks(us);
   while (our_rooks) {
-    const auto square = Square(our_rooks.PopLsb());
+    const auto square = our_rooks.PopLsb();
     const auto moves = move_gen::RookMoves(square, occupied) & ~our_pieces;
     score += kRookMobility[moves.PopCount()];
   }
 
   BitBoard their_rooks = state.Rooks(them);
   while (their_rooks) {
-    const auto square = Square(their_rooks.PopLsb());
+    const auto square = their_rooks.PopLsb();
     const auto moves = move_gen::RookMoves(square, occupied) & ~their_pieces;
     score -= kRookMobility[moves.PopCount()];
   }
@@ -355,16 +365,40 @@ ScorePair EvaluateBishops(const BoardState &state) {
 
   BitBoard our_bishops = state.Bishops(us);
   while (our_bishops) {
-    const auto square = Square(our_bishops.PopLsb());
+    const auto square = our_bishops.PopLsb();
     const auto moves = move_gen::BishopMoves(square, occupied) & ~our_pieces;
     score += kBishopMobility[moves.PopCount()];
   }
 
   BitBoard their_bishops = state.Bishops(them);
   while (their_bishops) {
-    const auto square = Square(their_bishops.PopLsb());
+    const auto square = their_bishops.PopLsb();
     const auto moves = move_gen::BishopMoves(square, occupied) & ~their_pieces;
     score -= kBishopMobility[moves.PopCount()];
+  }
+
+  return score;
+}
+
+ScorePair EvaluateQueens(const BoardState &state) {
+  ScorePair score;
+  const Color us = state.turn, them = FlipColor(us);
+  const BitBoard our_pieces = state.Occupied(us),
+                 their_pieces = state.Occupied(them),
+                 occupied = our_pieces | their_pieces;
+
+  BitBoard our_queens = state.Queens(us);
+  while (our_queens) {
+    const auto square = our_queens.PopLsb();
+    const auto moves = move_gen::QueenMoves(square, occupied) & ~our_pieces;
+    score += kQueenMobility[moves.PopCount()];
+  }
+
+  BitBoard their_queens = state.Queens(them);
+  while (their_queens) {
+    const auto square = their_queens.PopLsb();
+    const auto moves = move_gen::QueenMoves(square, occupied) & ~their_pieces;
+    score -= kQueenMobility[moves.PopCount()];
   }
 
   return score;
@@ -375,11 +409,10 @@ Score Evaluate(const BoardState &state) {
   // Scaling factor to maintain precision in integer calculations
   constexpr int kScaleFactor = 1000;
 
-  // Use int for intermediate calculations to prevent overflow
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
   auto score_pair = material_score + EvaluatePieceSquares(state) +
                     EvaluateKnights(state) + EvaluateBishops(state) +
-                    EvaluateRooks(state);
+                    EvaluateRooks(state) + EvaluateQueens(state);
 
   phase = std::min(phase, kMaxPhase);
   const int phase_percent = 100 * (kMaxPhase - phase) / kMaxPhase;

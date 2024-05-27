@@ -8,7 +8,7 @@
 
 #include "../utils/types.h"
 
-enum Square : U16 {
+enum Squares : U16 {
   kA1,
   kB1,
   kC1,
@@ -76,6 +76,8 @@ enum Square : U16 {
   kNoSquare,
   kSquareCount = 64,
 };
+
+using Square = U16;
 
 enum RankMask : U64 {
   kRank1 = 0x00000000000000FFULL,

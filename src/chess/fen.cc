@@ -25,7 +25,7 @@ BoardState StringToBoard(std::string_view fen_str) {
   stream >> position;
 
   // From 63 to 0, starting from a8 to h1
-  int square = Square::kA8;
+  int square = Squares::kA8;
   for (const char &ch : position) {
     if (ch == '/') {
       square = square - 16 + (square % kNumFiles);
