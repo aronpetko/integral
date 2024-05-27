@@ -388,7 +388,7 @@ Score Evaluate(const BoardState &state) {
       Lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
 
   constexpr Score kTempoBonus = 10;
-  return static_cast<Score>(tapered_eval + kTempoBonus);
+  return static_cast<Score>(std::round(tapered_eval + kTempoBonus));
 }
 
 }  // namespace eval
