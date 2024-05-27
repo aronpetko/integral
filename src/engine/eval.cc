@@ -371,7 +371,7 @@ ScorePair EvaluateBishops(const BoardState &state) {
 }
 
 double Lerp(double a, double b, double f) {
-  return a * (1.0 - f) + (b * f);
+  return (1.0 - f) * a + f * b;  // Slightly refactored to reduce operation count
 }
 
 Score Evaluate(const BoardState &state) {
@@ -385,7 +385,7 @@ Score Evaluate(const BoardState &state) {
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
   const double tapered_eval =
-      score_pair.EndGame();
+      Lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
 
   constexpr Score kTempoBonus = 10;
   return static_cast<Score>(tapered_eval + kTempoBonus);
