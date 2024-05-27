@@ -385,7 +385,7 @@ Score Evaluate(const BoardState &state) {
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
   const double tapered_eval =
-      score_pair.MiddleGame();
+      score_pair.EndGame();
 
   constexpr Score kTempoBonus = 10;
   return static_cast<Score>(tapered_eval + kTempoBonus);
