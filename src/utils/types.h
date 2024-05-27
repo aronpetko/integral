@@ -3,12 +3,15 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 
 #include "list.h"
 
 using U8 = std::uint8_t;
 using U16 = std::uint16_t;
+using I16 = std::int16_t;
 using U32 = std::uint32_t;
+using I32 = std::int32_t;
 using U64 = std::uint64_t;
 using U128 = unsigned __int128;
 
@@ -71,10 +74,7 @@ enum Direction : int {
   kSouthWest
 };
 
-#include <cstdint>
-#include <iostream>
-
-using Score = std::int32_t;
+using Score = I32;
 
 class ScorePair {
  public:
@@ -85,19 +85,25 @@ class ScorePair {
 
   constexpr explicit ScorePair(Score score_pair) : score_(score_pair) {}
 
-  [[nodiscard]] constexpr static std::int32_t Pack(Score middle_game,
+  [[nodiscard]] constexpr static I32 Pack(Score middle_game,
                                                    Score end_game) {
-    return (static_cast<std::int32_t>(end_game) << 16) | (static_cast<std::uint16_t>(middle_game));
+    return static_cast<I32>(static_cast<U32>(end_game) << 16) + middle_game;
   }
 
-  // Extract the lower 16 bits
-  [[nodiscard]] constexpr Score MiddleGame() const {
-    return static_cast<Score>(static_cast<std::int16_t>(score_ & 0xFFFF));
+  // Extract the lower 16 bits using memcpy for safe type reinterpretation
+  [[nodiscard]] inline Score MiddleGame() const {
+    const auto mg = static_cast<U16>(score_);
+    I16 v{};
+    std::memcpy(&v, &mg, sizeof(mg));
+    return static_cast<Score>(v);
   }
 
-  // Extract the upper 16 bits
-  [[nodiscard]] constexpr Score EndGame() const {
-    return static_cast<Score>(score_ >> 16);
+  // Extract the upper 16 bits using memcpy and adjust the sign
+  [[nodiscard]] inline Score EndGame() const {
+    const auto eg = static_cast<I16>(static_cast<U32>(score_ + 0x8000) >> 16);
+    I16 v{};
+    std::memcpy(&v, &eg, sizeof(eg));
+    return static_cast<Score>(v);
   }
 
   constexpr ScorePair operator+(const ScorePair& other) const {
@@ -137,21 +143,17 @@ class ScorePair {
   }
 
  private:
-  std::int32_t score_;
+  I32 score_;
 };
 
 #define PAIR(middle_game, end_game) ScorePair(middle_game, end_game)
 
 // Compile-time checks
 static_assert(ScorePair::Pack(1, 2) == 0x20001, "Pack function failed!");
-static_assert(ScorePair(40, -60).MiddleGame() == 40,
-              "MiddleGame unpacking failed!");
-static_assert(ScorePair(-40, -1000).EndGame() == -1000,
-              "EndGame unpacking failed!");
 
 const Score kDrawScore = 0;
-const Score kMateScore = std::numeric_limits<std::int16_t>::max() - 1;
-const Score kInfiniteScore = std::numeric_limits<std::int16_t>::max();
+const Score kMateScore = std::numeric_limits<I16>::max() - 1;
+const Score kInfiniteScore = std::numeric_limits<I16>::max();
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_

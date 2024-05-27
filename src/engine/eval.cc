@@ -287,7 +287,6 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     const auto square = Square(our_pieces.PopLsb());
     const auto piece_type = state.GetPieceType(square);
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
-    std::cout << kPieceSquareTables[piece_type][RelativeSquare(square, us)].MiddleGame() << " " << kPieceSquareTables[piece_type][RelativeSquare(square, us)].EndGame() << std::endl;
   }
 
   BitBoard their_pieces = state.Occupied(them);
@@ -376,7 +375,7 @@ double Lerp(double a, double b, double f) {
 }
 
 Score Evaluate(const BoardState &state) {
-  const int kMaxPhase = 24;
+  constexpr int kMaxPhase = 24;
 
   // Use int for intermediate calculations to prevent overflow
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
@@ -385,7 +384,7 @@ Score Evaluate(const BoardState &state) {
   phase = std::min(phase, kMaxPhase);
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
-  double tapered_eval =
+  const double tapered_eval =
       Lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
 
   constexpr Score kTempoBonus = 10;
