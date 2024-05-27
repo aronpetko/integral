@@ -89,15 +89,20 @@ class ScorePair {
     return static_cast<I32>(static_cast<U32>(end_game) << 16) + middle_game;
   }
 
-  [[nodiscard]] constexpr inline I16 MiddleGame() const {
-    // Extract the lower 16 bits
-    return std::bit_cast<I16>(static_cast<U16>(score_));
+  // Extract the lower 16 bits using memcpy for safe type reinterpretation
+  [[nodiscard]] inline Score MiddleGame() const {
+    const auto mg = static_cast<U16>(score_);
+    I16 v{};
+    std::memcpy(&v, &mg, sizeof(mg));
+    return static_cast<Score>(v);
   }
 
-  [[nodiscard]] constexpr inline I16 EndGame() const {
-    // Extract the upper 16 bits
-    return std::bit_cast<I16>(
-        static_cast<U16>(std::bit_cast<U32>(score_ + 0x8000) >> 16));
+  // Extract the upper 16 bits using memcpy and adjust the sign
+  [[nodiscard]] inline Score EndGame() const {
+    const auto eg = static_cast<I16>(static_cast<U32>(score_ + 0x8000) >> 16);
+    I16 v{};
+    std::memcpy(&v, &eg, sizeof(eg));
+    return static_cast<Score>(v);
   }
 
   constexpr ScorePair operator+(const ScorePair& other) const {
