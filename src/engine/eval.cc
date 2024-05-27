@@ -377,7 +377,9 @@ Score Evaluate(const BoardState &state) {
 
   // Use int for intermediate calculations to prevent overflow
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
-  auto score_pair = material_score + EvaluatePieceSquares(state);
+  auto score_pair = material_score + EvaluatePieceSquares(state) +
+                    EvaluateKnights(state) + EvaluateBishops(state) +
+                    EvaluateRooks(state);
 
   phase = std::min(phase, kMaxPhase);
   const int phase_percent = 100 * (kMaxPhase - phase) / kMaxPhase;
@@ -386,8 +388,9 @@ Score Evaluate(const BoardState &state) {
   const int interpolation_factor = kScaleFactor * phase_percent / 100;
 
   // Interpolate between middle game and end game scores
-  int mid_score = score_pair.MiddleGame() * (kScaleFactor - interpolation_factor);
-  int end_score = score_pair.EndGame() * interpolation_factor;
+  const int mid_score =
+      score_pair.MiddleGame() * (kScaleFactor - interpolation_factor);
+  const int end_score = score_pair.EndGame() * interpolation_factor;
   Score tapered_eval = (mid_score + end_score) / kScaleFactor;
 
   tapered_eval = std::clamp(tapered_eval, -kMateScore + 1, kMateScore - 1);
