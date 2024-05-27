@@ -3,12 +3,15 @@
 
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 
 #include "list.h"
 
 using U8 = std::uint8_t;
 using U16 = std::uint16_t;
+using I16 = std::int16_t;
 using U32 = std::uint32_t;
+using I32 = std::int32_t;
 using U64 = std::uint64_t;
 using U128 = unsigned __int128;
 
@@ -49,7 +52,7 @@ enum Color : U8 {
   kNoColor
 };
 
-inline Color FlipColor(const Color &color) {
+inline Color FlipColor(const Color& color) {
   return Color(!color);
 }
 
@@ -71,11 +74,77 @@ enum Direction : int {
   kSouthWest
 };
 
-using Score = std::int32_t;
+using Score = I32;
+
+class ScorePair {
+ public:
+  constexpr ScorePair() : score_(0) {}
+
+  constexpr explicit ScorePair(Score middle_game, Score end_game)
+      : score_(Pack(middle_game, end_game)) {}
+
+  constexpr explicit ScorePair(Score score_pair) : score_(score_pair) {}
+
+  [[nodiscard]] constexpr I32 Pack(Score middle_game, Score end_game) const {
+    return static_cast<I32>(static_cast<U32>(end_game) << 16) + middle_game;
+  }
+
+  [[nodiscard]] constexpr inline I16 MiddleGame() const {
+    // Extract the lower 16 bits
+    return std::bit_cast<I16>(static_cast<U16>(score_));
+  }
+
+  [[nodiscard]] constexpr inline I16 EndGame() const {
+    // Extract the upper 16 bits
+    return std::bit_cast<I16>(
+        static_cast<U16>(std::bit_cast<U32>(score_ + 0x8000) >> 16));
+  }
+
+  constexpr ScorePair operator+(const ScorePair& other) const {
+    return ScorePair{score_ + other.score_};
+  }
+
+  constexpr ScorePair operator-(const ScorePair& other) const {
+    return ScorePair{score_ - other.score_};
+  }
+
+  constexpr ScorePair operator*(const ScorePair& other) const {
+    return ScorePair{score_ * other.score_};
+  }
+
+  constexpr ScorePair operator*(int scalar) const {
+    return ScorePair{score_ * scalar};
+  }
+
+  constexpr ScorePair& operator+=(const ScorePair& other) {
+    score_ += other.score_;
+    return *this;
+  }
+
+  constexpr ScorePair& operator-=(const ScorePair& other) {
+    score_ -= other.score_;
+    return *this;
+  }
+
+  constexpr ScorePair& operator*=(const ScorePair& other) {
+    score_ *= other.score_;
+    return *this;
+  }
+
+  constexpr ScorePair& operator*=(int scalar) {
+    score_ *= scalar;
+    return *this;
+  }
+
+ private:
+  I32 score_;
+};
+
+#define PAIR(middle_game, end_game) ScorePair(middle_game, end_game)
 
 const Score kDrawScore = 0;
-const Score kMateScore = 1e8;
-const Score kInfiniteScore = 1e8 + 1;
+const Score kMateScore = std::numeric_limits<I16>::max() - 1;
+const Score kInfiniteScore = std::numeric_limits<I16>::max();
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_

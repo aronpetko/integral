@@ -6,13 +6,13 @@
 namespace eval {
 
 constexpr std::array<Score, PieceType::kNumTypes + 1> kSEEPieceScores = {
-    100,  // pawn
-    300,  // knight
-    300,  // bishop
-    500,  // rook
-    900,  // queen
-    0,    // king
-    0,    // none
+    100,  // Pawn
+    300,  // Knight
+    300,  // Bishop
+    500,  // Rook
+    900,  // Queen
+    0,    // King
+    0,    // None
 };
 
 static bool IsMateScore(int evaluation) {
@@ -31,7 +31,7 @@ static int MateIn(int evaluation) {
 
 bool StaticExchange(Move move, int threshold, const BoardState &state);
 
-int Evaluate(const BoardState &state);
+Score Evaluate(const BoardState &state);
 
 }  // namespace eval
 

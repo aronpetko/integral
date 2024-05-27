@@ -49,16 +49,16 @@ void Search::IterativeDeepening() {
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     sel_depth_ = 0;
 
-    constexpr int kAspirationWindowDepth = 4;
-    constexpr int kAspirationWindowDelta = 15;
+    constexpr short kAspirationWindowDepth = 4;
+    constexpr short kAspirationWindowDelta = 15;
 
-    int window = kAspirationWindowDepth;
-    Score alpha = -kInfiniteScore;
-    Score beta = kInfiniteScore;
+    short window = kAspirationWindowDepth;
+    int alpha = -kInfiniteScore;
+    int beta = kInfiniteScore;
 
     if (depth >= kAspirationWindowDepth) {
-      alpha = std::max(-kInfiniteScore, score - window);
-      beta = std::min(kInfiniteScore, score + window);
+      alpha = std::max<int>(-kInfiniteScore, score - window);
+      beta = std::min<int>(kInfiniteScore, score + window);
     }
 
     int fail_high_count = 0;
@@ -77,17 +77,17 @@ void Search::IterativeDeepening() {
 
         // We failed low which means we don't have a move to play, so we widen
         // alpha
-        alpha = std::max(-kInfiniteScore, alpha - window);
+        alpha = std::max<int>(-kInfiniteScore, alpha - window);
         fail_high_count = 0;
       } else if (score >= beta) {
         // We failed high on a PV node, which is abnormal and requires further
         // verification
-        beta = std::min(kInfiniteScore, beta + window);
+        beta = std::min<int>(kInfiniteScore, beta + window);
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
-        if (alpha < 2000) {
-          fail_high_count = std::min(fail_high_count + 1, 2);
+        if (alpha < 2000 && fail_high_count < 2) {
+          ++fail_high_count;
         }
       } else {
         // Quit now, since the score fell within the bounds of the aspiration
@@ -161,7 +161,7 @@ Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
     return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
-  const int static_eval =
+  const Score static_eval =
       can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
 
   // Early beta cutoff

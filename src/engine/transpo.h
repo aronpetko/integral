@@ -58,7 +58,7 @@ class TranspositionTable {
 
   [[nodiscard]] const Entry &Probe(const U64 &key) const;
 
-  [[nodiscard]] int CorrectScore(Score score, U16 ply) const;
+  [[nodiscard]] Score CorrectScore(Score score, U16 ply) const;
 
   [[nodiscard]] U64 Index(const U64 &key) const;
 
