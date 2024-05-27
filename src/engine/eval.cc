@@ -372,17 +372,25 @@ ScorePair EvaluateBishops(const BoardState &state) {
 
 Score Evaluate(const BoardState &state) {
   constexpr int kMaxPhase = 24;
+  // Scaling factor to maintain precision in integer calculations
+  constexpr int kScaleFactor = 1000;
 
   // Use int for intermediate calculations to prevent overflow
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
   auto score_pair = material_score + EvaluatePieceSquares(state);
 
   phase = std::min(phase, kMaxPhase);
-  const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
+  const int phase_percent = 100 * (kMaxPhase - phase) / kMaxPhase;
 
-  double tapered_eval =
-      std::lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
-  tapered_eval = std::clamp<double>(tapered_eval, -kMateScore + 1, kMateScore - 1);
+  // Convert to a scale factor between 0 and kScaleFactor
+  const int interpolation_factor = kScaleFactor * phase_percent / 100;
+
+  // Interpolate between middle game and end game scores
+  int mid_score = score_pair.MiddleGame() * (kScaleFactor - interpolation_factor);
+  int end_score = score_pair.EndGame() * interpolation_factor;
+  Score tapered_eval = (mid_score + end_score) / kScaleFactor;
+
+  tapered_eval = std::clamp(tapered_eval, -kMateScore + 1, kMateScore - 1);
 
   constexpr Score kTempoBonus = 10;
   return static_cast<Score>(tapered_eval + kTempoBonus);
