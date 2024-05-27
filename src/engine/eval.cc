@@ -384,8 +384,9 @@ Score Evaluate(const BoardState &state) {
   phase = std::min(phase, kMaxPhase);
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
-  const double tapered_eval =
+  double tapered_eval =
       Lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
+  tapered_eval = std::clamp<double>(tapered_eval, -kMateScore + 1, kMateScore - 1);
 
   constexpr Score kTempoBonus = 10;
   return static_cast<Score>(std::round(tapered_eval + kTempoBonus));
