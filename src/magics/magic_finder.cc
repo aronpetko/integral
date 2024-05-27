@@ -1,7 +1,7 @@
 #include "magic_finder.h"
 
 #include <cassert>
-#include <format>
+#include <fmt/format.h>
 #include <random>
 
 #include "attacks.h"
@@ -74,7 +74,7 @@ void GenerateMagics() {
   for (int square = 0; square < Square::kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kRook, Square(square));
     std::cout << "  "
-              << std::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
+              << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
                              magic_entry.mask,
                              magic_entry.magic,
                              magic_entry.shift);
@@ -95,7 +95,7 @@ void GenerateMagics() {
   for (int square = 0; square < Square::kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kBishop, Square(square));
     std::cout << "  "
-              << std::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
+              << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
                              magic_entry.mask,
                              magic_entry.magic,
                              magic_entry.shift);

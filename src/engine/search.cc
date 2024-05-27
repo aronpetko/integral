@@ -1,6 +1,6 @@
 #include "search.h"
 
-#include <format>
+#include <fmt/format.h>
 #include <iomanip>
 
 #include "move_picker.h"
@@ -107,7 +107,7 @@ void Search::IterativeDeepening() {
     if (searching_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       std::cout
-          << std::format(
+          << fmt::format(
                  "info depth {} seldepth {} score {} {} nodes {} time {} nps "
                  "{} pv {}",
                  depth,
@@ -127,7 +127,7 @@ void Search::IterativeDeepening() {
   }
 
   if (print_info) {
-    std::cout << std::format("bestmove {}", best_move.ToString()) << std::endl;
+    std::cout << fmt::format("bestmove {}", best_move.ToString()) << std::endl;
   }
 
   Stop();

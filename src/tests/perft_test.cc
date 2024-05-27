@@ -165,7 +165,7 @@ U64 PertInternal(Board &board, int depth, int start_depth) {
     }
 
     if (type == PerftType::kSplit && depth == start_depth) {
-      std::cout << std::format("{}: {}\n", move.ToString(), child_nodes);
+      std::cout << fmt::format("{}: {}\n", move.ToString(), child_nodes);
     }
   }
 
@@ -180,7 +180,7 @@ void Perft(Board &board, int depth) {
   const auto elapsed = duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_time);
 
-  std::cout << std::format("info nodes {} time {} nps {}",
+  std::cout << fmt::format("info nodes {} time {} nps {}",
                            nodes,
                            elapsed.count(),
                            static_cast<U64>(nodes * 1000 /
@@ -209,14 +209,14 @@ void PerftSuite() {
       }
     }
 
-    std::cout << std::format("{}\033[0m {}\n",
+    std::cout << fmt::format("{}\033[0m {}\n",
                              passed ? "\033[32mpassed" : "\033[31mfailed",
                              perft_test);
   }
 
   const auto elapsed = duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_time);
-  std::cout << std::format("test finished in {}ms", elapsed.count())
+  std::cout << fmt::format("test finished in {}ms", elapsed.count())
             << std::endl;
 }
 

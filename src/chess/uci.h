@@ -10,7 +10,7 @@ class Search;
 namespace uci {
 
 const std::string kEngineVersion = "1";
-const std::string kEngineName = std::format("Integral v{}", kEngineVersion);
+const std::string kEngineName = fmt::format("Integral v{}", kEngineVersion);
 const std::string kEngineAuthor = "Aron Petkovski";
 
 void Position(Board &board, std::stringstream &input_stream);

@@ -96,7 +96,7 @@ void SEESuite() {
 
     const bool passed =
         eval::StaticExchange(move, 0, board.GetState()) == answer;
-    std::cout << std::format("{}\033[0m {}\n",
+    std::cout << fmt::format("{}\033[0m {}\n",
                              passed ? "\033[32mpassed" : "\033[31mfailed",
                              see_test);
   }
@@ -105,7 +105,7 @@ void SEESuite() {
                            std::chrono::steady_clock::now() - start_time)
                            .count() /
                        1000.0;
-  std::cout << std::format("test finished in {}ms",
+  std::cout << fmt::format("test finished in {}ms",
                            static_cast<U64>(elapsed * 1000.0))
             << std::endl;
 }

@@ -25,7 +25,7 @@ if(BUILD_X86_64_BMI2)
 endif()
 
 # Native optimization option
-option(BUILD_NATIVE "Build with native optimizations" OFF)
+option(BUILD_NATIVE "Build with native optimizations" ON)
 
 if(BUILD_NATIVE)
     # Check for AVX512 support
@@ -45,7 +45,7 @@ if(BUILD_NATIVE)
 endif()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 
 # Conditionally add static linking flag on Windows
@@ -53,6 +53,11 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 endif()
 
+add_subdirectory(third-party/fmt)
+include_directories(third-party/fmt/include)
+add_definitions(-DFMT_HEADER_ONLY)
+
 # Collect source files
 file(GLOB SOURCES "src/*.cc" "src/magics/*.cc" "src/chess/*.cc" "src/engine/*.cc" "src/utils/*.cc" "src/tests/*.cc")
+
 add_executable(integral ${SOURCES})
