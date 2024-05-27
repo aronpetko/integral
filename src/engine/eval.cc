@@ -370,10 +370,6 @@ ScorePair EvaluateBishops(const BoardState &state) {
   return score;
 }
 
-double Lerp(double a, double b, double f) {
-  return (1.0 - f) * a + f * b;  // Slightly refactored to reduce operation count
-}
-
 Score Evaluate(const BoardState &state) {
   constexpr int kMaxPhase = 24;
 
@@ -385,11 +381,11 @@ Score Evaluate(const BoardState &state) {
   const double phase_ratio = static_cast<double>(kMaxPhase - phase) / kMaxPhase;
 
   double tapered_eval =
-      Lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
+      std::lerp(score_pair.MiddleGame(), score_pair.EndGame(), phase_ratio);
   tapered_eval = std::clamp<double>(tapered_eval, -kMateScore + 1, kMateScore - 1);
 
   constexpr Score kTempoBonus = 10;
-  return static_cast<Score>(std::round(tapered_eval + kTempoBonus));
+  return static_cast<Score>(tapered_eval + kTempoBonus);
 }
 
 }  // namespace eval
