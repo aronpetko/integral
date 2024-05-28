@@ -28,24 +28,12 @@ endif()
 option(BUILD_NATIVE "Build with native optimizations" ON)
 
 if(BUILD_NATIVE)
-    # Check for AVX512 support
-    check_cxx_compiler_flag("-mavx512f -mavx512bw" COMPILER_SUPPORTS_AVX512BW)
-    if(COMPILER_SUPPORTS_AVX512BW)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_AVX512 -mavx512f -mavx512bw")
-    else()
-        # Check for AVX2 support
-        check_cxx_compiler_flag("-mavx2 -mbmi" COMPILER_SUPPORTS_AVX2)
-        if(COMPILER_SUPPORTS_AVX2)
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_AVX2 -mavx2 -mbmi")
-        endif()
-    endif()
-
     # General native flags
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 endif()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0")
 
 # Conditionally add static linking flag on Windows
@@ -53,6 +41,11 @@ if(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 endif()
 
+add_subdirectory(third-party/fmt)
+include_directories(third-party/fmt/include)
+add_definitions(-DFMT_HEADER_ONLY)
+
 # Collect source files
 file(GLOB SOURCES "src/*.cc" "src/magics/*.cc" "src/chess/*.cc" "src/engine/*.cc" "src/utils/*.cc" "src/tests/*.cc")
+
 add_executable(integral ${SOURCES})

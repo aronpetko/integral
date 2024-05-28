@@ -2,7 +2,7 @@
 #define INTEGRAL_TESTS_H
 
 #include <chrono>
-#include <format>
+#include <fmt/format.h>
 #include <ranges>
 #include <sstream>
 #include <vector>

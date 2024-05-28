@@ -1,6 +1,6 @@
 #include "uci.h"
 
-#include <format>
+#include <fmt/format.h>
 #include <string>
 
 #include "../ascii_logo.h"
@@ -40,7 +40,7 @@ void Position(Board &board, std::stringstream &input_stream) {
     if (move && board.IsMovePseudoLegal(move)) {
       board.MakeMove(move);
     } else {
-      std::cerr << std::format("invalid move: {}\n", move_input);
+      std::cerr << fmt::format("invalid move: {}\n", move_input);
     }
   }
 }
@@ -137,7 +137,7 @@ void AcceptCommands(int arg_count, char **args) {
   }
 
   PrintAsciiLogo();
-  std::cout << std::format(
+  std::cout << fmt::format(
                    "    v{}, written by {}\n", kEngineVersion, kEngineAuthor)
             << std::endl;
 
@@ -150,8 +150,8 @@ void AcceptCommands(int arg_count, char **args) {
     input_stream >> command;
 
     if (command == "uci") {
-      std::cout << std::format("id name {}", kEngineName) << std::endl;
-      std::cout << std::format("id author {}", kEngineAuthor) << std::endl;
+      std::cout << fmt::format("id name {}", kEngineName) << std::endl;
+      std::cout << fmt::format("id author {}", kEngineAuthor) << std::endl;
       PrintOptions();
       std::cout << "uciok" << std::endl;
     } else if (command == "isready") {
