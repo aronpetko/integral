@@ -25,7 +25,7 @@ if(BUILD_X86_64_BMI2)
 endif()
 
 # Native optimization option
-option(BUILD_NATIVE "Build with native optimizations" OFF)
+option(BUILD_NATIVE "Build with native optimizations" ON)
 
 if(BUILD_NATIVE)
     # Check for AVX512 support
