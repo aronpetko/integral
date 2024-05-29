@@ -315,7 +315,7 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     }
 
     if (passed_pawn) {
-      score += kPassedPawnTable[Rank(square)];
+      //score += kPassedPawnTable[Rank(square)];
     }
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
   }
@@ -336,7 +336,7 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     }
 
     if (passed_pawn) {
-      score -= kPassedPawnTable[Rank(square)];
+      //score -= kPassedPawnTable[Rank(square)];
     }
     score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
   }
