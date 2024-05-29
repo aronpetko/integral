@@ -313,44 +313,16 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
   BitBoard our_pieces = state.Occupied(us);
   BitBoard their_pieces = state.Occupied(them);
-  BitBoard our_pawns = state.Pawns(us);
-  BitBoard their_pawns = state.Pawns(them);
 
   while (our_pieces) {
     const auto square = our_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
-
-    bool passed_pawn = false;
-    if (piece_type == PieceType::kPawn) {
-      const BitBoard enemy_pawns_ahead =
-          passed_pawn_masks[us][square] & their_pawns;
-      if (enemy_pawns_ahead == 0) {
-        passed_pawn = true;
-      }
-    }
-
-    if (passed_pawn) {
-      score += kPassedPawnTable[Rank(square)];
-    }
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
   }
 
   while (their_pieces) {
     const auto square = their_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
-
-    bool passed_pawn = false;
-    if (piece_type == PieceType::kPawn) {
-      const BitBoard enemy_pawns_ahead =
-          passed_pawn_masks[them][square] & our_pawns;
-      if (enemy_pawns_ahead == 0) {
-        passed_pawn = true;
-      }
-    }
-
-    if (passed_pawn) {
-      score -= kPassedPawnTable[Rank(square)];
-    }
     score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
   }
 
@@ -452,6 +424,37 @@ ScorePair EvaluateQueens(const BoardState &state) {
   return score;
 }
 
+ScorePair EvaluatePawns(const BoardState &state) {
+  ScorePair score;
+  const Color us = state.turn, them = FlipColor(us);
+
+  BitBoard our_pawns = state.Pawns(us);
+  BitBoard their_pawns = state.Pawns(them);
+
+  while (our_pawns) {
+    const auto square = our_pawns.PopLsb();
+    const BitBoard enemy_pawns_ahead =
+        passed_pawn_masks[us][square] & their_pawns;
+    if (enemy_pawns_ahead == 0) {
+      score += kPassedPawnTable[Rank(square)];
+    }
+  }
+
+  // Restore since we popped all the bits
+  our_pawns = state.Pawns(us);
+
+  while (their_pawns) {
+    const auto square = their_pawns.PopLsb();
+    const BitBoard enemy_pawns_ahead =
+        passed_pawn_masks[them][square] & our_pawns;
+    if (enemy_pawns_ahead == 0) {
+      score -= kPassedPawnTable[Rank(square)];
+    }
+  }
+
+  return score;
+}
+
 Score Evaluate(const BoardState &state) {
   constexpr int kMaxPhase = 24;
   // Scaling factor to maintain precision in integer calculations
@@ -460,7 +463,8 @@ Score Evaluate(const BoardState &state) {
   auto [material_score, phase] = EvaluateMaterialAndPhase(state);
   auto score_pair = material_score + EvaluatePieceSquares(state) +
                     EvaluateKnights(state) + EvaluateBishops(state) +
-                    EvaluateRooks(state) + EvaluateQueens(state);
+                    EvaluateRooks(state) + EvaluateQueens(state) +
+                    EvaluatePawns(state);
 
   phase = std::min(phase, kMaxPhase);
   const int phase_percent = 100 * (kMaxPhase - phase) / kMaxPhase;
