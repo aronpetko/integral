@@ -246,16 +246,7 @@ constexpr std::array<ScorePair, 28> kQueenMobility = {{
   PAIR(-2, 66),   PAIR(52, 49),   PAIR(64, 43),   PAIR(189, -16)
 }};
 
-constexpr std::array<ScorePair, Squares::kSquareCount> kPassedPawnTable = {{
-  PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0),
-  PAIR(48 + 50, 100 + 50), PAIR(48 + 50, 100 + 50), PAIR(48 + 50, 115 + 50), PAIR(48 + 50, 120 + 50), PAIR(48 + 50, 120 + 50), PAIR(48 + 50, 115 + 50), PAIR(48 + 50, 100 + 50), PAIR(48 + 50, 100 + 50),
-  PAIR(7 + 10, 100 + 20), PAIR(7 + 10, 105 + 20), PAIR(7 + 20, 115 + 30), PAIR(7 + 30, 119 + 40), PAIR(7 + 30, 119 + 40), PAIR(7 + 20, 115 + 30), PAIR(7 + 10, 105 + 20), PAIR(7 + 10, 100 + 20),
-  PAIR(12 + 5, 80 + 10), PAIR(12 + 5, 85 + 15), PAIR(12 + 10, 90 + 25), PAIR(12 + 25, 95 + 35), PAIR(12 + 25, 95 + 35), PAIR(12 + 10, 90 + 25), PAIR(12 + 5, 85 + 15), PAIR(12 + 5, 80 + 10),
-  PAIR(-8 + 0, 60 + 5), PAIR(-8 + 0, 62 + 10), PAIR(-8 + 0, 67 + 20), PAIR(-8 + 20, 70 + 30), PAIR(-8 + 20, 70 + 30), PAIR(-8 + 0, 67 + 20), PAIR(-8 + 0, 62 + 10), PAIR(-8 + 0, 60 + 5),
-  PAIR(-7 + 5, 40 + 0), PAIR(-7 - 5, 42 + 5), PAIR(-7 - 10, 45 + 10), PAIR(-7 + 0, 50 + 20), PAIR(-7 + 0, 50 + 20), PAIR(-7 - 10, 45 + 10), PAIR(-7 - 5, 42 + 5), PAIR(-7 + 5, 40 + 0),
-  PAIR(-2 + 5, 20 + 5), PAIR(-2 + 10, 22 + 10), PAIR(-2 + 10, 25 + 10), PAIR(-2 - 20, 30 - 5), PAIR(-2 - 20, 30 - 5), PAIR(-2 + 10, 25 + 10), PAIR(-2 + 10, 22 + 10), PAIR(-2 + 5, 20 + 5),
-  PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0)
-}};
+constexpr std::array<ScorePair, Squares::kSquareCount> kPassedPawnTable = {PAIR(   0,    0), PAIR(  -2,    4), PAIR(  -7,   13), PAIR(  -8,   37), PAIR(  12,   61), PAIR(   7,  119), PAIR(  48,  109), PAIR(   0,    0)};
 
 constexpr std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
@@ -322,10 +313,9 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     }
 
     if (passed_pawn) {
-      score += kPassedPawnTable[RelativeSquare(square, us)];
-    } else {
-      score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
+      score += kPassedPawnTable[Rank(square)];
     }
+    score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
   }
 
   while (their_pieces) {
@@ -342,10 +332,9 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     }
 
     if (passed_pawn) {
-      score -= kPassedPawnTable[RelativeSquare(square, them)];
-    } else {
-      score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
+      score -= kPassedPawnTable[Rank(square)];
     }
+    score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
   }
 
   return score;
