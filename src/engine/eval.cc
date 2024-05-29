@@ -248,12 +248,12 @@ constexpr std::array<ScorePair, 28> kQueenMobility = {{
 
 constexpr std::array<ScorePair, Squares::kSquareCount> kPassedPawnTable = {{
   PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0),
-  PAIR(100, 120), PAIR(100, 120), PAIR(110, 130), PAIR(120, 140), PAIR(120, 140), PAIR(110, 130), PAIR(100, 120), PAIR(100, 120),
-  PAIR(80, 100), PAIR(80, 100), PAIR(90, 100), PAIR(100, 100), PAIR(100, 100), PAIR(90, 100), PAIR(80, 100), PAIR(80, 100),
-  PAIR(60, 80), PAIR(60, 80), PAIR(70, 80), PAIR(80, 80), PAIR(80, 80), PAIR(70, 80), PAIR(60, 80), PAIR(60, 80),
-  PAIR(40, 60), PAIR(40, 60), PAIR(50, 60), PAIR(55, 60), PAIR(55, 60), PAIR(50, 60), PAIR(40, 60), PAIR(40, 60),
-  PAIR(20, 40), PAIR(20, 40), PAIR(25, 40), PAIR(25, 40), PAIR(25, 40), PAIR(25, 40), PAIR(20, 40), PAIR(20, 40),
-  PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20),
+  PAIR(48 + 50, 100 + 50), PAIR(48 + 50, 100 + 50), PAIR(48 + 50, 115 + 50), PAIR(48 + 50, 120 + 50), PAIR(48 + 50, 120 + 50), PAIR(48 + 50, 115 + 50), PAIR(48 + 50, 100 + 50), PAIR(48 + 50, 100 + 50),
+  PAIR(7 + 10, 100 + 20), PAIR(7 + 10, 105 + 20), PAIR(7 + 20, 115 + 30), PAIR(7 + 30, 119 + 40), PAIR(7 + 30, 119 + 40), PAIR(7 + 20, 115 + 30), PAIR(7 + 10, 105 + 20), PAIR(7 + 10, 100 + 20),
+  PAIR(12 + 5, 80 + 10), PAIR(12 + 5, 85 + 15), PAIR(12 + 10, 90 + 25), PAIR(12 + 25, 95 + 35), PAIR(12 + 25, 95 + 35), PAIR(12 + 10, 90 + 25), PAIR(12 + 5, 85 + 15), PAIR(12 + 5, 80 + 10),
+  PAIR(-8 + 0, 60 + 5), PAIR(-8 + 0, 62 + 10), PAIR(-8 + 0, 67 + 20), PAIR(-8 + 20, 70 + 30), PAIR(-8 + 20, 70 + 30), PAIR(-8 + 0, 67 + 20), PAIR(-8 + 0, 62 + 10), PAIR(-8 + 0, 60 + 5),
+  PAIR(-7 + 5, 40 + 0), PAIR(-7 - 5, 42 + 5), PAIR(-7 - 10, 45 + 10), PAIR(-7 + 0, 50 + 20), PAIR(-7 + 0, 50 + 20), PAIR(-7 - 10, 45 + 10), PAIR(-7 - 5, 42 + 5), PAIR(-7 + 5, 40 + 0),
+  PAIR(-2 + 5, 20 + 5), PAIR(-2 + 10, 22 + 10), PAIR(-2 + 10, 25 + 10), PAIR(-2 - 20, 30 - 5), PAIR(-2 - 20, 30 - 5), PAIR(-2 + 10, 25 + 10), PAIR(-2 + 10, 22 + 10), PAIR(-2 + 5, 20 + 5),
   PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0)
 }};
 
@@ -318,11 +318,13 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
           ForwardFileMask(us, square) & their_pawns;
       if (enemy_pawns_ahead == 0) {
         passed_pawn = true;
+        std::cout << (int)square << std::endl;
       }
     }
 
     if (passed_pawn) {
       score += kPassedPawnTable[RelativeSquare(square, us)];
+      std::cout << kPassedPawnTable[RelativeSquare(square, us)].EndGame() << std::endl;
     } else {
       score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
     }
