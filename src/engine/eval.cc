@@ -323,7 +323,6 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
     if (passed_pawn) {
       score += kPassedPawnTable[RelativeSquare(square, us)];
-      std::cout << kPassedPawnTable[RelativeSquare(square, us)].EndGame() << std::endl;
     } else {
       score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
     }
