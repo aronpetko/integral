@@ -557,3 +557,22 @@ void Board::PrintPieces() {
     std::cout << static_cast<char>('a' + file) << ' ';
   std::cout << std::endl;
 }
+
+void BoardState::PrintPieces() {
+  {
+    for (int rank = kNumRanks - 1; rank >= 0; rank--) {
+      std::cout << rank + 1 << ' ';
+      for (int file = 0; file < kNumFiles; file++) {
+        const auto square = RankFileToSquare(rank, file);
+        std::cout << fen::GetPieceChar(*this, square);
+        if (file < kNumFiles - 1)
+          std::cout << " ";  // Space separator for clarity
+      }
+      std::cout << std::endl;
+    }
+    std::cout << "  ";
+    for (int file = 0; file < kNumFiles; file++)
+      std::cout << static_cast<char>('a' + file) << ' ';
+    std::cout << std::endl;
+  }
+}

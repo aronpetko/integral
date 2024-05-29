@@ -305,8 +305,10 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
     bool passed_pawn = false;
     if (piece_type == PieceType::kPawn) {
-      const BitBoard enemy_pawns_ahead =
-          ForwardFileMask(us, square) & their_pawns;
+      BitBoard adjacent_masks = ForwardFileMask(us, square);
+      adjacent_masks |= Shift<Direction::kEast>(adjacent_masks) |
+                        Shift<Direction::kWest>(adjacent_masks);
+      const BitBoard enemy_pawns_ahead = adjacent_masks & their_pawns;
       if (enemy_pawns_ahead == 0) {
         passed_pawn = true;
       }
@@ -324,8 +326,10 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
     bool passed_pawn = false;
     if (piece_type == PieceType::kPawn) {
-      const BitBoard enemy_pawns_ahead =
-          ForwardFileMask(them, square) & our_pawns;
+      BitBoard adjacent_masks = ForwardFileMask(them, square);
+      adjacent_masks |= Shift<Direction::kEast>(adjacent_masks) |
+                        Shift<Direction::kWest>(adjacent_masks);
+      const BitBoard enemy_pawns_ahead = adjacent_masks & our_pawns;
       if (enemy_pawns_ahead == 0) {
         passed_pawn = true;
       }

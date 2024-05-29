@@ -9,6 +9,7 @@
 #include "../engine/transpo.h"
 #include "../utils/zobrist.h"
 #include "bitboard.h"
+#include "fen.h"
 
 constexpr int kMaxPlyFromRoot = 256;
 constexpr int kMaxGamePly = 1024;
@@ -189,6 +190,8 @@ struct BoardState {
   [[nodiscard]] constexpr inline bool InCheck() const {
     return checkers != 0;
   }
+
+  void PrintPieces();
 
   std::array<BitBoard, PieceType::kNumTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
