@@ -18,18 +18,18 @@ void InitializeAttacks() {
   for (int square = 0; square < Squares::kSquareCount; square++) {
     const BitBoard src_mask = BitBoard::FromSquare(square);
 
-    knight_masks[square] |= (src_mask & ~FileMask::kFileH) << 17;
-    knight_masks[square] |= (src_mask & ~(FileMask::kFileH | FileMask::kFileG))
-                            << 10;
+    knight_masks[square] |= (src_mask & ~kFileMasks[kFileH]) << 17;
     knight_masks[square] |=
-        (src_mask & ~(FileMask::kFileH | FileMask::kFileG)) >> 6;
-    knight_masks[square] |= (src_mask & ~FileMask::kFileH) >> 15;
-    knight_masks[square] |= (src_mask & ~FileMask::kFileA) << 15;
-    knight_masks[square] |= (src_mask & ~(FileMask::kFileA | FileMask::kFileB))
-                            << 6;
+        (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG])) << 10;
     knight_masks[square] |=
-        (src_mask & ~(FileMask::kFileA | FileMask::kFileB)) >> 10;
-    knight_masks[square] |= (src_mask & ~FileMask::kFileA) >> 17;
+        (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG])) >> 6;
+    knight_masks[square] |= (src_mask & ~kFileMasks[kFileH]) >> 15;
+    knight_masks[square] |= (src_mask & ~kFileMasks[kFileA]) << 15;
+    knight_masks[square] |=
+        (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB])) << 6;
+    knight_masks[square] |=
+        (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB])) >> 10;
+    knight_masks[square] |= (src_mask & ~kFileMasks[kFileA]) >> 17;
 
     king_masks[square] |= Shift<Direction::kNorth>(src_mask);
     king_masks[square] |= Shift<Direction::kSouth>(src_mask);
@@ -162,7 +162,7 @@ BitBoard PawnMoves(Square square, const BoardState &state) {
     BitBoard up = Shift<Direction::kNorth>(bb_pos) & ~occupied;
     moves |= up;
 
-    if (up && (bb_pos & RankMask::kRank2)) {
+    if (up && (bb_pos & kRankMasks[kRank2])) {
       BitBoard up_up = Shift<Direction::kNorth>(up) & ~occupied;
       moves |= up_up;
     }
@@ -170,7 +170,7 @@ BitBoard PawnMoves(Square square, const BoardState &state) {
     BitBoard down = Shift<Direction::kSouth>(bb_pos) & ~occupied;
     moves |= down;
 
-    if (down && (bb_pos & RankMask::kRank7)) {
+    if (down && (bb_pos & kRankMasks[kRank7])) {
       BitBoard down_down = Shift<Direction::kSouth>(down) & ~occupied;
       moves |= down_down;
     }
@@ -197,13 +197,13 @@ BitBoard PawnDoublePushes(Color side, const BoardState &state) {
   BitBoard moves, pawns = state.Pawns(side), occupied = state.Occupied();
 
   if (side == Color::kWhite) {
-    const BitBoard double_pushers = pawns & RankMask::kRank2;
+    const BitBoard double_pushers = pawns & kRankMasks[kRank2];
     if (double_pushers) {
       BitBoard up_up = Shift<Direction::kNorth>(double_pushers) & ~occupied;
       moves |= up_up;
     }
   } else {
-    const BitBoard double_pushers = pawns & RankMask::kRank7;
+    const BitBoard double_pushers = pawns & kRankMasks[kRank7];
     if (double_pushers) {
       BitBoard up_up = Shift<Direction::kSouth>(double_pushers) & ~occupied;
       moves |= up_up;
@@ -395,9 +395,9 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
 
   BitBoard pawn_targets = targets;
   if (move_type & MoveType::kTactical) {  // Promotions are tactical
-    pawn_targets |= RankMask::kRank1 | RankMask::kRank8;
+    pawn_targets |= kRankMasks[kRank1] | kRankMasks[kRank8];
   } else {
-    pawn_targets &= ~(RankMask::kRank1 | RankMask::kRank8);
+    pawn_targets &= ~(kRankMasks[kRank1] | kRankMasks[kRank8]);
   }
 
   const int pushed_pawn_distance = state.turn == Color::kWhite ? 8 : -8;
@@ -422,8 +422,8 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
 
   BitBoard double_pawn_moves =
       state.turn == Color::kWhite
-          ? Shift<kNorth>(single_pawn_moves & RankMask::kRank3)
-          : Shift<kSouth>(single_pawn_moves & RankMask::kRank6);
+          ? Shift<Direction::kNorth>(single_pawn_moves & kRankMasks[kRank3])
+          : Shift<Direction::kSouth>(single_pawn_moves & kRankMasks[kRank6]);
   double_pawn_moves &= targets & ~occupied;
 
   while (double_pawn_moves) {

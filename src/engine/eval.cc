@@ -246,6 +246,17 @@ constexpr std::array<ScorePair, 28> kQueenMobility = {{
   PAIR(-2, 66),   PAIR(52, 49),   PAIR(64, 43),   PAIR(189, -16)
 }};
 
+constexpr std::array<ScorePair, Squares::kSquareCount> kPassedPawnTable = {{
+  PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0),
+  PAIR(100, 120), PAIR(100, 120), PAIR(110, 130), PAIR(120, 140), PAIR(120, 140), PAIR(110, 130), PAIR(100, 120), PAIR(100, 120),
+  PAIR(80, 100), PAIR(80, 100), PAIR(90, 100), PAIR(100, 100), PAIR(100, 100), PAIR(90, 100), PAIR(80, 100), PAIR(80, 100),
+  PAIR(60, 80), PAIR(60, 80), PAIR(70, 80), PAIR(80, 80), PAIR(80, 80), PAIR(70, 80), PAIR(60, 80), PAIR(60, 80),
+  PAIR(40, 60), PAIR(40, 60), PAIR(50, 60), PAIR(55, 60), PAIR(55, 60), PAIR(50, 60), PAIR(40, 60), PAIR(40, 60),
+  PAIR(20, 40), PAIR(20, 40), PAIR(25, 40), PAIR(25, 40), PAIR(25, 40), PAIR(25, 40), PAIR(20, 40), PAIR(20, 40),
+  PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20), PAIR(10, 20),
+  PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0), PAIR(0, 0)
+}};
+
 constexpr std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
 
@@ -293,17 +304,48 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
   const Color us = state.turn, them = FlipColor(us);
 
   BitBoard our_pieces = state.Occupied(us);
+  BitBoard their_pieces = state.Occupied(them);
+  BitBoard our_pawns = state.Pawns(us);
+  BitBoard their_pawns = state.Pawns(them);
+
   while (our_pieces) {
     const auto square = our_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
-    score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
+
+    bool passed_pawn = false;
+    if (piece_type == PieceType::kPawn) {
+      const BitBoard enemy_pawns_ahead =
+          ForwardFileMask(us, square) & their_pawns;
+      if (enemy_pawns_ahead == 0) {
+        passed_pawn = true;
+      }
+    }
+
+    if (passed_pawn) {
+      score += kPassedPawnTable[RelativeSquare(square, us)];
+    } else {
+      score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
+    }
   }
 
-  BitBoard their_pieces = state.Occupied(them);
   while (their_pieces) {
     const auto square = their_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
-    score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
+
+    bool passed_pawn = false;
+    if (piece_type == PieceType::kPawn) {
+      const BitBoard enemy_pawns_ahead =
+          ForwardFileMask(them, square) & our_pawns;
+      if (enemy_pawns_ahead == 0) {
+        passed_pawn = true;
+      }
+    }
+
+    if (passed_pawn) {
+      score -= kPassedPawnTable[RelativeSquare(square, them)];
+    } else {
+      score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
+    }
   }
 
   return score;
