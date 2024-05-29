@@ -318,7 +318,6 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
           ForwardFileMask(us, square) & their_pawns;
       if (enemy_pawns_ahead == 0) {
         passed_pawn = true;
-        std::cout << (int)square << std::endl;
       }
     }
 
