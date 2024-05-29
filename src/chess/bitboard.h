@@ -33,11 +33,11 @@ static constexpr std::array<U64, 8> kFileMasks = {
 constexpr U64 kDarkSquares = 0xAA55AA55AA55AA55ULL;
 constexpr U64 kLightSquares = 0x55AA55AA55AA55AAULL;
 
-inline int Rank(int square) {
+inline int Rank(Square square) {
   return square >> 3;
 }
 
-inline int File(int square) {
+inline int File(Square square) {
   return square & 7;
 }
 

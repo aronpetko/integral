@@ -4,6 +4,23 @@
 
 namespace eval {
 
+inline std::array<std::array<BitBoard, Squares::kSquareCount>, 2>
+    passed_pawn_masks;
+
+void InitMasks() {
+  for (int square = 0; square < Squares::kSquareCount; square++) {
+    const BitBoard white_forward_mask = ForwardFileMask(Color::kWhite, square);
+    passed_pawn_masks[Color::kWhite][square] =
+        white_forward_mask | Shift<Direction::kWest>(white_forward_mask) |
+        Shift<Direction::kEast>(white_forward_mask);
+
+    const BitBoard black_forward_mask = ForwardFileMask(Color::kBlack, square);
+    passed_pawn_masks[Color::kBlack][square] =
+        black_forward_mask | Shift<Direction::kWest>(black_forward_mask) |
+        Shift<Direction::kEast>(black_forward_mask);
+  }
+}
+
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
@@ -305,17 +322,15 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
     bool passed_pawn = false;
     if (piece_type == PieceType::kPawn) {
-      BitBoard adjacent_masks = ForwardFileMask(us, square);
-      adjacent_masks |= Shift<Direction::kEast>(adjacent_masks) |
-                        Shift<Direction::kWest>(adjacent_masks);
-      const BitBoard enemy_pawns_ahead = adjacent_masks & their_pawns;
+      const BitBoard enemy_pawns_ahead =
+          passed_pawn_masks[us][square] & their_pawns;
       if (enemy_pawns_ahead == 0) {
         passed_pawn = true;
       }
     }
 
     if (passed_pawn) {
-      //score += kPassedPawnTable[Rank(square)];
+      score += kPassedPawnTable[Rank(square)];
     }
     score += kPieceSquareTables[piece_type][RelativeSquare(square, us)];
   }
@@ -326,17 +341,15 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
 
     bool passed_pawn = false;
     if (piece_type == PieceType::kPawn) {
-      BitBoard adjacent_masks = ForwardFileMask(them, square);
-      adjacent_masks |= Shift<Direction::kEast>(adjacent_masks) |
-                        Shift<Direction::kWest>(adjacent_masks);
-      const BitBoard enemy_pawns_ahead = adjacent_masks & our_pawns;
+      const BitBoard enemy_pawns_ahead =
+          passed_pawn_masks[them][square] & our_pawns;
       if (enemy_pawns_ahead == 0) {
         passed_pawn = true;
       }
     }
 
     if (passed_pawn) {
-      //score -= kPassedPawnTable[Rank(square)];
+      score -= kPassedPawnTable[Rank(square)];
     }
     score -= kPieceSquareTables[piece_type][RelativeSquare(square, them)];
   }

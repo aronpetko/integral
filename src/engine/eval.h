@@ -31,6 +31,8 @@ static int MateIn(int evaluation) {
 
 bool StaticExchange(Move move, int threshold, const BoardState &state);
 
+void InitMasks();
+
 Score Evaluate(const BoardState &state);
 
 }  // namespace eval
