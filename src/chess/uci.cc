@@ -1,11 +1,13 @@
 #include "uci.h"
 
 #include <fmt/format.h>
+
 #include <string>
 
 #include "../ascii_logo.h"
 #include "../engine/search.h"
 #include "../tests/tests.h"
+#include "../tuner/tuner.h"
 #include "move_gen.h"
 
 namespace uci {
@@ -32,7 +34,8 @@ void Position(Board &board, std::stringstream &input_stream) {
   board.SetFromFen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves");
+  while (input_stream >> dummy && dummy != "moves")
+    ;
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -121,6 +124,10 @@ void AcceptCommands(int arg_count, char **args) {
   eval::InitMasks();
 
   InitializeOptions();
+
+  Tuner tuner;
+  //tuner.LoadFromFile(R"(C:\Users\Aron\Downloads\lichess-big3-resolved.book)");
+  // tuner.Tune();
 
   constexpr int kTTMbSize = 64;
   transposition_table.Resize(kTTMbSize);

@@ -802,12 +802,12 @@ constexpr size_t Function<R(Args...)>::ArgumentCount;
 
 // Evaluates to the number of arguments after expansion.
 //
-//   #define PAIR x, y
+//   #define Pair x, y
 //
 //   GMOCK_PP_NARG() => 1
 //   GMOCK_PP_NARG(x) => 1
 //   GMOCK_PP_NARG(x, y) => 2
-//   GMOCK_PP_NARG(PAIR) => 2
+//   GMOCK_PP_NARG(Pair) => 2
 //
 // Requires: the number of arguments after expansion is at most 15.
 #define GMOCK_PP_NARG(...) \
@@ -881,12 +881,12 @@ constexpr size_t Function<R(Args...)>::ArgumentCount;
 // Evaluates to the number of arguments after expansion. Identifies 'empty' as
 // 0.
 //
-//   #define PAIR x, y
+//   #define Pair x, y
 //
 //   GMOCK_PP_NARG0() => 0
 //   GMOCK_PP_NARG0(x) => 1
 //   GMOCK_PP_NARG0(x, y) => 2
-//   GMOCK_PP_NARG0(PAIR) => 2
+//   GMOCK_PP_NARG0(Pair) => 2
 //
 // Requires: * the number of arguments after expansion is at most 15.
 //           * If the argument is a macro, it must be able to be called with one

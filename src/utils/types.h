@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 
 #include "list.h"
 
@@ -96,7 +97,7 @@ enum File : int {
 
 // clang-format off
 using Square = U16;
-enum Squares : U16 {
+enum Squares : Square {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
   kA2, kB2, kC2, kD2, kE2, kF2, kG2, kH2,
   kA3, kB3, kC3, kD3, kE3, kF3, kG3, kH3,
@@ -180,7 +181,9 @@ class ScorePair {
   I32 score_;
 };
 
-#define PAIR(middle_game, end_game) ScorePair(middle_game, end_game)
+constexpr ScorePair Pair(Score middle_game, Score end_game) {
+  return ScorePair(middle_game, end_game);
+}
 
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<I16>::max() - 1;

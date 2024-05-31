@@ -3,12 +3,13 @@
 
 #include <array>
 #include <bit>
+#include <functional>
 #include <iostream>
 #include <vector>
 
 #include "../utils/types.h"
 
-static constexpr std::array<U64, 8> kRankMasks = {
+static constexpr std::array<U64, kNumRanks> kRankMasks = {
     0x00000000000000FFULL,
     0x000000000000FF00ULL,
     0x0000000000FF0000ULL,
@@ -19,7 +20,7 @@ static constexpr std::array<U64, 8> kRankMasks = {
     0xFF00000000000000ULL,
 };
 
-static constexpr std::array<U64, 8> kFileMasks = {
+static constexpr std::array<U64, kNumFiles> kFileMasks = {
     0x0101010101010101ULL,
     0x0202020202020202ULL,
     0x0404040404040404ULL,
@@ -99,6 +100,14 @@ class BitBoard {
 
   [[nodiscard]] constexpr inline bool MoreThanOne() const {
     return (bitboard_ & (bitboard_ - 1)) != 0;
+  }
+
+  template <class Function>
+  void PopEnumerate(const Function &fn) {
+    while (bitboard_ != 0) {
+      Square bit_location = PopLsb();
+      fn(bit_location);
+    }
   }
 
   constexpr inline BitBoard &operator=(const U64 &bitboard) {
@@ -219,7 +228,7 @@ class BitBoard {
     return bitboard_ != 0ULL;
   }
 
-  void PrintBitBoard() const {
+  void Print() const {
     for (int rank = 7; rank >= 0; rank--) {
       for (int file = 0; file < 8; file++) {
         const auto square = RankFileToSquare(rank, file);

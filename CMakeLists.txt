@@ -46,6 +46,6 @@ include_directories(third-party/fmt/include)
 add_definitions(-DFMT_HEADER_ONLY)
 
 # Collect source files
-file(GLOB SOURCES "src/*.cc" "src/magics/*.cc" "src/chess/*.cc" "src/engine/*.cc" "src/utils/*.cc" "src/tests/*.cc")
+file(GLOB SOURCES "src/*.cc" "src/magics/*.cc" "src/tuner/*.cc" "src/chess/*.cc" "src/engine/*.cc" "src/utils/*.cc" "src/tests/*.cc")
 
-add_executable(integral ${SOURCES})
+add_executable(integral ${SOURCES} src/tuner/tuner.cc)

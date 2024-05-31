@@ -15,7 +15,7 @@ inline std::array<std::array<BitBoard, 64>, 64> ray_intersecting_masks;
 void InitializeAttacks() {
   magics::attacks::Initialize();
 
-  for (int square = 0; square < Squares::kSquareCount; square++) {
+  for (int square = 0; square < kSquareCount; square++) {
     const BitBoard src_mask = BitBoard::FromSquare(square);
 
     knight_masks[square] |= (src_mask & ~kFileMasks[kFileH]) << 17;
@@ -54,14 +54,13 @@ void InitializeAttacks() {
     const BitBoard src_rook_rays =
         magics::attacks::GenerateRookMoves(Square(square), 0ULL);
 
-    for (int other_square = 0; other_square < Squares::kSquareCount;
+    for (int other_square = 0; other_square < kSquareCount;
          other_square++) {
       if (square == other_square) {
         continue;
       }
 
       const BitBoard dest_mask = BitBoard::FromSquare(other_square);
-
       if (src_bishop_rays & dest_mask) {
         // Calculate the rays that intersect square and other_square
         ray_intersecting_masks[square][other_square] =

@@ -7,7 +7,7 @@
 
 class SearchStack;
 
-constexpr int kFromToCombinations = Squares::kSquareCount * Squares::kSquareCount;
+constexpr int kFromToCombinations = kSquareCount * kSquareCount;
 
 using KillerMoves = std::array<std::array<Move, 2>, kMaxPlyFromRoot>;
 using ButterflyHistory = std::array<std::array<int, kFromToCombinations>, 2>;
