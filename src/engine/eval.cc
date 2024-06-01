@@ -219,20 +219,22 @@ ScorePair EvaluatePieceSquares(const BoardState &state) {
     const auto square = our_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
 
-    score += kPieceSquareTable[piece_type][RelativeSquare(square, us)];
-    TraceIncrement(kPieceValues[piece_type], us);
-    TraceIncrement(kPieceSquareTable[piece_type][RelativeSquare(square, us)],
-                   us);
+    const auto rel_square = RelativeSquare(square, us);
+    score += kPieceSquareTable[piece_type][rel_square];
+
+    TRACE_INCREMENT(kPieceValues[piece_type], us);
+    TRACE_INCREMENT(kPieceSquareTable[piece_type][rel_square], us);
   }
 
   while (their_pieces) {
     const auto square = their_pieces.PopLsb();
     const auto piece_type = state.GetPieceType(square);
 
-    score -= kPieceSquareTable[piece_type][RelativeSquare(square, them)];
-    TraceIncrement(kPieceValues[piece_type], them);
-    TraceIncrement(kPieceSquareTable[piece_type][RelativeSquare(square, us)],
-                   them);
+    const auto rel_square = RelativeSquare(square, them);
+    score -= kPieceSquareTable[piece_type][rel_square];
+
+    TRACE_INCREMENT(kPieceValues[piece_type], them);
+    TRACE_INCREMENT(kPieceSquareTable[piece_type][rel_square], them);
   }
 
   return score;
@@ -250,7 +252,7 @@ ScorePair EvaluateKnights(const BoardState &state) {
     const auto moves = move_gen::KnightMoves(square) & ~our_pieces;
 
     score += kKnightMobility[moves.PopCount()];
-    TraceIncrement(kKnightMobility[moves.PopCount()], us);
+    TRACE_INCREMENT(kKnightMobility[moves.PopCount()], us);
   }
 
   BitBoard their_knights = state.Knights(them);
@@ -259,7 +261,7 @@ ScorePair EvaluateKnights(const BoardState &state) {
     const auto moves = move_gen::KnightMoves(square) & ~their_pieces;
 
     score -= kKnightMobility[moves.PopCount()];
-    TraceIncrement(kKnightMobility[moves.PopCount()], them);
+    TRACE_INCREMENT(kKnightMobility[moves.PopCount()], them);
   }
 
   return score;
@@ -278,7 +280,7 @@ ScorePair EvaluateRooks(const BoardState &state) {
     const auto moves = move_gen::RookMoves(square, occupied) & ~our_pieces;
 
     score += kRookMobility[moves.PopCount()];
-    TraceIncrement(kRookMobility[moves.PopCount()], us);
+    TRACE_INCREMENT(kRookMobility[moves.PopCount()], us);
   }
 
   BitBoard their_rooks = state.Rooks(them);
@@ -287,7 +289,7 @@ ScorePair EvaluateRooks(const BoardState &state) {
     const auto moves = move_gen::RookMoves(square, occupied) & ~their_pieces;
 
     score -= kRookMobility[moves.PopCount()];
-    TraceIncrement(kRookMobility[moves.PopCount()], them);
+    TRACE_INCREMENT(kRookMobility[moves.PopCount()], them);
   }
 
   return score;
@@ -306,7 +308,7 @@ ScorePair EvaluateBishops(const BoardState &state) {
     const auto moves = move_gen::BishopMoves(square, occupied) & ~our_pieces;
 
     score += kBishopMobility[moves.PopCount()];
-    TraceIncrement(kBishopMobility[moves.PopCount()], us);
+    TRACE_INCREMENT(kBishopMobility[moves.PopCount()], us);
   }
 
   BitBoard their_bishops = state.Bishops(them);
@@ -315,7 +317,7 @@ ScorePair EvaluateBishops(const BoardState &state) {
     const auto moves = move_gen::BishopMoves(square, occupied) & ~their_pieces;
 
     score -= kBishopMobility[moves.PopCount()];
-    TraceIncrement(kBishopMobility[moves.PopCount()], them);
+    TRACE_INCREMENT(kBishopMobility[moves.PopCount()], them);
   }
 
   return score;
@@ -334,7 +336,7 @@ ScorePair EvaluateQueens(const BoardState &state) {
     const auto moves = move_gen::QueenMoves(square, occupied) & ~our_pieces;
 
     score += kQueenMobility[moves.PopCount()];
-    TraceIncrement(kQueenMobility[moves.PopCount()], us);
+    TRACE_INCREMENT(kQueenMobility[moves.PopCount()], us);
   }
 
   BitBoard their_queens = state.Queens(them);
@@ -343,7 +345,7 @@ ScorePair EvaluateQueens(const BoardState &state) {
     const auto moves = move_gen::QueenMoves(square, occupied) & ~their_pieces;
 
     score -= kQueenMobility[moves.PopCount()];
-    TraceIncrement(kQueenMobility[moves.PopCount()], them);
+    TRACE_INCREMENT(kQueenMobility[moves.PopCount()], them);
   }
 
   return score;
@@ -361,8 +363,8 @@ ScorePair EvaluatePawns(const BoardState &state) {
     const BitBoard enemy_pawns_ahead =
         passed_pawn_masks[us][square] & their_pawns;
     if (enemy_pawns_ahead == 0) {
-      score += kPassedPawn[Rank(square)];
-      TraceIncrement(kPassedPawn[Rank(square)], us);
+      score += kPassedPawn[RelativeRank(square, us)];
+      TRACE_INCREMENT(kPassedPawn[RelativeRank(square, us)], us);
     }
   }
 
@@ -374,8 +376,8 @@ ScorePair EvaluatePawns(const BoardState &state) {
     const BitBoard enemy_pawns_ahead =
         passed_pawn_masks[them][square] & our_pawns;
     if (enemy_pawns_ahead == 0) {
-      score -= kPassedPawn[Rank(square)];
-      TraceIncrement(kPassedPawn[Rank(square)], them);
+      score -= kPassedPawn[RelativeRank(square, them)];
+      TRACE_INCREMENT(kPassedPawn[RelativeRank(square, them)], them);
     }
   }
 
@@ -403,12 +405,12 @@ Score Evaluate(const BoardState &state) {
       score_pair.MiddleGame() * (kScaleFactor - interpolation_factor);
   const int end_score = score_pair.EndGame() * interpolation_factor;
 
-  TraceIncrement(kTempoBonus, state.turn);
+  TRACE_INCREMENT(kTempoBonus, state.turn);
 
   Score tapered_eval = (mid_score + end_score) / kScaleFactor;
   tapered_eval = std::clamp(tapered_eval, -kMateScore + 1, kMateScore - 1);
 
-  TraceEval(tapered_eval);
+  TRACE_EVAL(tapered_eval);
 
   return tapered_eval;
 }

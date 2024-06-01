@@ -22,30 +22,49 @@ struct TunerEntry {
   Score eval;
   Color turn;
   GameResult result;
-  double scale;
   std::array<double, 2> p_factors;
   std::vector<CoefficientEntry> coefficient_entries;
+};
+
+using TermPair = std::array<double, 2>;
+using VectorPair = std::vector<TermPair>;
+
+enum Phase {
+  MG,
+  EG
 };
 
 class Tuner {
  public:
   Tuner() {}
 
-  void LoadFromFile(std::string source_file);
+  void LoadFromFile(const std::string& source_file);
 
   void Tune();
 
  private:
   void InitBaseParameters();
 
-  TunerEntry CreateEntry(const BoardState& state, GameResult result);
+  void PrintParameters();
 
-  std::vector<I16> GetCoefficients();
+  [[nodiscard]] TunerEntry CreateEntry(const BoardState& state, GameResult result) const;
 
-  Score ComputeEvaluation(TunerEntry& entry) const;
+  [[nodiscard]] std::vector<I16> GetCoefficients() const;
+
+  [[nodiscard]] double ComputeEvaluation(const TunerEntry& entry, Score base) const;
+
+  [[nodiscard]] double ComputeOptimalK() const;
+
+  [[nodiscard]] VectorPair ComputeGradient(double K) const;
+
+  [[nodiscard]] double StaticEvaluationErrors(double K) const;
+
+  [[nodiscard]] double TunedEvaluationErrors(double K) const;
 
   void AddSingleParameter(const ScorePair& parameter) {
-    parameters_.emplace_back(parameter);
+    parameters_.push_back({static_cast<double>(parameter.MiddleGame()),
+                           static_cast<double>(parameter.EndGame())});
+    num_terms_++;
   }
 
   template <size_t N>
@@ -64,8 +83,10 @@ class Tuner {
   }
 
  private:
-  std::vector<ScorePair> parameters_;
+  int num_terms_;
+  std::vector<TermPair> parameters_;
   std::vector<TunerEntry> entries_;
+  VectorPair gradients_;
 };
 
 #endif  // INTEGRAL_TUNER_H

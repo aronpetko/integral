@@ -34,8 +34,7 @@ void Position(Board &board, std::stringstream &input_stream) {
   board.SetFromFen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves")
-    ;
+  while (input_stream >> dummy && dummy != "moves");
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -125,8 +124,8 @@ void AcceptCommands(int arg_count, char **args) {
 
   InitializeOptions();
 
-  Tuner tuner;
-  //tuner.LoadFromFile(R"(C:\Users\Aron\Downloads\lichess-big3-resolved.book)");
+  // Tuner tuner;
+  // tuner.LoadFromFile(R"(C:\Users\Aron\Downloads\lichess-big3-resolved.book)");
   // tuner.Tune();
 
   constexpr int kTTMbSize = 64;

@@ -3,9 +3,9 @@
 namespace fen {
 
 // clang-format off
-constexpr std::array<std::array<char, PieceType::kNumTypes>, 2> kPieceToChar = {{
-  {'p', 'n', 'b', 'r', 'q', 'k'},
-  {'P', 'N', 'B', 'R', 'Q', 'K'}
+constexpr std::array<std::array<char, PieceType::kNumTypes + 1>, 2> kPieceToChar = {{
+  {'p', 'n', 'b', 'r', 'q', 'k', 'x'},
+  {'P', 'N', 'B', 'R', 'Q', 'K', 'x'}
 }};
 // clang-format on
 

@@ -50,6 +50,11 @@ inline Square RelativeSquare(Square square, Color side) {
   return Square(square ^ (56 * side));
 }
 
+inline Square RelativeRank(Square square, Color side) {
+  const int rank = Rank(square);
+  return side == Color::kBlack ? 7 - rank : rank;
+}
+
 class BitBoard {
  public:
   constexpr BitBoard() : bitboard_(0ULL) {}
