@@ -28,7 +28,7 @@ int GetPhase(const BoardState &state) {
       kGamePhaseIncrements[PieceType::kBishop] * state.Bishops().PopCount();
   phase += kGamePhaseIncrements[PieceType::kRook] * state.Rooks().PopCount();
   phase += kGamePhaseIncrements[PieceType::kQueen] * state.Queens().PopCount();
-  return phase;
+  return std::min(phase, kMaxPhase);
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
@@ -394,25 +394,13 @@ Score Evaluate(const BoardState &state) {
                     EvaluateRooks(state) + EvaluateQueens(state) +
                     EvaluatePawns(state) + kTempoBonus;
 
-  phase = std::min(phase, kMaxPhase);
-  const int phase_percent = 100 * (kMaxPhase - phase) / kMaxPhase;
-
-  // Convert to a scale factor between 0 and kScaleFactor
-  const int interpolation_factor = kScaleFactor * phase_percent / 100;
-
-  // Interpolate between middle game and end game scores
-  const int mid_score =
-      score_pair.MiddleGame() * (kScaleFactor - interpolation_factor);
-  const int end_score = score_pair.EndGame() * interpolation_factor;
-
   TRACE_INCREMENT(kTempoBonus, state.turn);
 
-  Score tapered_eval = (mid_score + end_score) / kScaleFactor;
-  tapered_eval = std::clamp(tapered_eval, -kMateScore + 1, kMateScore - 1);
+  phase = std::min(phase, kMaxPhase);
+  Score eval = (score_pair.MiddleGame() * phase + score_pair.EndGame() * (24 - phase)) / 24;
+  TRACE_EVAL(eval);
 
-  TRACE_EVAL(tapered_eval);
-
-  return tapered_eval;
+  return eval;
 }
 
 }  // namespace eval

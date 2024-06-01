@@ -12,8 +12,8 @@ using namespace eval;
 
 constexpr int kMaxEpochs = 10000;
 constexpr double kMomentumCoeff = 0.9;
-constexpr double kVelocityCoeff = 0.9999;
-constexpr double kLearningRate = 1;
+constexpr double kVelocityCoeff = 0.999;
+constexpr double kLearningRate = 1.0;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
@@ -188,28 +188,15 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
 }
 
 double Tuner::ComputeEvaluation(const TunerEntry& entry, Score base) const {
-  double mg_score = base;
-  double eg_score = base;
+  double mg_score = 0;
+  double eg_score = 0;
   for (const auto& coefficient : entry.coefficient_entries) {
     mg_score += parameters_[coefficient.index][MG] * coefficient.value;
     eg_score += parameters_[coefficient.index][EG] * coefficient.value;
   }
 
-  // Scaling factor to maintain precision in integer calculations
-  constexpr int kScaleFactor = 1000;
-
-  const int phase = std::min(entry.phase, kMaxPhase);
-  const int phase_percent = 100 * (kMaxPhase - phase) / kMaxPhase;
-
-  // Convert to a scale factor between 0 and kScaleFactor
-  const int interpolation_factor = kScaleFactor * phase_percent / 100;
-
-  // Interpolate between middle game and end game scores
-  mg_score *= (kScaleFactor - interpolation_factor);
-  eg_score *= interpolation_factor;
-
-  const double tapered_eval = (mg_score + eg_score) / kScaleFactor;
-  return std::clamp<double>(tapered_eval, -kMateScore + 1, kMateScore - 1);
+  double eval = (mg_score * entry.phase + eg_score * (24 - entry.phase)) / 24;
+  return eval;
 }
 
 double Tuner::ComputeOptimalK() const {
@@ -243,8 +230,8 @@ VectorPair Tuner::ComputeGradient(double K) const {
       double S = Sigmoid(K, E);
       double X = (entry.result - S) * S * (1 - S);
 
-      double mg_base = X * entry.p_factors[MG];
-      double eg_base = X * entry.p_factors[EG];
+      double mg_base = X * (entry.phase / 24.0);
+      double eg_base = X - mg_base;
 
       for (const auto& coeff_entry : entry.coefficient_entries) {
         const int idx = coeff_entry.index;
