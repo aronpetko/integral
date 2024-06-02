@@ -132,6 +132,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kQueenMobility);
   AddArrayParameter(kPassedPawn);
   AddArrayParameter(kPawnPhalanxBonus);
+  AddArrayParameter(kDoubledPawnPenalty);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -154,6 +155,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
   GET_ARRAY_COEFFICIENTS(kPassedPawn);
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
+  GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;

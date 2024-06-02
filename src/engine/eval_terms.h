@@ -125,6 +125,10 @@ constexpr std::array<ScorePair, 8> kPawnPhalanxBonus = {
   Pair(0, 0),  Pair(3, -2),  Pair(2, 4),  Pair(21, 22),  Pair(49, 77),  Pair(145, 251),  Pair(43, 416),  Pair(0, 0)
 };
 
+constexpr std::array<ScorePair, 8> kDoubledPawnPenalty = {
+  Pair(-10, -10), Pair(-10, -10), Pair(-10, -10), Pair(-10, -10), Pair(-10, -10), Pair(-10, -10), Pair(-10, -10), Pair(0, 0)
+};
+
 constexpr ScorePair kTempoBonus = Pair(24, 29);
 
 constexpr std::array<int, PieceType::kNumTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};

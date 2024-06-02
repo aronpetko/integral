@@ -366,6 +366,14 @@ ScorePair EvaluatePawns(const BoardState &state) {
       score += kPawnPhalanxBonus[RelativeRank(square, us)];
       TRACE_INCREMENT(kPawnPhalanxBonus[RelativeRank(square, us)], us);
     }
+
+    // Check if there exists another pawn on this file (the current pawn is
+    // popped at this point)
+    const int file = File(square);
+    if (our_pawns & kFileMasks[file]) {
+      score -= kDoubledPawnPenalty[file];
+      TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
+    }
   }
 
   // Restore since we popped all the bits
@@ -386,6 +394,14 @@ ScorePair EvaluatePawns(const BoardState &state) {
     if (Shift<Direction::kEast>(BitBoard::FromSquare(square)) & their_pawns) {
       score -= kPawnPhalanxBonus[RelativeRank(square, them)];
       TRACE_INCREMENT(kPawnPhalanxBonus[RelativeRank(square, them)], them);
+    }
+
+    // Check if there exists another pawn on this file (the current pawn is
+    // popped at this point)
+    const int file = File(square);
+    if (their_pawns & kFileMasks[file]) {
+      score += kDoubledPawnPenalty[file];
+      TRACE_INCREMENT(kDoubledPawnPenalty[file], them);
     }
   }
 
