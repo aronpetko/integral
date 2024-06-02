@@ -59,7 +59,7 @@ struct EvalTrace {
 
 inline EvalTrace trace;
 
-#define TUNE
+// #define TUNE
 
 #ifdef TUNE
 #define TRACE_ADD(term, count, color) trace.term[color] += count
