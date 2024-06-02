@@ -61,8 +61,8 @@ void Tuner::LoadFromFile(const std::string& source_file) {
           const Score deviation = abs(entry.static_eval - computed_eval);
           if (deviation > 1) {
             fmt::println("Tuner deviation detected: real {} coeff {}",
-                       entry.static_eval,
-                       computed_eval);
+                         entry.static_eval,
+                         computed_eval);
             exit(0);
           }
         }
@@ -199,8 +199,7 @@ double Tuner::ComputeEvaluation(const TunerEntry& entry) const {
     eg_score += parameters_[coefficient.index][EG] * coefficient.value;
   }
 
-  double eval = (mg_score * entry.phase + eg_score * (24 - entry.phase)) / 24;
-  return eval;
+  return (mg_score * entry.phase + eg_score * (24 - entry.phase)) / 24;
 }
 
 double Tuner::ComputeOptimalK() const {
@@ -355,6 +354,9 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr std::array<ScorePair, 8> kPawnPhalanxBonus = ");
   PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
+
+  fmt::print("constexpr std::array<ScorePair, 8> kDoubledPawnPenalty = ");
+  PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);

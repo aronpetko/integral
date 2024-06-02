@@ -371,7 +371,7 @@ ScorePair EvaluatePawns(const BoardState &state) {
     // popped at this point)
     const int file = File(square);
     if (our_pawns & kFileMasks[file]) {
-      score -= kDoubledPawnPenalty[file];
+      score += kDoubledPawnPenalty[file];
       TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
     }
   }
@@ -400,7 +400,7 @@ ScorePair EvaluatePawns(const BoardState &state) {
     // popped at this point)
     const int file = File(square);
     if (their_pawns & kFileMasks[file]) {
-      score += kDoubledPawnPenalty[file];
+      score -= kDoubledPawnPenalty[file];
       TRACE_INCREMENT(kDoubledPawnPenalty[file], them);
     }
   }

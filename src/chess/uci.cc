@@ -125,9 +125,9 @@ void AcceptCommands(int arg_count, char **args) {
 
   InitializeOptions();
 
-  // Tuner tuner;
-  // tuner.LoadFromFile(R"(C:\Users\Aron\Downloads\lichess-big3-resolved.book)");
-  // tuner.Tune();
+  Tuner tuner;
+  tuner.LoadFromFile(R"(C:\Users\Aron\Downloads\lichess-big3-resolved.book)");
+  tuner.Tune();
 
   constexpr int kTTMbSize = 64;
   transposition_table.Resize(kTTMbSize);
