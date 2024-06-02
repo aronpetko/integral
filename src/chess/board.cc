@@ -477,6 +477,10 @@ void Board::HandlePromotions(Move move) {
   const auto to_rank = Rank(to);
 
   if (is_white && to_rank == kNumRanks - 1 || !is_white && to_rank == 0) {
+    // Since this pawn is promoting, we remove the pawn in place of the promoted
+    // piece
+    state_.RemovePiece(to);
+
     switch (move.GetPromotionType()) {
       case PromotionType::kKnight: {
         state_.PlacePiece(to, PieceType::kKnight, state_.turn);

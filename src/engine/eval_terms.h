@@ -122,10 +122,9 @@ constexpr PassedPawnTable<ScorePair> kPassedPawn = {
 };
 
 constexpr ScorePair kTempoBonus = Pair(25, 28);
-// clang-format on
 
-constexpr std::array<int, PieceType::kNumTypes> kGamePhaseIncrements = {
-    0, 1, 1, 2, 4, 0};
+constexpr std::array<int, PieceType::kNumTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};
+// clang-format on
 
 template <typename T>
 using TraceTerm = std::array<T, 2>;

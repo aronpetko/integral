@@ -22,12 +22,10 @@ void InitMasks() {
 
 int GetPhase(const BoardState &state) {
   int phase = 0;
-  phase +=
-      kGamePhaseIncrements[PieceType::kKnight] * state.Knights().PopCount();
-  phase +=
-      kGamePhaseIncrements[PieceType::kBishop] * state.Bishops().PopCount();
-  phase += kGamePhaseIncrements[PieceType::kRook] * state.Rooks().PopCount();
-  phase += kGamePhaseIncrements[PieceType::kQueen] * state.Queens().PopCount();
+  phase += kPhaseIncrements[PieceType::kKnight] * state.Knights().PopCount();
+  phase += kPhaseIncrements[PieceType::kBishop] * state.Bishops().PopCount();
+  phase += kPhaseIncrements[PieceType::kRook] * state.Rooks().PopCount();
+  phase += kPhaseIncrements[PieceType::kQueen] * state.Queens().PopCount();
   return std::min(phase, kMaxPhase);
 }
 
@@ -169,7 +167,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   return state.turn == winner;
 }
 
-std::pair<ScorePair, int> EvaluateMaterialAndPhase(const BoardState &state) {
+ScorePair EvaluateMaterial(const BoardState &state) {
   const Color us = state.turn, them = FlipColor(us);
 
   const BitBoard our_pieces = state.Occupied(us);
@@ -198,14 +196,7 @@ std::pair<ScorePair, int> EvaluateMaterialAndPhase(const BoardState &state) {
   score += kPieceValues[PieceType::kBishop] * bishop_count;
   score += kPieceValues[PieceType::kRook] * rook_count;
   score += kPieceValues[PieceType::kQueen] * queen_count;
-
-  int phase = 0;
-  phase += kGamePhaseIncrements[PieceType::kKnight] * knights.PopCount();
-  phase += kGamePhaseIncrements[PieceType::kBishop] * bishops.PopCount();
-  phase += kGamePhaseIncrements[PieceType::kRook] * rooks.PopCount();
-  phase += kGamePhaseIncrements[PieceType::kQueen] * queens.PopCount();
-
-  return {score, phase};
+  return score;
 }
 
 ScorePair EvaluatePieceSquares(const BoardState &state) {
@@ -360,6 +351,7 @@ ScorePair EvaluatePawns(const BoardState &state) {
 
   while (our_pawns) {
     const auto square = our_pawns.PopLsb();
+
     const BitBoard enemy_pawns_ahead =
         passed_pawn_masks[us][square] & their_pawns;
     if (enemy_pawns_ahead == 0) {
@@ -373,6 +365,7 @@ ScorePair EvaluatePawns(const BoardState &state) {
 
   while (their_pawns) {
     const auto square = their_pawns.PopLsb();
+
     const BitBoard enemy_pawns_ahead =
         passed_pawn_masks[them][square] & our_pawns;
     if (enemy_pawns_ahead == 0) {
@@ -385,21 +378,18 @@ ScorePair EvaluatePawns(const BoardState &state) {
 }
 
 Score Evaluate(const BoardState &state) {
-  // Scaling factor to maintain precision in integer calculations
-  constexpr int kScaleFactor = 1000;
-
-  auto [material_score, phase] = EvaluateMaterialAndPhase(state);
-  auto score_pair = material_score + EvaluatePieceSquares(state) +
-                    EvaluateKnights(state) + EvaluateBishops(state) +
-                    EvaluateRooks(state) + EvaluateQueens(state) +
-                    EvaluatePawns(state) + kTempoBonus;
-
+  const ScorePair score =
+      EvaluateMaterial(state) + EvaluatePieceSquares(state) +
+      EvaluatePawns(state) + EvaluateKnights(state) + EvaluateBishops(state) +
+      EvaluateRooks(state) + EvaluateQueens(state) + kTempoBonus;
   TRACE_INCREMENT(kTempoBonus, state.turn);
 
-  phase = std::min(phase, kMaxPhase);
-  Score eval = (score_pair.MiddleGame() * phase + score_pair.EndGame() * (24 - phase)) / 24;
-  TRACE_EVAL(eval);
+  const int phase = std::min(GetPhase(state), kMaxPhase);
+  const Score eval =
+      (score.MiddleGame() * phase + score.EndGame() * (kMaxPhase - phase)) /
+      kMaxPhase;
 
+  TRACE_EVAL(eval);
   return eval;
 }
 
