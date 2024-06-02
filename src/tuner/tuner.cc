@@ -63,7 +63,6 @@ void Tuner::LoadFromFile(const std::string& source_file) {
             fmt::println("Tuner deviation detected: real {} coeff {}",
                          entry.static_eval,
                          computed_eval);
-            exit(0);
           }
         }
       }
@@ -130,9 +129,10 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
   AddArrayParameter(kQueenMobility);
-  AddArrayParameter(kPassedPawn);
+  AddArrayParameter(kPassedPawnBonus);
   AddArrayParameter(kPawnPhalanxBonus);
   AddArrayParameter(kDoubledPawnPenalty);
+  AddArrayParameter(kRookOnOpenFileBonus);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -153,9 +153,10 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
-  GET_ARRAY_COEFFICIENTS(kPassedPawn);
+  GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
+  GET_ARRAY_COEFFICIENTS(kRookOnOpenFileBonus);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -304,7 +305,7 @@ void PrintArray(int& index,
     }
     PrintTerm(index, parameters, true);
     if (i < size - 1) {
-      fmt::print(",  ");
+      fmt::print(", ");
     }
   }
 
@@ -349,14 +350,17 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr QueenMobilityTable<ScorePair> kQueenMobility = ");
   PrintArray(index, kQueenMobility.size(), parameters_);
 
-  fmt::print("constexpr PassedPawnTable<ScorePair> kPassedPawn = ");
-  PrintArray(index, kPassedPawn.size(), parameters_);
+  fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
+  PrintArray(index, kPassedPawnBonus.size(), parameters_);
 
-  fmt::print("constexpr std::array<ScorePair, 8> kPawnPhalanxBonus = ");
+  fmt::print("constexpr RankTable<ScorePair> kPawnPhalanxBonus = ");
   PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
 
-  fmt::print("constexpr std::array<ScorePair, 8> kDoubledPawnPenalty = ");
+  fmt::print("constexpr FileTable<ScorePair> kDoubledPawnPenalty = ");
   PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
+
+  fmt::print("constexpr FileTable<ScorePair> kRookOnOpenFileBonus = ");
+  PrintArray(index, kRookOnOpenFileBonus.size(), parameters_);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);
