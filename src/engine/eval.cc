@@ -265,7 +265,8 @@ ScorePair EvaluateRooks(const BoardState &state) {
   const BitBoard our_pieces = state.Occupied(us),
                  their_pieces = state.Occupied(them),
                  occupied = our_pieces | their_pieces;
-  const BitBoard pawns = state.Pawns();
+  const BitBoard our_pawns = state.Pawns() & our_pieces,
+                 their_pawns = state.Pawns() & their_pieces;
 
   BitBoard our_rooks = state.Rooks(us);
   while (our_rooks) {
@@ -276,9 +277,16 @@ ScorePair EvaluateRooks(const BoardState &state) {
     TRACE_INCREMENT(kRookMobility[moves.PopCount()], us);
 
     const int file = File(square);
-    if ((pawns & kFileMasks[file]) == 0) {
-      score += kRookOnOpenFileBonus[file];
-      TRACE_INCREMENT(kRookOnOpenFileBonus[file], us);
+    const BitBoard our_pawns_on_file = our_pawns & kFileMasks[file];
+    if (!our_pawns_on_file) {
+      const BitBoard their_pawns_on_file = their_pawns & kFileMasks[file];
+      if (!their_pawns_on_file) {
+        score += kRookOnOpenFileBonus[file];
+        TRACE_INCREMENT(kRookOnOpenFileBonus[file], us);
+      } else {
+        score += kRookOnSemiOpenFileBonus[file];
+        TRACE_INCREMENT(kRookOnSemiOpenFileBonus[file], us);
+      }
     }
   }
 
@@ -291,9 +299,16 @@ ScorePair EvaluateRooks(const BoardState &state) {
     TRACE_INCREMENT(kRookMobility[moves.PopCount()], them);
 
     const int file = File(square);
-    if ((pawns & kFileMasks[file]) == 0) {
-      score -= kRookOnOpenFileBonus[file];
-      TRACE_INCREMENT(kRookOnOpenFileBonus[file], them);
+    const BitBoard our_pawns_on_file = their_pawns & kFileMasks[file];
+    if (!our_pawns_on_file) {
+      const BitBoard their_pawns_on_file = our_pawns & kFileMasks[file];
+      if (!their_pawns_on_file) {
+        score -= kRookOnOpenFileBonus[file];
+        TRACE_INCREMENT(kRookOnOpenFileBonus[file], them);
+      } else {
+        score -= kRookOnSemiOpenFileBonus[file];
+        TRACE_INCREMENT(kRookOnSemiOpenFileBonus[file], them);
+      }
     }
   }
 
