@@ -52,6 +52,7 @@ struct EvalTrace {
   eval::RankTable<TraceTerm<I16>> kPawnPhalanxBonus{};
   eval::FileTable<TraceTerm<I16>> kDoubledPawnPenalty{};
   eval::FileTable<TraceTerm<I16>> kRookOnOpenFileBonus{};
+  eval::FileTable<TraceTerm<I16>> kRookOnSemiOpenFileBonus{};
   TraceTerm<I16> kTempoBonus{};
   Score eval{};
 };
