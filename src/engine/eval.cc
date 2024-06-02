@@ -275,9 +275,10 @@ ScorePair EvaluateRooks(const BoardState &state) {
     score += kRookMobility[moves.PopCount()];
     TRACE_INCREMENT(kRookMobility[moves.PopCount()], us);
 
-    if ((pawns & kFileMasks[File(square)]) == 0) {
-      score += kRookOnOpenFileBonus[moves.PopCount()];
-      TRACE_INCREMENT(kRookOnOpenFileBonus[moves.PopCount()], us);
+    const int file = File(square);
+    if ((pawns & kFileMasks[file]) == 0) {
+      score += kRookOnOpenFileBonus[file];
+      TRACE_INCREMENT(kRookOnOpenFileBonus[file], us);
     }
   }
 
@@ -289,9 +290,10 @@ ScorePair EvaluateRooks(const BoardState &state) {
     score -= kRookMobility[moves.PopCount()];
     TRACE_INCREMENT(kRookMobility[moves.PopCount()], them);
 
-    if ((pawns & kFileMasks[File(square)]) == 0) {
-      score -= kRookOnOpenFileBonus[moves.PopCount()];
-      TRACE_INCREMENT(kRookOnOpenFileBonus[moves.PopCount()], them);
+    const int file = File(square);
+    if ((pawns & kFileMasks[file]) == 0) {
+      score -= kRookOnOpenFileBonus[file];
+      TRACE_INCREMENT(kRookOnOpenFileBonus[file], them);
     }
   }
 
