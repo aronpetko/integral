@@ -350,14 +350,17 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr QueenMobilityTable<ScorePair> kQueenMobility = ");
   PrintArray(index, kQueenMobility.size(), parameters_);
 
-  fmt::print("constexpr PassedPawnTable<ScorePair> kPassedPawnBonus = ");
+  fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
   PrintArray(index, kPassedPawnBonus.size(), parameters_);
 
-  fmt::print("constexpr std::array<ScorePair, 8> kPawnPhalanxBonus = ");
+  fmt::print("constexpr RankTable<ScorePair> kPawnPhalanxBonus = ");
   PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
 
-  fmt::print("constexpr std::array<ScorePair, 8> kDoubledPawnPenalty = ");
+  fmt::print("constexpr FileTable<ScorePair> kDoubledPawnPenalty = ");
   PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
+
+  fmt::print("constexpr FileTable<ScorePair> kRookOnOpenFileBonus = ");
+  PrintArray(index, kRookOnOpenFileBonus.size(), parameters_);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);
