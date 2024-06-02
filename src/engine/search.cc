@@ -576,7 +576,6 @@ void Search::NewGame() {
     // First four search stacks are "padding" for histories
     stack_[i] = SearchStack(std::max(0, i - 4));
   }
-
   transposition_table.Clear();
   move_history_.Clear();
 }

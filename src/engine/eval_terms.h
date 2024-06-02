@@ -26,7 +26,10 @@ template <typename T>
 using QueenMobilityTable = std::array<T, 28>;
 
 template <typename T>
-using PassedPawnTable = std::array<T, kNumRanks>;
+using RankTable = std::array<T, kNumRanks>;
+
+template <typename T>
+using FileTable = std::array<T, kNumFiles>;
 
 constexpr PieceValueTable<ScorePair> kPieceValues = {
   Pair(106, 144),  Pair(317, 319),  Pair(353, 349),  Pair(464, 689),  Pair(990, 1177),  Pair(0, 0)
@@ -117,16 +120,20 @@ constexpr QueenMobilityTable<ScorePair> kQueenMobility = {
   Pair(58, 274),  Pair(122, 252),  Pair(131, 247),  Pair(249, 194)
 };
 
-constexpr PassedPawnTable<ScorePair> kPassedPawn = {
+constexpr RankTable<ScorePair> kPassedPawnBonus = {
   Pair(0, 0),  Pair(-18, -9),  Pair(-24, 1),  Pair(-17, 30),  Pair(8, 59),  Pair(1, 135),  Pair(34, 188),  Pair(0, 0)
 };
 
-constexpr std::array<ScorePair, 8> kPawnPhalanxBonus = {
+constexpr RankTable<ScorePair> kPawnPhalanxBonus = {
   Pair(0, 0),  Pair(0, -10),  Pair(2, 3),  Pair(22, 20),  Pair(47, 72),  Pair(127, 251),  Pair(25, 481),  Pair(0, 0)
 };
 
-constexpr std::array<ScorePair, 8> kDoubledPawnPenalty = {
-  Pair(-25, -50),  Pair(-13, -44),  Pair(-18, -43),  Pair(-12, -28),  Pair(-21, -24),  Pair(-24, -43),  Pair(-26, -39),  Pair(-26, -59)
+constexpr FileTable<ScorePair> kDoubledPawnPenalty = {
+  Pair(-25, -50), Pair(-13, -44), Pair(-18, -43), Pair(-12, -28), Pair(-21, -24), Pair(-24, -43), Pair(-26, -39), Pair(-26, -59)
+};
+
+constexpr FileTable<ScorePair> kRookOnOpenFileBonus = {
+  Pair(10, 10), Pair(10, 10), Pair(10, 10), Pair(10, 10), Pair(10, 10), Pair(10, 10), Pair(10, 10), Pair(10, 10)
 };
 
 constexpr ScorePair kTempoBonus = Pair(24, 28);

@@ -48,16 +48,17 @@ struct EvalTrace {
   eval::BishopMobilityTable<TraceTerm<I16>> kBishopMobility{};
   eval::RookMobilityTable<TraceTerm<I16>> kRookMobility{};
   eval::QueenMobilityTable<TraceTerm<I16>> kQueenMobility{};
-  eval::PassedPawnTable<TraceTerm<I16>> kPassedPawn{};
-  std::array<TraceTerm<I16>, 8> kPawnPhalanxBonus{};
-  std::array<TraceTerm<I16>, 8> kDoubledPawnPenalty{};
+  eval::RankTable<TraceTerm<I16>> kPassedPawnBonus{};
+  eval::RankTable<TraceTerm<I16>> kPawnPhalanxBonus{};
+  eval::FileTable<TraceTerm<I16>> kDoubledPawnPenalty{};
+  eval::FileTable<TraceTerm<I16>> kRookOnOpenFileBonus{};
   TraceTerm<I16> kTempoBonus{};
   Score eval{};
 };
 
 inline EvalTrace trace;
 
-// #define TUNE
+#define TUNE
 
 #ifdef TUNE
 #define TRACE_ADD(term, count, color) trace.term[color] += count

@@ -265,6 +265,7 @@ ScorePair EvaluateRooks(const BoardState &state) {
   const BitBoard our_pieces = state.Occupied(us),
                  their_pieces = state.Occupied(them),
                  occupied = our_pieces | their_pieces;
+  const BitBoard pawns = state.Pawns();
 
   BitBoard our_rooks = state.Rooks(us);
   while (our_rooks) {
@@ -273,6 +274,11 @@ ScorePair EvaluateRooks(const BoardState &state) {
 
     score += kRookMobility[moves.PopCount()];
     TRACE_INCREMENT(kRookMobility[moves.PopCount()], us);
+
+    if ((pawns & kFileMasks[File(square)]) == 0) {
+      score += kRookOnOpenFileBonus[moves.PopCount()];
+      TRACE_INCREMENT(kRookOnOpenFileBonus[moves.PopCount()], us);
+    }
   }
 
   BitBoard their_rooks = state.Rooks(them);
@@ -282,6 +288,11 @@ ScorePair EvaluateRooks(const BoardState &state) {
 
     score -= kRookMobility[moves.PopCount()];
     TRACE_INCREMENT(kRookMobility[moves.PopCount()], them);
+
+    if ((pawns & kFileMasks[File(square)]) == 0) {
+      score -= kRookOnOpenFileBonus[moves.PopCount()];
+      TRACE_INCREMENT(kRookOnOpenFileBonus[moves.PopCount()], them);
+    }
   }
 
   return score;
@@ -356,8 +367,8 @@ ScorePair EvaluatePawns(const BoardState &state) {
     const BitBoard enemy_pawns_ahead =
         passed_pawn_masks[us][square] & their_pawns;
     if (enemy_pawns_ahead == 0) {
-      score += kPassedPawn[RelativeRank(square, us)];
-      TRACE_INCREMENT(kPassedPawn[RelativeRank(square, us)], us);
+      score += kPassedPawnBonus[RelativeRank(square, us)];
+      TRACE_INCREMENT(kPassedPawnBonus[RelativeRank(square, us)], us);
     }
 
     // We shift east to detect pawn phalanxes, since we don't want to check both
@@ -385,8 +396,8 @@ ScorePair EvaluatePawns(const BoardState &state) {
     const BitBoard enemy_pawns_ahead =
         passed_pawn_masks[them][square] & our_pawns;
     if (enemy_pawns_ahead == 0) {
-      score -= kPassedPawn[RelativeRank(square, them)];
-      TRACE_INCREMENT(kPassedPawn[RelativeRank(square, them)], them);
+      score -= kPassedPawnBonus[RelativeRank(square, them)];
+      TRACE_INCREMENT(kPassedPawnBonus[RelativeRank(square, them)], them);
     }
 
     // We shift east to detect pawn phalanxes, since we don't want to check both
