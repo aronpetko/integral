@@ -45,18 +45,20 @@ class TimeManagement {
 
   void Stop();
 
+  void SetConfig(const TimeConfig &config);
+
   // Determines if the search should end if we are confident that this move
   // shouldn't be searched further (soft limit)
   [[nodiscard]] bool ShouldStop(Move best_move, U32 nodes_searched);
 
   // Determine if the search must give up now to avoid losing
-  [[nodiscard]] bool TimesUp() const;
+  [[nodiscard]] bool TimesUp();
 
   [[nodiscard]] int GetSearchDepth() const;
 
   [[nodiscard]] U32 &NodesSpent(Move move);
 
-  [[nodiscard]] U64 TimeElapsed() const;
+  [[nodiscard]] U64 TimeElapsed();
 
  private:
   [[nodiscard]] U64 GetHardLimit() const;
@@ -66,7 +68,7 @@ class TimeManagement {
  private:
   TimeConfig config_;
   TimeType type_;
-  TimeStamp start_time_, end_time_;
+  std::atomic<TimeStamp> start_time_, end_time_;
   // Table that keeps track of how many nodes were spent searching a particular
   // move
   std::array<U32, 4096> nodes_spent_;

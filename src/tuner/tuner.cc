@@ -57,10 +57,10 @@ void Tuner::LoadFromFile(const std::string& source_file) {
           TunerEntry entry = CreateEntry(board.GetState(), result);
           entries_.push_back(entry);
 
-          const Score computed_eval = ComputeEvaluation(entry, 0);
+          const Score computed_eval = ComputeEvaluation(entry);
           const Score deviation = abs(entry.static_eval - computed_eval);
           if (deviation > 1) {
-            fmt::print("Tuner deviation detected: real {} coeff {}\n",
+            fmt::println("Tuner deviation detected: real {} coeff {}",
                        entry.static_eval,
                        computed_eval);
             exit(0);
@@ -69,7 +69,7 @@ void Tuner::LoadFromFile(const std::string& source_file) {
       }
     }
   } else {
-    std::cout << "Unable to open file" << std::endl;
+    fmt::println("Unable to open file");
   }
 
   file.close();
@@ -131,6 +131,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kRookMobility);
   AddArrayParameter(kQueenMobility);
   AddArrayParameter(kPassedPawn);
+  AddArrayParameter(kPawnPhalanxBonus);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -152,6 +153,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kRookMobility);
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
   GET_ARRAY_COEFFICIENTS(kPassedPawn);
+  GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -187,7 +189,7 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
   return entry;
 }
 
-double Tuner::ComputeEvaluation(const TunerEntry& entry, Score base) const {
+double Tuner::ComputeEvaluation(const TunerEntry& entry) const {
   double mg_score = 0;
   double eg_score = 0;
   for (const auto& coefficient : entry.coefficient_entries) {
@@ -226,7 +228,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
   {
 #pragma omp for schedule(static)
     for (const auto& entry : entries_) {
-      double E = ComputeEvaluation(entry, 0);
+      double E = ComputeEvaluation(entry);
       double S = Sigmoid(K, E);
       double X = (entry.result - S) * S * (1 - S);
 
@@ -268,8 +270,7 @@ double Tuner::TunedEvaluationErrors(double K) const {
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
-      total += pow(
-          entry.result - Sigmoid(K, ComputeEvaluation(entry, 0)), 2);
+      total += pow(entry.result - Sigmoid(K, ComputeEvaluation(entry)), 2);
     }
   }
   return total / (double)entries_.size();
@@ -306,9 +307,7 @@ void PrintArray(int& index,
     }
   }
 
-  fmt::print("\n{}}}{}",
-             in_2d_array ? "  " : "",
-             in_2d_array ? "" : ";\n\n");
+  fmt::print("\n{}}}{}", in_2d_array ? "  " : "", in_2d_array ? "" : ";\n\n");
 }
 
 void Print2DArray(int& index,
@@ -351,6 +350,9 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr PassedPawnTable<ScorePair> kPassedPawn = ");
   PrintArray(index, kPassedPawn.size(), parameters_);
+
+  fmt::print("constexpr std::array<ScorePair, 8> kPawnPhalanxBonus = ");
+  PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);

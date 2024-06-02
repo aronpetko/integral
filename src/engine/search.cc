@@ -1,6 +1,7 @@
 #include "search.h"
 
 #include <fmt/format.h>
+
 #include <iomanip>
 
 #include "move_picker.h"
@@ -52,9 +53,9 @@ void Search::IterativeDeepening() {
     constexpr short kAspirationWindowDepth = 4;
     constexpr short kAspirationWindowDelta = 15;
 
-    short window = kAspirationWindowDepth;
-    int alpha = -kInfiniteScore;
-    int beta = kInfiniteScore;
+    int window = kAspirationWindowDepth;
+    Score alpha = -kInfiniteScore;
+    Score beta = kInfiniteScore;
 
     if (depth >= kAspirationWindowDepth) {
       alpha = std::max<int>(-kInfiniteScore, score - window);
@@ -106,19 +107,17 @@ void Search::IterativeDeepening() {
 
     if (searching_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
-      std::cout
-          << fmt::format(
-                 "info depth {} seldepth {} score {} {} nodes {} time {} nps "
-                 "{} pv {}",
-                 depth,
-                 sel_depth_,
-                 is_mate ? "mate" : "cp",
-                 is_mate ? eval::MateIn(score) : score,
-                 nodes_searched_,
-                 time_mgmt_.TimeElapsed(),
-                 nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
-                 root_stack->pv.ToString())
-          << std::endl;
+      fmt::println(
+          "info depth {} seldepth {} score {} {} nodes {} time {} nps "
+          "{} pv {}",
+          depth,
+          sel_depth_,
+          is_mate ? "mate" : "cp",
+          is_mate ? eval::MateIn(score) : score,
+          nodes_searched_,
+          time_mgmt_.TimeElapsed(),
+          nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
+          root_stack->pv.ToString());
     }
 
     if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
@@ -127,7 +126,7 @@ void Search::IterativeDeepening() {
   }
 
   if (print_info) {
-    std::cout << fmt::format("bestmove {}", best_move.ToString()) << std::endl;
+    fmt::println("bestmove {}", best_move.ToString());
   }
 
   Stop();
@@ -531,11 +530,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
   return best_score;
 }
 
-void Search::SetTimeConfig(TimeConfig &time_config) {
-  time_mgmt_ = TimeManagement(time_config);
-}
-
-bool Search::ShouldQuit() const {
+bool Search::ShouldQuit() {
   return !searching_ || ((nodes_searched_ & 2047) && time_mgmt_.TimesUp());
 }
 
@@ -543,7 +538,7 @@ void Search::Start(TimeConfig &time_config) {
   if (searching_) return;
   searching_ = true;
 
-  SetTimeConfig(time_config);
+  time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
   std::thread([this] { IterativeDeepening<SearchType::kRegular>(); }).detach();
@@ -556,7 +551,7 @@ void Search::Bench(int depth) {
   TimeConfig time_config;
   time_config.depth = depth;
 
-  SetTimeConfig(time_config);
+  time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
   // Bench is intended to block the UCI loop thread
@@ -568,7 +563,11 @@ void Search::Stop() {
   searching_ = false;
 }
 
-const TimeManagement &Search::GetTimeManagement() {
+void Search::WaitUntilFinished() const {
+  while (searching_) std::this_thread::yield();
+}
+
+TimeManagement &Search::GetTimeManagement() {
   return time_mgmt_;
 }
 

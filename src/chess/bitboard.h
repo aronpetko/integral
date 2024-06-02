@@ -1,6 +1,8 @@
 #ifndef INTEGRAL_BITBOARD_H_
 #define INTEGRAL_BITBOARD_H_
 
+#include <fmt/format.h>
+
 #include <array>
 #include <bit>
 #include <functional>
@@ -237,10 +239,10 @@ class BitBoard {
     for (int rank = 7; rank >= 0; rank--) {
       for (int file = 0; file < 8; file++) {
         const auto square = RankFileToSquare(rank, file);
-        std::cout << (IsSet(square) ? '1' : '0');
-        if (file < 7) std::cout << " ";  // Space separator for clarity
+        fmt::print("{}", IsSet(square) ? '1' : '0');
+        if (file < 7) fmt::print(" ");  // Space separator for clarity
       }
-      std::cout << std::endl;
+     fmt::print("\n");
     }
   }
 

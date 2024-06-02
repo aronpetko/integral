@@ -2,6 +2,7 @@
 #define INTEGRAL_TUNER_H
 
 #include "../chess/board.h"
+#include "../engine/eval_terms.h"
 #include "../utils/string.h"
 #include "../utils/types.h"
 
@@ -34,6 +35,41 @@ enum Phase {
   EG
 };
 
+template <typename T>
+using TraceTerm = std::array<T, 2>;
+
+// A struct that counts the amount of times each term is used, and by which side
+struct EvalTrace {
+  // The names, though they are not constant, must match the above names (for
+  // ease of use with the tuner)
+  eval::PieceValueTable<TraceTerm<I16>> kPieceValues{};
+  eval::PieceSquareTable<TraceTerm<I16>> kPieceSquareTable{};
+  eval::KnightMobilityTable<TraceTerm<I16>> kKnightMobility{};
+  eval::BishopMobilityTable<TraceTerm<I16>> kBishopMobility{};
+  eval::RookMobilityTable<TraceTerm<I16>> kRookMobility{};
+  eval::QueenMobilityTable<TraceTerm<I16>> kQueenMobility{};
+  eval::PassedPawnTable<TraceTerm<I16>> kPassedPawn{};
+  std::array<TraceTerm<I16>, 8> kPawnPhalanxBonus{};
+  TraceTerm<I16> kTempoBonus{};
+  Score eval{};
+};
+
+inline EvalTrace trace;
+
+// #define TUNE
+
+#ifdef TUNE
+#define TRACE_ADD(term, count, color) trace.term[color] += count
+#define TRACE_INCREMENT(term, color) trace.term[color]++
+#define TRACE_SCALE(s) trace.scale = s
+#define TRACE_EVAL(e) trace.eval = e
+#else
+#define TRACE_ADD(term, count, color)
+#define TRACE_INCREMENT(term, color)
+#define TRACE_SCALE(s)
+#define TRACE_EVAL(e)
+#endif
+
 class Tuner {
  public:
   Tuner() {}
@@ -47,11 +83,12 @@ class Tuner {
 
   void PrintParameters();
 
-  [[nodiscard]] TunerEntry CreateEntry(const BoardState& state, GameResult result) const;
+  [[nodiscard]] TunerEntry CreateEntry(const BoardState& state,
+                                       GameResult result) const;
 
   [[nodiscard]] std::vector<I16> GetCoefficients() const;
 
-  [[nodiscard]] double ComputeEvaluation(const TunerEntry& entry, Score base) const;
+  [[nodiscard]] double ComputeEvaluation(const TunerEntry& entry) const;
 
   [[nodiscard]] double ComputeOptimalK() const;
 

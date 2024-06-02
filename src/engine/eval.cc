@@ -1,6 +1,7 @@
 #include "eval.h"
 
 #include "../chess/move_gen.h"
+#include "../tuner/tuner.h"
 
 namespace eval {
 
@@ -358,6 +359,13 @@ ScorePair EvaluatePawns(const BoardState &state) {
       score += kPassedPawn[RelativeRank(square, us)];
       TRACE_INCREMENT(kPassedPawn[RelativeRank(square, us)], us);
     }
+
+    // We shift east to detect pawn phalanxes, since we don't want to check both
+    // directions and duplicate the bonus from the other side
+    if (Shift<Direction::kEast>(BitBoard::FromSquare(square)) & our_pawns) {
+      score += kPawnPhalanxBonus[RelativeRank(square, us)];
+      TRACE_INCREMENT(kPawnPhalanxBonus[RelativeRank(square, us)], us);
+    }
   }
 
   // Restore since we popped all the bits
@@ -371,6 +379,13 @@ ScorePair EvaluatePawns(const BoardState &state) {
     if (enemy_pawns_ahead == 0) {
       score -= kPassedPawn[RelativeRank(square, them)];
       TRACE_INCREMENT(kPassedPawn[RelativeRank(square, them)], them);
+    }
+
+    // We shift east to detect pawn phalanxes, since we don't want to check both
+    // directions and duplicate the bonus from the other side
+    if (Shift<Direction::kEast>(BitBoard::FromSquare(square)) & their_pawns) {
+      score -= kPawnPhalanxBonus[RelativeRank(square, them)];
+      TRACE_INCREMENT(kPawnPhalanxBonus[RelativeRank(square, them)], them);
     }
   }
 

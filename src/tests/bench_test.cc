@@ -76,16 +76,14 @@ void BenchSuite(Board &board, Search &search, int depth) {
     search.NewGame();
     search.Bench(depth);
 
-    const auto time_mgmt = search.GetTimeManagement();
+    auto &time_mgmt = search.GetTimeManagement();
     nodes += search.GetNodesSearched();
     elapsed += time_mgmt.TimeElapsed();
   }
 
-  std::cout << fmt::format(
-                   "{} nodes {} nps",
-                   nodes,
-                   static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)))
-            << std::endl;
+  fmt::println("{} nodes {} nps",
+               nodes,
+               static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));
 
   board = old_board;
   search.NewGame();

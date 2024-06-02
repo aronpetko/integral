@@ -144,11 +144,9 @@ enum class PerftType {
 
 template <PerftType type>
 U64 PertInternal(Board &board, int depth, int start_depth) {
-  auto moves = move_gen::GenerateMoves(MoveType::kAll, board);
-
-  auto &state = board.GetState();
   U64 total_nodes = 0;
 
+  auto moves = move_gen::GenerateMoves(MoveType::kAll, board);
   for (int i = 0; i < moves.Size(); i++) {
     const auto move = moves[i];
     if (!board.IsMoveLegal(move)) continue;
@@ -165,7 +163,7 @@ U64 PertInternal(Board &board, int depth, int start_depth) {
     }
 
     if (type == PerftType::kSplit && depth == start_depth) {
-      std::cout << fmt::format("{}: {}\n", move.ToString(), child_nodes);
+      fmt::println("{}: {}", move.ToString(), child_nodes);
     }
   }
 
@@ -180,16 +178,15 @@ void Perft(Board &board, int depth) {
   const auto elapsed = duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_time);
 
-  std::cout << fmt::format("info nodes {} time {} nps {}",
-                           nodes,
-                           elapsed.count(),
-                           static_cast<U64>(nodes * 1000 /
-                                            std::max<U64>(elapsed.count(), 1)))
-            << std::endl;
+  fmt::println(
+      "info nodes {} time {} nps {}",
+      nodes,
+      elapsed.count(),
+      static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed.count(), 1)));
 }
 
 void PerftSuite() {
-  std::cout << "starting perft test" << std::endl;
+  fmt::println("starting perft test");
   const auto start_time = std::chrono::steady_clock::now();
 
   Board board;
@@ -209,15 +206,14 @@ void PerftSuite() {
       }
     }
 
-    std::cout << fmt::format("{}\033[0m {}\n",
-                             passed ? "\033[32mpassed" : "\033[31mfailed",
-                             perft_test);
+    fmt::println("{}\033[0m {}",
+                 passed ? "\033[32mpassed" : "\033[31mfailed",
+                 perft_test);
   }
 
   const auto elapsed = duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_time);
-  std::cout << fmt::format("test finished in {}ms", elapsed.count())
-            << std::endl;
+  fmt::println("test finished in {}ms", elapsed.count());
 }
 
 }  // namespace tests

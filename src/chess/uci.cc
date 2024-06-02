@@ -34,7 +34,8 @@ void Position(Board &board, std::stringstream &input_stream) {
   board.SetFromFen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves");
+  while (input_stream >> dummy && dummy != "moves")
+    ;
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -144,9 +145,7 @@ void AcceptCommands(int arg_count, char **args) {
   }
 
   PrintAsciiLogo();
-  std::cout << fmt::format(
-                   "    v{}, written by {}\n", kEngineVersion, kEngineAuthor)
-            << std::endl;
+  fmt::println("    v{}, written by {}\n", kEngineVersion, kEngineAuthor);
 
   std::string input_line;
   while (input_line != "quit") {
@@ -157,19 +156,21 @@ void AcceptCommands(int arg_count, char **args) {
     input_stream >> command;
 
     if (command == "uci") {
-      std::cout << fmt::format("id name {}", kEngineName) << std::endl;
-      std::cout << fmt::format("id author {}", kEngineAuthor) << std::endl;
+      fmt::println("id name {}", kEngineName);
+      fmt::println("id author {}", kEngineAuthor);
       PrintOptions();
-      std::cout << "uciok" << std::endl;
+      fmt::println("uciok");
     } else if (command == "isready") {
-      std::cout << "readyok" << std::endl;
+      fmt::println("readyok");
     } else if (command == "position") {
+      search.WaitUntilFinished();
       Position(board, input_stream);
     } else if (command == "go") {
       Go(board, search, input_stream);
     } else if (command == "stop") {
       search.Stop();
     } else if (command == "ucinewgame") {
+      search.WaitUntilFinished();
       search.NewGame();
     } else if (command == "print") {
       board.PrintPieces();
@@ -183,7 +184,7 @@ void AcceptCommands(int arg_count, char **args) {
     } else if (command == "setoption") {
       SetOption(input_stream);
     } else if (command == "eval" || command == "evaluate") {
-      std::cout << eval::Evaluate(board.GetState()) << std::endl;
+      fmt::println("{}", eval::Evaluate(board.GetState()));
     }
   }
 }

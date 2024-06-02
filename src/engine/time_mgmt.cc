@@ -2,8 +2,21 @@
 
 #include "search.h"
 
-TimeManagement::TimeManagement(const TimeConfig &config)
-    : config_(config), nodes_spent_({}) {
+TimeManagement::TimeManagement(const TimeConfig &config) : nodes_spent_({}) {
+  SetConfig(config);
+}
+
+void TimeManagement::Start() {
+  start_time_.store(GetCurrentTime());
+  nodes_spent_.fill(0);
+}
+
+void TimeManagement::Stop() {
+  end_time_.store(GetCurrentTime());
+}
+
+void TimeManagement::SetConfig(const TimeConfig &config) {
+  config_ = config;
   // Determine the structure of the time management from the config
   if (config.infinite) {
     type_ = TimeType::kInfinite;
@@ -12,15 +25,6 @@ TimeManagement::TimeManagement(const TimeConfig &config)
   } else {
     type_ = TimeType::kTimed;
   }
-}
-
-void TimeManagement::Start() {
-  start_time_ = GetCurrentTime();
-  nodes_spent_.fill(0);
-}
-
-void TimeManagement::Stop() {
-  end_time_ = GetCurrentTime();
 }
 
 int TimeManagement::GetSearchDepth() const {
@@ -37,7 +41,7 @@ int TimeManagement::GetSearchDepth() const {
   }
 }
 
-bool TimeManagement::TimesUp() const {
+bool TimeManagement::TimesUp() {
   if (type_ != TimeType::kTimed) {
     return false;
   }
@@ -61,8 +65,8 @@ U32 &TimeManagement::NodesSpent(Move move) {
   return nodes_spent_[move.GetData() & 4095];
 }
 
-U64 TimeManagement::TimeElapsed() const {
-  return std::max<U64>(1, GetCurrentTime() - start_time_);
+U64 TimeManagement::TimeElapsed() {
+  return std::max<U64>(1, GetCurrentTime() - start_time_.load());
 }
 
 U64 TimeManagement::GetHardLimit() const {

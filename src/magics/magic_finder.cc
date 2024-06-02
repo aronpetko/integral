@@ -1,7 +1,8 @@
 #include "magic_finder.h"
 
-#include <cassert>
 #include <fmt/format.h>
+
+#include <cassert>
 #include <random>
 
 #include "attacks.h"
@@ -67,47 +68,43 @@ MagicEntry FindMagic(PieceType piece_type, Square square) {
 }
 
 void GenerateMagics() {
-  std::cout
-      << "constexpr std::array<MagicEntry, kSquareCount> kRookMagics = {"
-      << std::endl;
+  fmt::println(
+      "constexpr std::array<MagicEntry, kSquareCount> kRookMagics = {{");
 
   for (int square = 0; square < kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kRook, Square(square));
-    std::cout << "  "
-              << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
-                             magic_entry.mask,
-                             magic_entry.magic,
-                             magic_entry.shift);
+    fmt::println("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
+                 magic_entry.mask,
+                 magic_entry.magic,
+                 magic_entry.shift);
 
     if (square < kSquareCount - 1) {
-      std::cout << ",";
+      fmt::println(",");
     }
 
-    std::cout << std::endl;
+    fmt::print("\n");
   }
 
-  std::cout << "};" << std::endl << std::endl;
+  fmt::println("}};\n");
 
-  std::cout
-      << "constexpr std::array<MagicEntry, kSquareCount> kBishopMagics = {"
-      << std::endl;
+  fmt::println(
+      "constexpr std::array<MagicEntry, kSquareCount> kBishopMagics = {{");
 
   for (int square = 0; square < kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kBishop, Square(square));
-    std::cout << "  "
-              << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
-                             magic_entry.mask,
-                             magic_entry.magic,
-                             magic_entry.shift);
+    fmt::println("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
+                 magic_entry.mask,
+                 magic_entry.magic,
+                 magic_entry.shift);
 
     if (square < kSquareCount - 1) {
-      std::cout << ",";
+      fmt::println(",");
     }
 
-    std::cout << std::endl;
+    fmt::print("\n");
   }
 
-  std::cout << "};" << std::endl;
+  fmt::println("}};");
 }
 
 }  // namespace magics::finder
