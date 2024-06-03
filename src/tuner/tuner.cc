@@ -132,6 +132,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kPassedPawnBonus);
   AddArrayParameter(kPawnPhalanxBonus);
   AddArrayParameter(kDoubledPawnPenalty);
+  AddArrayParameter(kIsolatedPawnPenalty);
   AddArrayParameter(kRookOnOpenFileBonus);
   AddArrayParameter(kRookOnSemiOpenFileBonus);
   AddSingleParameter(kTempoBonus);
@@ -157,6 +158,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
+  GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kRookOnOpenFileBonus);
   GET_ARRAY_COEFFICIENTS(kRookOnSemiOpenFileBonus);
   GET_COEFFICIENT(kTempoBonus);
@@ -261,10 +263,13 @@ VectorPair Tuner::ComputeGradient(double K) const {
 
 double Tuner::StaticEvaluationErrors(double K) const {
   double total = 0.0;
-  for (const auto& entry : entries_) {
-    total += pow(entry.result - Sigmoid(K, entry.static_eval), 2);
+#pragma omp parallel shared(total) num_threads(6)
+  {
+#pragma omp for schedule(static) reduction(+ : total)
+    for (const auto& entry : entries_) {
+      total += pow(entry.result - Sigmoid(K, entry.static_eval), 2);
+    }
   }
-
   return total / (double)entries_.size();
 }
 
@@ -359,6 +364,9 @@ void Tuner::PrintParameters() {
   PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
 
   fmt::print("constexpr FileTable<ScorePair> kDoubledPawnPenalty = ");
+  PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
+
+  fmt::print("constexpr FileTable<ScorePair> kIsolatedPawnPenalty = ");
   PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
 
   fmt::print("constexpr FileTable<ScorePair> kRookOnOpenFileBonus = ");

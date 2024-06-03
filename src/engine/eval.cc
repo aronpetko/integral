@@ -375,8 +375,9 @@ ScorePair EvaluatePawns(const BoardState &state) {
   ScorePair score;
   const Color us = state.turn, them = FlipColor(us);
 
-  BitBoard our_pawns = state.Pawns(us);
-  BitBoard their_pawns = state.Pawns(them);
+  BitBoard our_pawns = state.Pawns(us), our_pawns_copy = state.Pawns(us);
+  BitBoard their_pawns = state.Pawns(them),
+           their_pawns_copy = state.Pawns(them);
 
   while (our_pawns) {
     const auto square = our_pawns.PopLsb();
@@ -395,12 +396,23 @@ ScorePair EvaluatePawns(const BoardState &state) {
       TRACE_INCREMENT(kPawnPhalanxBonus[RelativeRank(square, us)], us);
     }
 
+    const int file = File(square);
+
     // Check if there exists another pawn on this file (the current pawn is
     // popped at this point)
-    const int file = File(square);
     if (our_pawns & kFileMasks[file]) {
       score += kDoubledPawnPenalty[file];
       TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
+    }
+
+    // Check if no pawns are adjacent to this one
+    const BitBoard adjacent_pawns =
+        (Shift<Direction::kWest>(kFileMasks[file]) |
+         Shift<Direction::kEast>(kFileMasks[file])) &
+        our_pawns_copy;
+    if (!adjacent_pawns) {
+      score += kIsolatedPawnPenalty[file];
+      TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
     }
   }
 
@@ -430,6 +442,16 @@ ScorePair EvaluatePawns(const BoardState &state) {
     if (their_pawns & kFileMasks[file]) {
       score -= kDoubledPawnPenalty[file];
       TRACE_INCREMENT(kDoubledPawnPenalty[file], them);
+    }
+
+    // Check if no pawns are adjacent to this one
+    const BitBoard adjacent_pawns =
+        (Shift<Direction::kWest>(kFileMasks[file]) |
+         Shift<Direction::kEast>(kFileMasks[file])) &
+        their_pawns_copy;
+    if (!adjacent_pawns) {
+      score -= kIsolatedPawnPenalty[file];
+      TRACE_INCREMENT(kIsolatedPawnPenalty[file], them);
     }
   }
 

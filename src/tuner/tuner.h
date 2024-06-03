@@ -35,33 +35,33 @@ enum Phase {
   EG
 };
 
-template <typename T>
-using TraceTerm = std::array<T, 2>;
+using TraceTerm = std::array<I16, 2>;
 
-// A struct that counts the amount of times each term is used, and by which side
+// A struct that counts the amount of times each term is used and by which side
 struct EvalTrace {
   // The names, though they are not constant, must match the above names (for
   // ease of use with the tuner)
-  eval::PieceValueTable<TraceTerm<I16>> kPieceValues{};
-  eval::PieceSquareTable<TraceTerm<I16>> kPieceSquareTable{};
-  eval::KnightMobilityTable<TraceTerm<I16>> kKnightMobility{};
-  eval::BishopMobilityTable<TraceTerm<I16>> kBishopMobility{};
-  eval::RookMobilityTable<TraceTerm<I16>> kRookMobility{};
-  eval::QueenMobilityTable<TraceTerm<I16>> kQueenMobility{};
-  eval::RankTable<TraceTerm<I16>> kPassedPawnBonus{};
-  eval::RankTable<TraceTerm<I16>> kPawnPhalanxBonus{};
-  eval::FileTable<TraceTerm<I16>> kDoubledPawnPenalty{};
-  eval::FileTable<TraceTerm<I16>> kRookOnOpenFileBonus{};
-  eval::FileTable<TraceTerm<I16>> kRookOnSemiOpenFileBonus{};
-  TraceTerm<I16> kTempoBonus{};
+  eval::PieceValueTable<TraceTerm> kPieceValues{};
+  eval::PieceSquareTable<TraceTerm> kPieceSquareTable{};
+  eval::KnightMobilityTable<TraceTerm> kKnightMobility{};
+  eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
+  eval::RookMobilityTable<TraceTerm> kRookMobility{};
+  eval::QueenMobilityTable<TraceTerm> kQueenMobility{};
+  eval::RankTable<TraceTerm> kPassedPawnBonus{};
+  eval::RankTable<TraceTerm> kPawnPhalanxBonus{};
+  eval::FileTable<TraceTerm> kDoubledPawnPenalty{};
+  eval::FileTable<TraceTerm> kIsolatedPawnPenalty{};
+  eval::FileTable<TraceTerm> kRookOnOpenFileBonus{};
+  eval::FileTable<TraceTerm> kRookOnSemiOpenFileBonus{};
+  TraceTerm kTempoBonus{};
   Score eval{};
 };
-
-inline EvalTrace trace;
 
 // #define TUNE
 
 #ifdef TUNE
+inline EvalTrace trace;
+
 #define TRACE_ADD(term, count, color) trace.term[color] += count
 #define TRACE_INCREMENT(term, color) trace.term[color]++
 #define TRACE_SCALE(s) trace.scale = s
