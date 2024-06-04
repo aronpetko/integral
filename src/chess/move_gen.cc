@@ -54,8 +54,7 @@ void InitializeAttacks() {
     const BitBoard src_rook_rays =
         magics::attacks::GenerateRookMoves(Square(square), 0ULL);
 
-    for (int other_square = 0; other_square < kSquareCount;
-         other_square++) {
+    for (int other_square = 0; other_square < kSquareCount; other_square++) {
       if (square == other_square) {
         continue;
       }
@@ -388,9 +387,10 @@ List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
     }
   }
 
-  const BitBoard en_passant_mask = state.en_passant != Squares::kNoSquare
-                                       ? BitBoard::FromSquare(state.en_passant)
-                                       : 0;
+  const BitBoard en_passant_mask =
+      state.en_passant.has_value()
+          ? BitBoard::FromSquare(state.en_passant.value())
+          : 0;
 
   BitBoard pawn_targets = targets;
   if (move_type & MoveType::kTactical) {  // Promotions are tactical

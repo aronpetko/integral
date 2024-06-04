@@ -136,13 +136,14 @@ constexpr FileTable<ScorePair> kIsolatedPawnPenalty = {
   Pair(-6, 1), Pair(-9, -19), Pair(-20, -15), Pair(-19, -23), Pair(-22, -25), Pair(-17, -11), Pair(-10, -19), Pair(-14, 7)
 };
 
-constexpr FileTable<ScorePair> kRookOnOpenFileBonus = {
-  Pair(37, 10), Pair(32, 0), Pair(28, 11), Pair(30, 11), Pair(38, 17), Pair(54, -2), Pair(83, -10), Pair(142, -16)
-};
-
-constexpr FileTable<ScorePair> kRookOnSemiOpenFileBonus = {
-  Pair(6, 52), Pair(9, 16), Pair(7, 18), Pair(18, 5), Pair(15, 8), Pair(23, -2), Pair(46, -6), Pair(44, 23)
-};
+constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = {{
+  {
+    Pair(37, 10), Pair(32, 0), Pair(28, 11), Pair(30, 11), Pair(38, 17), Pair(54, -2), Pair(83, -10), Pair(142, -16)
+  },
+  {
+    Pair(6, 52), Pair(9, 16), Pair(7, 18), Pair(18, 5), Pair(15, 8), Pair(23, -2), Pair(46, -6), Pair(44, 23)
+  }
+}};
 
 constexpr ScorePair kTempoBonus = Pair(24, 29);
 

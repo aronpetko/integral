@@ -36,11 +36,11 @@ static constexpr std::array<U64, kNumFiles> kFileMasks = {
 constexpr U64 kDarkSquares = 0xAA55AA55AA55AA55ULL;
 constexpr U64 kLightSquares = 0x55AA55AA55AA55AAULL;
 
-inline int Rank(Square square) {
+inline constexpr int Rank(Square square) {
   return square >> 3;
 }
 
-inline int File(Square square) {
+inline constexpr int File(Square square) {
   return square & 7;
 }
 
@@ -62,6 +62,37 @@ class BitBoard {
   constexpr BitBoard() : bitboard_(0ULL) {}
 
   constexpr BitBoard(U64 bitboard) : bitboard_(bitboard) {}
+
+  class Iterator {
+   public:
+    explicit Iterator(U64 bitboard) : bitboard_(bitboard), lsb_(std::countr_zero(bitboard)) {}
+
+    Iterator& operator++() {
+      bitboard_ &= bitboard_ - 1;  // Remove the LSB
+      lsb_ = std::countr_zero(bitboard_);
+      return *this;
+    }
+
+    U8 operator*() const {
+      return lsb_;
+    }
+
+    bool operator!=(const Iterator& other) const {
+      return bitboard_ != other.bitboard_;
+    }
+
+   private:
+    U64 bitboard_;
+    U8 lsb_;
+  };
+
+  [[nodiscard]] Iterator begin() const {
+    return Iterator(bitboard_);
+  }
+
+  [[nodiscard]] Iterator end() const {
+    return Iterator(0);
+  }
 
   static BitBoard FromSquare(U8 square) {
     return {1ULL << square};
@@ -89,10 +120,6 @@ class BitBoard {
 
   [[nodiscard]] constexpr inline U8 GetLsb() const {
     return std::countr_zero(bitboard_);
-  }
-
-  [[nodiscard]] constexpr inline U8 GetMsb() const {
-    return 63 - std::countl_zero(bitboard_);
   }
 
   constexpr inline U8 PopLsb() {
@@ -275,7 +302,7 @@ constexpr inline BitBoard Shift(const BitBoard &bitboard) {
 
 // Returns the bitboard of all squares "higher" than the given square from the
 // given color
-inline BitBoard ForwardRanks(Color color, Square square) {
+inline constexpr BitBoard ForwardRanks(Color color, Square square) {
   if (color == Color::kWhite)
     return ~kRankMasks[kRank1] << 8 * Rank(square);
   else
@@ -284,7 +311,7 @@ inline BitBoard ForwardRanks(Color color, Square square) {
 
 // Returns the bitboard of all squares "in front" of the given square from the
 // given color
-inline BitBoard ForwardFileMask(Color color, Square square) {
+inline constexpr BitBoard ForwardFileMask(Color color, Square square) {
   return ForwardRanks(color, square) & kFileMasks[File(square)];
 }
 

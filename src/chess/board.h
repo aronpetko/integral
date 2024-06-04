@@ -83,7 +83,7 @@ struct BoardState {
         turn(Color::kWhite),
         checkers(0ULL),
         pinned(0ULL),
-        en_passant(Squares::kNoSquare) {
+        en_passant(std::nullopt) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -190,13 +190,13 @@ struct BoardState {
   [[nodiscard]] constexpr inline bool InCheck() const {
     return checkers != 0;
   }
-  
+
   std::array<BitBoard, PieceType::kNumTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, kSquareCount> piece_on_square;
   Color turn;
   U16 fifty_moves_clock;
-  Square en_passant;
+  std::optional<Square> en_passant;
   CastleRights castle_rights;
   U64 zobrist_key;
   BitBoard checkers;

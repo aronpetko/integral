@@ -133,8 +133,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kPawnPhalanxBonus);
   AddArrayParameter(kDoubledPawnPenalty);
   AddArrayParameter(kIsolatedPawnPenalty);
-  AddArrayParameter(kRookOnOpenFileBonus);
-  AddArrayParameter(kRookOnSemiOpenFileBonus);
+  Add2DArrayParameter(kRookOnFileBonus);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -159,8 +158,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
-  GET_ARRAY_COEFFICIENTS(kRookOnOpenFileBonus);
-  GET_ARRAY_COEFFICIENTS(kRookOnSemiOpenFileBonus);
+  GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -369,11 +367,8 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr FileTable<ScorePair> kIsolatedPawnPenalty = ");
   PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
 
-  fmt::print("constexpr FileTable<ScorePair> kRookOnOpenFileBonus = ");
-  PrintArray(index, kRookOnOpenFileBonus.size(), parameters_);
-
-  fmt::print("constexpr FileTable<ScorePair> kRookOnSemiOpenFileBonus = ");
-  PrintArray(index, kRookOnSemiOpenFileBonus.size(), parameters_);
+  fmt::print("constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
+  Print2DArray(index, 2, kNumFiles, parameters_);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);
