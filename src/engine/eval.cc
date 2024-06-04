@@ -290,8 +290,9 @@ ScorePair Evaluation::EvaluatePawns(Color us) {
     const int file = File(square);
 
     // Doubled pawns
-    const BitBoard pawns_on_file = our_pawns & kFileMasks[file];
-    if (pawns_on_file.MoreThanOne()) {
+    const BitBoard pawns_ahead_on_file =
+        our_pawns & masks::forward_file[us][square];
+    if (pawns_ahead_on_file) {
       score += kDoubledPawnPenalty[file];
       TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
     }
@@ -407,7 +408,7 @@ ScorePair Evaluation::EvaluateQueens(Color us) {
     score += kPieceValues[PieceType::kQueen];
     TRACE_INCREMENT(kPieceValues[PieceType::kQueen], us);
 
-    const Square relative_square = RelativeSquare(state_.King(us).GetLsb(), us);
+    const Square relative_square = RelativeSquare(square, us);
     score += kPieceSquareTable[PieceType::kQueen][relative_square];
     TRACE_INCREMENT(kPieceSquareTable[PieceType::kQueen][relative_square], us);
 
