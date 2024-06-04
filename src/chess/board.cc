@@ -59,8 +59,8 @@ bool Board::IsMovePseudoLegal(Move move) {
   switch (piece_type) {
     case PieceType::kPawn: {
       BitBoard en_passant_mask;
-      if (state_.en_passant != Squares::kNoSquare) {
-        en_passant_mask = BitBoard::FromSquare(state_.en_passant);
+      if (state_.en_passant.has_value()) {
+        en_passant_mask = BitBoard::FromSquare(state_.en_passant.value());
       }
       const BitBoard pawn_attacks =
           (move_gen::PawnAttacks(from, state_, state_.turn) &
@@ -208,7 +208,7 @@ void Board::MakeMove(Move move) {
 
       // Xor out the en passant pos
       state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-      state_.en_passant = Squares::kNoSquare;
+      state_.en_passant = std::nullopt;
     } else {
       // Setting en passant target if pawn moved two squares
       constexpr int kDoublePushDist = 16;
@@ -227,15 +227,15 @@ void Board::MakeMove(Move move) {
       }
       // This move wasn't a double pawn push, so if ep square was set from the
       // previous move, we xor it out
-      else if (state_.en_passant != Squares::kNoSquare) {
+      else if (state_.en_passant.has_value()) {
         state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-        state_.en_passant = Squares::kNoSquare;
+        state_.en_passant = std::nullopt;
       }
     }
-  } else if (state_.en_passant != Squares::kNoSquare) {
+  } else if (state_.en_passant.has_value()) {
     // If ep square was set from the previous move, we xor it out
     state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-    state_.en_passant = Squares::kNoSquare;
+    state_.en_passant = std::nullopt;
   }
 
   HandleCastling(move);
@@ -285,9 +285,9 @@ void Board::MakeNullMove() {
   state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
 
   // Xor out en passant if it exists
-  if (state_.en_passant != Squares::kNoSquare) {
+  if (state_.en_passant.has_value()) {
     state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-    state_.en_passant = Squares::kNoSquare;
+    state_.en_passant = std::nullopt;
   }
 
   // Switch turn and xor in the new turn hash

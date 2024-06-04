@@ -121,7 +121,6 @@ void SetOption(std::stringstream &input_stream) {
 
 void AcceptCommands(int arg_count, char **args) {
   move_gen::InitializeAttacks();
-  eval::InitMasks();
 
   InitializeOptions();
 

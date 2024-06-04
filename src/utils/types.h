@@ -96,7 +96,7 @@ enum File : int {
 };
 
 // clang-format off
-using Square = U16;
+using Square = U8;
 enum Squares : Square {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
   kA2, kB2, kC2, kD2, kE2, kF2, kG2, kH2,
@@ -106,10 +106,15 @@ enum Squares : Square {
   kA6, kB6, kC6, kD6, kE6, kF6, kG6, kH6,
   kA7, kB7, kC7, kD7, kE7, kF7, kG7, kH7,
   kA8, kB8, kC8, kD8, kE8, kF8, kG8, kH8,
-  kNoSquare,
   kSquareCount = 64,
 };
 // clang-format on
+
+template <typename T>
+using SideTable = std::array<T, 2>;
+
+template <typename T>
+using SquareTable = std::array<T, Squares::kSquareCount>;
 
 using Score = I32;
 class ScorePair {
