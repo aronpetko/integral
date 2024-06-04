@@ -134,6 +134,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kDoubledPawnPenalty);
   AddArrayParameter(kIsolatedPawnPenalty);
   Add2DArrayParameter(kRookOnFileBonus);
+  AddArrayParameter(kPawnShelterTable);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -159,6 +160,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
+  GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -300,12 +302,13 @@ void PrintTerm(int& index,
 void PrintArray(int& index,
                 int size,
                 const std::vector<TermPair>& parameters,
+                int row_length = 8,
                 int padding = 2,
                 bool in_2d_array = false) {
   fmt::print("{{");
 
   for (int i = 0; i < size; i++) {
-    if (i % 8 == 0) {  // New row
+    if (i % row_length == 0) {  // New row
       fmt::print("\n{}", std::string(padding, ' '));
     }
     PrintTerm(index, parameters, true);
@@ -320,12 +323,13 @@ void PrintArray(int& index,
 void Print2DArray(int& index,
                   int rows,
                   int columns,
-                  const std::vector<TermPair>& parameters) {
+                  const std::vector<TermPair>& parameters,
+                  int row_length = 8) {
   fmt::println("{{{{");
 
   for (int i = 0; i < rows; i++) {
     fmt::print("  ");
-    PrintArray(index, columns, parameters, 6, true);
+    PrintArray(index, columns, parameters, row_length, 6, true);
     if (i < rows - 1) {
       fmt::println(",");
     }
@@ -369,6 +373,9 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
   Print2DArray(index, 2, kNumFiles, parameters_);
+
+  fmt::print("constexpr std::array<ScorePair, 12> kPawnShelterTable = ");
+  PrintArray(index, kPawnShelterTable.size(), parameters_, 3);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);

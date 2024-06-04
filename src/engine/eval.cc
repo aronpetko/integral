@@ -217,7 +217,21 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   return state.turn == winner;
 }
 
-void Evaluation::Initialize() {}
+void Evaluation::Initialize() {
+  const Square white_king_square = state_.King(Color::kWhite).GetLsb();
+  const Square black_king_square = state_.King(Color::kBlack).GetLsb();
+
+  auto &white_king_zone = king_zone_[Color::kWhite];
+  auto &black_king_zone = king_zone_[Color::kBlack];
+
+  // Create the 3x3 zone around the king
+  white_king_zone = move_gen::KingAttacks(white_king_square);
+  black_king_zone = move_gen::KingAttacks(black_king_square);
+
+  // Add the extra rank in front of the king
+  white_king_zone |= Shift<Direction::kNorth>(white_king_zone);
+  black_king_zone |= Shift<Direction::kSouth>(black_king_zone);
+}
 
 Score Evaluation::GetScore() {
   const Color us = state_.turn;
@@ -425,10 +439,36 @@ ScorePair Evaluation::EvaluateQueens(Color us) {
 ScorePair Evaluation::EvaluateKing(Color us) {
   ScorePair score;
 
-  const Square square = RelativeSquare(state_.King(us).GetLsb(), us);
+  const Square king_square = state_.King(us).GetLsb();
+  const Square relative_square = RelativeSquare(king_square, us);
 
-  score += kPieceSquareTable[PieceType::kKing][square];
-  TRACE_INCREMENT(kPieceSquareTable[PieceType::kKing][square], us);
+  score += kPieceSquareTable[PieceType::kKing][relative_square];
+  TRACE_INCREMENT(kPieceSquareTable[PieceType::kKing][relative_square], us);
+
+  const int king_rank = Rank(king_square);
+  const int king_file = File(king_square);
+
+  const BitBoard our_pawns_in_zone = state_.Pawns(us) & king_zone_[us];
+
+  for (Square pawn_square : our_pawns_in_zone) {
+    const Square relative_pawn_square = pawn_square;
+
+    const int pawn_rank = Rank(relative_pawn_square);
+    const int pawn_file = File(relative_pawn_square);
+
+    constexpr int kKingIndexInZone = 7;
+    constexpr int kZoneWidth = 3;
+
+    const int rank_diff = (pawn_rank - king_rank);
+    const int file_diff = (pawn_file - king_file);
+
+    const int idx =
+        kKingIndexInZone -
+        (rank_diff * kZoneWidth + file_diff) * (us == Color::kBlack ? -1 : 1);
+
+    score += kPawnShelterTable[idx];
+    TRACE_INCREMENT(kPawnShelterTable[idx], us);
+  }
 
   return score;
 }

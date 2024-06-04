@@ -57,6 +57,11 @@ inline Square RelativeRank(Square square, Color side) {
   return side == Color::kBlack ? 7 - rank : rank;
 }
 
+inline Square RelativeFile(Square square, Color side) {
+  const int file = File(square);
+  return side == Color::kBlack ? 7 - file : file;
+}
+
 class BitBoard {
  public:
   constexpr BitBoard() : bitboard_(0ULL) {}
