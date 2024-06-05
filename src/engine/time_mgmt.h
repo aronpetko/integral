@@ -61,14 +61,10 @@ class TimeManagement {
   [[nodiscard]] U64 TimeElapsed();
 
  private:
-  [[nodiscard]] U64 GetHardLimit() const;
-
-  [[nodiscard]] U64 GetSoftLimit(Move best_move, U32 nodes_searched);
-
- private:
   TimeConfig config_;
   TimeType type_;
   std::atomic<TimeStamp> start_time_, end_time_;
+  std::atomic<TimeStamp> hard_limit_, soft_limit_;
   // Table that keeps track of how many nodes were spent searching a particular
   // move
   std::array<U32, 4096> nodes_spent_;
