@@ -62,9 +62,8 @@ bool Board::IsMovePseudoLegal(Move move) {
       if (state_.en_passant.has_value()) {
         en_passant_mask = BitBoard::FromSquare(state_.en_passant.value());
       }
-      const BitBoard pawn_attacks =
-          (move_gen::PawnAttacks(from, state_, state_.turn) &
-           (their_pieces | en_passant_mask));
+      const BitBoard pawn_attacks = (move_gen::PawnAttacks(from, state_.turn) &
+                                     (their_pieces | en_passant_mask));
       possible_moves = move_gen::PawnMoves(from, state_) | pawn_attacks;
       break;
     }
@@ -515,9 +514,8 @@ void Board::CalculateKingThreats() {
   const Square king_square = state_.King(us).GetLsb();
 
   // Calculate the pieces that are attacking the king
-  state_.checkers =
-      move_gen::KnightMoves(king_square) & state_.Knights() |
-      move_gen::PawnAttacks(king_square, state_, us) & state_.Pawns();
+  state_.checkers = move_gen::KnightMoves(king_square) & state_.Knights() |
+                    move_gen::PawnAttacks(king_square, us) & state_.Pawns();
   state_.checkers &= their_pieces;
 
   // Calculate our potentially pinned pieces
@@ -545,12 +543,12 @@ void Board::CalculateKingThreats() {
 
 void Board::PrintPieces() {
   for (int rank = kNumRanks - 1; rank >= 0; rank--) {
-   fmt::print("{} ", rank + 1);
+    fmt::print("{} ", rank + 1);
     for (int file = 0; file < kNumFiles; file++) {
       const auto square = RankFileToSquare(rank, file);
-      fmt::print("{}", fen::GetPieceChar(const_cast<BoardState &>(state_), square));
-      if (file < kNumFiles - 1)
-        fmt::print(" ");  // Space separator for clarity
+      fmt::print("{}",
+                 fen::GetPieceChar(const_cast<BoardState &>(state_), square));
+      if (file < kNumFiles - 1) fmt::print(" ");  // Space separator for clarity
     }
     fmt::print("\n");
   }

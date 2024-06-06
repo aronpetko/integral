@@ -111,8 +111,8 @@ inline bool IsSquareAttackedNonSlidingPieces(Square square,
                                              Color attacker,
                                              const BoardState &state) {
   return (state.Knights(attacker) & KnightMoves(square)) != 0 ||
-         (state.Pawns(attacker) &
-          PawnAttacks(square, state, FlipColor(attacker))) != 0 ||
+         (state.Pawns(attacker) & PawnAttacks(square, FlipColor(attacker))) !=
+             0 ||
          (state.King(attacker) & KingAttacks(square)) != 0;
 }
 
@@ -123,7 +123,17 @@ inline bool IsSquareAttacked(Square square,
          IsSquareAttackedSlidingPieces(square, attacker, state);
 }
 
-BitBoard &PawnAttacks(Square square, const BoardState &state, Color side) {
+BitBoard PawnAttacks(BitBoard pawns, Color side) {
+  if (side == Color::kWhite) {
+    return Shift<Direction::kNorthEast>(pawns) |
+           Shift<Direction::kNorthWest>(pawns);
+  } else {
+    return Shift<Direction::kSouthEast>(pawns) |
+           Shift<Direction::kSouthWest>(pawns);
+  }
+}
+
+BitBoard &PawnAttacks(Square square, Color side) {
   return pawn_attack_masks[side][square];
 }
 
@@ -314,7 +324,7 @@ BitBoard GetAttackersTo(const BoardState &state,
   const BitBoard queens = state.Queens();
 
   BitBoard attackers;
-  attackers |= PawnAttacks(square, state, FlipColor(attacker)) & state.Pawns();
+  attackers |= PawnAttacks(square, FlipColor(attacker)) & state.Pawns();
   attackers |= KnightMoves(square) & state.Knights();
   attackers |= BishopMoves(square, occupied) & (state.Bishops() | queens);
   attackers |= RookMoves(square, occupied) & (state.Rooks() | queens);
@@ -330,7 +340,7 @@ BitBoard GetAttackersTo(const BoardState &state,
   const BitBoard queens = state.Queens();
 
   BitBoard attackers;
-  attackers |= PawnAttacks(square, state, FlipColor(attacker)) & state.Pawns();
+  attackers |= PawnAttacks(square, FlipColor(attacker)) & state.Pawns();
   attackers |= KnightMoves(square) & state.Knights();
   attackers |= BishopMoves(square, occupied) & (state.Bishops() | queens);
   attackers |= RookMoves(square, occupied) & (state.Rooks() | queens);
