@@ -53,13 +53,14 @@ struct EvalTrace {
   eval::FileTable<TraceTerm> kIsolatedPawnPenalty{};
   std::array<eval::FileTable<TraceTerm>, 2> kRookOnFileBonus{};
   std::array<TraceTerm, 12> kPawnShelterTable{};
+  std::array<TraceTerm, 21> kPawnStormTable{};
   TraceTerm kTempoBonus{};
   Score eval{};
 };
 
 inline EvalTrace trace;
 
-// #define TUNE
+#define TUNE
 
 #ifdef TUNE
 

@@ -70,6 +70,7 @@ class Evaluation {
   SideTable<BitBoard> king_zone_;
   SideTable<BitBoard> pawn_attacks_;
   SideTable<BitBoard> mobility_zone_;
+  SideTable<BitBoard> pawn_storm_zone_;
 };
 
 void Evaluation::Initialize() {
@@ -92,10 +93,24 @@ void Evaluation::Initialize() {
   pawn_attacks_[Color::kBlack] =
       move_gen::PawnAttacks(state_.Pawns(Color::kBlack), Color::kBlack);
 
+  // Remove enemy pawn attacks from the mobility zone
   mobility_zone_[Color::kWhite] =
       ~(state_.Occupied(Color::kWhite) | pawn_attacks_[Color::kBlack]);
   mobility_zone_[Color::kBlack] =
       ~(state_.Occupied(Color::kBlack) | pawn_attacks_[Color::kWhite]);
+
+  // King's + adjacent files forward from the king
+  auto &white_pawn_storm_zone = pawn_storm_zone_[Color::kWhite];
+  auto &black_pawn_storm_zone = pawn_storm_zone_[Color::kBlack];
+
+  white_pawn_storm_zone =
+      masks::forward_file_adjacent[Color::kWhite][white_king_square];
+  black_pawn_storm_zone =
+      masks::forward_file_adjacent[Color::kBlack][black_king_square];
+
+  // Add in the squares next to the king
+  white_pawn_storm_zone |= Shift<Direction::kSouth>(white_pawn_storm_zone);
+  black_pawn_storm_zone |= Shift<Direction::kNorth>(black_pawn_storm_zone);
 }
 
 Score Evaluation::GetScore() {
@@ -309,13 +324,10 @@ ScorePair Evaluation::EvaluateKing(Color us) {
   const int king_rank = Rank(king_square);
   const int king_file = File(king_square);
 
-  const BitBoard our_pawns_in_zone = state_.Pawns(us) & king_zone_[us];
-
-  for (Square pawn_square : our_pawns_in_zone) {
-    const Square relative_pawn_square = pawn_square;
-
-    const int pawn_rank = Rank(relative_pawn_square);
-    const int pawn_file = File(relative_pawn_square);
+  const BitBoard our_pawns_in_safety_zone = state_.Pawns(us) & king_zone_[us];
+  for (Square pawn_square : our_pawns_in_safety_zone) {
+    const int pawn_rank = Rank(pawn_square);
+    const int pawn_file = File(pawn_square);
 
     constexpr int kKingIndexInZone = 7;
     constexpr int kZoneWidth = 3;
@@ -328,6 +340,25 @@ ScorePair Evaluation::EvaluateKing(Color us) {
 
     score += kPawnShelterTable[idx];
     TRACE_INCREMENT(kPawnShelterTable[idx], us);
+  }
+
+  const BitBoard storming_pawns =
+      state_.Pawns(FlipColor(us)) & pawn_storm_zone_[us];
+  for (Square pawn_square : storming_pawns) {
+    const int pawn_rank = Rank(pawn_square);
+    const int pawn_file = File(pawn_square);
+
+    constexpr int kKingIndexInZone = 19;
+    constexpr int kZoneWidth = 3;
+
+    const int rank_diff = (pawn_rank - king_rank);
+    const int file_diff = (pawn_file - king_file);
+
+    const int idx = kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
+                                           (us == Color::kBlack ? -1 : 1);
+
+    score += kPawnStormTable[idx];
+    TRACE_INCREMENT(kPawnStormTable[idx], us);
   }
 
   return score;

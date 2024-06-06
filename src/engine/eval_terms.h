@@ -152,6 +152,16 @@ constexpr std::array<ScorePair, 12> kPawnShelterTable = {
   Pair(-28, 19), Pair(14, 5), Pair(-27, 19)
 };
 
+constexpr std::array<ScorePair, 21> kPawnStormTable = {
+  Pair(18, -9), Pair(27, -6), Pair(18, -10),
+  Pair(16, -10), Pair(28, -8), Pair(18, -12),
+  Pair(7, 0), Pair(24, -1), Pair(7, -2),
+  Pair(-7, 2), Pair(16, 5), Pair(-6, -1),
+  Pair(-24, 7), Pair(-15, 6), Pair(-17, 7),
+  Pair(0, 0), Pair(90, 47), Pair(0, 0),
+  Pair(23, 56), Pair(0, 0), Pair(28, 53)
+};
+
 constexpr ScorePair kTempoBonus = Pair(24, 29);
 
 constexpr std::array<int, PieceType::kNumTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};

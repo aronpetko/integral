@@ -135,6 +135,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kIsolatedPawnPenalty);
   Add2DArrayParameter(kRookOnFileBonus);
   AddArrayParameter(kPawnShelterTable);
+  AddArrayParameter(kPawnStormTable);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -161,6 +162,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
+  GET_ARRAY_COEFFICIENTS(kPawnStormTable);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -377,6 +379,9 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr std::array<ScorePair, 12> kPawnShelterTable = ");
   PrintArray(index, kPawnShelterTable.size(), parameters_, 3);
 
+  fmt::print("constexpr std::array<ScorePair, 12> kPawnStormTable = ");
+  PrintArray(index, kPawnStormTable.size(), parameters_, 3);
+  
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);
 
