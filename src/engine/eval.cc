@@ -118,10 +118,9 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   occupied.ClearBit(to);
 
   // Get all pieces that attack the capture square
-  auto pawn_attackers = (move_gen::PawnAttacks(to, state, Color::kWhite) &
-                         state.Pawns(Color::kBlack)) |
-                        (move_gen::PawnAttacks(to, state, Color::kBlack) &
-                         state.Pawns(Color::kWhite));
+  auto pawn_attackers =
+      (move_gen::PawnAttacks(to, Color::kWhite) & state.Pawns(Color::kBlack)) |
+      (move_gen::PawnAttacks(to, Color::kBlack) & state.Pawns(Color::kWhite));
   auto knight_attackers = move_gen::KnightMoves(to) & state.Knights();
 
   BitBoard bishop_attacks = move_gen::BishopMoves(to, occupied);
@@ -462,9 +461,8 @@ ScorePair Evaluation::EvaluateKing(Color us) {
     const int rank_diff = (pawn_rank - king_rank);
     const int file_diff = (pawn_file - king_file);
 
-    const int idx =
-        kKingIndexInZone -
-        (rank_diff * kZoneWidth + file_diff) * (us == Color::kBlack ? -1 : 1);
+    const int idx = kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
+                                           (us == Color::kBlack ? -1 : 1);
 
     score += kPawnShelterTable[idx];
     TRACE_INCREMENT(kPawnShelterTable[idx], us);
