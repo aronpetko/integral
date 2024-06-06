@@ -76,7 +76,7 @@ inline EvalTrace trace;
 
 class Tuner {
  public:
-  Tuner() {}
+  Tuner() : num_terms_(0) {}
 
   void LoadFromFile(const std::string& source_file);
 
