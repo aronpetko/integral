@@ -379,7 +379,7 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr std::array<ScorePair, 12> kPawnShelterTable = ");
   PrintArray(index, kPawnShelterTable.size(), parameters_, 3);
 
-  fmt::print("constexpr std::array<ScorePair, 12> kPawnStormTable = ");
+  fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
   
   fmt::print("constexpr ScorePair kTempoBonus = ");

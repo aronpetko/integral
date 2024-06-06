@@ -139,7 +139,7 @@ Score Evaluation::GetScore() {
   score += EvaluateKing(us);
   score -= EvaluateKing(them);
 
-  const int phase = std::min(GetPhase(state_), kMaxPhase);
+  const int phase = GetPhase(state_);
 
   const Score mg_score = score.MiddleGame();
   const Score eg_score = score.EndGame();
@@ -342,8 +342,12 @@ ScorePair Evaluation::EvaluateKing(Color us) {
     TRACE_INCREMENT(kPawnShelterTable[idx], us);
   }
 
+  const Square their_king_square = state_.King(FlipColor(us)).GetLsb();
+  const int their_king_rank = Rank(their_king_square);
+  const int their_king_file = File(their_king_square);
+
   const BitBoard storming_pawns =
-      state_.Pawns(FlipColor(us)) & pawn_storm_zone_[us];
+      state_.Pawns(us) & pawn_storm_zone_[FlipColor(us)];
   for (Square pawn_square : storming_pawns) {
     const int pawn_rank = Rank(pawn_square);
     const int pawn_file = File(pawn_square);
@@ -351,11 +355,12 @@ ScorePair Evaluation::EvaluateKing(Color us) {
     constexpr int kKingIndexInZone = 19;
     constexpr int kZoneWidth = 3;
 
-    const int rank_diff = (pawn_rank - king_rank);
-    const int file_diff = (pawn_file - king_file);
+    const int rank_diff = (pawn_rank - their_king_rank);
+    const int file_diff = (pawn_file - their_king_file);
 
-    const int idx = kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
-                                           (us == Color::kBlack ? -1 : 1);
+    const int idx =
+        kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
+                               (FlipColor(us) == Color::kBlack ? -1 : 1);
 
     score += kPawnStormTable[idx];
     TRACE_INCREMENT(kPawnStormTable[idx], us);
