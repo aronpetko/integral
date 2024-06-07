@@ -1,4 +1,4 @@
-## <img src="https://i.imgur.com/Py8am6G.png" width="30%" height="30%"/>
+## <img src="https://i.imgur.com/Py8am6G.png" alt="Integral Chess Engine" width="30%" height="30%"/>
 Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming. \
 \
 **Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)**
@@ -35,4 +35,4 @@ make <native|x86_64_bmi2|x86_64_modern|x86_64>
 ```
 
 ## Rating
-Integral is estimated to be around 2830 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz. Unfortunately, there is no accurate way to translate chess engine ratings to human ratings. A very rough estimate would be that Integral is near-superhuman level.
+Integral is estimated to be around 3050 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz, which puts it at a super-human level.
