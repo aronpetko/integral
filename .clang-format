@@ -28,7 +28,7 @@ AlignConsecutiveMacros:
   AlignCompound: false
   PadOperators: false
 AlignEscapedNewlines: Left
-AlignOperands: Align
+AlignOperands: AlignAfterOperator
 AlignTrailingComments:
   Kind: Always
   OverEmptyLines: 0

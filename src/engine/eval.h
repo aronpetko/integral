@@ -2,26 +2,41 @@
 #define INTEGRAL_EVAL_H_
 
 #include "../chess/board.h"
+#include "eval_terms.h"
 
 namespace eval {
 
 constexpr std::array<Score, PieceType::kNumTypes + 1> kSEEPieceScores = {
-    100,  // pawn
-    300,  // knight
-    300,  // bishop
-    500,  // rook
-    900,  // queen
-    0,    // king
-    0,    // none
+    100,  // Pawn
+    300,  // Knight
+    300,  // Bishop
+    500,  // Rook
+    900,  // Queen
+    0,    // King
+    0,    // None
 };
 
-bool IsMateScore(int evaluation);
+constexpr int kMaxPhase = 24;
 
-int MateIn(int evaluation);
+static bool IsMateScore(int evaluation) {
+  return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;
+}
+
+static int MateIn(int evaluation) {
+  if (evaluation > 0 && evaluation <= kMateScore) {  // Mate in favor
+    return (kMateScore - evaluation + 1) / 2;
+  } else if (evaluation < 0 && evaluation >= -kMateScore) {  // Mate against
+    return -(kMateScore + evaluation) / 2;
+  }
+  // not a mate score
+  return evaluation;
+}
 
 bool StaticExchange(Move move, int threshold, const BoardState &state);
 
-int Evaluate(const BoardState &state);
+int GetPhase(const BoardState &state);
+
+Score Evaluate(const BoardState &state);
 
 }  // namespace eval
 

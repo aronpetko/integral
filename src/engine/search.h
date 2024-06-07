@@ -95,18 +95,18 @@ class Search {
 
   void Stop();
 
+  void WaitUntilFinished() const;
+
   void Bench(int depth);
 
-  const TimeManagement &GetTimeManagement();
+  TimeManagement &GetTimeManagement();
 
   void NewGame();
 
   [[nodiscard]] U64 GetNodesSearched() const;
 
  private:
-  void SetTimeConfig(TimeConfig &time_config);
-
-  [[nodiscard]] bool ShouldQuit() const;
+  [[nodiscard]] bool ShouldQuit();
 
   template <SearchType type>
   void IterativeDeepening();

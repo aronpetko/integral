@@ -1,143 +1,65 @@
 #ifndef INTEGRAL_BITBOARD_H_
 #define INTEGRAL_BITBOARD_H_
 
+#include <fmt/format.h>
+
 #include <array>
 #include <bit>
+#include <functional>
 #include <iostream>
 #include <vector>
 
 #include "../utils/types.h"
 
-enum Square : U16 {
-  kA1,
-  kB1,
-  kC1,
-  kD1,
-  kE1,
-  kF1,
-  kG1,
-  kH1,
-  kA2,
-  kB2,
-  kC2,
-  kD2,
-  kE2,
-  kF2,
-  kG2,
-  kH2,
-  kA3,
-  kB3,
-  kC3,
-  kD3,
-  kE3,
-  kF3,
-  kG3,
-  kH3,
-  kA4,
-  kB4,
-  kC4,
-  kD4,
-  kE4,
-  kF4,
-  kG4,
-  kH4,
-  kA5,
-  kB5,
-  kC5,
-  kD5,
-  kE5,
-  kF5,
-  kG5,
-  kH5,
-  kA6,
-  kB6,
-  kC6,
-  kD6,
-  kE6,
-  kF6,
-  kG6,
-  kH6,
-  kA7,
-  kB7,
-  kC7,
-  kD7,
-  kE7,
-  kF7,
-  kG7,
-  kH7,
-  kA8,
-  kB8,
-  kC8,
-  kD8,
-  kE8,
-  kF8,
-  kG8,
-  kH8,
-  kNoSquare,
-  kSquareCount = 64,
+static constexpr std::array<U64, kNumRanks> kRankMasks = {
+    0x00000000000000FFULL,
+    0x000000000000FF00ULL,
+    0x0000000000FF0000ULL,
+    0x00000000FF000000ULL,
+    0x000000FF00000000ULL,
+    0x0000FF0000000000ULL,
+    0x00FF000000000000ULL,
+    0xFF00000000000000ULL,
 };
 
-enum RankMask : U64 {
-  kRank1 = 0x00000000000000FFULL,
-  kRank2 = 0x000000000000FF00ULL,
-  kRank3 = 0x0000000000FF0000ULL,
-  kRank4 = 0x00000000FF000000ULL,
-  kRank5 = 0x000000FF00000000ULL,
-  kRank6 = 0x0000FF0000000000ULL,
-  kRank7 = 0x00FF000000000000ULL,
-  kRank8 = 0xFF00000000000000ULL
-};
-
-[[maybe_unused]] static constexpr std::array<RankMask, 8> kRankMasks = {
-    RankMask::kRank1,
-    RankMask::kRank2,
-    RankMask::kRank3,
-    RankMask::kRank4,
-    RankMask::kRank5,
-    RankMask::kRank6,
-    RankMask::kRank7,
-    RankMask::kRank8,
-};
-
-enum FileMask : U64 {
-  kFileH = 0x8080808080808080ULL,
-  kFileG = 0x4040404040404040ULL,
-  kFileF = 0x2020202020202020ULL,
-  kFileE = 0x1010101010101010ULL,
-  kFileD = 0x0808080808080808ULL,
-  kFileC = 0x0404040404040404ULL,
-  kFileB = 0x0202020202020202ULL,
-  kFileA = 0x0101010101010101ULL
-};
-
-static constexpr std::array<FileMask, 8> kFileMasks = {
-    FileMask::kFileA,
-    FileMask::kFileB,
-    FileMask::kFileC,
-    FileMask::kFileD,
-    FileMask::kFileE,
-    FileMask::kFileF,
-    FileMask::kFileG,
-    FileMask::kFileH,
+static constexpr std::array<U64, kNumFiles> kFileMasks = {
+    0x0101010101010101ULL,
+    0x0202020202020202ULL,
+    0x0404040404040404ULL,
+    0x0808080808080808ULL,
+    0x1010101010101010ULL,
+    0x2020202020202020ULL,
+    0x4040404040404040ULL,
+    0x8080808080808080ULL,
 };
 
 constexpr U64 kDarkSquares = 0xAA55AA55AA55AA55ULL;
 constexpr U64 kLightSquares = 0x55AA55AA55AA55AAULL;
 
-inline int Rank(int square) {
+inline constexpr int Rank(Square square) {
   return square >> 3;
 }
 
-inline int File(int square) {
+inline constexpr int File(Square square) {
   return square & 7;
 }
 
 inline Square RankFileToSquare(int rank, int file) {
-  return Square(rank * kBoardLength + file);
+  return Square(rank * kNumRanks + file);
 }
 
 inline Square RelativeSquare(Square square, Color side) {
   return Square(square ^ (56 * side));
+}
+
+inline Square RelativeRank(Square square, Color side) {
+  const int rank = Rank(square);
+  return side == Color::kBlack ? 7 - rank : rank;
+}
+
+inline Square RelativeFile(Square square, Color side) {
+  const int file = File(square);
+  return side == Color::kBlack ? 7 - file : file;
 }
 
 class BitBoard {
@@ -145,6 +67,38 @@ class BitBoard {
   constexpr BitBoard() : bitboard_(0ULL) {}
 
   constexpr BitBoard(U64 bitboard) : bitboard_(bitboard) {}
+
+  class Iterator {
+   public:
+    explicit Iterator(U64 bitboard)
+        : bitboard_(bitboard), lsb_(std::countr_zero(bitboard)) {}
+
+    Iterator &operator++() {
+      bitboard_ &= bitboard_ - 1;  // Remove the LSB
+      lsb_ = std::countr_zero(bitboard_);
+      return *this;
+    }
+
+    U8 operator*() const {
+      return lsb_;
+    }
+
+    bool operator!=(const Iterator &other) const {
+      return bitboard_ != other.bitboard_;
+    }
+
+   private:
+    U64 bitboard_;
+    U8 lsb_;
+  };
+
+  [[nodiscard]] Iterator begin() const {
+    return Iterator(bitboard_);
+  }
+
+  [[nodiscard]] Iterator end() const {
+    return Iterator(0);
+  }
 
   static BitBoard FromSquare(U8 square) {
     return {1ULL << square};
@@ -170,16 +124,12 @@ class BitBoard {
     return (bitboard_ >> square) & 1;
   }
 
-  [[nodiscard]] constexpr inline U8 GetLSB() const {
+  [[nodiscard]] constexpr inline U8 GetLsb() const {
     return std::countr_zero(bitboard_);
   }
 
-  [[nodiscard]] constexpr inline U8 GetMSB() const {
-    return 63 - std::countl_zero(bitboard_);
-  }
-
   constexpr inline U8 PopLsb() {
-    const U8 lsb_pos = GetLSB();
+    const U8 lsb_pos = GetLsb();
     bitboard_ &= bitboard_ - 1;
     return lsb_pos;
   }
@@ -190,6 +140,14 @@ class BitBoard {
 
   [[nodiscard]] constexpr inline bool MoreThanOne() const {
     return (bitboard_ & (bitboard_ - 1)) != 0;
+  }
+
+  template <class Function>
+  void PopEnumerate(const Function &fn) {
+    while (bitboard_ != 0) {
+      Square bit_location = PopLsb();
+      fn(bit_location);
+    }
   }
 
   constexpr inline BitBoard &operator=(const U64 &bitboard) {
@@ -310,14 +268,14 @@ class BitBoard {
     return bitboard_ != 0ULL;
   }
 
-  void PrintBitBoard() {
+  void Print() const {
     for (int rank = 7; rank >= 0; rank--) {
       for (int file = 0; file < 8; file++) {
         const auto square = RankFileToSquare(rank, file);
-        std::cout << (IsSet(square) ? '1' : '0');
-        if (file < 7) std::cout << " ";  // Space separator for clarity
+        fmt::print("{}", IsSet(square) ? '1' : '0');
+        if (file < 7) fmt::print(" ");  // Space separator for clarity
       }
-      std::cout << std::endl;
+      fmt::print("\n");
     }
   }
 
@@ -332,20 +290,35 @@ constexpr inline BitBoard Shift(const BitBoard &bitboard) {
   else if constexpr (dir == Direction::kSouth)
     return BitBoard(bitboard >> 8);
   else if constexpr (dir == Direction::kEast)
-    return BitBoard((bitboard << 1) & ~FileMask::kFileA);
+    return BitBoard((bitboard << 1) & ~kFileMasks[kFileA]);
   else if constexpr (dir == Direction::kWest)
-    return BitBoard((bitboard >> 1) & ~FileMask::kFileH);
+    return BitBoard((bitboard >> 1) & ~kFileMasks[kFileH]);
   else if constexpr (dir == Direction::kNorthEast)
-    return BitBoard((bitboard << 9) & ~FileMask::kFileA);
+    return BitBoard((bitboard << 9) & ~kFileMasks[kFileA]);
   else if constexpr (dir == Direction::kNorthWest)
-    return BitBoard((bitboard << 7) & ~FileMask::kFileH);
+    return BitBoard((bitboard << 7) & ~kFileMasks[kFileH]);
   else if constexpr (dir == Direction::kSouthEast)
-    return BitBoard((bitboard >> 7) & ~FileMask::kFileA);
+    return BitBoard((bitboard >> 7) & ~kFileMasks[kFileA]);
   else if constexpr (dir == Direction::kSouthWest)
-    return BitBoard((bitboard >> 9) & ~FileMask::kFileH);
+    return BitBoard((bitboard >> 9) & ~kFileMasks[kFileH]);
   else
     // Default case to avoid compiler warnings, should not be reached
-    return BitBoard(0);
+    return {0};
+}
+
+// Returns the bitboard of all squares "higher" than the given square from the
+// given color
+inline constexpr BitBoard ForwardRanks(Color color, Square square) {
+  if (color == Color::kWhite)
+    return ~kRankMasks[kRank1] << 8 * Rank(square);
+  else
+    return ~kRankMasks[kRank8] >> 8 * (kRank8 - Rank(square));
+}
+
+// Returns the bitboard of all squares "in front" of the given square from the
+// given color
+inline constexpr BitBoard ForwardFileMask(Color color, Square square) {
+  return ForwardRanks(color, square) & kFileMasks[File(square)];
 }
 
 #endif  // INTEGRAL_BITBOARD_H_

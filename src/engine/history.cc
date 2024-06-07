@@ -17,7 +17,7 @@ int ScaleBonus(Score score, int bonus) {
 
 // Flatten the move to an index
 inline int MoveIndex(Move move) {
-  return move.GetFrom() * Square::kSquareCount + move.GetTo();
+  return move.GetFrom() * kSquareCount + move.GetTo();
 }
 
 MoveHistory::MoveHistory(const BoardState &state)
@@ -44,9 +44,6 @@ int MoveHistory::GetContHistoryScore(Move move,
 }
 
 ContinuationEntry *MoveHistory::GetContEntry(Move move, Color turn) noexcept {
-  if (!move) {
-    return nullptr;
-  }
   const auto from = move.GetFrom(), to = move.GetTo();
   return &(*cont_history_)[turn][state_.GetPieceType(from)][to];
 }

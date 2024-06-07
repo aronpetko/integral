@@ -1,7 +1,8 @@
 #include "magic_finder.h"
 
-#include <cassert>
 #include <fmt/format.h>
+
+#include <cassert>
 #include <random>
 
 #include "attacks.h"
@@ -56,7 +57,7 @@ MagicEntry FindMagic(PieceType piece_type, Square square) {
   for (std::size_t i = 0; i < 1000000; i++) {
     const auto candidate =
         random_magic_number() & random_magic_number() & random_magic_number();
-    const auto shift = Square::kSquareCount - relevant_bits;
+    const auto shift = kSquareCount - relevant_bits;
 
     if (TryMagic(candidate, shift, relevant_bits, blockers, piece_attacks)) {
       return {move_mask.AsU64(), candidate, shift};
@@ -67,47 +68,45 @@ MagicEntry FindMagic(PieceType piece_type, Square square) {
 }
 
 void GenerateMagics() {
-  std::cout
-      << "constexpr std::array<MagicEntry, Square::kSquareCount> kRookMagics = {"
-      << std::endl;
+  fmt::println(
+      "constexpr std::array<MagicEntry, kSquareCount> kRookMagics = {{");
 
-  for (int square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kRook, Square(square));
-    std::cout << "  "
-              << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
-                             magic_entry.mask,
-                             magic_entry.magic,
-                             magic_entry.shift);
 
-    if (square < Square::kSquareCount - 1) {
-      std::cout << ",";
+    fmt::println("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
+                 magic_entry.mask,
+                 magic_entry.magic,
+                 magic_entry.shift);
+
+    if (square < kSquareCount - 1) {
+      fmt::println(",");
     }
 
-    std::cout << std::endl;
+    fmt::print("\n");
   }
 
-  std::cout << "};" << std::endl << std::endl;
+  fmt::println("}};\n");
 
-  std::cout
-      << "constexpr std::array<MagicEntry, Square::kSquareCount> kBishopMagics = {"
-      << std::endl;
+  fmt::println(
+      "constexpr std::array<MagicEntry, kSquareCount> kBishopMagics = {{");
 
-  for (int square = 0; square < Square::kSquareCount; square++) {
+  for (int square = 0; square < kSquareCount; square++) {
     const auto magic_entry = FindMagic(PieceType::kBishop, Square(square));
-    std::cout << "  "
-              << fmt::format("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
-                             magic_entry.mask,
-                             magic_entry.magic,
-                             magic_entry.shift);
 
-    if (square < Square::kSquareCount - 1) {
-      std::cout << ",";
+    fmt::println("MagicEntry{{0x{:016x}ULL, 0x{:016x}ULL, {}}}",
+                 magic_entry.mask,
+                 magic_entry.magic,
+                 magic_entry.shift);
+
+    if (square < kSquareCount - 1) {
+      fmt::println(",");
     }
 
-    std::cout << std::endl;
+    fmt::print("\n");
   }
 
-  std::cout << "};" << std::endl;
+  fmt::println("}};");
 }
 
 }  // namespace magics::finder

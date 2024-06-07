@@ -8,8 +8,8 @@ namespace magics::attacks {
 constexpr int kBishopBlockerCombinations = 512;
 constexpr int kRookBlockerCombinations = 4096;
 
-extern std::array<std::array<BitBoard, kBishopBlockerCombinations>, Square::kSquareCount> bishop_attacks;
-extern std::array<std::array<BitBoard, kRookBlockerCombinations>, Square::kSquareCount> rook_attacks;
+extern std::array<std::array<BitBoard, kBishopBlockerCombinations>, kSquareCount> bishop_attacks;
+extern std::array<std::array<BitBoard, kRookBlockerCombinations>, kSquareCount> rook_attacks;
 
 BitBoard GenerateBishopMask(Square square);
 

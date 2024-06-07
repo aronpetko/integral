@@ -81,7 +81,7 @@ constexpr std::array kSEESuite = {
 // clang-format on
 
 void SEESuite() {
-  std::cout << "starting see test" << std::endl;
+  fmt::println("starting see test");
   const auto start_time = std::chrono::steady_clock::now();
 
   Board board;
@@ -96,18 +96,15 @@ void SEESuite() {
 
     const bool passed =
         eval::StaticExchange(move, 0, board.GetState()) == answer;
-    std::cout << fmt::format("{}\033[0m {}\n",
-                             passed ? "\033[32mpassed" : "\033[31mfailed",
-                             see_test);
+    fmt::println(
+        "{}\033[0m {}", passed ? "\033[32mpassed" : "\033[31mfailed", see_test);
   }
 
   const auto elapsed = duration_cast<std::chrono::milliseconds>(
                            std::chrono::steady_clock::now() - start_time)
                            .count() /
                        1000.0;
-  std::cout << fmt::format("test finished in {}ms",
-                           static_cast<U64>(elapsed * 1000.0))
-            << std::endl;
+  fmt::println("test finished in {}ms", static_cast<U64>(elapsed * 1000.0));
 }
 
 }  // namespace tests

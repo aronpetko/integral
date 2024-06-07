@@ -45,13 +45,13 @@ bool Board::IsMovePseudoLegal(Move move) {
     const int move_dist = static_cast<int>(from) - static_cast<int>(to);
     if (move_dist == kKingsideCastleDist) {
       return !state_.checkers && state_.castle_rights.CanKingsideCastle(us) &&
-             !occupied.IsSet(is_white ? Square::kG1 : Square::kG8) &&
-             !occupied.IsSet(is_white ? Square::kF1 : Square::kF8);
+             !occupied.IsSet(is_white ? Squares::kG1 : Squares::kG8) &&
+             !occupied.IsSet(is_white ? Squares::kF1 : Squares::kF8);
     } else if (move_dist == kQueensideCastleDist) {
       return !state_.checkers && state_.castle_rights.CanQueensideCastle(us) &&
-             !occupied.IsSet(is_white ? Square::kC1 : Square::kC8) &&
-             !occupied.IsSet(is_white ? Square::kD1 : Square::kD8) &&
-             !occupied.IsSet(is_white ? Square::kB1 : Square::kB8);
+             !occupied.IsSet(is_white ? Squares::kC1 : Squares::kC8) &&
+             !occupied.IsSet(is_white ? Squares::kD1 : Squares::kD8) &&
+             !occupied.IsSet(is_white ? Squares::kB1 : Squares::kB8);
     }
   }
 
@@ -59,12 +59,11 @@ bool Board::IsMovePseudoLegal(Move move) {
   switch (piece_type) {
     case PieceType::kPawn: {
       BitBoard en_passant_mask;
-      if (state_.en_passant != Square::kNoSquare) {
-        en_passant_mask = BitBoard::FromSquare(state_.en_passant);
+      if (state_.en_passant.has_value()) {
+        en_passant_mask = BitBoard::FromSquare(state_.en_passant.value());
       }
-      const BitBoard pawn_attacks =
-          (move_gen::PawnAttacks(from, state_, state_.turn) &
-           (their_pieces | en_passant_mask));
+      const BitBoard pawn_attacks = (move_gen::PawnAttacks(from, state_.turn) &
+                                     (their_pieces | en_passant_mask));
       possible_moves = move_gen::PawnMoves(from, state_) | pawn_attacks;
       break;
     }
@@ -78,8 +77,7 @@ bool Board::IsMovePseudoLegal(Move move) {
       possible_moves = move_gen::RookMoves(from, occupied);
       break;
     case PieceType::kQueen:
-      possible_moves = move_gen::BishopMoves(from, occupied) |
-                       move_gen::RookMoves(from, occupied);
+      possible_moves = move_gen::QueenMoves(from, occupied);
       break;
     case PieceType::kKing:
       possible_moves = move_gen::KingAttacks(from);
@@ -95,11 +93,11 @@ bool Board::IsMoveLegal(Move move) {
   const Color us = state_.turn, them = FlipColor(us);
   const bool is_white = state_.turn == Color::kWhite;
 
-  const auto from = Square(move.GetFrom());
-  const auto to = Square(move.GetTo());
+  const auto from = move.GetFrom();
+  const auto to = move.GetTo();
 
   const BitBoard king_mask = state_.King(us);
-  const auto king_square = Square(king_mask.GetLSB());
+  const auto king_square = king_mask.GetLsb();
 
   const auto piece_type = state_.GetPieceType(from);
   if (piece_type == PieceType::kKing) {
@@ -111,14 +109,14 @@ bool Board::IsMoveLegal(Move move) {
     const int move_dist = static_cast<int>(from) - static_cast<int>(to);
     if (move_dist == kKingsideCastleDist) {
       return !move_gen::GetAttackersTo(
-                 state_, is_white ? Square::kG1 : Square::kG8, them) &&
+                 state_, is_white ? Squares::kG1 : Squares::kG8, them) &&
              !move_gen::GetAttackersTo(
-                 state_, is_white ? Square::kF1 : Square::kF8, them);
+                 state_, is_white ? Squares::kF1 : Squares::kF8, them);
     } else if (move_dist == kQueensideCastleDist) {
       return !move_gen::GetAttackersTo(
-                 state_, is_white ? Square::kC1 : Square::kC8, them) &&
+                 state_, is_white ? Squares::kC1 : Squares::kC8, them) &&
              !move_gen::GetAttackersTo(
-                 state_, is_white ? Square::kD1 : Square::kD8, them);
+                 state_, is_white ? Squares::kD1 : Squares::kD8, them);
     }
 
     // Make sure the destination square isn't attacked
@@ -160,7 +158,7 @@ bool Board::IsMoveLegal(Move move) {
 
   // Only legal move left is to either take the piece that's causing check or
   // block its path
-  const auto checking_piece = Square(state_.checkers.GetLSB());
+  const auto checking_piece = state_.checkers.GetLsb();
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
@@ -182,7 +180,7 @@ void Board::MakeMove(Move move) {
   if (captured_piece != PieceType::kNone) {
     state_.zobrist_key ^=
         zobrist::HashSquare(to, state_, FlipColor(state_.turn), captured_piece);
-    state_.RemovePiece(to);
+    state_.RemovePiece(to, FlipColor(state_.turn));
 
     // Reset fifty moves clock since this move was a capture
     new_fifty_move_clock = 0;
@@ -198,18 +196,18 @@ void Board::MakeMove(Move move) {
     // Check if this was an en passant capture
     if (to == state_.en_passant) {
       // Pawn must be directly behind/in front of the attack square
-      const auto en_passant_pawn_pos = Square(is_white ? to - 8 : to + 8);
+      const Square en_passant_pawn_pos = is_white ? to - 8 : to + 8;
 
       // Xor out the en passant captured pawn
       state_.zobrist_key ^= zobrist::HashSquare(en_passant_pawn_pos,
                                                 state_,
                                                 FlipColor(state_.turn),
                                                 PieceType::kPawn);
-      state_.RemovePiece(en_passant_pawn_pos);
+      state_.RemovePiece(en_passant_pawn_pos, FlipColor(state_.turn));
 
       // Xor out the en passant pos
       state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-      state_.en_passant = Square::kNoSquare;
+      state_.en_passant = std::nullopt;
     } else {
       // Setting en passant target if pawn moved two squares
       constexpr int kDoublePushDist = 16;
@@ -219,8 +217,8 @@ void Board::MakeMove(Move move) {
         state_.zobrist_key ^= zobrist::HashEnPassant(state_);
 
         // Pawn must be directly behind/in front of the attack square
-        const U8 en_passant_pawn_pos = is_white ? to - 8 : to + 8;
-        state_.en_passant = Square(en_passant_pawn_pos);
+        const Square en_passant_pawn_pos = is_white ? to - 8 : to + 8;
+        state_.en_passant = en_passant_pawn_pos;
 
         // Keep track if this was a move that caused en passant to be set (for
         // zobrist hashing)
@@ -228,21 +226,21 @@ void Board::MakeMove(Move move) {
       }
       // This move wasn't a double pawn push, so if ep square was set from the
       // previous move, we xor it out
-      else if (state_.en_passant != Square::kNoSquare) {
+      else if (state_.en_passant.has_value()) {
         state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-        state_.en_passant = Square::kNoSquare;
+        state_.en_passant = std::nullopt;
       }
     }
-  } else if (state_.en_passant != Square::kNoSquare) {
+  } else if (state_.en_passant.has_value()) {
     // If ep square was set from the previous move, we xor it out
     state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-    state_.en_passant = Square::kNoSquare;
+    state_.en_passant = std::nullopt;
   }
 
   HandleCastling(move);
 
   // Move the piece
-  state_.RemovePiece(from);
+  state_.RemovePiece(from, state_.turn);
   state_.PlacePiece(to, piece_type, state_.turn);
 
   const auto promotion_type = move.GetPromotionType();
@@ -286,9 +284,9 @@ void Board::MakeNullMove() {
   state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
 
   // Xor out en passant if it exists
-  if (state_.en_passant != Square::kNoSquare) {
+  if (state_.en_passant.has_value()) {
     state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-    state_.en_passant = Square::kNoSquare;
+    state_.en_passant = std::nullopt;
   }
 
   // Switch turn and xor in the new turn hash
@@ -410,7 +408,7 @@ void Board::HandleCastling(Move move) {
         state_.zobrist_key ^= zobrist::HashSquare(
             rook_from, state_, state_.turn, PieceType::kRook);
 
-        state_.RemovePiece(rook_from);
+        state_.RemovePiece(rook_from, state_.turn);
         state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
 
         // Xor in the rook's new square
@@ -425,11 +423,11 @@ void Board::HandleCastling(Move move) {
       // move_gen::CastlingMoves allowing it
       const int move_dist = static_cast<int>(from) - static_cast<int>(to);
       if (move_dist == kKingsideCastleDist) {
-        move_rook_for_castling(is_white ? Square::kH1 : Square::kH8,
-                               is_white ? Square::kF1 : Square::kF8);
+        move_rook_for_castling(is_white ? Squares::kH1 : Squares::kH8,
+                               is_white ? Squares::kF1 : Squares::kF8);
       } else if (move_dist == kQueensideCastleDist) {
-        move_rook_for_castling(is_white ? Square::kA1 : Square::kA8,
-                               is_white ? Square::kD1 : Square::kD8);
+        move_rook_for_castling(is_white ? Squares::kA1 : Squares::kA8,
+                               is_white ? Squares::kD1 : Squares::kD8);
       }
 
       state_.castle_rights.SetBothRights(state_.turn, false);
@@ -439,15 +437,15 @@ void Board::HandleCastling(Move move) {
   else if (piece_type == PieceType::kRook &&
            state_.castle_rights.CanCastle(state_.turn)) {
     if (is_white) {
-      if (from == Square::kH1) {
+      if (from == Squares::kH1) {
         state_.castle_rights.SetCanKingsideCastle(state_.turn, false);
-      } else if (from == Square::kA1) {
+      } else if (from == Squares::kA1) {
         state_.castle_rights.SetCanQueensideCastle(state_.turn, false);
       }
     } else {
-      if (from == Square::kH8) {
+      if (from == Squares::kH8) {
         state_.castle_rights.SetCanKingsideCastle(state_.turn, false);
-      } else if (from == Square::kA8) {
+      } else if (from == Squares::kA8) {
         state_.castle_rights.SetCanQueensideCastle(state_.turn, false);
       }
     }
@@ -478,7 +476,9 @@ void Board::HandlePromotions(Move move) {
   const auto to_rank = Rank(to);
 
   if (is_white && to_rank == kNumRanks - 1 || !is_white && to_rank == 0) {
-    state_.RemovePiece(to);
+    // Since this pawn is promoting, we remove the pawn in place of the promoted
+    // piece
+    state_.RemovePiece(to, state_.GetPieceColor(to));
 
     switch (move.GetPromotionType()) {
       case PromotionType::kKnight: {
@@ -511,12 +511,11 @@ void Board::CalculateKingThreats() {
   const BitBoard our_pieces = state_.Occupied(us);
   const BitBoard their_pieces = state_.Occupied(them);
 
-  const auto king_square = Square(state_.King(us).GetLSB());
+  const Square king_square = state_.King(us).GetLsb();
 
   // Calculate the pieces that are attacking the king
-  state_.checkers =
-      move_gen::KnightMoves(king_square) & state_.Knights() |
-      move_gen::PawnAttacks(king_square, state_, us) & state_.Pawns();
+  state_.checkers = move_gen::KnightMoves(king_square) & state_.Knights() |
+                    move_gen::PawnAttacks(king_square, us) & state_.Pawns();
   state_.checkers &= their_pieces;
 
   // Calculate our potentially pinned pieces
@@ -526,7 +525,7 @@ void Board::CalculateKingThreats() {
   BitBoard x_raying_pieces =
       move_gen::GetSlidingAttackersTo(state_, king_square, their_pieces, them);
   while (x_raying_pieces) {
-    const auto square = Square(x_raying_pieces.PopLsb());
+    const Square square = x_raying_pieces.PopLsb();
 
     const BitBoard pinned =
         our_pieces & move_gen::RayBetween(king_square, square);
@@ -544,17 +543,17 @@ void Board::CalculateKingThreats() {
 
 void Board::PrintPieces() {
   for (int rank = kNumRanks - 1; rank >= 0; rank--) {
-    std::cout << rank + 1 << ' ';
+    fmt::print("{} ", rank + 1);
     for (int file = 0; file < kNumFiles; file++) {
       const auto square = RankFileToSquare(rank, file);
-      std::cout << fen::GetPieceChar(const_cast<BoardState &>(state_), square);
-      if (file < kNumFiles - 1)
-        std::cout << " ";  // Space separator for clarity
+      fmt::print("{}",
+                 fen::GetPieceChar(const_cast<BoardState &>(state_), square));
+      if (file < kNumFiles - 1) fmt::print(" ");  // Space separator for clarity
     }
-    std::cout << std::endl;
+    fmt::print("\n");
   }
-  std::cout << "  ";
+  fmt::print("  ");
   for (int file = 0; file < kNumFiles; file++)
-    std::cout << static_cast<char>('a' + file) << ' ';
-  std::cout << std::endl;
+    fmt::print("{} ", static_cast<char>('a' + file));
+  fmt::print("\n");
 }

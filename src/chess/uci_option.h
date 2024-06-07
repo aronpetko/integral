@@ -148,7 +148,7 @@ static Option &GetOption(std::string_view option) {
 
 static void PrintOptions() {
   for (const auto &[_, option] : options) {
-    std::cout << option.ToString() << std::endl;
+    fmt::println("{}", option.ToString());
   }
 }
 

@@ -1,11 +1,13 @@
 #include "uci.h"
 
 #include <fmt/format.h>
+
 #include <string>
 
 #include "../ascii_logo.h"
 #include "../engine/search.h"
 #include "../tests/tests.h"
+#include "../tuner/tuner.h"
 #include "move_gen.h"
 
 namespace uci {
@@ -15,6 +17,7 @@ void InitializeOptions() {
     transposition_table.Resize(option.GetValue<int>());
   });
   AddOption("Threads", 1, 1, 1);
+  AddOption("Move Overhead", 50, 0, 10000);
 }
 
 void Position(Board &board, std::stringstream &input_stream) {
@@ -121,6 +124,12 @@ void AcceptCommands(int arg_count, char **args) {
 
   InitializeOptions();
 
+#ifdef TUNE
+  Tuner tuner;
+  tuner.LoadFromFile(args[1]);
+  tuner.Tune();
+#endif
+
   constexpr int kTTMbSize = 64;
   transposition_table.Resize(kTTMbSize);
 
@@ -137,9 +146,7 @@ void AcceptCommands(int arg_count, char **args) {
   }
 
   PrintAsciiLogo();
-  std::cout << fmt::format(
-                   "    v{}, written by {}\n", kEngineVersion, kEngineAuthor)
-            << std::endl;
+  fmt::println("    v{}, written by {}\n", kEngineVersion, kEngineAuthor);
 
   std::string input_line;
   while (input_line != "quit") {
@@ -150,19 +157,21 @@ void AcceptCommands(int arg_count, char **args) {
     input_stream >> command;
 
     if (command == "uci") {
-      std::cout << fmt::format("id name {}", kEngineName) << std::endl;
-      std::cout << fmt::format("id author {}", kEngineAuthor) << std::endl;
+      fmt::println("id name {}", kEngineName);
+      fmt::println("id author {}", kEngineAuthor);
       PrintOptions();
-      std::cout << "uciok" << std::endl;
+      fmt::println("uciok");
     } else if (command == "isready") {
-      std::cout << "readyok" << std::endl;
+      fmt::println("readyok");
     } else if (command == "position") {
+      search.WaitUntilFinished();
       Position(board, input_stream);
     } else if (command == "go") {
       Go(board, search, input_stream);
     } else if (command == "stop") {
       search.Stop();
     } else if (command == "ucinewgame") {
+      search.WaitUntilFinished();
       search.NewGame();
     } else if (command == "print") {
       board.PrintPieces();
@@ -175,6 +184,8 @@ void AcceptCommands(int arg_count, char **args) {
       tests::BenchSuite(board, search, depth);
     } else if (command == "setoption") {
       SetOption(input_stream);
+    } else if (command == "eval" || command == "evaluate") {
+      fmt::println("{}", eval::Evaluate(board.GetState()));
     }
   }
 }

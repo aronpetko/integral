@@ -12,7 +12,9 @@ namespace move_gen {
 // Initializes piece attack lookups and magics
 void InitializeAttacks();
 
-BitBoard &PawnAttacks(Square square, const BoardState &state, Color side);
+BitBoard PawnAttacks(BitBoard pawns, Color side);
+
+BitBoard &PawnAttacks(Square square, Color side);
 
 BitBoard PawnMoves(Square square, const BoardState &state);
 
@@ -21,6 +23,8 @@ BitBoard &KnightMoves(Square square);
 BitBoard &BishopMoves(Square square, const BitBoard &occupied);
 
 BitBoard &RookMoves(Square square, const BitBoard &occupied);
+
+BitBoard QueenMoves(Square square, const BitBoard &occupied);
 
 BitBoard KingMoves(Square square, const BoardState &state);
 
