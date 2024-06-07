@@ -10,24 +10,15 @@ include(CheckCXXCompilerFlag)
 option(BUILD_X86_64 "Build with x86-64 optimization" OFF)
 option(BUILD_X86_64_MODERN "Build with x86-64 modern optimization" OFF)
 option(BUILD_X86_64_BMI2 "Build with x86-64 bmi2 optimization" OFF)
-
-# Set compiler flags based on the selected build type
-if(BUILD_X86_64)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver1 -msse -msse2 -mpopcnt")
-endif()
-
-if(BUILD_X86_64_MODERN)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver2 -m64 -msse -msse3 -mpopcnt")
-endif()
-
-if(BUILD_X86_64_BMI2)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=haswell -DUSE_AVX2 -mavx2 -mbmi2")
-endif()
-
-# Native optimization option
 option(BUILD_NATIVE "Build with native optimizations" ON)
 
-if(BUILD_NATIVE)
+if(BUILD_X86_64)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver1 -msse -msse2 -mpopcnt")
+elseif(BUILD_X86_64_MODERN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver2 -m64 -msse -msse3 -mpopcnt")
+elseif(BUILD_X86_64_BMI2)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=haswell -DUSE_AVX2 -mavx2 -mbmi2")
+elseif(BUILD_NATIVE)
     # General native flags
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 endif()
