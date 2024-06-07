@@ -327,8 +327,6 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
       if (non_pawn_king_pieces) {
-        transposition_table.Prefetch(board_.PredictKeyAfter(Move::NullMove()));
-
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
         stack->cont_entry = nullptr;

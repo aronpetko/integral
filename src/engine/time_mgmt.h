@@ -37,7 +37,7 @@ enum class TimeType {
 
 class TimeManagement {
  public:
-  explicit TimeManagement(const TimeConfig &config);
+  [[maybe_unused]] explicit TimeManagement(const TimeConfig &config);
 
   TimeManagement() = default;
 

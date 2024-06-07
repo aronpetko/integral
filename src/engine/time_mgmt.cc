@@ -12,7 +12,7 @@ Tunable soft_limit_scale("soft_limit_scale", 76, 0, 150, 5, 0.0020);
 Tunable node_fraction_base("node_fraction_base", 152, 50, 250, 8, 0.0020);
 Tunable node_fraction_scale("node_fraction_scale", 174, 50, 250, 5, 0.0020);
 
-TimeManagement::TimeManagement(const TimeConfig &config) : nodes_spent_({}) {
+[[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config) : nodes_spent_({}) {
   SetConfig(config);
 }
 

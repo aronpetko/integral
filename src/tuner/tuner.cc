@@ -173,7 +173,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
 TunerEntry Tuner::CreateEntry(const BoardState& state,
                               GameResult result) const {
   TunerEntry entry;
-  entry.phase = GetPhase(state);
+  entry.phase = state.phase;
   entry.result = result;
 
   // Save time by computing phase scalars now
@@ -375,7 +375,8 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr FileTable<ScorePair> kIsolatedPawnPenalty = ");
   PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
 
-  fmt::print("constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
+  fmt::print(
+      "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
   Print2DArray(index, 2, kNumFiles, parameters_);
 
   fmt::print("constexpr std::array<ScorePair, 12> kPawnShelterTable = ");
