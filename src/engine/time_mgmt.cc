@@ -1,5 +1,6 @@
 #include "time_mgmt.h"
 
+#include "../chess/uci.h"
 #include "../tuner/spsa.h"
 #include "search.h"
 
@@ -17,7 +18,8 @@ TimeManagement::TimeManagement(const TimeConfig &config) : nodes_spent_({}) {
 
 void TimeManagement::Start() {
   const int base_time = config_.time_left * (base_time_scale / 1000.0) +
-                        config_.increment * (increment_scale / 100.0);
+                        config_.increment * (increment_scale / 100.0) -
+                        uci::GetOption("Move Overhead").GetValue<int>();
   const auto maximum_time = percent_limit / 100.0 * config_.time_left;
 
   hard_limit_.store(
@@ -79,8 +81,8 @@ bool TimeManagement::ShouldStop(Move best_move, U32 nodes_searched) {
   const auto percent_searched =
       NodesSpent(best_move) / std::max<double>(1, nodes_searched);
   const double percent_scale_factor =
-      (node_fraction_base / 100.0 - percent_searched) * (node_fraction_scale /
-      100.0);
+      (node_fraction_base / 100.0 - percent_searched) *
+      (node_fraction_scale / 100.0);
   const U32 optimal_limit =
       std::min<U32>(soft_limit_ * percent_scale_factor, hard_limit_);
 

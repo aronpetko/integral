@@ -17,6 +17,7 @@ void InitializeOptions() {
     transposition_table.Resize(option.GetValue<int>());
   });
   AddOption("Threads", 1, 1, 1);
+  AddOption("Move Overhead", 50, 0, 10000);
 }
 
 void Position(Board &board, std::stringstream &input_stream) {
