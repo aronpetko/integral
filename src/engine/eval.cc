@@ -233,6 +233,11 @@ ScorePair Evaluation::EvaluateBishops(Color us) {
   const BitBoard our_bishops = state_.Bishops(us);
   const BitBoard occupied = state_.Occupied();
 
+  if (our_bishops.MoreThanOne()) {
+    score += kBishopPairBonus;
+    TRACE_INCREMENT(kBishopPairBonus, us);
+  }
+
   for (Square square : our_bishops) {
     score += kPieceValues[PieceType::kBishop];
     TRACE_INCREMENT(kPieceValues[PieceType::kBishop], us);
