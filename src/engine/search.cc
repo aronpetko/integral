@@ -98,7 +98,7 @@ void Search::IterativeDeepening() {
 
       // Widen the aspiration window for the next iteration if we fail low or
       // high again
-      window += window / 3;
+      window += window / 2;
 
       if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
         break;
