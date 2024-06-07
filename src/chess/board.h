@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include "../engine/eval_terms.h"
 #include "../engine/transpo.h"
 #include "../utils/zobrist.h"
 #include "bitboard.h"
@@ -83,7 +84,8 @@ struct BoardState {
         turn(Color::kWhite),
         checkers(0ULL),
         pinned(0ULL),
-        en_passant(std::nullopt) {
+        en_passant(std::nullopt),
+        phase(0) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -91,16 +93,21 @@ struct BoardState {
     piece_on_square[square] = piece_type;
     piece_bbs[piece_type].SetBit(square);
     side_bbs[color].SetBit(square);
+    piece_scores[color] +=
+        eval::kPieceSquareTable[piece_type][RelativeSquare(square, color)];
+    piece_scores[color] += eval::kPieceValues[piece_type];
+    phase += eval::kPhaseIncrements[piece_type];
   }
 
-  void RemovePiece(U8 square) {
+  void RemovePiece(U8 square, Color color) {
     auto &piece_type = piece_on_square[square];
-    if (piece_type != PieceType::kNone) {
-      piece_bbs[piece_type].ClearBit(square);
-      side_bbs[Color::kBlack].ClearBit(square);
-      side_bbs[Color::kWhite].ClearBit(square);
-      piece_type = PieceType::kNone;
-    }
+    piece_bbs[piece_type].ClearBit(square);
+    side_bbs[color].ClearBit(square);
+    piece_scores[color] -=
+        eval::kPieceSquareTable[piece_type][RelativeSquare(square, color)];
+    piece_scores[color] -= eval::kPieceValues[piece_type];
+    phase -= eval::kPhaseIncrements[piece_type];
+    piece_type = PieceType::kNone;
   }
 
   [[nodiscard]] constexpr inline Color GetPieceColor(U8 square) const {
@@ -201,6 +208,8 @@ struct BoardState {
   U64 zobrist_key;
   BitBoard checkers;
   BitBoard pinned;
+  SideTable<ScorePair> piece_scores;
+  int phase;
 };
 
 class Board {

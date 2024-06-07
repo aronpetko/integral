@@ -134,13 +134,18 @@ void MovePicker::SkipQuiets() {
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
                                 const int &index) {
   int best_move_idx = index;
+  int best_score = move_list[index].score;
   for (int next = index + 1; next < move_list.Size(); ++next) {
-    if (move_list[next].score > move_list[best_move_idx].score) {
+    if (move_list[next].score > best_score) {
       best_move_idx = next;
+      best_score = move_list[next].score;
     }
   }
 
-  std::swap(move_list[index], move_list[best_move_idx]);
+  if (best_move_idx != index) {
+    std::swap(move_list[index], move_list[best_move_idx]);
+  }
+
   return move_list[index].move;
 }
 

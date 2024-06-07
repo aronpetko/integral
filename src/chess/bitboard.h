@@ -70,9 +70,10 @@ class BitBoard {
 
   class Iterator {
    public:
-    explicit Iterator(U64 bitboard) : bitboard_(bitboard), lsb_(std::countr_zero(bitboard)) {}
+    explicit Iterator(U64 bitboard)
+        : bitboard_(bitboard), lsb_(std::countr_zero(bitboard)) {}
 
-    Iterator& operator++() {
+    Iterator &operator++() {
       bitboard_ &= bitboard_ - 1;  // Remove the LSB
       lsb_ = std::countr_zero(bitboard_);
       return *this;
@@ -82,7 +83,7 @@ class BitBoard {
       return lsb_;
     }
 
-    bool operator!=(const Iterator& other) const {
+    bool operator!=(const Iterator &other) const {
       return bitboard_ != other.bitboard_;
     }
 
@@ -274,7 +275,7 @@ class BitBoard {
         fmt::print("{}", IsSet(square) ? '1' : '0');
         if (file < 7) fmt::print(" ");  // Space separator for clarity
       }
-     fmt::print("\n");
+      fmt::print("\n");
     }
   }
 

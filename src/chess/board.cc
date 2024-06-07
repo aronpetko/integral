@@ -180,7 +180,7 @@ void Board::MakeMove(Move move) {
   if (captured_piece != PieceType::kNone) {
     state_.zobrist_key ^=
         zobrist::HashSquare(to, state_, FlipColor(state_.turn), captured_piece);
-    state_.RemovePiece(to);
+    state_.RemovePiece(to, FlipColor(state_.turn));
 
     // Reset fifty moves clock since this move was a capture
     new_fifty_move_clock = 0;
@@ -203,7 +203,7 @@ void Board::MakeMove(Move move) {
                                                 state_,
                                                 FlipColor(state_.turn),
                                                 PieceType::kPawn);
-      state_.RemovePiece(en_passant_pawn_pos);
+      state_.RemovePiece(en_passant_pawn_pos, FlipColor(state_.turn));
 
       // Xor out the en passant pos
       state_.zobrist_key ^= zobrist::HashEnPassant(state_);
@@ -240,7 +240,7 @@ void Board::MakeMove(Move move) {
   HandleCastling(move);
 
   // Move the piece
-  state_.RemovePiece(from);
+  state_.RemovePiece(from, state_.turn);
   state_.PlacePiece(to, piece_type, state_.turn);
 
   const auto promotion_type = move.GetPromotionType();
@@ -408,7 +408,7 @@ void Board::HandleCastling(Move move) {
         state_.zobrist_key ^= zobrist::HashSquare(
             rook_from, state_, state_.turn, PieceType::kRook);
 
-        state_.RemovePiece(rook_from);
+        state_.RemovePiece(rook_from, state_.turn);
         state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
 
         // Xor in the rook's new square
@@ -478,7 +478,7 @@ void Board::HandlePromotions(Move move) {
   if (is_white && to_rank == kNumRanks - 1 || !is_white && to_rank == 0) {
     // Since this pawn is promoting, we remove the pawn in place of the promoted
     // piece
-    state_.RemovePiece(to);
+    state_.RemovePiece(to, state_.GetPieceColor(to));
 
     switch (move.GetPromotionType()) {
       case PromotionType::kKnight: {
