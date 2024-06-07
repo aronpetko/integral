@@ -15,13 +15,13 @@ class Tunable {
                    double step,
                    double learning_rate)
       : value_(value) {
+#ifdef SPSA_TUNE
     uci::AddOption(name, value, min, max, [this](uci::Option &option) {
       value_ = option.GetValue<int>();
     });
 
-#ifdef SPSA_TUNE
     fmt::println(
-        "{}, {}, {}, {}, {}, {}", name, value, min, max, step, learning_rate);
+        "{}, int, {}, {}, {}, {}, {}", name, value, min, max, step, learning_rate);
 #endif
   }
 
