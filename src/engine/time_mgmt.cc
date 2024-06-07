@@ -4,7 +4,7 @@
 #include "../tuner/spsa.h"
 #include "search.h"
 
-Tunable base_time_scale("base_time_scale", 54, 0, 100, 50, 0.0020);
+Tunable base_time_scale("base_time_scale", 54, 0, 100, 5, 0.0020);
 Tunable increment_scale("increment_scale", 85, 0, 100, 5, 0.0020);
 Tunable percent_limit("percent_limit", 76, 0, 100, 7, 0.0020);
 Tunable hard_limit_scale("hard_limit_scale", 304, 100, 450, 15, 0.0020);
