@@ -50,6 +50,10 @@ else
 	@rm -f $(EXE)
 endif
 
+debug:
+	@echo Building with debug...
+	@$(MAKE) all BUILD_TYPE=BUILD_DEBUG
+
 x86_64:
 	@echo Building with x86-64 optimizations...
 	@$(MAKE) all BUILD_TYPE=BUILD_X86_64
