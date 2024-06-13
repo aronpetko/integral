@@ -171,18 +171,17 @@ void Board::MakeMove(Move move) {
 
   int new_fifty_move_clock = state_.fifty_moves_clock + 1;
 
-  // Xor out the previous turn hash and moved piece
-  state_.zobrist_key ^=
-      zobrist::HashSquare(from, state_, state_.turn, piece_type) ^
-      zobrist::HashTurn(state_.turn);
+  // Xor out the previous turn hash
+  state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
+
+  // Xor out previous en passant square if it was captured
+  if (state_.en_passant.has_value()) {
+    state_.zobrist_key ^= zobrist::HashEnPassant(state_);
+  }
 
   const auto captured_piece = state_.GetPieceType(to);
   if (captured_piece != PieceType::kNone) {
-    state_.zobrist_key ^=
-        zobrist::HashSquare(to, state_, FlipColor(state_.turn), captured_piece);
     state_.RemovePiece(to, FlipColor(state_.turn));
-
-    // Reset fifty moves clock since this move was a capture
     new_fifty_move_clock = 0;
   }
 
@@ -197,25 +196,11 @@ void Board::MakeMove(Move move) {
     if (to == state_.en_passant) {
       // Pawn must be directly behind/in front of the attack square
       const Square en_passant_pawn_pos = is_white ? to - 8 : to + 8;
-
-      // Xor out the en passant captured pawn
-      state_.zobrist_key ^= zobrist::HashSquare(en_passant_pawn_pos,
-                                                state_,
-                                                FlipColor(state_.turn),
-                                                PieceType::kPawn);
       state_.RemovePiece(en_passant_pawn_pos, FlipColor(state_.turn));
-
-      // Xor out the en passant pos
-      state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-      state_.en_passant = std::nullopt;
     } else {
       // Setting en passant target if pawn moved two squares
       constexpr int kDoublePushDist = 16;
       if ((from ^ to) == kDoublePushDist) {
-        // Xor out previous en passant square (if it exists)
-        // We will xor in new en passant square after the turn has been updated
-        state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-
         // Pawn must be directly behind/in front of the attack square
         const Square en_passant_pawn_pos = is_white ? to - 8 : to + 8;
         state_.en_passant = en_passant_pawn_pos;
@@ -224,16 +209,10 @@ void Board::MakeMove(Move move) {
         // zobrist hashing)
         move_is_double_push = true;
       }
-      // This move wasn't a double pawn push, so if ep square was set from the
-      // previous move, we xor it out
-      else if (state_.en_passant.has_value()) {
-        state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-        state_.en_passant = std::nullopt;
-      }
     }
-  } else if (state_.en_passant.has_value()) {
-    // If ep square was set from the previous move, we xor it out
-    state_.zobrist_key ^= zobrist::HashEnPassant(state_);
+  }
+
+  if (!move_is_double_push) {
     state_.en_passant = std::nullopt;
   }
 
@@ -247,14 +226,6 @@ void Board::MakeMove(Move move) {
   if (piece_type == PieceType::kPawn &&
       promotion_type != PromotionType::kNone) {
     HandlePromotions(move);
-
-    // Xor in the promoted piece
-    state_.zobrist_key ^=
-        zobrist::HashSquare(to, state_, state_.turn, PieceType(promotion_type));
-  } else {
-    // Xor in the moved piece
-    state_.zobrist_key ^=
-        zobrist::HashSquare(to, state_, state_.turn, piece_type);
   }
 
   // Xor in new turn
@@ -404,16 +375,8 @@ void Board::HandleCastling(Move move) {
         state_.castle_rights.CanQueensideCastle(state_.turn)) {
       const auto move_rook_for_castling = [this](const Square &rook_from,
                                                  const Square &rook_to) {
-        // Xor out the rook's previous square
-        state_.zobrist_key ^= zobrist::HashSquare(
-            rook_from, state_, state_.turn, PieceType::kRook);
-
         state_.RemovePiece(rook_from, state_.turn);
         state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
-
-        // Xor in the rook's new square
-        state_.zobrist_key ^=
-            zobrist::HashSquare(rook_to, state_, state_.turn, PieceType::kRook);
       };
 
       constexpr int kKingsideCastleDist = -2;

@@ -89,24 +89,48 @@ struct BoardState {
     piece_on_square.fill(PieceType::kNone);
   }
 
-  void PlacePiece(U8 square, PieceType piece_type, Color color) {
-    piece_on_square[square] = piece_type;
+  template <bool UPDATE_KEY = true>
+  void PlacePiece(Square square, PieceType piece_type, Color color) {
+    // Add the piece to the bitboards and mailbox
     piece_bbs[piece_type].SetBit(square);
     side_bbs[color].SetBit(square);
-    piece_scores[color] +=
-        eval::kPieceSquareTable[piece_type][RelativeSquare(square, color)];
+    piece_on_square[square] = piece_type;
+
+    // Incrementally update the piece/square scores
+    const Square rel_square = RelativeSquare(square, color);
+    piece_scores[color] += eval::kPieceSquareTable[piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
+
+    // Incrementally update the current phase of the game
     phase += eval::kPhaseIncrements[piece_type];
+
+    // Insert the piece to the hash
+    if constexpr (UPDATE_KEY) {
+      zobrist_key ^= zobrist::HashSquare(square, *this, color, piece_type);
+    }
   }
 
-  void RemovePiece(U8 square, Color color) {
+  template <bool UPDATE_KEY = true>
+  void RemovePiece(Square square, Color color) {
     auto &piece_type = piece_on_square[square];
+
+    // Remove the piece from the hash
+    if constexpr (UPDATE_KEY) {
+      zobrist_key ^= zobrist::HashSquare(square, *this, color, piece_type);
+    }
+
+    // Clear the piece from the bitboards
     piece_bbs[piece_type].ClearBit(square);
     side_bbs[color].ClearBit(square);
-    piece_scores[color] -=
-        eval::kPieceSquareTable[piece_type][RelativeSquare(square, color)];
+
+    // Incrementally update the piece/square scores
+    const Square rel_square = RelativeSquare(square, color);
+    piece_scores[color] -= eval::kPieceSquareTable[piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
+
+    // Incrementally update the current phase of the game
     phase -= eval::kPhaseIncrements[piece_type];
+
     piece_type = PieceType::kNone;
   }
 

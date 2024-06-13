@@ -23,7 +23,7 @@ inline int MoveIndex(Move move) {
 MoveHistory::MoveHistory(const BoardState &state)
     : state_(state),
       killer_moves_({}),
-      cont_history_(std::make_unique<ContinuationHistory>()),
+      cont_history_({}),
       butterfly_history_({}) {}
 
 int MoveHistory::GetHistoryScore(Move move, Color turn) noexcept {
@@ -37,7 +37,7 @@ int MoveHistory::GetContHistoryScore(Move move,
   if ((stack - plies_ago)->move) {
     const auto piece = state_.GetPieceType(move.GetFrom());
     const auto to = move.GetTo();
-    return (*(stack - plies_ago)->cont_entry)[state_.turn][piece][to];
+    return ((stack - plies_ago)->cont_entry)->at(state_.turn)[piece][to];
   }
 
   return 0;
@@ -45,7 +45,7 @@ int MoveHistory::GetContHistoryScore(Move move,
 
 ContinuationEntry *MoveHistory::GetContEntry(Move move, Color turn) noexcept {
   const auto from = move.GetFrom(), to = move.GetTo();
-  return &(*cont_history_)[turn][state_.GetPieceType(from)][to];
+  return &cont_history_[turn][state_.GetPieceType(from)][to];
 }
 
 std::array<Move, 2> &MoveHistory::GetKillers(U16 ply) {
@@ -117,7 +117,7 @@ void MoveHistory::ClearKillers() {
 void MoveHistory::Clear() {
   butterfly_history_ = ButterflyHistory();
   killer_moves_ = KillerMoves();
-  cont_history_ = std::make_unique<ContinuationHistory>();
+  cont_history_ = ContinuationHistory();
 }
 
 void MoveHistory::ClearKillers(U16 ply) {
