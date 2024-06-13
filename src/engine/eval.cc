@@ -166,7 +166,8 @@ ScorePair Evaluation::EvaluatePawns(Color us) {
 
   for (Square square : our_pawns) {
     TRACE_INCREMENT(kPieceValues[PieceType::kPawn], us);
-    TRACE_INCREMENT(kPieceSquareTable[PieceType::kPawn][relative_square], us);
+    TRACE_INCREMENT(
+        kPieceSquareTable[PieceType::kPawn][RelativeSquare(square, us)], us);
 
     // Passed pawns
     const BitBoard their_pawns_ahead =
@@ -207,7 +208,8 @@ ScorePair Evaluation::EvaluateKnights(Color us) {
 
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[PieceType::kKnight], us);
-    TRACE_INCREMENT(kPieceSquareTable[PieceType::kKnight][relative_square], us);
+    TRACE_INCREMENT(
+        kPieceSquareTable[PieceType::kKnight][RelativeSquare(square, us)], us);
 
     const BitBoard moves = move_gen::KnightMoves(square) & mobility_zone_[us];
 
@@ -231,7 +233,8 @@ ScorePair Evaluation::EvaluateBishops(Color us) {
 
   for (Square square : our_bishops) {
     TRACE_INCREMENT(kPieceValues[PieceType::kBishop], us);
-    TRACE_INCREMENT(kPieceSquareTable[PieceType::kBishop][relative_square], us);
+    TRACE_INCREMENT(
+        kPieceSquareTable[PieceType::kBishop][RelativeSquare(square, us)], us);
 
     const BitBoard moves =
         move_gen::BishopMoves(square, occupied) & mobility_zone_[us];
@@ -253,7 +256,8 @@ ScorePair Evaluation::EvaluateRooks(Color us) {
 
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[PieceType::kRook], us);
-    TRACE_INCREMENT(kPieceSquareTable[PieceType::kRook][relative_square], us);
+    TRACE_INCREMENT(
+        kPieceSquareTable[PieceType::kRook][RelativeSquare(square, us)], us);
 
     const BitBoard moves =
         move_gen::RookMoves(square, occupied) & mobility_zone_[us];
@@ -284,7 +288,8 @@ ScorePair Evaluation::EvaluateQueens(Color us) {
 
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[PieceType::kQueen], us);
-    TRACE_INCREMENT(kPieceSquareTable[PieceType::kQueen][relative_square], us);
+    TRACE_INCREMENT(
+        kPieceSquareTable[PieceType::kQueen][RelativeSquare(square, us)], us);
 
     const BitBoard moves =
         move_gen::QueenMoves(square, occupied) & mobility_zone_[us];
@@ -299,13 +304,12 @@ ScorePair Evaluation::EvaluateQueens(Color us) {
 ScorePair Evaluation::EvaluateKing(Color us) {
   ScorePair score;
 
-  const Square king_square = state_.King(us).GetLsb();
-  const Square relative_square = RelativeSquare(king_square, us);
+  const Square square = state_.King(us).GetLsb();
+  TRACE_INCREMENT(
+      kPieceSquareTable[PieceType::kKing][RelativeSquare(square, us)], us);
 
-  TRACE_INCREMENT(kPieceSquareTable[PieceType::kKing][relative_square], us);
-
-  const int king_rank = Rank(king_square);
-  const int king_file = File(king_square);
+  const int king_rank = Rank(square);
+  const int king_file = File(square);
 
   const BitBoard our_pawns_in_safety_zone = state_.Pawns(us) & king_zone_[us];
   for (Square pawn_square : our_pawns_in_safety_zone) {
