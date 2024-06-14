@@ -27,7 +27,7 @@ Search::Search(Board &board)
 
   for (std::size_t i = 0; i < stack_.size(); i++) {
     // First four search stacks are "padding" for histories
-    stack_[i] = SearchStack(std::max(0ULL, i - 4));
+    stack_[i] = SearchStack(std::max<std::size_t>(0, i - 4));
   }
 }
 
@@ -377,7 +377,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = (3 + depth * depth) / (2 - improving);
+      const int lmp_threshold = 3 + (depth * depth / (2 - improving));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -571,7 +571,7 @@ TimeManagement &Search::GetTimeManagement() {
 void Search::NewGame() {
   for (std::size_t i = 0; i < stack_.size(); i++) {
     // First four search stacks are "padding" for histories
-    stack_[i] = SearchStack(std::max(0ULL, i - 4));
+    stack_[i] = SearchStack(std::max<std::size_t>(0, i - 4));
   }
   transposition_table.Clear();
   move_history_.Clear();

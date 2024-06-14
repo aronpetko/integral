@@ -31,7 +31,7 @@ elseif(BUILD_NATIVE)
 endif()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto -funroll-loops -finline -fomit-frame-pointer -fno-rtti -std=gnu++2a -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto -fomit-frame-pointer -std=gnu++2a -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g")
 
 # Conditionally add static linking flag on Windows
