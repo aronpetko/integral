@@ -131,12 +131,12 @@ Score Evaluation::GetScore() {
   score += kTempoBonus;
   TRACE_INCREMENT(kTempoBonus, us);
 
-  /*score += EvaluatePawns(us) - EvaluatePawns(them);
+  score += EvaluatePawns(us) - EvaluatePawns(them);
   score += EvaluateKnights(us) - EvaluateKnights(them);
   score += EvaluateBishops(us) - EvaluateBishops(them);
   score += EvaluateRooks(us) - EvaluateRooks(them);
   score += EvaluateQueens(us) - EvaluateQueens(them);
-  score += EvaluateKing(us) - EvaluateKing(them);*/
+  score += EvaluateKing(us) - EvaluateKing(them);
 
   const int phase = std::min(state_.phase, kMaxPhase);
 

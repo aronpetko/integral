@@ -51,9 +51,9 @@ void Search::IterativeDeepening() {
     sel_depth_ = 0;
 
     constexpr short kAspirationWindowDepth = 4;
-    constexpr short kAspirationWindowDelta = 10;
+    constexpr short kAspirationWindowDelta = 15;
 
-    int window = kAspirationWindowDelta;
+    int window = kAspirationWindowDepth;
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
