@@ -21,7 +21,7 @@ struct TimeConfig {
 using SteadyClock = std::chrono::steady_clock;
 using TimeStamp = U32;
 
-static U64 GetCurrentTime() {
+[[maybe_unused]] static U64 GetCurrentTime() {
   const auto duration = SteadyClock::now().time_since_epoch();
   return duration_cast<std::chrono::milliseconds>(duration).count();
 }

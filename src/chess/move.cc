@@ -8,7 +8,7 @@ Move::operator bool() const {
   return !IsNull();
 }
 
-Move Move::FromStr(const BoardState &state, std::string_view str) {
+Move Move::FromStr(std::string_view str) {
   constexpr int kMinMoveLen = 4, kMaxMoveLen = 5;
   if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)
     return Move::NullMove();
@@ -56,7 +56,8 @@ bool Move::IsCapture(const BoardState &state) const {
   const auto from = GetFrom();
   const auto to = GetTo();
   return state.GetPieceType(to) != PieceType::kNone ||
-         state.GetPieceType(from) == PieceType::kPawn && state.en_passant == to;
+         (state.GetPieceType(from) == PieceType::kPawn &&
+          state.en_passant == to);
 }
 
 [[nodiscard]] bool Move::IsTactical(const BoardState &state) const {

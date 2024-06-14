@@ -90,7 +90,7 @@ void SEESuite() {
     board.SetFromFen(test_data[0]);
 
     const auto move =
-        Move::FromStr(board.GetState(), RemoveWhitespace(test_data[1]));
+        Move::FromStr(RemoveWhitespace(test_data[1]));
     assert(move);
     const bool answer = std::stoi(RemoveWhitespace(test_data[2])) >= 0;
 

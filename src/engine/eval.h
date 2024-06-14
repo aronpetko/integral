@@ -18,17 +18,17 @@ constexpr std::array<Score, PieceType::kNumTypes + 1> kSEEPieceScores = {
 
 constexpr int kMaxPhase = 24;
 
-static bool IsMateScore(int evaluation) {
+[[maybe_unused]] static bool IsMateScore(int evaluation) {
   return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;
 }
 
-static int MateIn(int evaluation) {
+[[maybe_unused]] static int MateIn(int evaluation) {
   if (evaluation > 0 && evaluation <= kMateScore) {  // Mate in favor
     return (kMateScore - evaluation + 1) / 2;
   } else if (evaluation < 0 && evaluation >= -kMateScore) {  // Mate against
     return -(kMateScore + evaluation) / 2;
   }
-  // not a mate score
+  // Not a mate score
   return evaluation;
 }
 

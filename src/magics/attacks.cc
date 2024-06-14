@@ -74,7 +74,7 @@ std::vector<BitBoard> CreateBlockers(BitBoard moves) {
   BitBoard subset = moves;
 
   const U64 num_permutations = 1ULL << SetBits.size();
-  for (int i = 0; i <= num_permutations; i++) {
+  for (U64 i = 0; i <= num_permutations; i++) {
     BitBoard blocker;
     for (U8 bit : SetBits) {
       // Check if the bit is set in subset, not in the index

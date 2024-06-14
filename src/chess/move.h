@@ -39,7 +39,7 @@ class Move {
 
   operator bool() const;
 
-  static Move FromStr(const BoardState &state, std::string_view str);
+  static Move FromStr(std::string_view str);
 
   [[nodiscard]] bool IsCapture(const BoardState &state) const;
 

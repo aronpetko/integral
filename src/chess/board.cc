@@ -353,8 +353,8 @@ bool Board::IsDraw(U16 ply) {
   }
 
   // Lone king on one side and one minor piece on the other
-  if (their_minor_pieces != 0 && state_.KinglessOccupied(us) == 0 ||
-      our_minor_pieces != 0 && state_.KinglessOccupied(them) == 0) {
+  if ((their_minor_pieces != 0 && state_.KinglessOccupied(us) == 0) ||
+      (our_minor_pieces != 0 && state_.KinglessOccupied(them) == 0)) {
     return true;
   }
 
@@ -438,7 +438,7 @@ void Board::HandlePromotions(Move move) {
   const auto to = move.GetTo();
   const auto to_rank = Rank(to);
 
-  if (is_white && to_rank == kNumRanks - 1 || !is_white && to_rank == 0) {
+  if ((is_white && to_rank == kNumRanks - 1) || (!is_white && to_rank == 0)) {
     // Since this pawn is promoting, we remove the pawn in place of the promoted
     // piece
     state_.RemovePiece(to, state_.GetPieceColor(to));
@@ -477,8 +477,8 @@ void Board::CalculateKingThreats() {
   const Square king_square = state_.King(us).GetLsb();
 
   // Calculate the pieces that are attacking the king
-  state_.checkers = move_gen::KnightMoves(king_square) & state_.Knights() |
-                    move_gen::PawnAttacks(king_square, us) & state_.Pawns();
+  state_.checkers = (move_gen::KnightMoves(king_square) & state_.Knights()) |
+                    (move_gen::PawnAttacks(king_square, us) & state_.Pawns());
   state_.checkers &= their_pieces;
 
   // Calculate our potentially pinned pieces

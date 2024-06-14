@@ -33,8 +33,8 @@ class TranspositionTable {
 
     [[nodiscard]] bool CanUseScore(Score alpha, Score beta) const {
       return score != kScoreNone &&
-             (flag == kUpperBound && score <= alpha ||
-              flag == kLowerBound && score >= beta || flag == kExact);
+             ((flag == kUpperBound && score <= alpha) ||
+              (flag == kLowerBound && score >= beta) || flag == kExact);
     }
 
     U16 key;

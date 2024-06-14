@@ -10,10 +10,10 @@
 
 Search::Search(Board &board)
     : board_(board),
-      sel_depth_(0),
-      searching_(false),
+      move_history_(board_.GetState()),
       stack_({}),
-      move_history_(board_.GetState()) {
+      sel_depth_(0),
+      searching_(false) {
   const double kBaseReduction = 0.39;
   const double kDivisor = 2.36;
 
@@ -25,9 +25,9 @@ Search::Search(Board &board)
     }
   }
 
-  for (int i = 0; i < stack_.size(); i++) {
+  for (std::size_t i = 0; i < stack_.size(); i++) {
     // First four search stacks are "padding" for histories
-    stack_[i] = SearchStack(std::max(0, i - 4));
+    stack_[i] = SearchStack(std::max<std::size_t>(0, i - 4));
   }
 }
 
@@ -51,9 +51,9 @@ void Search::IterativeDeepening() {
     sel_depth_ = 0;
 
     constexpr short kAspirationWindowDepth = 4;
-    constexpr short kAspirationWindowDelta = 15;
+    constexpr short kAspirationWindowDelta = 10;
 
-    int window = kAspirationWindowDepth;
+    int window = kAspirationWindowDelta;
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
@@ -179,8 +179,7 @@ Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, move_history_, stack);
-  Move move;
-  while ((move = move_picker.Next())) {
+  while (const auto move = move_picker.Next()) {
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -202,6 +201,7 @@ Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
       best_score = score;
 
       if (score > alpha) {
+        best_move = move;
         alpha = score;
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
@@ -366,8 +366,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
 
   MovePicker move_picker(
       MovePickerType::kSearch, board_, tt_move, move_history_, stack);
-  Move move;
-  while ((move = move_picker.Next())) {
+  while (const auto move = move_picker.Next()) {
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -570,9 +569,9 @@ TimeManagement &Search::GetTimeManagement() {
 }
 
 void Search::NewGame() {
-  for (int i = 0; i < stack_.size(); i++) {
+  for (std::size_t i = 0; i < stack_.size(); i++) {
     // First four search stacks are "padding" for histories
-    stack_[i] = SearchStack(std::max(0, i - 4));
+    stack_[i] = SearchStack(std::max<std::size_t>(0, i - 4));
   }
   transposition_table.Clear();
   move_history_.Clear();
