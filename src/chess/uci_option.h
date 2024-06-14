@@ -102,7 +102,7 @@ struct CaseInsensitive {
 inline std::map<std::string_view, Option, CaseInsensitive> options;
 
 template <typename T>
-inline void AddOption(
+[[maybe_unused]] inline void AddOption(
     std::string_view name,
     T value,
     int min,
@@ -111,7 +111,7 @@ inline void AddOption(
 
 // Specialization for int (spin option)
 template <>
-inline void AddOption<int>(std::string_view name,
+[[maybe_unused]] inline void AddOption<int>(std::string_view name,
                            int value,
                            int min,
                            int max,
@@ -120,14 +120,14 @@ inline void AddOption<int>(std::string_view name,
 }
 
 template <typename T>
-inline void AddOption(
+[[maybe_unused]] inline void AddOption(
     std::string_view name,
     T value,
     std::function<void(Option &)> callback = [](Option &) {});
 
 // Specialization for boolean (check option)
 template <>
-inline void AddOption<bool>(std::string_view name,
+[[maybe_unused]] inline void AddOption<bool>(std::string_view name,
                             bool value,
                             std::function<void(Option &)> callback) {
   options[name] = Option(name, value, std::move(callback));
@@ -135,18 +135,18 @@ inline void AddOption<bool>(std::string_view name,
 
 // Specialization for string (string option)
 template <>
-inline void AddOption<std::string_view>(
+[[maybe_unused]] inline void AddOption<std::string_view>(
     std::string_view name,
     std::string_view value,
     std::function<void(Option &)> callback) {
   options[name] = Option(name, value, std::move(callback));
 }
 
-static Option &GetOption(std::string_view option) {
+[[maybe_unused]] static Option &GetOption(std::string_view option) {
   return options[option];
 }
 
-static void PrintOptions() {
+[[maybe_unused]] static void PrintOptions() {
   for (const auto &[_, option] : options) {
     fmt::println("{}", option.ToString());
   }

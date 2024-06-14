@@ -79,12 +79,12 @@ class CastleRights {
 
 struct BoardState {
   BoardState()
-      : fifty_moves_clock(0),
+      : turn(Color::kWhite),
+        fifty_moves_clock(0),
+        en_passant(std::nullopt),
         zobrist_key(0ULL),
-        turn(Color::kWhite),
         checkers(0ULL),
         pinned(0ULL),
-        en_passant(std::nullopt),
         phase(0) {
     piece_on_square.fill(PieceType::kNone);
   }

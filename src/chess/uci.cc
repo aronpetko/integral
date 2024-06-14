@@ -39,7 +39,7 @@ void Position(Board &board, std::stringstream &input_stream) {
 
   std::string move_input;
   while (input_stream >> move_input) {
-    const auto move = Move::FromStr(board.GetState(), move_input);
+    const auto move = Move::FromStr(move_input);
     if (move && board.IsMovePseudoLegal(move)) {
       board.MakeMove(move);
     } else {

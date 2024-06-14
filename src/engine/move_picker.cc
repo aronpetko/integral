@@ -16,12 +16,12 @@ MovePicker::MovePicker(MovePickerType type,
                        Move tt_move,
                        MoveHistory &move_history,
                        SearchStack *search_stack)
-    : type_(type),
-      board_(board),
+    : board_(board),
       tt_move_(tt_move),
-      stage_(Stage::kTTMove),
+      type_(type),
       move_history_(move_history),
       search_stack_(search_stack),
+      stage_(Stage::kTTMove),
       moves_idx_(0) {}
 
 Move MovePicker::Next() {

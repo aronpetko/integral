@@ -147,9 +147,10 @@ std::vector<I16> Tuner::GetCoefficients() const {
 #define GET_COEFFICIENT(term) \
   coefficients[idx++] = trace.term[Color::kWhite] - trace.term[Color::kBlack]
 #define GET_ARRAY_COEFFICIENTS(arr) \
-  for (int j = 0; j < arr.size(); ++j) GET_COEFFICIENT(arr[j])
-#define GET_2D_ARRAY_COEFFICIENTS(arr2d) \
-  for (int k = 0; k < arr2d.size(); ++k) GET_ARRAY_COEFFICIENTS(arr2d[k])
+  for (std::size_t j = 0; j < arr.size(); ++j) GET_COEFFICIENT(arr[j])
+#define GET_2D_ARRAY_COEFFICIENTS(arr2d)         \
+  for (std::size_t k = 0; k < arr2d.size(); ++k) \
+  GET_ARRAY_COEFFICIENTS(arr2d[k])
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
   GET_2D_ARRAY_COEFFICIENTS(kPieceSquareTable);
@@ -187,7 +188,7 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
   const auto coefficients = GetCoefficients();
   entry.coefficient_entries.reserve(num_terms_);
 
-  for (int i = 0; i < coefficients.size(); i++) {
+  for (std::size_t i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
       entry.coefficient_entries.push_back({i, coefficients[i]});
     }
@@ -293,7 +294,7 @@ inline Score Round(double value) {
   return static_cast<Score>(std::round(value));
 }
 
-void PrintTerm(int& index,
+void PrintTerm(std::size_t& index,
                const std::vector<TermPair>& parameters,
                bool in_array = false) {
   fmt::print("Pair({}, {}){}",
@@ -303,7 +304,7 @@ void PrintTerm(int& index,
   index++;
 }
 
-void PrintArray(int& index,
+void PrintArray(std::size_t& index,
                 int size,
                 const std::vector<TermPair>& parameters,
                 int row_length = 8,
@@ -324,7 +325,7 @@ void PrintArray(int& index,
   fmt::print("\n{}}}{}", in_2d_array ? "  " : "", in_2d_array ? "" : ";\n\n");
 }
 
-void Print2DArray(int& index,
+void Print2DArray(std::size_t& index,
                   int rows,
                   int columns,
                   const std::vector<TermPair>& parameters,
@@ -343,7 +344,7 @@ void Print2DArray(int& index,
 }
 
 void Tuner::PrintParameters() {
-  int index = 0;
+  std::size_t index = 0;
 
   fmt::print("constexpr PieceValueTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);

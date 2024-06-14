@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-static std::vector<std::string> SplitString(std::string_view input,
+[[maybe_unused]] static std::vector<std::string> SplitString(std::string_view input,
                                             char delimiter) {
   std::vector<std::string> result;
   std::string token;
@@ -19,7 +19,7 @@ static std::vector<std::string> SplitString(std::string_view input,
   return result;
 }
 
-static std::string RemoveWhitespace(std::string_view input) {
+[[maybe_unused]] static std::string RemoveWhitespace(std::string_view input) {
   std::string output;
   for (char c : input) {
     if (!std::isspace(static_cast<unsigned char>(c))) {

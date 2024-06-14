@@ -40,7 +40,7 @@ MagicEntry FindMagic(PieceType piece_type, Square square) {
 
   // Generate all possible move mask + blocker attacks
   std::vector<BitBoard> piece_attacks(blockers.size());
-  for (int i = 0; i < piece_attacks.size(); i++) {
+  for (std::size_t i = 0; i < piece_attacks.size(); i++) {
     const BitBoard &occupied = blockers[i];
     piece_attacks[i] = is_rook ? attacks::GenerateRookMoves(square, occupied)
                                : attacks::GenerateBishopMoves(square, occupied);

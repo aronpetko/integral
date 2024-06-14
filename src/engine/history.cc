@@ -23,8 +23,8 @@ inline int MoveIndex(Move move) {
 MoveHistory::MoveHistory(const BoardState &state)
     : state_(state),
       killer_moves_({}),
-      cont_history_({}),
-      butterfly_history_({}) {}
+      butterfly_history_({}),
+      cont_history_({}) {}
 
 int MoveHistory::GetHistoryScore(Move move, Color turn) noexcept {
   return butterfly_history_[turn][MoveIndex(move)];

@@ -195,10 +195,10 @@ void PerftSuite() {
     board.SetFromFen(test_data[0]);
 
     bool passed = true;
-    for (int i = 1; i < test_data.size(); i++) {
+    for (std::size_t i = 1; i < test_data.size(); i++) {
       const auto answer_data = SplitString(test_data[i], ' ');
       const int test_depth = std::stoi(answer_data[0].substr(1));
-      const int correct_nodes = std::stoi(answer_data[1]);
+      const U64 correct_nodes = std::stoi(answer_data[1]);
 
       if (PertInternal<PerftType::kNormal>(board, test_depth, test_depth) !=
           correct_nodes) {

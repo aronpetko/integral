@@ -27,7 +27,7 @@ struct PVLine {
   }
 
   void CopyOver(PVLine &pv) {
-    for (int i = 0; i < pv.Length(); i++) {
+    for (std::size_t i = 0; i < pv.Length(); i++) {
       Push(pv[i]);
     }
   }

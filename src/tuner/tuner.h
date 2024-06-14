@@ -7,7 +7,7 @@
 #include "../utils/types.h"
 
 struct CoefficientEntry {
-  int index;
+  std::size_t index;
   I16 value;
 };
 
