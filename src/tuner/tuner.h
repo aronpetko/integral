@@ -6,6 +6,8 @@
 #include "../utils/string.h"
 #include "../utils/types.h"
 
+#define TUNE
+
 struct CoefficientEntry {
   std::size_t index;
   I16 value;
@@ -23,7 +25,7 @@ struct TunerEntry {
   Score eval;
   Color turn;
   GameResult result;
-  std::array<double, 2> p_factors;
+  std::array<double, 2> phase_factors;
   std::vector<CoefficientEntry> coefficient_entries;
 };
 
@@ -60,8 +62,6 @@ struct EvalTrace {
 };
 
 inline EvalTrace trace;
-
-// #define TUNE
 
 #ifdef TUNE
 
