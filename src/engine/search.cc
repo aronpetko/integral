@@ -99,6 +99,10 @@ void Search::IterativeDeepening() {
       // Widen the aspiration window for the next iteration if we fail low or
       // high again
       window += window / 2;
+
+      if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
+        break;
+      }
     }
 
     if (searching_ && print_info) {
@@ -524,7 +528,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
 }
 
 bool Search::ShouldQuit() {
-  return !searching_ || (nodes_searched_ % 4096 != 0 && time_mgmt_.TimesUp());
+  return !searching_ || ((nodes_searched_ & 2065) && time_mgmt_.TimesUp());
 }
 
 void Search::Start(TimeConfig &time_config) {
