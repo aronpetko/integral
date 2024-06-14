@@ -17,17 +17,21 @@ option(BUILD_NATIVE "Build with native optimizations" ON)
 if(BUILD_DEBUG)
     set(CMAKE_BUILD_TYPE Debug)
 elseif(BUILD_X86_64)
+    set(CMAKE_BUILD_TYPE Release)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver1 -msse -msse2 -mpopcnt")
 elseif(BUILD_X86_64_MODERN)
+    set(CMAKE_BUILD_TYPE Release)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver2 -m64 -msse -msse3 -mpopcnt")
 elseif(BUILD_X86_64_BMI2)
+    set(CMAKE_BUILD_TYPE Release)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=haswell -DUSE_AVX2 -mavx2 -mbmi2")
 elseif(BUILD_NATIVE)
+    set(CMAKE_BUILD_TYPE Release)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 endif()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto -fomit-frame-pointer -std=gnu++2a -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g")
 
 # Conditionally add static linking flag on Windows
