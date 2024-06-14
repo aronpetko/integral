@@ -385,7 +385,7 @@ int Evaluation::GetPieceMobilityCount(PieceType piece,
     if (piece == PieceType::kKnight) {
       moves = 0;
     } else {
-      moves &= move_gen::RayBetween(square, state_.King(us).GetLsb());
+      moves &= move_gen::RayIntersecting(square, state_.King(us).GetLsb());
     }
   }
 
