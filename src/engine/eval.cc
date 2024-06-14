@@ -53,8 +53,8 @@ constexpr SquareTable<BitBoard> files = GenerateFiles();
 constexpr SquareTable<BitBoard> GenerateAdjacentFiles() {
   SquareTable<BitBoard> adjacent_files;
   for (Square square = 0; square < Squares::kSquareCount; square++) {
-    adjacent_files[square] |= Shift<Direction::kWest>(files[square]) |
-                              Shift<Direction::kEast>(files[square]);
+    adjacent_files[square] = Shift<Direction::kWest>(files[square]) |
+                             Shift<Direction::kEast>(files[square]);
   }
   return adjacent_files;
 }

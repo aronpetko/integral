@@ -528,7 +528,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
 }
 
 bool Search::ShouldQuit() {
-  return !searching_ || ((nodes_searched_ & 2065) && time_mgmt_.TimesUp());
+  return !searching_ || ((nodes_searched_ & 2047) && time_mgmt_.TimesUp());
 }
 
 void Search::Start(TimeConfig &time_config) {
