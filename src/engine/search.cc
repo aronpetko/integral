@@ -202,6 +202,7 @@ Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
       best_score = score;
 
       if (score > alpha) {
+        best_move = move;
         alpha = score;
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
@@ -378,7 +379,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = (3 + depth * depth) / (2 - improving);
+      const int lmp_threshold = 3 + (depth * depth / (2 - improving));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
