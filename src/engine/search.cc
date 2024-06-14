@@ -51,9 +51,9 @@ void Search::IterativeDeepening() {
     sel_depth_ = 0;
 
     constexpr short kAspirationWindowDepth = 4;
-    constexpr short kAspirationWindowDelta = 15;
+    constexpr short kAspirationWindowDelta = 10;
 
-    int window = kAspirationWindowDepth;
+    int window = kAspirationWindowDelta;
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
@@ -377,7 +377,7 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = 3 + (depth * depth / (2 - improving));
+      const int lmp_threshold = (3 + depth * depth) / (2 - improving);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
