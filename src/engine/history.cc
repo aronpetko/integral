@@ -23,11 +23,11 @@ inline int MoveIndex(Move move) {
 MoveHistory::MoveHistory(const BoardState &state)
     : state_(state),
       killer_moves_({}),
-      butterfly_history_({}),
-      cont_history_({}) {}
+      butterfly_history_(std::make_unique<ButterflyHistory>()),
+      cont_history_(std::make_unique<ContinuationHistory>()) {}
 
 int MoveHistory::GetHistoryScore(Move move, Color turn) noexcept {
-  return butterfly_history_[turn][MoveIndex(move)];
+  return butterfly_history_->at(turn)[MoveIndex(move)];
 }
 
 int MoveHistory::GetContHistoryScore(Move move,
@@ -45,7 +45,7 @@ int MoveHistory::GetContHistoryScore(Move move,
 
 ContinuationEntry *MoveHistory::GetContEntry(Move move, Color turn) noexcept {
   const auto from = move.GetFrom(), to = move.GetTo();
-  return &cont_history_[turn][state_.GetPieceType(from)][to];
+  return &cont_history_->at(turn)[state_.GetPieceType(from)][to];
 }
 
 std::array<Move, 2> &MoveHistory::GetKillers(U16 ply) {
@@ -66,14 +66,14 @@ void MoveHistory::UpdateHistory(Move move,
   const int bonus = HistoryBonus(depth);
 
   // Apply a linear dampening to the bonus as the depth increases
-  int &score = butterfly_history_[turn][MoveIndex(move)];
+  int &score = butterfly_history_->at(turn)[MoveIndex(move)];
   score += ScaleBonus(score, bonus);
 
   // Lower the score of the quiet moves that failed to raise alpha
   const int penalty = -bonus;
   for (int i = 0; i < bad_quiets.Size(); i++) {
     // Apply a linear dampening to the penalty as the depth increases
-    int &bad_quiet_score = butterfly_history_[turn][MoveIndex(bad_quiets[i])];
+    int &bad_quiet_score = butterfly_history_->at(turn)[MoveIndex(bad_quiets[i])];
     bad_quiet_score += ScaleBonus(bad_quiet_score, penalty);
   }
 }
@@ -115,9 +115,9 @@ void MoveHistory::ClearKillers() {
 }
 
 void MoveHistory::Clear() {
-  butterfly_history_ = ButterflyHistory();
+  butterfly_history_ = std::make_unique<ButterflyHistory>();
   killer_moves_ = KillerMoves();
-  cont_history_ = ContinuationHistory();
+  cont_history_ = std::make_unique<ContinuationHistory>();
 }
 
 void MoveHistory::ClearKillers(U16 ply) {

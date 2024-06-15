@@ -51,8 +51,8 @@ class MoveHistory {
  private:
   const BoardState &state_;
   KillerMoves killer_moves_;
-  ButterflyHistory butterfly_history_;
-  ContinuationHistory cont_history_;
+  std::unique_ptr<ButterflyHistory> butterfly_history_;
+  std::unique_ptr<ContinuationHistory> cont_history_;
 };
 
 #endif  // INTEGRAL_HISTORY_H

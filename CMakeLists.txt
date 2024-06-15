@@ -34,27 +34,16 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto -fomit-frame-pointer -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g")
 
-# Check if the compiler is Clang and add the -stdlib=libc++ flag if it is
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
 endif()
 
 # Conditionally add static linking flag on Windows
 if(WIN32)
-    # Add the stack size for non-Windows platforms
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-stack_size,16777216")
-    else()
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,16777216")
+        # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stack-size=0x1000000")
     endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
-else()
-    # Add the stack size for non-Windows platforms
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-stack_size,16777216")
-    else()
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,16777216")
-    endif()
 endif()
 
 add_subdirectory(third-party/fmt)
