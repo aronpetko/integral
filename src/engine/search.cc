@@ -291,8 +291,7 @@ Score Search::PVSearch(int depth,
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && can_use_tt_eval) {
-      stack->static_eval = eval =
-          transposition_table.CorrectScore(tt_entry.score, stack->ply);
+      eval = transposition_table.CorrectScore(tt_entry.score, stack->ply);
     } else {
       eval = stack->static_eval;
     }
