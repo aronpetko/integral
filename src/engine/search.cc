@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 
 #include <iomanip>
+#include <thread>
 
 #include "move_picker.h"
 #include "time_mgmt.h"
@@ -11,7 +12,9 @@
 Search::Search(Board &board)
     : board_(board),
       move_history_(board_.GetState()),
+      lmr_table_({}),
       sel_depth_(0),
+      nodes_searched_(0),
       searching_(false) {
   const double kBaseReduction = 0.39;
   const double kDivisor = 2.36;

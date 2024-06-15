@@ -34,13 +34,13 @@ int MoveHistory::GetContHistoryScore(Move move,
                                      int plies_ago,
                                      SearchStackEntry *stack) noexcept {
   // Ensure the continuation history table exists for this move
-  if ((stack - plies_ago)->move) {
-    const auto piece = state_.GetPieceType(move.GetFrom());
-    const auto to = move.GetTo();
-    return ((stack - plies_ago)->cont_entry)->at(state_.turn)[piece][to];
+  const auto past_stack = stack - plies_ago;
+  if (!past_stack->move) {
+    return 0;
   }
 
-  return 0;
+  const auto piece = state_.GetPieceType(move.GetFrom());
+  return past_stack->cont_entry->at(state_.turn)[piece][move.GetTo()];
 }
 
 ContinuationEntry *MoveHistory::GetContEntry(Move move, Color turn) noexcept {
@@ -73,7 +73,8 @@ void MoveHistory::UpdateHistory(Move move,
   const int penalty = -bonus;
   for (int i = 0; i < bad_quiets.Size(); i++) {
     // Apply a linear dampening to the penalty as the depth increases
-    int &bad_quiet_score = butterfly_history_->at(turn)[MoveIndex(bad_quiets[i])];
+    int &bad_quiet_score =
+        butterfly_history_->at(turn)[MoveIndex(bad_quiets[i])];
     bad_quiet_score += ScaleBonus(bad_quiet_score, penalty);
   }
 }
