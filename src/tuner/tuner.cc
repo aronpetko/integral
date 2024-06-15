@@ -1,7 +1,7 @@
 #include "tuner.h"
 
 #include <fmt/format.h>
-#include <pthread.h>
+// #include <pthread.h>
 
 #include <fstream>
 #include <sstream>
@@ -233,7 +233,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
   VectorPair gradient;
   gradient.resize(num_terms_);
 
-  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  // pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #pragma omp parallel shared(local_gradient, mutex) num_threads(6)
   {
@@ -253,14 +253,14 @@ VectorPair Tuner::ComputeGradient(double K) const {
       }
     }
 
-    pthread_mutex_lock(&mutex);
+    // pthread_mutex_lock(&mutex);
 
     for (int i = 0; i < num_terms_; i++) {
       gradient[i][MG] += local_gradient[i][MG];
       gradient[i][EG] += local_gradient[i][EG];
     }
 
-    pthread_mutex_unlock(&mutex);
+    // pthread_mutex_unlock(&mutex);
   }
 
   return gradient;
