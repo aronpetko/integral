@@ -194,7 +194,7 @@ int MovePicker::ScoreMove(Move &move) {
   int history = move_history_.GetHistoryScore(move, state.turn);
   history += move_history_.GetContHistoryScore(move, 1, stack_);
   history += move_history_.GetContHistoryScore(move, 2, stack_);
-  history += move_history_.GetContHistoryScore(move, 4, stack_);
+  history += move_history_.GetContHistoryScore(move, 4, stack_) / 2;
 
   return history;
 }
