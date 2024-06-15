@@ -15,12 +15,12 @@ MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
                        MoveHistory &move_history,
-                       SearchStack *search_stack)
+                       SearchStackEntry *stack)
     : board_(board),
       tt_move_(tt_move),
       type_(type),
       move_history_(move_history),
-      search_stack_(search_stack),
+      stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0) {}
 
@@ -76,8 +76,8 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kFirstKiller) {
     stage_ = Stage::kSecondKiller;
 
-    if (search_stack_) {
-      const auto first_killer = move_history_.GetKillers(search_stack_->ply)[0];
+    if (stack_) {
+      const auto first_killer = move_history_.GetKillers(stack_->ply)[0];
       if (first_killer && first_killer != tt_move_ &&
           board_.IsMovePseudoLegal(first_killer)) {
         return first_killer;
@@ -88,9 +88,8 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kSecondKiller) {
     stage_ = Stage::kGenerateQuiets;
 
-    if (search_stack_) {
-      const auto second_killer =
-          move_history_.GetKillers(search_stack_->ply)[1];
+    if (stack_) {
+      const auto second_killer = move_history_.GetKillers(stack_->ply)[1];
       if (second_killer && second_killer != tt_move_ &&
           board_.IsMovePseudoLegal(second_killer)) {
         return second_killer;
@@ -151,7 +150,7 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 
 template <MoveType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
-  const auto &killers = move_history_.GetKillers(search_stack_->ply);
+  const auto &killers = move_history_.GetKillers(stack_->ply);
   auto moves = move_gen::GenerateMoves(move_type, board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
@@ -193,8 +192,8 @@ int MovePicker::ScoreMove(Move &move) {
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
   int history = move_history_.GetHistoryScore(move, state.turn);
-  history += move_history_.GetContHistoryScore(move, 1, search_stack_);
-  history += move_history_.GetContHistoryScore(move, 2, search_stack_);
+  history += move_history_.GetContHistoryScore(move, 1, stack_);
+  history += move_history_.GetContHistoryScore(move, 2, stack_);
 
   return history;
 }

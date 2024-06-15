@@ -32,7 +32,7 @@ int MoveHistory::GetHistoryScore(Move move, Color turn) noexcept {
 
 int MoveHistory::GetContHistoryScore(Move move,
                                      int plies_ago,
-                                     SearchStack *stack) noexcept {
+                                     SearchStackEntry *stack) noexcept {
   // Ensure the continuation history table exists for this move
   if ((stack - plies_ago)->move) {
     const auto piece = state_.GetPieceType(move.GetFrom());
@@ -82,7 +82,7 @@ void MoveHistory::UpdateContHistory(Move move,
                                     List<Move, kMaxMoves> &bad_quiets,
                                     Color turn,
                                     int depth,
-                                    SearchStack *stack) {
+                                    SearchStackEntry *stack) {
   const auto update_cont_entry = [this, &turn, &stack](
                                      Move move, int plies_ago, int bonus) {
     const int piece = state_.GetPieceType(move.GetFrom());

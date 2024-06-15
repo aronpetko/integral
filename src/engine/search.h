@@ -63,7 +63,7 @@ enum class SearchType {
   kBench
 };
 
-struct SearchStack {
+struct SearchStackEntry {
   // Number of ply from root
   U16 ply;
   // Evaluation of the position at this ply
@@ -77,14 +77,40 @@ struct SearchStack {
   // Continuation history entry of the current move
   ContinuationEntry *cont_entry;
 
-  SearchStack() : SearchStack(0) {}
+  SearchStackEntry() : SearchStackEntry(0) {}
 
-  explicit SearchStack(U16 ply)
+  explicit SearchStackEntry(U16 ply)
       : ply(ply),
         static_eval(kScoreNone),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
         cont_entry(nullptr) {}
+};
+
+class SearchStack {
+ public:
+  static constexpr int kPadding = 4;
+
+  SearchStack() {
+    Reset();
+  }
+
+  void Reset() {
+    for (std::size_t i = 0; i < stack_.size(); i++) {
+      stack_[i] = SearchStackEntry(std::max<std::size_t>(0, i - kPadding));
+    }
+  }
+
+  SearchStackEntry &Front() {
+    return stack_[kPadding];
+  }
+
+  constexpr SearchStackEntry &operator[](int idx) {
+    return stack_[idx + kPadding];
+  }
+
+ private:
+  std::array<SearchStackEntry, kMaxPlyFromRoot + 4> stack_;
 };
 
 class Search {
@@ -112,16 +138,16 @@ class Search {
   void IterativeDeepening();
 
   template <NodeType node_type>
-  Score QuiescentSearch(Score alpha, Score beta, SearchStack *stack);
+  Score QuiescentSearch(Score alpha, Score beta, SearchStackEntry *stack);
 
   template <NodeType node_type>
-  Score PVSearch(int depth, Score alpha, Score beta, SearchStack *stack);
+  Score PVSearch(int depth, Score alpha, Score beta, SearchStackEntry *stack);
 
  private:
   Board &board_;
   TimeManagement time_mgmt_;
   MoveHistory move_history_;
-  std::array<SearchStack, kMaxPlyFromRoot + 4> stack_;
+  SearchStack search_stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
   U64 nodes_searched_;

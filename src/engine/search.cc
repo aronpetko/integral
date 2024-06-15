@@ -11,7 +11,6 @@
 Search::Search(Board &board)
     : board_(board),
       move_history_(board_.GetState()),
-      stack_({}),
       sel_depth_(0),
       searching_(false) {
   const double kBaseReduction = 0.39;
@@ -25,10 +24,7 @@ Search::Search(Board &board)
     }
   }
 
-  for (std::size_t i = 0; i < stack_.size(); i++) {
-    // First four search stacks are "padding" for histories
-    stack_[i] = SearchStack(std::max<std::size_t>(0, i - 4));
-  }
+  search_stack_.Reset();
 }
 
 template <SearchType type>
@@ -41,7 +37,7 @@ void Search::IterativeDeepening() {
   time_mgmt_.Start();
 
   // The first stack entry is at 4, since search looks in the past 4 plies
-  const auto root_stack = &stack_[4];
+  const auto root_stack = &search_stack_.Front();
   root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
@@ -129,7 +125,9 @@ void Search::IterativeDeepening() {
 }
 
 template <NodeType node_type>
-Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
+Score Search::QuiescentSearch(Score alpha,
+                              Score beta,
+                              SearchStackEntry *stack) {
   if (board_.IsDraw(stack->ply)) {
     return kDrawScore;
   }
@@ -207,26 +205,29 @@ Score Search::QuiescentSearch(Score alpha, Score beta, SearchStack *stack) {
     }
   }
 
-  auto entry_flag = TranspositionTable::Entry::kExact;
+  auto entry_flag = TranspositionTableEntry::kExact;
   if (alpha >= beta) {
     // Beta cutoff
-    entry_flag = TranspositionTable::Entry::kLowerBound;
+    entry_flag = TranspositionTableEntry::kLowerBound;
   } else if (alpha <= original_alpha) {
     // Alpha failed to raise
-    entry_flag = TranspositionTable::Entry::kUpperBound;
+    entry_flag = TranspositionTableEntry::kUpperBound;
   }
 
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
-  TranspositionTable::Entry new_tt_entry(
+  TranspositionTableEntry new_tt_entry(
       state.zobrist_key, 0, entry_flag, best_score, best_move);
-  transposition_table.Save(state.zobrist_key, new_tt_entry, stack->ply);
+  transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
 }
 
 template <NodeType node_type>
-Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
+Score Search::PVSearch(int depth,
+                       Score alpha,
+                       Score beta,
+                       SearchStackEntry *stack) {
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
@@ -505,20 +506,20 @@ Score Search::PVSearch(int depth, Score alpha, Score beta, SearchStack *stack) {
     return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  auto entry_flag = TranspositionTable::Entry::kExact;
+  auto entry_flag = TranspositionTableEntry::kExact;
   if (alpha >= beta) {
     // Beta cutoff
-    entry_flag = TranspositionTable::Entry::kLowerBound;
+    entry_flag = TranspositionTableEntry::kLowerBound;
   } else if (alpha <= original_alpha) {
     // Alpha failed to raise
-    entry_flag = TranspositionTable::Entry::kUpperBound;
+    entry_flag = TranspositionTableEntry::kUpperBound;
   }
 
   // Attempt to update the transposition table with the evaluation of this
   // position
-  TranspositionTable::Entry new_tt_entry(
+  TranspositionTableEntry new_tt_entry(
       state.zobrist_key, depth, entry_flag, best_score, best_move);
-  transposition_table.Save(state.zobrist_key, new_tt_entry, stack->ply);
+  transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
 }
@@ -565,12 +566,9 @@ TimeManagement &Search::GetTimeManagement() {
 }
 
 void Search::NewGame() {
-  for (std::size_t i = 0; i < stack_.size(); i++) {
-    // First four search stacks are "padding" for histories
-    stack_[i] = SearchStack(std::max<std::size_t>(0, i - 4));
-  }
   transposition_table.Clear();
   move_history_.Clear();
+  search_stack_.Reset();
 }
 
 U64 Search::GetNodesSearched() const {
