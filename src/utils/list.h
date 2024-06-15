@@ -32,13 +32,6 @@ class List {
     assert(count_ < length);
     container_[count_++] = std::move(object);
   }
-  
-  inline void Sort() {
-    std::ranges::stable_sort(container_.begin(), container_.begin() + (count_ - 1), [](const auto &a, const auto &b)
-                             {
-                               return a.score > b.score;
-                             });
-  }
 
   inline void Heapify() {
     std::make_heap(container_.begin(), container_.begin() + count_);
