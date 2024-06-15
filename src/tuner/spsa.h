@@ -15,9 +15,10 @@ class Tunable {
                    double step,
                    double learning_rate)
       : value_(value) {
-    uci::AddOption(name, value, min, max, [this](uci::Option &option) {
-      value_ = option.GetValue<int>();
-    });
+    uci::AddOption<uci::OptionVisibility::kHidden>(
+        name, value, min, max, [this](uci::Option &option) {
+          value_ = option.GetValue<int>();
+        });
 
 #ifdef SPSA_TUNE
     fmt::println(

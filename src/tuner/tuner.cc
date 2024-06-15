@@ -174,12 +174,12 @@ std::vector<I16> Tuner::GetCoefficients() const {
 TunerEntry Tuner::CreateEntry(const BoardState& state,
                               GameResult result) const {
   TunerEntry entry;
-  entry.phase = state.phase;
+  entry.phase = std::min(state.phase, kMaxPhase);
   entry.result = result;
 
   // Save time by computing phase scalars now
-  entry.p_factors[0] = 0 + entry.phase / 24.0;
-  entry.p_factors[1] = 1 - entry.phase / 24.0;
+  entry.phase_factors[0] = 0 + entry.phase / 24.0;
+  entry.phase_factors[1] = 1 - entry.phase / 24.0;
 
   // Save a white POV static evaluation
   trace = EvalTrace{};

@@ -7,11 +7,13 @@
 // clang-format off
 constexpr std::string_view kIntegralAsciiLogo =
 R"(
-    ___     _                     _
-   |_ _|_ _| |_ ___ __ _ _ _ __ _| |
-    | || ' \  _/ -_) _` | '_/ _` | |
-   |___|_||_\__\___\__, |_| \__,_|_|
-                   |___/
+                   πππ
+                  ππ ππ
+                 ππ
+                ππ
+               ππ
+           ππ ππ
+            πππ
 )";
 // clang-format on
 
