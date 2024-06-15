@@ -12,7 +12,7 @@ int main(int arg_count, char **args) {
 #endif
 
   // Disable buffering to stdout
- // setbuf(stdout, nullptr);
+  setbuf(stdout, nullptr);
 
-  // uci::AcceptCommands(arg_count, args);
+  uci::AcceptCommands(arg_count, args);
 }

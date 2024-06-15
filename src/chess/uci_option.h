@@ -120,7 +120,7 @@ struct CaseInsensitive {
 inline std::map<std::string_view, Option, CaseInsensitive> options;
 
 // Primary template
-template <typename T, OptionVisibility VISIBILITY = OptionVisibility::kPublic>
+template <typename T, OptionVisibility visibility = OptionVisibility::kPublic>
 [[maybe_unused]] inline void AddOption(
     std::string_view name,
     T value,
@@ -129,7 +129,7 @@ template <typename T, OptionVisibility VISIBILITY = OptionVisibility::kPublic>
 }
 
 // Specialization for int
-template <OptionVisibility VISIBILITY>
+template <OptionVisibility visibility>
 [[maybe_unused]] inline std::enable_if_t<std::is_same_v<int, int>, void>
 AddOption(
     std::string_view name,
@@ -137,28 +137,28 @@ AddOption(
     int min,
     int max,
     std::function<void(Option &)> callback = [](Option &) {}) {
-  options[name] = Option(name, value, min, max, VISIBILITY, std::move(callback));
+  options[name] = Option(name, value, min, max, visibility, std::move(callback));
 }
 
 // Specialization for bool
-template <OptionVisibility VISIBILITY>
+template <OptionVisibility visibility>
 [[maybe_unused]] inline std::enable_if_t<std::is_same_v<bool, bool>, void>
 AddOption(
     std::string_view name,
     bool value,
     std::function<void(Option &)> callback = [](Option &) {}) {
-  options[name] = Option(name, value, VISIBILITY, std::move(callback));
+  options[name] = Option(name, value, visibility, std::move(callback));
 }
 
 // Specialization for std::string_view
-template <OptionVisibility VISIBILITY>
+template <OptionVisibility visibility>
 [[maybe_unused]] inline std::
     enable_if_t<std::is_same_v<std::string_view, std::string_view>, void>
     AddOption(
         std::string_view name,
         std::string_view value,
         std::function<void(Option &)> callback = [](Option &) {}) {
-  options[name] = Option(name, value, VISIBILITY, std::move(callback));
+  options[name] = Option(name, value, visibility, std::move(callback));
 }
 
 [[maybe_unused]] static Option &GetOption(std::string_view option) {

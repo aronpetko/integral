@@ -89,7 +89,7 @@ struct BoardState {
     piece_on_square.fill(PieceType::kNone);
   }
 
-  template <bool UPDATE_KEY = true>
+  template <bool update_key = true>
   void PlacePiece(Square square, PieceType piece_type, Color color) {
     // Add the piece to the bitboards and mailbox
     piece_bbs[piece_type].SetBit(square);
@@ -105,17 +105,17 @@ struct BoardState {
     phase += eval::kPhaseIncrements[piece_type];
 
     // Insert the piece to the hash
-    if constexpr (UPDATE_KEY) {
+    if constexpr (update_key) {
       zobrist_key ^= zobrist::HashSquare(square, *this, color, piece_type);
     }
   }
 
-  template <bool UPDATE_KEY = true>
+  template <bool update_key = true>
   void RemovePiece(Square square, Color color) {
     auto &piece_type = piece_on_square[square];
 
     // Remove the piece from the hash
-    if constexpr (UPDATE_KEY) {
+    if constexpr (update_key) {
       zobrist_key ^= zobrist::HashSquare(square, *this, color, piece_type);
     }
 

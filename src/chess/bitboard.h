@@ -44,22 +44,30 @@ inline constexpr int File(Square square) {
   return square & 7;
 }
 
-inline Square RankFileToSquare(int rank, int file) {
+inline constexpr Square RankFileToSquare(int rank, int file) {
   return Square(rank * kNumRanks + file);
 }
 
-inline Square RelativeSquare(Square square, Color side) {
+inline constexpr Square RelativeSquare(Square square, Color side) {
   return Square(square ^ (56 * side));
 }
 
-inline Square RelativeRank(Square square, Color side) {
+template <Color side>
+inline constexpr Square RelativeRank(Square square) {
   const int rank = Rank(square);
-  return side == Color::kBlack ? 7 - rank : rank;
+  if constexpr (side == Color::kBlack)
+    return 7 - rank;
+  else
+    return rank;
 }
 
-inline Square RelativeFile(Square square, Color side) {
+template <Color side>
+inline Square RelativeFile(Square square) {
   const int file = File(square);
-  return side == Color::kBlack ? 7 - file : file;
+  if constexpr (side == Color::kBlack)
+    return 7 - file;
+  else
+    return file;
 }
 
 class BitBoard {

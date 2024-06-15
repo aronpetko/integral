@@ -74,22 +74,30 @@ class Evaluation {
  private:
   void Initialize();
 
-  ScorePair EvaluatePawns(Color us);
+  template <Color us>
+  ScorePair EvaluatePawns();
 
-  ScorePair EvaluateKnights(Color us);
+  template <Color us>
+  ScorePair EvaluateKnights();
 
-  ScorePair EvaluateBishops(Color us);
+  template <Color us>
+  ScorePair EvaluateBishops();
 
-  ScorePair EvaluateRooks(Color us);
+  template <Color us>
+  ScorePair EvaluateRooks();
 
-  ScorePair EvaluateQueens(Color us);
+  template <Color us>
+  ScorePair EvaluateQueens();
 
-  ScorePair EvaluateKing(Color us);
+  template <Color us>
+  ScorePair EvaluateKing();
 
   int GetPieceMobilityCount(PieceType piece,
                             Square square,
                             BitBoard moves,
                             Color us);
+
+  Score InterpolateScore(ScorePair score_pair) const;
 
  private:
   const BoardState &state_;
@@ -141,33 +149,34 @@ void Evaluation::Initialize() {
 
 Score Evaluation::GetScore() {
   const Color us = state_.turn;
-  const Color them = FlipColor(us);
 
-  ScorePair score = state_.piece_scores[us] - state_.piece_scores[them];
+  ScorePair score =
+      state_.piece_scores[Color::kWhite] - state_.piece_scores[Color::kBlack];
 
+  score += EvaluatePawns<Color::kWhite>() - EvaluatePawns<Color::kBlack>();
+  score += EvaluateKnights<Color::kWhite>() - EvaluateKnights<Color::kBlack>();
+  score += EvaluateBishops<Color::kWhite>() - EvaluateBishops<Color::kBlack>();
+  score += EvaluateRooks<Color::kWhite>() - EvaluateRooks<Color::kBlack>();
+  score += EvaluateQueens<Color::kWhite>() - EvaluateQueens<Color::kBlack>();
+  score += EvaluateKing<Color::kWhite>() - EvaluateKing<Color::kBlack>();
+
+  // Flip the score if we are black, since the score is from white's perspective
+  if (us == Color::kBlack) {
+    score *= -1;
+  }
+
+  // A constant bonus given to the side to move
   score += kTempoBonus;
   TRACE_INCREMENT(kTempoBonus, us);
 
-  score += EvaluatePawns(us) - EvaluatePawns(them);
-  score += EvaluateKnights(us) - EvaluateKnights(them);
-  score += EvaluateBishops(us) - EvaluateBishops(them);
-  score += EvaluateRooks(us) - EvaluateRooks(them);
-  score += EvaluateQueens(us) - EvaluateQueens(them);
-  score += EvaluateKing(us) - EvaluateKing(them);
+  const Score final_score = InterpolateScore(score);
 
-  const int phase = std::min(state_.phase, kMaxPhase);
-
-  const Score mg_score = score.MiddleGame();
-  const Score eg_score = score.EndGame();
-
-  const Score tapered_score =
-      (mg_score * phase + eg_score * (kMaxPhase - phase)) / kMaxPhase;
-
-  TRACE_EVAL(tapered_score);
-  return tapered_score;
+  TRACE_EVAL(final_score);
+  return final_score;
 }
 
-ScorePair Evaluation::EvaluatePawns(Color us) {
+template <Color us>
+ScorePair Evaluation::EvaluatePawns() {
   ScorePair score;
 
   const BitBoard our_pawns = state_.Pawns(us);
@@ -177,8 +186,8 @@ ScorePair Evaluation::EvaluatePawns(Color us) {
   const BitBoard connected_pawns =
       Shift<Direction::kEast>(our_pawns) & our_pawns;
   for (Square square : connected_pawns) {
-    score += kPawnPhalanxBonus[RelativeRank(square, us)];
-    TRACE_INCREMENT(kPawnPhalanxBonus[RelativeRank(square, us)], us);
+    score += kPawnPhalanxBonus[RelativeRank<us>(square)];
+    TRACE_INCREMENT(kPawnPhalanxBonus[RelativeRank<us>(square)], us);
   }
 
   for (Square square : our_pawns) {
@@ -190,8 +199,8 @@ ScorePair Evaluation::EvaluatePawns(Color us) {
     const BitBoard their_pawns_ahead =
         masks::forward_file_adjacent[us][square] & their_pawns;
     if (!their_pawns_ahead) {
-      score += kPassedPawnBonus[RelativeRank(square, us)];
-      TRACE_INCREMENT(kPassedPawnBonus[RelativeRank(square, us)], us);
+      score += kPassedPawnBonus[RelativeRank<us>(square)];
+      TRACE_INCREMENT(kPassedPawnBonus[RelativeRank<us>(square)], us);
     }
 
     const int file = File(square);
@@ -215,7 +224,8 @@ ScorePair Evaluation::EvaluatePawns(Color us) {
   return score;
 }
 
-ScorePair Evaluation::EvaluateKnights(Color us) {
+template <Color us>
+ScorePair Evaluation::EvaluateKnights() {
   ScorePair score;
 
   const BitBoard our_knights = state_.Knights(us);
@@ -236,7 +246,8 @@ ScorePair Evaluation::EvaluateKnights(Color us) {
   return score;
 }
 
-ScorePair Evaluation::EvaluateBishops(Color us) {
+template <Color us>
+ScorePair Evaluation::EvaluateBishops() {
   ScorePair score;
 
   const BitBoard our_bishops = state_.Bishops(us);
@@ -263,7 +274,8 @@ ScorePair Evaluation::EvaluateBishops(Color us) {
   return score;
 }
 
-ScorePair Evaluation::EvaluateRooks(Color us) {
+template <Color us>
+ScorePair Evaluation::EvaluateRooks() {
   ScorePair score;
 
   const BitBoard our_rooks = state_.Rooks(us);
@@ -298,7 +310,8 @@ ScorePair Evaluation::EvaluateRooks(Color us) {
   return score;
 }
 
-ScorePair Evaluation::EvaluateQueens(Color us) {
+template <Color us>
+ScorePair Evaluation::EvaluateQueens() {
   ScorePair score;
 
   const BitBoard our_queens = state_.Queens(us);
@@ -320,7 +333,8 @@ ScorePair Evaluation::EvaluateQueens(Color us) {
   return score;
 }
 
-ScorePair Evaluation::EvaluateKing(Color us) {
+template <Color us>
+ScorePair Evaluation::EvaluateKing() {
   ScorePair score;
 
   const Square square = state_.King(us).GetLsb();
@@ -390,6 +404,15 @@ int Evaluation::GetPieceMobilityCount(PieceType piece,
   }
 
   return moves.PopCount();
+}
+
+Score Evaluation::InterpolateScore(ScorePair score_pair) const {
+  const int phase = std::min(state_.phase, kMaxPhase);
+
+  const Score mg_score = score_pair.MiddleGame();
+  const Score eg_score = score_pair.EndGame();
+
+  return (mg_score * phase + eg_score * (kMaxPhase - phase)) / kMaxPhase;
 }
 
 Score Evaluate(const BoardState &state) {

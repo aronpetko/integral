@@ -17,7 +17,7 @@ constexpr double kLearningRate = 1.0;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
-static double Sigmoid(double K, double E) {
+constexpr double Sigmoid(double K, double E) {
   return 1.0 / (1.0 + exp(-K * E / 400.0));
 }
 
@@ -233,8 +233,6 @@ VectorPair Tuner::ComputeGradient(double K) const {
   VectorPair gradient;
   gradient.resize(num_terms_);
 
-  // pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #pragma omp parallel shared(local_gradient, mutex) num_threads(6)
   {
 #pragma omp for schedule(static)
@@ -243,7 +241,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
       double S = Sigmoid(K, E);
       double X = (entry.result - S) * S * (1 - S);
 
-      double mg_base = X * (entry.phase / 24.0);
+      double mg_base = X * (entry.phase / kMaxPhase);
       double eg_base = X - mg_base;
 
       for (const auto& coeff_entry : entry.coefficient_entries) {
@@ -253,14 +251,13 @@ VectorPair Tuner::ComputeGradient(double K) const {
       }
     }
 
-    // pthread_mutex_lock(&mutex);
-
-    for (int i = 0; i < num_terms_; i++) {
-      gradient[i][MG] += local_gradient[i][MG];
-      gradient[i][EG] += local_gradient[i][EG];
+#pragma omp critical
+    {
+      for (int i = 0; i < num_terms_; i++) {
+        gradient[i][MG] += local_gradient[i][MG];
+        gradient[i][EG] += local_gradient[i][EG];
+      }
     }
-
-    // pthread_mutex_unlock(&mutex);
   }
 
   return gradient;
@@ -275,7 +272,7 @@ double Tuner::StaticEvaluationErrors(double K) const {
       total += pow(entry.result - Sigmoid(K, entry.static_eval), 2);
     }
   }
-  return total / (double)entries_.size();
+  return total / entries_.size();
 }
 
 double Tuner::TunedEvaluationErrors(double K) const {
@@ -287,7 +284,7 @@ double Tuner::TunedEvaluationErrors(double K) const {
       total += pow(entry.result - Sigmoid(K, ComputeEvaluation(entry)), 2);
     }
   }
-  return total / (double)entries_.size();
+  return total / entries_.size();
 }
 
 inline Score Round(double value) {

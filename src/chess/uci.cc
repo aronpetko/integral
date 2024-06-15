@@ -7,6 +7,7 @@
 #include "../ascii_logo.h"
 #include "../engine/search.h"
 #include "../tests/tests.h"
+#include "../tuner/tuner.h"
 #include "move_gen.h"
 
 namespace uci {
@@ -123,6 +124,8 @@ void SetOption(std::stringstream &input_stream) {
 void AcceptCommands(int arg_count, char **args) {
   move_gen::InitializeAttacks();
 
+  InitializeOptions();
+
 #ifdef TUNE
   Tuner tuner;
   tuner.LoadFromFile(args[1]);
@@ -130,10 +133,63 @@ void AcceptCommands(int arg_count, char **args) {
 #endif
 
   constexpr int kTTMbSize = 64;
-  // transposition_table.Resize(kTTMbSize);
+  transposition_table.Resize(kTTMbSize);
 
   Board board;
   board.SetFromFen(fen::kStartFen);
+
+  Search search(board);
+  search.NewGame();
+
+  if (args[1] && std::string(args[1]) == "bench") {
+    const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
+    tests::BenchSuite(board, search, depth);
+    return;
+  }
+
+  PrintAsciiLogo();
+  fmt::println("    Integral v{} by {}\n", kEngineVersion, kEngineAuthor);
+
+  std::string input_line;
+  while (input_line != "quit") {
+    std::getline(std::cin, input_line);
+    std::stringstream input_stream(input_line);
+
+    std::string command;
+    input_stream >> command;
+
+    if (command == "uci") {
+      fmt::println("id name {}", kEngineName);
+      fmt::println("id author {}", kEngineAuthor);
+      PrintOptions();
+      fmt::println("uciok");
+    } else if (command == "isready") {
+      fmt::println("readyok");
+    } else if (command == "position") {
+      search.WaitUntilFinished();
+      Position(board, input_stream);
+    } else if (command == "go") {
+      Go(board, search, input_stream);
+    } else if (command == "stop") {
+      search.Stop();
+    } else if (command == "ucinewgame") {
+      search.WaitUntilFinished();
+      search.NewGame();
+    } else if (command == "print") {
+      board.PrintPieces();
+    } else if (command == "test") {
+      Test(input_stream);
+    } else if (command == "bench") {
+      // Bench is its own command for OpenBench support
+      int depth = 0;
+      input_stream >> depth;
+      tests::BenchSuite(board, search, depth);
+    } else if (command == "setoption") {
+      SetOption(input_stream);
+    } else if (command == "eval" || command == "evaluate") {
+      fmt::println("{}", eval::Evaluate(board.GetState()));
+    }
+  }
 }
 
 }  // namespace uci
