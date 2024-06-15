@@ -98,6 +98,7 @@ void MoveHistory::UpdateContHistory(Move move,
   const int bonus = HistoryBonus(depth);
   update_cont_entry(move, 1, bonus);
   update_cont_entry(move, 2, bonus);
+  update_cont_entry(move, 4, bonus);
 
   // Lower the score of the quiet moves that failed to raise alpha
   const int penalty = -bonus;
@@ -105,6 +106,7 @@ void MoveHistory::UpdateContHistory(Move move,
     // Apply a linear dampening to the penalty as the depth increases
     update_cont_entry(bad_quiets[i], 1, penalty);
     update_cont_entry(bad_quiets[i], 2, penalty);
+    update_cont_entry(bad_quiets[i], 4, penalty);
   }
 }
 
