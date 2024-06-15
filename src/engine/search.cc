@@ -311,9 +311,11 @@ Score Search::PVSearch(int depth,
   if (!in_pv_node && !state.InCheck()) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    const int futility_margin = (depth - improving) * 75;
-    if (depth <= 6 && eval - futility_margin >= beta) {
-      return eval;
+    if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
+      const int futility_margin = depth * 75;
+      if (eval - futility_margin >= beta) {
+        return eval;
+      }
     }
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
