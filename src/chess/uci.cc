@@ -7,17 +7,17 @@
 #include "../ascii_logo.h"
 #include "../engine/search.h"
 #include "../tests/tests.h"
-#include "../tuner/tuner.h"
 #include "move_gen.h"
 
 namespace uci {
 
 void InitializeOptions() {
-  AddOption("Hash", 64, 1, 1048576, [](Option &option) {
-    transposition_table.Resize(option.GetValue<int>());
-  });
-  AddOption("Threads", 1, 1, 1);
-  AddOption("Move Overhead", 50, 0, 10000);
+  AddOption<OptionVisibility::kPublic>(
+      "Hash", 64, 1, 1048576, [](Option &option) {
+        transposition_table.Resize(option.GetValue<int>());
+      });
+  AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
+  AddOption<OptionVisibility::kPublic>("Move Overhead", 50, 0, 10000);
 }
 
 void Position(Board &board, std::stringstream &input_stream) {
@@ -35,7 +35,8 @@ void Position(Board &board, std::stringstream &input_stream) {
   board.SetFromFen(position_fen);
 
   std::string dummy;
-  while (input_stream >> dummy && dummy != "moves");
+  while (input_stream >> dummy && dummy != "moves")
+    ;
 
   std::string move_input;
   while (input_stream >> move_input) {
@@ -146,7 +147,7 @@ void AcceptCommands(int arg_count, char **args) {
   }
 
   PrintAsciiLogo();
-  fmt::println("    v{}, written by {}\n", kEngineVersion, kEngineAuthor);
+  fmt::println("    Integral v{} by {}\n", kEngineVersion, kEngineAuthor);
 
   std::string input_line;
   while (input_line != "quit") {

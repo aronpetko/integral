@@ -144,6 +144,7 @@ Score Evaluation::GetScore() {
   const Color them = FlipColor(us);
 
   ScorePair score = state_.piece_scores[us] - state_.piece_scores[them];
+
   score += kTempoBonus;
   TRACE_INCREMENT(kTempoBonus, us);
 
