@@ -36,7 +36,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g")
 
 # Check if the compiler is Clang and add the -stdlib=libc++ flag if it is
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
 endif()
 
 # Conditionally add static linking flag on Windows
