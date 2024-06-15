@@ -23,7 +23,7 @@ class MovePicker {
              Board &board,
              Move tt_move,
              MoveHistory &move_history,
-             SearchStack *search_stack);
+             SearchStackEntry *stack);
 
   Move Next();
 
@@ -53,7 +53,7 @@ class MovePicker {
   Move tt_move_;
   MovePickerType type_;
   MoveHistory &move_history_;
-  SearchStack *search_stack_;
+  SearchStackEntry *stack_;
   Stage stage_;
   List<ScoredMove, kMaxMoves> tacticals_, bad_tacticals_;
   List<ScoredMove, kMaxMoves> quiets_;

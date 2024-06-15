@@ -18,7 +18,7 @@ void TranspositionTable::Resize(std::size_t mb_size) {
   const std::size_t kBytesInMegabyte = 1024 * 1024;
   mb_size *= kBytesInMegabyte;
 
-  table_size_ = mb_size / sizeof(Entry);
+  table_size_ = mb_size / sizeof(TranspositionTableEntry);
   table_.resize(table_size_);
   table_.shrink_to_fit();
 
@@ -26,15 +26,17 @@ void TranspositionTable::Resize(std::size_t mb_size) {
 }
 
 void TranspositionTable::Clear() {
-  std::ranges::fill(table_, Entry{});
+  std::ranges::fill(table_, TranspositionTableEntry{});
 }
 
-void TranspositionTable::Save(const U64 &key, const Entry &entry, U16 ply) {
+void TranspositionTable::Save(const U64 &key,
+                              U16 ply,
+                              const TranspositionTableEntry &entry) {
   auto &tt_entry = table_[Index(key)];
   const bool tt_hit = tt_entry.CompareKey(key);
 
   if (!tt_hit || entry.depth + kDepthLenience >= tt_entry.depth ||
-      entry.flag == Entry::kExact) {
+      entry.flag == TranspositionTableEntry::kExact) {
     const auto old_move = tt_entry.move;
     tt_entry = entry;
 
@@ -63,8 +65,7 @@ Score TranspositionTable::CorrectScore(Score score, U16 ply) const {
   return score;
 }
 
-const TranspositionTable::Entry &TranspositionTable::Probe(
-    const U64 &key) const {
+const TranspositionTableEntry &TranspositionTable::Probe(const U64 &key) const {
   return table_[Index(key)];
 }
 

@@ -1,19 +1,17 @@
 #ifndef INTEGRAL_HISTORY_H
 #define INTEGRAL_HISTORY_H
 
-#include <array>
-
 #include "../chess/move_gen.h"
+#include "../utils/multi_array.h"
 
-class SearchStack;
+class SearchStackEntry;
 
 constexpr int kFromToCombinations = kSquareCount * kSquareCount;
 
-using KillerMoves = std::array<std::array<Move, 2>, kMaxPlyFromRoot>;
-using ButterflyHistory = std::array<std::array<int, kFromToCombinations>, 2>;
-using ContinuationEntry = std::array<std::array<std::array<int, 64>, 6>, 2>;
-using ContinuationHistory =
-    std::array<std::array<std::array<ContinuationEntry, 64>, 6>, 2>;
+using KillerMoves = MultiArray<Move, kMaxPlyFromRoot, 2>;
+using ButterflyHistory = MultiArray<int, 2, kFromToCombinations>;
+using ContinuationEntry = MultiArray<int, 2, 6, 64>;
+using ContinuationHistory = MultiArray<ContinuationEntry, 2, 6, 64>;
 
 class MoveHistory {
  public:
@@ -23,7 +21,7 @@ class MoveHistory {
 
   int GetContHistoryScore(Move move,
                           int plies_ago,
-                          SearchStack *stack) noexcept;
+                          SearchStackEntry *stack) noexcept;
 
   ContinuationEntry *GetContEntry(Move move, Color turn) noexcept;
 
@@ -40,7 +38,7 @@ class MoveHistory {
                          List<Move, kMaxMoves> &bad_quiets,
                          Color turn,
                          int depth,
-                         SearchStack *stack);
+                         SearchStackEntry *stack);
 
   void Clear();
 

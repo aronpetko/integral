@@ -92,12 +92,12 @@ class Evaluation {
   template <Color us>
   ScorePair EvaluateKing();
 
-  int GetPieceMobilityCount(PieceType piece,
+  [[nodiscard]] int GetPieceMobilityCount(PieceType piece,
                             Square square,
                             BitBoard moves,
                             Color us) const;
 
-  Score InterpolateScore(ScorePair score_pair) const;
+  [[nodiscard]] Score InterpolateScore(ScorePair score_pair) const;
 
  private:
   const BoardState &state_;
