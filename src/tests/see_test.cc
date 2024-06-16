@@ -1,5 +1,5 @@
 #include "../chess/board.h"
-#include "../engine/eval.h"
+#include "../engine/evaluation/evaluation.h"
 #include "tests.h"
 
 namespace tests {

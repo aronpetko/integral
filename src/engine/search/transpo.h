@@ -5,8 +5,8 @@
 #include <cassert>
 #include <cstddef>
 
-#include "../chess/move.h"
-#include "../utils/types.h"
+#include "../../chess/move.h"
+#include "../../utils/types.h"
 
 struct TranspositionTableEntry {
   enum Flag : U8 {

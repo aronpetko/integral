@@ -1,7 +1,6 @@
-#include "eval.h"
-
-#include "../chess/move_gen.h"
-#include "../tuner/tuner.h"
+#include "../../chess/move_gen.h"
+#include "../../tuner/tuner.h"
+#include "evaluation.h"
 
 namespace eval {
 

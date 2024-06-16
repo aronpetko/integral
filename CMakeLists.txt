@@ -26,6 +26,22 @@ elseif(BUILD_NATIVE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
 endif()
 
+# Set debug and release specific flags
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fomit-frame-pointer -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DNDEBUG")
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+endif()
+
+# Conditionally add static linking flag on Windows
+if(WIN32)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,/STACK:8388608")
+    endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
+endif()
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT LTO_SUPPORTED)
 
@@ -35,27 +51,11 @@ if(LTO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 endif()
 
-# Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fomit-frame-pointer -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-O3 -DNDEBUG")
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
-endif()
-
-# Conditionally add static linking flag on Windows
-if(WIN32)
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stack-size=0x1000000")
-    endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
-endif()
-
 add_subdirectory(third-party/fmt)
 include_directories(third-party/fmt/include)
 add_definitions(-DFMT_HEADER_ONLY)
 
 # Collect source files
-file(GLOB SOURCES "src/*.cc" "src/magics/*.cc" "src/tuner/*.cc" "src/chess/*.cc" "src/engine/*.cc" "src/utils/*.cc" "src/tests/*.cc")
+file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
 
-add_executable(integral ${SOURCES} src/tuner/tuner.cc)
+add_executable(integral ${SOURCES})

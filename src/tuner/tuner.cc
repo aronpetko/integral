@@ -6,7 +6,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "../engine/eval.h"
+#include "../engine/evaluation/evaluation.h"
 
 using namespace eval;
 

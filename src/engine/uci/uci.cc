@@ -1,14 +1,13 @@
 #include "uci.h"
 
-#include <fmt/format.h>
-
 #include <string>
 
-#include "../ascii_logo.h"
-#include "../engine/search.h"
-#include "../tests/tests.h"
-#include "../tuner/tuner.h"
-#include "move_gen.h"
+#include "../../ascii_logo.h"
+#include "../../chess/move_gen.h"
+#include "../../tests/tests.h"
+#include "../../tuner/tuner.h"
+#include "../search/search.h"
+#include "fmt/format.h"
 
 namespace uci {
 

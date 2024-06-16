@@ -1,6 +1,6 @@
 #include "../chess/board.h"
 #include "../chess/move_gen.h"
-#include "../engine/search.h"
+#include "../engine/search/search.h"
 #include "tests.h"
 
 namespace tests {

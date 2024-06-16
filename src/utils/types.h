@@ -46,7 +46,8 @@ enum MoveType : U8 {
 enum Color : U8 {
   kBlack,
   kWhite,
-  kNoColor
+  kNoColor,
+  kNumColors
 };
 
 inline constexpr Color FlipColor(const Color& color) {

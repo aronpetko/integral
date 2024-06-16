@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_SPSA_H
 #define INTEGRAL_SPSA_H
 
-#include "../chess/uci.h"
+#include "../engine/uci/uci.h"
 #include "tuner.h"
 
 // #define SPSA_TUNE

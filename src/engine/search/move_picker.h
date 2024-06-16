@@ -3,9 +3,9 @@
 
 #include <algorithm>
 
-#include "../chess/move_gen.h"
-#include "history.h"
-#include "search.h"
+#include "../../chess/move_gen.h"
+#include "../evaluation/evaluation.h"
+#include "history/history.h"
 
 struct ScoredMove {
   Move move;
@@ -22,7 +22,7 @@ class MovePicker {
   MovePicker(MovePickerType type,
              Board &board,
              Move tt_move,
-             MoveHistory &move_history,
+             history::SearchHistory &history,
              SearchStackEntry *stack);
 
   Move Next();
@@ -52,7 +52,7 @@ class MovePicker {
   Board &board_;
   Move tt_move_;
   MovePickerType type_;
-  MoveHistory &move_history_;
+  history::SearchHistory &history_;
   SearchStackEntry *stack_;
   Stage stage_;
   List<ScoredMove, kMaxMoves> tacticals_, bad_tacticals_;

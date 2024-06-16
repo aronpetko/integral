@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_UCI_H_
 #define INTEGRAL_UCI_H_
 
-#include "board.h"
-#include "fen.h"
+#include "../../chess/board.h"
+#include "../../chess/fen.h"
 #include "uci_option.h"
 
 class Search;

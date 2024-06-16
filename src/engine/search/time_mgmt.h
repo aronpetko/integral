@@ -7,8 +7,8 @@
 
 using std::chrono::duration_cast;
 
-#include "../chess/board.h"
-#include "../utils/types.h"
+#include "../../chess/board.h"
+#include "../../utils/types.h"
 
 struct TimeConfig {
   bool infinite = false;

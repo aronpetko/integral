@@ -1,7 +1,7 @@
 #include "time_mgmt.h"
 
-#include "../chess/uci.h"
-#include "../tuner/spsa.h"
+#include "../../tuner/spsa.h"
+#include "../uci/uci.h"
 #include "search.h"
 
 Tunable base_time_scale("base_time_scale", 54, 0, 1000, 20, 0.0020);

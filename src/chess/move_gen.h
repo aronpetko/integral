@@ -7,6 +7,8 @@
 
 constexpr int kMaxMoves = 256;
 
+using MoveList = List<Move, kMaxMoves>;
+
 namespace move_gen {
 
 // Initializes piece attack lookups and magics
@@ -54,7 +56,7 @@ BitBoard &RayBetween(Square first, Square second);
 // on
 BitBoard &RayIntersecting(Square first, Square second);
 
-List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board);
+MoveList GenerateMoves(MoveType move_type, Board &board);
 
 }  // namespace move_gen
 

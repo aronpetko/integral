@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_EVAL_H_
 #define INTEGRAL_EVAL_H_
 
-#include "../chess/board.h"
-#include "eval_terms.h"
+#include "../../chess/board.h"
+#include "evaluation_terms.h"
 
 namespace eval {
 

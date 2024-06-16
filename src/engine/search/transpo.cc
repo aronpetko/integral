@@ -1,6 +1,6 @@
 #include "transpo.h"
 
-#include "eval.h"
+#include "../evaluation/evaluation.h"
 #include "search.h"
 
 // When saving a TT entry, we usually want to prefer newer entries only if

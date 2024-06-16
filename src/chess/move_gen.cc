@@ -370,8 +370,8 @@ BitBoard &RayIntersecting(Square first, Square second) {
   return ray_intersecting_masks[first][second];
 }
 
-List<Move, kMaxMoves> GenerateMoves(MoveType move_type, Board &board) {
-  List<Move, kMaxMoves> move_list;
+MoveList GenerateMoves(MoveType move_type, Board &board) {
+  MoveList move_list;
 
   auto &state = board.GetState();
 

@@ -6,8 +6,8 @@
 #include <utility>
 #include <vector>
 
-#include "../engine/eval_terms.h"
-#include "../engine/transpo.h"
+#include "../engine/evaluation/evaluation_terms.h"
+#include "../engine/search/transpo.h"
 #include "../utils/zobrist.h"
 #include "bitboard.h"
 #include "fen.h"

@@ -1,15 +1,14 @@
 #ifndef INTEGRAL_UCI_OPTION_H
 #define INTEGRAL_UCI_OPTION_H
 
-#include <fmt/format.h>
-
 #include <functional>
 #include <iostream>
 #include <map>
 #include <string>
 #include <utility>
 
-#include "../utils/string.h"
+#include "../../utils/string.h"
+#include "fmt/format.h"
 
 namespace uci {
 

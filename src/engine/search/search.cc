@@ -1,17 +1,16 @@
 #include "search.h"
 
-#include <fmt/format.h>
-
 #include <iomanip>
 #include <thread>
 
+#include "fmt/format.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
 #include "transpo.h"
 
 Search::Search(Board &board)
     : board_(board),
-      move_history_(board_.GetState()),
+      history_(board_.GetState()),
       lmr_table_({}),
       sel_depth_(0),
       nodes_searched_(0),
@@ -33,15 +32,7 @@ Search::Search(Board &board)
 template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
-
-  nodes_searched_ = 0;
-
-  move_history_.ClearKillers();
-  time_mgmt_.Start();
-
-  // The first stack entry is at 4, since search looks in the past 4 plies
   const auto root_stack = &search_stack_.Front();
-  root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
   Score score = 0;
@@ -109,10 +100,10 @@ void Search::IterativeDeepening() {
           sel_depth_,
           is_mate ? "mate" : "cp",
           is_mate ? eval::MateIn(score) : score,
-          nodes_searched_,
+          nodes_searched_.load(),
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
-          root_stack->pv.ToString());
+          "");
     }
 
     if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
@@ -175,7 +166,7 @@ Score Search::QuiescentSearch(Score alpha,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board_, tt_move, move_history_, stack);
+      MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
     if (!board_.IsMoveLegal(move)) {
       continue;
@@ -219,7 +210,7 @@ Score Search::QuiescentSearch(Score alpha,
 
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
-  TranspositionTableEntry new_tt_entry(
+  const TranspositionTableEntry new_tt_entry(
       state.zobrist_key, 0, entry_flag, best_score, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
@@ -308,7 +299,7 @@ Score Search::PVSearch(int depth,
     stack->static_eval = eval = kScoreNone;
   }
 
-  move_history_.ClearKillers(stack->ply + 1);
+  (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !state.InCheck()) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
@@ -329,7 +320,7 @@ Score Search::PVSearch(int depth,
       if (non_pawn_king_pieces) {
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
-        stack->cont_entry = nullptr;
+        stack->continuation_entry = nullptr;
 
         // Ensure the reduction doesn't give us a depth below 0
         const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);
@@ -358,14 +349,14 @@ Score Search::PVSearch(int depth,
   // transposition table
   const int original_alpha = alpha;
   // Keep track of quiet moves that failed to cause a beta cutoff
-  List<Move, kMaxMoves> bad_quiets;
+  MoveList quiets;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kSearch, board_, tt_move, move_history_, stack);
+      MovePickerType::kSearch, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
     if (!board_.IsMoveLegal(move)) {
       continue;
@@ -411,7 +402,8 @@ Score Search::PVSearch(int depth,
 
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
-    stack->cont_entry = move_history_.GetContEntry(move, state.turn);
+    // stack->continuation_entry =
+    // history_.continuation_history->GetEntry(move);
 
     board_.MakeMove(move);
 
@@ -481,16 +473,14 @@ Score Search::PVSearch(int depth,
         if (in_pv_node) {
           stack->pv.Clear();
           stack->pv.Push(best_move);
-          stack->pv.CopyOver((stack + 1)->pv);
         }
 
         alpha = score;
         if (alpha >= beta) {
           if (is_quiet) {
-            move_history_.UpdateHistory(move, bad_quiets, state.turn, depth);
-            move_history_.UpdateContHistory(
-                move, bad_quiets, state.turn, depth, stack);
-            move_history_.UpdateKillerMove(move, stack->ply);
+            history_.quiet_history->UpdateScore(stack, depth, quiets);
+            history_.continuation_history->UpdateScore(stack, depth, quiets);
+            stack->AddKillerMove(move);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
@@ -500,7 +490,7 @@ Score Search::PVSearch(int depth,
 
     // Penalize the history score of quiet moves that failed to raise alpha
     if (is_quiet && move != best_move) {
-      bad_quiets.Push(move);
+      quiets.Push(move);
     }
   }
 
@@ -520,7 +510,7 @@ Score Search::PVSearch(int depth,
 
   // Attempt to update the transposition table with the evaluation of this
   // position
-  TranspositionTableEntry new_tt_entry(
+  const TranspositionTableEntry new_tt_entry(
       state.zobrist_key, depth, entry_flag, best_score, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
@@ -538,6 +528,8 @@ void Search::Start(TimeConfig &time_config) {
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
+  nodes_searched_ = 0;
+
   std::thread([this] { IterativeDeepening<SearchType::kRegular>(); }).detach();
 }
 
@@ -550,6 +542,8 @@ void Search::Bench(int depth) {
 
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
+
+  nodes_searched_ = 0;
 
   // Bench is intended to block the UCI loop thread
   IterativeDeepening<SearchType::kBench>();
@@ -570,7 +564,7 @@ TimeManagement &Search::GetTimeManagement() {
 
 void Search::NewGame() {
   transposition_table.Clear();
-  move_history_.Clear();
+  history_.Clear();
   search_stack_.Reset();
 }
 
