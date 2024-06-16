@@ -3,6 +3,7 @@
 
 #include "../../chess/board.h"
 #include "../../chess/fen.h"
+#include "../../chess/move_gen.h"
 #include "uci_option.h"
 
 class Search;
@@ -20,6 +21,8 @@ void Go(Board &board, Search &search, std::stringstream &input_stream);
 void Test(std::stringstream &input_stream);
 
 void SetOption(std::stringstream &input_stream);
+
+std::string ParseMoveList(MoveList &moves);
 
 void AcceptCommands(int arg_count, char **args);
 

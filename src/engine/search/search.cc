@@ -3,29 +3,45 @@
 #include <iomanip>
 #include <thread>
 
+#include "../../utils/multi_array.h"
+#include "../uci/uci.h"
 #include "fmt/format.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
 #include "transpo.h"
 
-Search::Search(Board &board)
-    : board_(board),
-      history_(board_.GetState()),
-      lmr_table_({}),
-      sel_depth_(0),
-      nodes_searched_(0),
-      searching_(false) {
-  const double kBaseReduction = 0.39;
-  const double kDivisor = 2.36;
+namespace tables {
+
+using LateMoveReductionTable = MultiArray<int, kMaxSearchDepth + 1, kMaxMoves>;
+
+constexpr LateMoveReductionTable GenerateLateMoveReductionTable() {
+  LateMoveReductionTable table;
+
+  constexpr double kBaseReduction = 0.39;
+  constexpr double kDivisor = 2.36;
 
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
-      lmr_table_[depth][move] = static_cast<int>(
+      table[depth][move] = static_cast<int>(
           kBaseReduction + std::log(depth) * std::log(move) / kDivisor);
     }
   }
 
+  return table;
+}
+
+constexpr LateMoveReductionTable kLateMoveReduction =
+    GenerateLateMoveReductionTable();
+
+}  // namespace tables
+
+Search::Search(Board &board)
+    : board_(board),
+      history_(board_.GetState()),
+      sel_depth_(0),
+      nodes_searched_(0),
+      searching_(false) {
   search_stack_.Reset();
 }
 
@@ -103,7 +119,7 @@ void Search::IterativeDeepening() {
           nodes_searched_.load(),
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
-          "");
+          uci::ParseMoveList(root_stack->pv));
     }
 
     if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
@@ -402,8 +418,7 @@ Score Search::PVSearch(int depth,
 
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
-    // stack->continuation_entry =
-    // history_.continuation_history->GetEntry(move);
+    stack->continuation_entry = history_.continuation_history->GetEntry(move);
 
     board_.MakeMove(move);
 
@@ -420,7 +435,7 @@ Score Search::PVSearch(int depth,
     // move ordering) are searched at lower depths
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
-      int reduction = lmr_table_[depth][moves_seen];
+      int reduction = tables::kLateMoveReduction[depth][moves_seen];
       reduction += !in_pv_node;
       reduction -= state.InCheck();
 
@@ -473,6 +488,10 @@ Score Search::PVSearch(int depth,
         if (in_pv_node) {
           stack->pv.Clear();
           stack->pv.Push(best_move);
+
+          for (int i = 0; i < (stack + 1)->pv.Size(); i++) {
+            stack->pv.Push((stack + i)->pv[i]);
+          }
         }
 
         alpha = score;

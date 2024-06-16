@@ -38,8 +38,6 @@ class Search {
   [[nodiscard]] U64 GetNodesSearched() const;
 
  private:
-  [[nodiscard]] bool ShouldQuit();
-
   template <SearchType type>
   void IterativeDeepening();
 
@@ -48,6 +46,8 @@ class Search {
 
   template <NodeType node_type>
   Score PVSearch(int depth, Score alpha, Score beta, SearchStackEntry *stack);
+
+  [[nodiscard]] bool ShouldQuit();
 
  private:
   Board &board_;
