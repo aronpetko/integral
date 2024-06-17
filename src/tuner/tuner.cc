@@ -136,6 +136,7 @@ void Tuner::InitBaseParameters() {
   Add2DArrayParameter(kRookOnFileBonus);
   AddArrayParameter(kPawnShelterTable);
   AddArrayParameter(kPawnStormTable);
+  Add2DArrayParameter(kKingOnFilePenalty);
   AddSingleParameter(kBishopPairBonus);
   AddSingleParameter(kTempoBonus);
 }
@@ -165,6 +166,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
+  GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
   GET_COEFFICIENT(kBishopPairBonus);
   GET_COEFFICIENT(kTempoBonus);
 
@@ -233,7 +235,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
   VectorPair gradient;
   gradient.resize(num_terms_);
 
-#pragma omp parallel shared(local_gradient, mutex) num_threads(6)
+#pragma omp parallel shared(local_gradient) num_threads(6)
   {
 #pragma omp for schedule(static)
     for (const auto& entry : entries_) {
@@ -382,6 +384,10 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
+
+  fmt::print(
+      "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = ");
+  Print2DArray(index, 2, kNumFiles, parameters_);
 
   fmt::print("constexpr ScorePair kBishopPairBonus = ");
   PrintTerm(index, parameters_);
