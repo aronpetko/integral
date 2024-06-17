@@ -3,8 +3,6 @@
 #include <iomanip>
 #include <thread>
 
-#include "../../utils/multi_array.h"
-#include "../uci/uci.h"
 #include "fmt/format.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
@@ -14,7 +12,7 @@ namespace tables {
 
 using LateMoveReductionTable = MultiArray<int, kMaxSearchDepth + 1, kMaxMoves>;
 
-constexpr LateMoveReductionTable GenerateLateMoveReductionTable() {
+LateMoveReductionTable GenerateLateMoveReductionTable() {
   LateMoveReductionTable table;
 
   constexpr double kBaseReduction = 0.39;
@@ -31,7 +29,7 @@ constexpr LateMoveReductionTable GenerateLateMoveReductionTable() {
   return table;
 }
 
-constexpr LateMoveReductionTable kLateMoveReduction =
+const LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
 
 }  // namespace tables
@@ -119,7 +117,7 @@ void Search::IterativeDeepening() {
           nodes_searched_.load(),
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
-          uci::ParseMoveList(root_stack->pv));
+          root_stack->pv.UCIFormat());
     }
 
     if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
@@ -488,10 +486,7 @@ Score Search::PVSearch(int depth,
         if (in_pv_node) {
           stack->pv.Clear();
           stack->pv.Push(best_move);
-
-          for (int i = 0; i < (stack + 1)->pv.Size(); i++) {
-            stack->pv.Push((stack + i)->pv[i]);
-          }
+          stack->pv.AppendPV((stack + 1)->pv);
         }
 
         alpha = score;

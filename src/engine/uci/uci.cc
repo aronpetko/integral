@@ -120,17 +120,6 @@ void SetOption(std::stringstream &input_stream) {
   }
 }
 
-std::string ParseMoveList(MoveList &moves) {
-  std::string parsed;
-  for (int i = 0; i < moves.Size(); i++) {
-    parsed += moves[i].ToString();
-    if (i < moves.Size() - 1) {
-      parsed += " ";
-    }
-  }
-  return parsed;
-}
-
 void AcceptCommands(int arg_count, char **args) {
   move_gen::InitializeAttacks();
 

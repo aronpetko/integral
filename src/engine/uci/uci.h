@@ -22,8 +22,6 @@ void Test(std::stringstream &input_stream);
 
 void SetOption(std::stringstream &input_stream);
 
-std::string ParseMoveList(MoveList &moves);
-
 void AcceptCommands(int arg_count, char **args);
 
 }  // namespace uci
