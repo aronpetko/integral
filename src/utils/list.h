@@ -15,14 +15,6 @@ class List {
     return container_[i];
   }
 
-  inline T &Back() {
-    return container_[count_ - 1];
-  }
-
-  inline const T &At(int i) {
-    return container_[i];
-  }
-
   inline void Push(const T &object) {
     assert(count_ < length);
     container_[count_++] = object;
@@ -33,18 +25,13 @@ class List {
     container_[count_++] = std::move(object);
   }
 
-  inline void Heapify() {
-    std::make_heap(container_.begin(), container_.begin() + count_);
-  }
-
-  inline T &HeapPop() {
-    std::pop_heap(container_.begin(), container_.begin() + count_--);
-    return container_[count_];
-  }
-
   inline T &PopBack() {
     assert(count_ > 0);
     return container_[--count_];
+  }
+
+  inline T &Back() {
+    return container_[count_ - 1];
   }
 
   inline void Erase(int i) {

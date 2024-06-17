@@ -4,13 +4,58 @@
 #include "../../chess/move_gen.h"
 #include "../../utils/types.h"
 
+struct PVLine {
+ public:
+  PVLine() : moves_({}) {
+    Clear();
+  }
+
+  Move &operator[](std::size_t i) {
+    return moves_[i];
+  }
+
+  void Clear() {
+    moves_.Clear();
+  }
+
+  void Push(const Move &move) {
+    moves_.Push(move);
+  }
+
+  void AppendPV(PVLine &pv) {
+    for (std::size_t i = 0; i < pv.Length(); i++) {
+      Push(pv[i]);
+    }
+  }
+
+  [[nodiscard]] std::size_t Length() const {
+    return moves_.Size();
+  }
+
+  [[nodiscard]] std::string UCIFormat() {
+    std::string str;
+    for (int i = 0; i < moves_.Size(); i++) {
+      str += moves_[i].ToString();
+      if (i < moves_.Size() - 1) str += ' ';
+    }
+    return str;
+  }
+
+  friend std::ostream &operator<<(std::ostream &stream, PVLine &pv_line) {
+    return stream << pv_line.UCIFormat();
+  }
+
+ private:
+  List<Move, kMaxPlyFromRoot> moves_;
+};
+
 struct SearchStackEntry {
   // Number of ply from root
   U16 ply;
   // Evaluation of the position at this ply
   Score static_eval;
   // Best moves following down this ply
-  MoveList pv;
+  PVLine pv;
   // The move with the best score
   Move best_move;
   // Currently searched move at this ply

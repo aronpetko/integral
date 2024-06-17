@@ -124,7 +124,7 @@ void Tuner::Tune() {
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
-  Add2DArrayParameter<PieceType::kNumTypes, kSquareCount>(kPieceSquareTable);
+  Add2DArrayParameter<kNumPieceTypes, kSquareCount>(kPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -347,7 +347,7 @@ void Tuner::PrintParameters() {
   PrintArray(index, kPieceValues.size(), parameters_);
 
   fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
-  Print2DArray(index, PieceType::kNumTypes, Squares::kSquareCount, parameters_);
+  Print2DArray(index, kNumPieceTypes, kSquareCount, parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
   PrintArray(index, kKnightMobility.size(), parameters_);
