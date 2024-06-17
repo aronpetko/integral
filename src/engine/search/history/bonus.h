@@ -16,12 +16,12 @@ static int HistoryBonus(int depth,
 }
 
 // Linear interpolation of the bonus and maximum score
-static int ScaleBonus(I32 score,
+static int ScaleBonus(int score,
                       int bonus,
                       int gravity = kHistoryDefaultGravity) {
   return bonus - score * std::abs(bonus) / gravity;
 }
 
-}
+}  // namespace history
 
 #endif  // INTEGRAL_BONUS_H
