@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.16)
 project(integral)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -27,8 +27,8 @@ elseif(BUILD_NATIVE)
 endif()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fomit-frame-pointer -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -fomit-frame-pointer -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-pthread -O0 -DNDEBUG")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")

@@ -12,7 +12,7 @@ constexpr int kHistoryDefaultMaxBonus = 1159;
 static int HistoryBonus(int depth,
                         int scale = kHistoryDefaultScale,
                         int max_bonus = kHistoryDefaultMaxBonus) {
-  return std::min(scale * depth, max_bonus);
+  return std::clamp(scale * depth, -max_bonus, max_bonus);
 }
 
 // Linear interpolation of the bonus and maximum score
@@ -22,6 +22,6 @@ static int ScaleBonus(I32 score,
   return bonus - score * std::abs(bonus) / gravity;
 }
 
-}
+} // namespace history
 
 #endif  // INTEGRAL_BONUS_H

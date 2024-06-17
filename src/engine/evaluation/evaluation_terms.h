@@ -7,11 +7,11 @@ namespace eval {
 
 // clang-format off
 template <typename T>
-using PieceValueTable = std::array<T, PieceType::kNumTypes>;
+using PieceValueTable = std::array<T, kNumPieceTypes>;
 
 template <typename T>
 using PieceSquareTable = std::array<std::array<T, kSquareCount>,
-                                    PieceType::kNumTypes>;
+                                    kNumPieceTypes>;
 
 template <typename T>
 using KnightMobilityTable = std::array<T, 9>;
@@ -165,7 +165,7 @@ constexpr std::array<ScorePair, 21> kPawnStormTable = {
 constexpr ScorePair kBishopPairBonus = Pair(22, 65);
 constexpr ScorePair kTempoBonus = Pair(21, 25);
 
-constexpr std::array<int, PieceType::kNumTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};
+constexpr std::array<int, kNumPieceTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
 
 }  // namespace eval

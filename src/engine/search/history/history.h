@@ -18,11 +18,13 @@ class SearchHistory {
     // Reinitialize the history objects for quicker clearing
     quiet_history = std::make_unique<QuietHistory>(state_);
     continuation_history = std::make_unique<ContinuationHistory>(state_);
+    correction_history = std::make_unique<CorrectionHistory>(state_);
   }
 
  public:
   std::unique_ptr<QuietHistory> quiet_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
+  std::unique_ptr<CorrectionHistory> correction_history;
 
  private:
   const BoardState &state_;

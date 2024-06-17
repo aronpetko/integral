@@ -8,7 +8,7 @@ namespace masks {
 
 constexpr SideTable<SquareTable<BitBoard>> GenerateForwardFiles() {
   SideTable<SquareTable<BitBoard>> forward_file;
-  for (Square square = 0; square < Squares::kSquareCount; square++) {
+  for (Square square = 0; square < kSquareCount; square++) {
     forward_file[Color::kWhite][square] =
         ForwardFileMask(Color::kWhite, square);
     forward_file[Color::kBlack][square] =
@@ -22,7 +22,7 @@ constexpr SideTable<SquareTable<BitBoard>> forward_file =
 
 constexpr SideTable<SquareTable<BitBoard>> GenerateForwardFileAdjacent() {
   SideTable<SquareTable<BitBoard>> forward_file_adjacent;
-  for (Square square = 0; square < Squares::kSquareCount; square++) {
+  for (Square square = 0; square < kSquareCount; square++) {
     const BitBoard white_forward = forward_file[Color::kWhite][square];
     forward_file_adjacent[Color::kWhite][square] =
         Shift<Direction::kWest>(white_forward) | white_forward |
@@ -41,7 +41,7 @@ constexpr SideTable<SquareTable<BitBoard>> forward_file_adjacent =
 
 constexpr SquareTable<BitBoard> GenerateFiles() {
   SquareTable<BitBoard> files;
-  for (Square square = 0; square < Squares::kSquareCount; square++) {
+  for (Square square = 0; square < kSquareCount; square++) {
     files[square] = kFileMasks[File(square)];
   }
   return files;
@@ -51,7 +51,7 @@ constexpr SquareTable<BitBoard> files = GenerateFiles();
 
 constexpr SquareTable<BitBoard> GenerateAdjacentFiles() {
   SquareTable<BitBoard> adjacent_files;
-  for (Square square = 0; square < Squares::kSquareCount; square++) {
+  for (Square square = 0; square < kSquareCount; square++) {
     adjacent_files[square] = Shift<Direction::kWest>(files[square]) |
                              Shift<Direction::kEast>(files[square]);
   }
