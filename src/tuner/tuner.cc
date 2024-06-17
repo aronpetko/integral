@@ -190,9 +190,9 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
   const auto coefficients = GetCoefficients();
   entry.coefficient_entries.reserve(num_terms_);
 
-  for (std::size_t i = 0; i < coefficients.size(); i++) {
+  for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back({i, coefficients[i]});
+      entry.coefficient_entries.push_back({static_cast<std::size_t>(i), coefficients[i]});
     }
   }
 
@@ -235,7 +235,9 @@ VectorPair Tuner::ComputeGradient(double K) const {
   VectorPair gradient;
   gradient.resize(num_terms_);
 
-#pragma omp parallel shared(local_gradient) num_threads(6)
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#pragma omp parallel shared(local_gradient, mutex) num_threads(6)
   {
 #pragma omp for schedule(static)
     for (const auto& entry : entries_) {
@@ -243,7 +245,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
       double S = Sigmoid(K, E);
       double X = (entry.result - S) * S * (1 - S);
 
-      double mg_base = X * (entry.phase / kMaxPhase);
+      double mg_base = X * (entry.phase / 24.0);
       double eg_base = X - mg_base;
 
       for (const auto& coeff_entry : entry.coefficient_entries) {
@@ -253,13 +255,14 @@ VectorPair Tuner::ComputeGradient(double K) const {
       }
     }
 
-#pragma omp critical
-    {
-      for (int i = 0; i < num_terms_; i++) {
-        gradient[i][MG] += local_gradient[i][MG];
-        gradient[i][EG] += local_gradient[i][EG];
-      }
+    pthread_mutex_lock(&mutex);
+
+    for (int i = 0; i < num_terms_; i++) {
+      gradient[i][MG] += local_gradient[i][MG];
+      gradient[i][EG] += local_gradient[i][EG];
     }
+
+    pthread_mutex_unlock(&mutex);
   }
 
   return gradient;
@@ -274,7 +277,7 @@ double Tuner::StaticEvaluationErrors(double K) const {
       total += pow(entry.result - Sigmoid(K, entry.static_eval), 2);
     }
   }
-  return total / entries_.size();
+  return total / (double)entries_.size();
 }
 
 double Tuner::TunedEvaluationErrors(double K) const {
@@ -286,7 +289,7 @@ double Tuner::TunedEvaluationErrors(double K) const {
       total += pow(entry.result - Sigmoid(K, ComputeEvaluation(entry)), 2);
     }
   }
-  return total / entries_.size();
+  return total / (double)entries_.size();
 }
 
 inline Score Round(double value) {
