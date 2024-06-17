@@ -54,8 +54,8 @@ void Search::IterativeDeepening() {
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     sel_depth_ = 0;
 
-    constexpr short kAspirationWindowDepth = 4;
-    constexpr short kAspirationWindowDelta = 10;
+    constexpr int kAspirationWindowDepth = 4;
+    constexpr int kAspirationWindowDelta = 10;
 
     int window = kAspirationWindowDelta;
     Score alpha = -kInfiniteScore;
@@ -163,7 +163,8 @@ Score Search::QuiescentSearch(Score alpha,
   }
 
   const Score static_eval =
-      can_use_tt_eval ? tt_entry.score : eval::Evaluate(state);
+      can_use_tt_eval ? tt_entry.score
+                      : history_.correction_history->CorrectedStaticEval();
 
   // Early beta cutoff
   if (static_eval >= beta || stack->ply >= kMaxPlyFromRoot) {
@@ -213,19 +214,19 @@ Score Search::QuiescentSearch(Score alpha,
     }
   }
 
-  auto entry_flag = TranspositionTableEntry::kExact;
+  auto tt_flag = TranspositionTableEntry::kExact;
   if (alpha >= beta) {
     // Beta cutoff
-    entry_flag = TranspositionTableEntry::kLowerBound;
+    tt_flag = TranspositionTableEntry::kLowerBound;
   } else if (alpha <= original_alpha) {
     // Alpha failed to raise
-    entry_flag = TranspositionTableEntry::kUpperBound;
+    tt_flag = TranspositionTableEntry::kUpperBound;
   }
 
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, 0, entry_flag, best_score, best_move);
+      state.zobrist_key, 0, tt_flag, best_score, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
@@ -295,7 +296,7 @@ Score Search::PVSearch(int depth,
   bool improving = false;
 
   if (!state.InCheck()) {
-    stack->static_eval = eval::Evaluate(state);
+    stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && can_use_tt_eval) {
@@ -513,20 +514,24 @@ Score Search::PVSearch(int depth,
     return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  auto entry_flag = TranspositionTableEntry::kExact;
+  auto tt_flag = TranspositionTableEntry::kExact;
   if (alpha >= beta) {
     // Beta cutoff
-    entry_flag = TranspositionTableEntry::kLowerBound;
+    tt_flag = TranspositionTableEntry::kLowerBound;
   } else if (alpha <= original_alpha) {
     // Alpha failed to raise
-    entry_flag = TranspositionTableEntry::kUpperBound;
+    tt_flag = TranspositionTableEntry::kUpperBound;
   }
 
   // Attempt to update the transposition table with the evaluation of this
   // position
   const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, depth, entry_flag, best_score, best_move);
+      state.zobrist_key, depth, tt_flag, best_score, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+
+  if (!state.InCheck() && (!best_move || !best_move.IsTactical(state))) {
+    history_.correction_history->UpdateScore(stack, best_score, tt_flag, depth);
+  }
 
   return best_score;
 }

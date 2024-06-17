@@ -3,7 +3,7 @@
 namespace fen {
 
 // clang-format off
-constexpr std::array<std::array<char, PieceType::kNumTypes + 1>, 2> kPieceToChar = {{
+constexpr std::array<std::array<char, kNumPieceTypes + 1>, 2> kPieceToChar = {{
   {'p', 'n', 'b', 'r', 'q', 'k', 'x'},
   {'P', 'N', 'B', 'R', 'Q', 'K', 'x'}
 }};
@@ -70,8 +70,6 @@ BoardState StringToBoard(std::string_view fen_str) {
   }
 
   stream >> state.fifty_moves_clock;
-
-  state.zobrist_key = zobrist::GenerateKey(state);
 
   return state;
 }

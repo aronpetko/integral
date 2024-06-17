@@ -24,7 +24,7 @@ enum PieceType : U8 {
   kQueen,
   kKing,
   kNone,
-  kNumTypes = kNone
+  kNumPieceTypes = kNone
 };
 
 enum class PromotionType : U8 {
@@ -115,7 +115,7 @@ template <typename T>
 using SideTable = std::array<T, 2>;
 
 template <typename T>
-using SquareTable = std::array<T, Squares::kSquareCount>;
+using SquareTable = std::array<T, kSquareCount>;
 
 using Score = I32;
 class ScorePair {
