@@ -136,6 +136,7 @@ void Tuner::InitBaseParameters() {
   Add2DArrayParameter(kRookOnFileBonus);
   AddArrayParameter(kPawnShelterTable);
   AddArrayParameter(kPawnStormTable);
+  Add2DArrayParameter(kKingOnFilePenalty);
   AddSingleParameter(kBishopPairBonus);
   AddSingleParameter(kTempoBonus);
 }
@@ -165,6 +166,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
+  GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
   GET_COEFFICIENT(kBishopPairBonus);
   GET_COEFFICIENT(kTempoBonus);
 
@@ -188,9 +190,9 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
   const auto coefficients = GetCoefficients();
   entry.coefficient_entries.reserve(num_terms_);
 
-  for (std::size_t i = 0; i < coefficients.size(); i++) {
+  for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back({i, coefficients[i]});
+      entry.coefficient_entries.push_back({static_cast<std::size_t>(i), coefficients[i]});
     }
   }
 
@@ -233,6 +235,8 @@ VectorPair Tuner::ComputeGradient(double K) const {
   VectorPair gradient;
   gradient.resize(num_terms_);
 
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #pragma omp parallel shared(local_gradient, mutex) num_threads(6)
   {
 #pragma omp for schedule(static)
@@ -241,7 +245,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
       double S = Sigmoid(K, E);
       double X = (entry.result - S) * S * (1 - S);
 
-      double mg_base = X * (entry.phase / kMaxPhase);
+      double mg_base = X * (entry.phase / 24.0);
       double eg_base = X - mg_base;
 
       for (const auto& coeff_entry : entry.coefficient_entries) {
@@ -251,13 +255,14 @@ VectorPair Tuner::ComputeGradient(double K) const {
       }
     }
 
-#pragma omp critical
-    {
-      for (int i = 0; i < num_terms_; i++) {
-        gradient[i][MG] += local_gradient[i][MG];
-        gradient[i][EG] += local_gradient[i][EG];
-      }
+    pthread_mutex_lock(&mutex);
+
+    for (int i = 0; i < num_terms_; i++) {
+      gradient[i][MG] += local_gradient[i][MG];
+      gradient[i][EG] += local_gradient[i][EG];
     }
+
+    pthread_mutex_unlock(&mutex);
   }
 
   return gradient;
@@ -272,7 +277,7 @@ double Tuner::StaticEvaluationErrors(double K) const {
       total += pow(entry.result - Sigmoid(K, entry.static_eval), 2);
     }
   }
-  return total / entries_.size();
+  return total / (double)entries_.size();
 }
 
 double Tuner::TunedEvaluationErrors(double K) const {
@@ -284,7 +289,7 @@ double Tuner::TunedEvaluationErrors(double K) const {
       total += pow(entry.result - Sigmoid(K, ComputeEvaluation(entry)), 2);
     }
   }
-  return total / entries_.size();
+  return total / (double)entries_.size();
 }
 
 inline Score Round(double value) {
@@ -382,6 +387,10 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
+
+  fmt::print(
+      "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = ");
+  Print2DArray(index, 2, kNumFiles, parameters_);
 
   fmt::print("constexpr ScorePair kBishopPairBonus = ");
   PrintTerm(index, parameters_);

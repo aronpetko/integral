@@ -294,15 +294,13 @@ ScorePair Evaluation::EvaluateRooks() {
     score += kRookMobility[mobility_count];
     TRACE_INCREMENT(kRookMobility[mobility_count], us);
 
-    const int file = File(square);
-
     const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
     if (!our_pawns_on_file) {
       const BitBoard their_pawns_on_file = their_pawns & masks::files[square];
       const bool semi_open_file = their_pawns_on_file != 0;
 
-      score += kRookOnFileBonus[semi_open_file][file];
-      TRACE_INCREMENT(kRookOnFileBonus[semi_open_file][file], us);
+      score += kRookOnFileBonus[semi_open_file][File(square)];
+      TRACE_INCREMENT(kRookOnFileBonus[semi_open_file][File(square)], us);
     }
   }
 
@@ -383,6 +381,18 @@ ScorePair Evaluation::EvaluateKing() {
 
     score += kPawnStormTable[idx];
     TRACE_INCREMENT(kPawnStormTable[idx], us);
+  }
+
+  const BitBoard our_pawns = state_.Pawns(us);
+  const BitBoard their_pawns = state_.Pawns(FlipColor(us));
+
+  const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
+  if (!our_pawns_on_file) {
+    const BitBoard their_pawns_on_file = their_pawns & masks::files[square];
+    const bool semi_open_file = their_pawns_on_file != 0;
+
+    score += kKingOnFilePenalty[semi_open_file][File(square)];
+    TRACE_INCREMENT(kKingOnFilePenalty[semi_open_file][File(square)], us);
   }
 
   return score;
