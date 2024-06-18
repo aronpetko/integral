@@ -234,6 +234,11 @@ ScorePair Evaluation::EvaluateKnights() {
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kKnight][RelativeSquare(square, us)], us);
 
+    if (pawn_attacks_[us].IsSet(square)) {
+      score += kDefendedByPawnBonus[PieceType::kKnight];
+      TRACE_INCREMENT(kDefendedByPawnBonus[PieceType::kKnight], us);
+    }
+
     const BitBoard moves = move_gen::KnightMoves(square);
     const int mobility_count =
         GetPieceMobilityCount(PieceType::kKnight, square, moves, us);
@@ -262,6 +267,11 @@ ScorePair Evaluation::EvaluateBishops() {
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kBishop][RelativeSquare(square, us)], us);
 
+    if (pawn_attacks_[us].IsSet(square)) {
+      score += kDefendedByPawnBonus[PieceType::kBishop];
+      TRACE_INCREMENT(kDefendedByPawnBonus[PieceType::kBishop], us);
+    }
+
     const BitBoard moves = move_gen::BishopMoves(square, occupied);
     const int mobility_count =
         GetPieceMobilityCount(PieceType::kBishop, square, moves, us);
@@ -286,6 +296,11 @@ ScorePair Evaluation::EvaluateRooks() {
     TRACE_INCREMENT(kPieceValues[PieceType::kRook], us);
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kRook][RelativeSquare(square, us)], us);
+
+    if (pawn_attacks_[us].IsSet(square)) {
+      score += kDefendedByPawnBonus[PieceType::kRook];
+      TRACE_INCREMENT(kDefendedByPawnBonus[PieceType::kRook], us);
+    }
 
     const BitBoard moves = move_gen::RookMoves(square, occupied);
     const int mobility_count =
@@ -318,6 +333,11 @@ ScorePair Evaluation::EvaluateQueens() {
     TRACE_INCREMENT(kPieceValues[PieceType::kQueen], us);
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kQueen][RelativeSquare(square, us)], us);
+
+    if (pawn_attacks_[us].IsSet(square)) {
+      score += kDefendedByPawnBonus[PieceType::kQueen];
+      TRACE_INCREMENT(kDefendedByPawnBonus[PieceType::kQueen], us);
+    }
 
     const BitBoard moves = move_gen::QueenMoves(square, occupied);
     const int mobility_count =
