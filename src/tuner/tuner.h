@@ -57,8 +57,8 @@ struct EvalTrace {
   std::array<TraceTerm, 12> kPawnShelterTable{};
   std::array<TraceTerm, 21> kPawnStormTable{};
   std::array<eval::FileTable<TraceTerm>, 2> kKingOnFilePenalty{};
-  TraceTerm kDefendedBishopBonus{};
-  TraceTerm kDefendedKnightBonus{};
+  eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
+  eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
   TraceTerm kBishopPairBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};

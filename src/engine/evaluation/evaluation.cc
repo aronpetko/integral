@@ -1,6 +1,7 @@
+#include "evaluation.h"
+
 #include "../../chess/move_gen.h"
 #include "../../tuner/tuner.h"
-#include "evaluation.h"
 
 namespace eval {
 
@@ -60,6 +61,18 @@ constexpr SquareTable<BitBoard> GenerateAdjacentFiles() {
 
 constexpr SquareTable<BitBoard> adjacent_files = GenerateAdjacentFiles();
 
+constexpr SideTable<BitBoard> GenerateOutposts() {
+  SideTable<BitBoard> outposts;
+
+  outposts.fill(kRankMasks[kRank4] | kRankMasks[kRank5]);
+  outposts[Color::kWhite] |= kRankMasks[kRank6];
+  outposts[Color::kBlack] |= kRankMasks[kRank3];
+
+  return outposts;
+}
+
+constexpr SideTable<BitBoard> outposts = GenerateOutposts();
+
 }  // namespace masks
 
 class Evaluation {
@@ -92,11 +105,17 @@ class Evaluation {
   ScorePair EvaluateKing();
 
   [[nodiscard]] int GetPieceMobilityCount(PieceType piece,
-                            Square square,
-                            BitBoard moves,
-                            Color us) const;
+                                          Square square,
+                                          BitBoard moves,
+                                          Color us) const;
 
   [[nodiscard]] Score InterpolateScore(ScorePair score_pair) const;
+
+  template <Color us>
+  [[nodiscard]] bool IsDefendedByPawn(Square square) const;
+
+  template <Color us>
+  [[nodiscard]] bool IsOutpostSquare(Square square) const;
 
  private:
   const BoardState &state_;
@@ -234,17 +253,20 @@ ScorePair Evaluation::EvaluateKnights() {
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kKnight][RelativeSquare(square, us)], us);
 
-    if (pawn_attacks_[us].IsSet(square)) {
-      score += kDefendedKnightBonus;
-      TRACE_INCREMENT(kDefendedKnightBonus, us);
-    }
-
     const BitBoard moves = move_gen::KnightMoves(square);
     const int mobility_count =
         GetPieceMobilityCount(PieceType::kKnight, square, moves, us);
 
     score += kKnightMobility[mobility_count];
     TRACE_INCREMENT(kKnightMobility[mobility_count], us);
+
+    if (IsOutpostSquare<us>(square)) {
+      const int square_offset = 16 * (us == Color::kBlack ? -1 : 1);
+      const int relative_square = RelativeSquare(square + square_offset, us);
+
+      score += kKnightOutpostTable[relative_square];
+      TRACE_INCREMENT(kKnightOutpostTable[relative_square], us);
+    }
   }
 
   return score;
@@ -267,17 +289,20 @@ ScorePair Evaluation::EvaluateBishops() {
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kBishop][RelativeSquare(square, us)], us);
 
-    if (pawn_attacks_[us].IsSet(square)) {
-      score += kDefendedBishopBonus;
-      TRACE_INCREMENT(kDefendedBishopBonus, us);
-    }
-
     const BitBoard moves = move_gen::BishopMoves(square, occupied);
     const int mobility_count =
         GetPieceMobilityCount(PieceType::kBishop, square, moves, us);
 
     score += kBishopMobility[mobility_count];
     TRACE_INCREMENT(kBishopMobility[mobility_count], us);
+
+    if (IsOutpostSquare<us>(square)) {
+      const int square_offset = 16 * (us == Color::kBlack ? -1 : 1);
+      const int relative_square = RelativeSquare(square + square_offset, us);
+
+      score += kBishopOutpostTable[relative_square];
+      TRACE_INCREMENT(kBishopOutpostTable[relative_square], us);
+    }
   }
 
   return score;
@@ -432,6 +457,18 @@ Score Evaluation::InterpolateScore(ScorePair score_pair) const {
   const Score eg_score = score_pair.EndGame();
 
   return (mg_score * phase + eg_score * (kMaxPhase - phase)) / kMaxPhase;
+}
+
+template <Color us>
+[[nodiscard]] bool Evaluation::IsDefendedByPawn(Square square) const {
+  return pawn_attacks_[us].IsSet(square);
+}
+
+template <Color us>
+[[nodiscard]] bool Evaluation::IsOutpostSquare(Square square) const {
+  const bool safe_from_pawns =
+      IsDefendedByPawn<us>(square) && !IsDefendedByPawn<FlipColor(us)>(square);
+  return masks::outposts[us].IsSet(square) && safe_from_pawns;
 }
 
 Score Evaluate(const BoardState &state) {

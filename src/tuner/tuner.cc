@@ -92,8 +92,8 @@ void Tuner::Tune() {
   for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
     auto epoch_gradient = ComputeGradient(K);
     for (int i = 0; i < num_terms_; i++) {
-      double mg_grad = (-K / 400.0) * epoch_gradient[i][MG] / num_entries;
-      double eg_grad = (-K / 400.0) * epoch_gradient[i][EG] / num_entries;
+      double mg_grad = (-K / 200.0) * epoch_gradient[i][MG] / num_entries;
+      double eg_grad = (-K / 200.0) * epoch_gradient[i][EG] / num_entries;
 
       momentum[i][MG] =
           kMomentumCoeff * momentum[i][MG] + (1.0 - kMomentumCoeff) * mg_grad;
@@ -137,8 +137,8 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kPawnShelterTable);
   AddArrayParameter(kPawnStormTable);
   Add2DArrayParameter(kKingOnFilePenalty);
-  AddSingleParameter(kDefendedBishopBonus);
-  AddSingleParameter(kDefendedKnightBonus);
+  AddArrayParameter(kKnightOutpostTable);
+  AddArrayParameter(kBishopOutpostTable);
   AddSingleParameter(kBishopPairBonus);
   AddSingleParameter(kTempoBonus);
 }
@@ -169,8 +169,8 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
-  GET_COEFFICIENT(kDefendedBishopBonus);
-  GET_COEFFICIENT(kDefendedKnightBonus);
+  GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
+  GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
   GET_COEFFICIENT(kBishopPairBonus);
   GET_COEFFICIENT(kTempoBonus);
 
@@ -396,12 +396,10 @@ void Tuner::PrintParameters() {
       "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = ");
   Print2DArray(index, 2, kNumFiles, parameters_);
 
-  fmt::print("constexpr ScorePair kDefendedBishopBonus = ");
-  PrintTerm(index, parameters_);
-  fmt::print("constexpr ScorePair kDefendedKnightBonus = ");
-  PrintTerm(index, parameters_);
-
-  fmt::println("");
+  fmt::print("constexpr OutpostTable<ScorePair> kKnightOutpostTable = ");
+  PrintArray(index, kKnightOutpostTable.size(), parameters_);
+  fmt::print("constexpr OutpostTable<ScorePair> kBishopOutpostTable = ");
+  PrintArray(index, kKnightOutpostTable.size(), parameters_);
 
   fmt::print("constexpr ScorePair kBishopPairBonus = ");
   PrintTerm(index, parameters_);
