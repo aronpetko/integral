@@ -137,6 +137,8 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kPawnShelterTable);
   AddArrayParameter(kPawnStormTable);
   Add2DArrayParameter(kKingOnFilePenalty);
+  AddSingleParameter(kDefendedBishopBonus);
+  AddSingleParameter(kDefendedKnightBonus);
   AddSingleParameter(kBishopPairBonus);
   AddSingleParameter(kTempoBonus);
 }
@@ -167,6 +169,8 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
+  GET_COEFFICIENT(kDefendedBishopBonus);
+  GET_COEFFICIENT(kDefendedKnightBonus);
   GET_COEFFICIENT(kBishopPairBonus);
   GET_COEFFICIENT(kTempoBonus);
 
@@ -348,7 +352,7 @@ void Print2DArray(std::size_t& index,
 void Tuner::PrintParameters() {
   std::size_t index = 0;
 
-  fmt::print("constexpr PieceValueTable<ScorePair> kPieceValues = ");
+  fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);
 
   fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
@@ -392,8 +396,17 @@ void Tuner::PrintParameters() {
       "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = ");
   Print2DArray(index, 2, kNumFiles, parameters_);
 
+  fmt::print("constexpr ScorePair kDefendedBishopBonus = ");
+  PrintTerm(index, parameters_);
+  fmt::print("constexpr ScorePair kDefendedKnightBonus = ");
+  PrintTerm(index, parameters_);
+
+  fmt::println("");
+
   fmt::print("constexpr ScorePair kBishopPairBonus = ");
   PrintTerm(index, parameters_);
+
+  fmt::println("");
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);
