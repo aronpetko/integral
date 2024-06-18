@@ -134,6 +134,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kDoubledPawnPenalty);
   AddArrayParameter(kIsolatedPawnPenalty);
   Add2DArrayParameter(kRookOnFileBonus);
+  AddArrayParameter(kKingZoneSafetyBonus);
   AddArrayParameter(kPawnShelterTable);
   AddArrayParameter(kPawnStormTable);
   Add2DArrayParameter(kKingOnFilePenalty);
@@ -164,6 +165,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
+  GET_ARRAY_COEFFICIENTS(kKingZoneSafetyBonus);
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
@@ -192,7 +194,8 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
 
   for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back({static_cast<std::size_t>(i), coefficients[i]});
+      entry.coefficient_entries.push_back(
+          {static_cast<std::size_t>(i), coefficients[i]});
     }
   }
 
@@ -348,7 +351,7 @@ void Print2DArray(std::size_t& index,
 void Tuner::PrintParameters() {
   std::size_t index = 0;
 
-  fmt::print("constexpr PieceValueTable<ScorePair> kPieceValues = ");
+  fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);
 
   fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
@@ -381,6 +384,9 @@ void Tuner::PrintParameters() {
   fmt::print(
       "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
   Print2DArray(index, 2, kNumFiles, parameters_);
+
+  fmt::print("constexpr PieceTable<ScorePair> kKingZoneSafetyBonus = ");
+  PrintArray(index, kNumPieceTypes, parameters_);
 
   fmt::print("constexpr std::array<ScorePair, 12> kPawnShelterTable = ");
   PrintArray(index, kPawnShelterTable.size(), parameters_, 3);
