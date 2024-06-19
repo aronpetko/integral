@@ -240,11 +240,6 @@ Score Search::PVSearch(int depth,
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
-  // Ensure we never fall into quiescent search when in check
-  if (state.InCheck()) {
-    depth++;
-  }
-
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
   if (depth == 0) {
@@ -284,7 +279,7 @@ Score Search::PVSearch(int depth,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
+  if (!in_pv_node && !stack->excluded_tt_move && can_use_tt_eval && tt_entry.depth >= depth) {
     return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
@@ -295,7 +290,7 @@ Score Search::PVSearch(int depth,
   // adjusting pruning thresholds
   bool improving = false;
 
-  if (!state.InCheck()) {
+  if (!state.InCheck() && !stack->excluded_tt_move) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
@@ -356,7 +351,7 @@ Score Search::PVSearch(int depth,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if (in_pv_node && depth >= 4 && !tt_move) {
+  if (in_pv_node && depth >= 4 && !stack->excluded_tt_move && !tt_move) {
     depth--;
   }
 
@@ -407,6 +402,36 @@ Score Search::PVSearch(int depth,
       }
     }
 
+    int extensions = 0;
+
+    // Ensure we never fall into quiescent search when in check
+    if (state.InCheck()) {
+      extensions++;
+    }
+
+    // Singular Extensions: If a TT move exists and its score is accurate enough
+    // (close enough in depth), we perform a reduced-depth search with the TT
+    // move excluded to see if any other moves can beat it.
+    if (!in_root && depth >= 8 && move == tt_move) {
+      const bool is_accurate_tt_score =
+          tt_entry.depth + 4 >= depth &&
+          tt_entry.flag != TranspositionTableEntry::kUpperBound;
+      if (is_accurate_tt_score) {
+        stack->excluded_tt_move = tt_move;
+
+        const int reduced_depth = (depth - 1) / 2;
+        const Score tt_move_excluded_score = -PVSearch<NodeType::kNonPV>(
+            reduced_depth, -tt_entry.score + 1, tt_entry.score, stack + 1);
+        // No move was able to beat the TT entries score, so we extend the TT
+        // move's search
+        if (tt_move_excluded_score <= tt_entry.score) {
+          extensions++;
+        }
+
+        stack->excluded_tt_move = Move::NullMove();
+      }
+    }
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
@@ -424,7 +449,7 @@ Score Search::PVSearch(int depth,
     nodes_searched_++;
 
     const U32 prev_nodes_searched = nodes_searched_;
-    const int new_depth = depth - 1;
+    const int new_depth = depth + extensions - 1;
 
     // Principal Variation Search (PVS)
     bool needs_full_search;
