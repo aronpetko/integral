@@ -317,7 +317,7 @@ Score Search::PVSearch(int depth,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !state.InCheck()) {
+  if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
@@ -329,7 +329,7 @@ Score Search::PVSearch(int depth,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() && !stack->excluded_tt_move &&
+    if (!(stack - 1)->move.IsNull() &&
         eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
