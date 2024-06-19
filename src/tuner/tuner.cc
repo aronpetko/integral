@@ -26,16 +26,20 @@ void Tuner::LoadFromFile(const std::string& source_file) {
 
   fmt::println("Loading data source...");
 
+
   std::ifstream file(source_file);
   if (file.is_open()) {
     std::string line;
     while (std::getline(file, line)) {
+      Board board;
+      GameResult result;
+
+      // Detect if the line has a '[' character
       const auto bracket_pos = line.find_last_of('[');
       if (bracket_pos != std::string::npos) {
+        // Existing format with WDL marker
         // Extract the FEN part of the line (everything before the last '[')
         const auto fen = line.substr(0, bracket_pos - 1);
-
-        Board board;
         board.SetFromFen(fen);
 
         // Extract the WDL marker (between the brackets)
@@ -44,27 +48,37 @@ void Tuner::LoadFromFile(const std::string& source_file) {
             bracket_pos + 1 < end_bracket_pos) {
           const auto wdl =
               line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
+          std::stringstream ss(wdl);
+          ss >> result;
+        }
+      } else {
+        // New format with "ce" marker
+        const auto ce_pos = line.find(" ce ");
+        if (ce_pos != std::string::npos) {
+          // Extract the FEN part of the line (everything before " ce ")
+          const auto fen = line.substr(0, ce_pos);
+          board.SetFromFen(fen);
 
-          GameResult result;
-          if (wdl == "0.0") {
-            result = kBlackWon;
-          } else if (wdl == "0.5") {
-            result = kDrawn;
-          } else if (wdl == "1.0") {
-            result = kWhiteWon;
-          }
+          // Extract the CE value (after " ce ")
+          const auto ce_value_str = line.substr(ce_pos + 4);
+          std::stringstream ss(ce_value_str);
+          ss >> result;
 
-          TunerEntry entry = CreateEntry(board.GetState(), result);
-          entries_.push_back(entry);
-
-          const Score computed_eval = ComputeEvaluation(entry);
-          const Score deviation = abs(entry.static_eval - computed_eval);
-          if (deviation > 1) {
-            fmt::println("Tuner deviation detected: real {} coeff {}",
-                         entry.static_eval,
-                         computed_eval);
+          if (board.GetState().turn == Color::kBlack) {
+            result = 1 - result;
           }
         }
+      }
+
+      TunerEntry entry = CreateEntry(board.GetState(), result);
+      entries_.push_back(entry);
+
+      const Score computed_eval = ComputeEvaluation(entry);
+      const Score deviation = abs(entry.static_eval - computed_eval);
+      if (deviation > 1) {
+        fmt::println("Tuner deviation detected: real {} coeff {}",
+                     entry.static_eval,
+                     computed_eval);
       }
     }
   } else {
