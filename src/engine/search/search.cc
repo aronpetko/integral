@@ -281,8 +281,8 @@ Score Search::PVSearch(int depth,
 
   if (!stack->excluded_tt_move) {
     tt_entry = transposition_table.Probe(state.zobrist_key);
-    tt_move = tt_hit ? tt_entry.move : Move::NullMove();
     tt_hit = tt_entry.CompareKey(state.zobrist_key);
+    tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
     // Use the TT entry's evaluation if possible
     const bool can_use_tt_eval =
