@@ -558,15 +558,17 @@ Score Search::PVSearch(int depth,
     tt_flag = TranspositionTableEntry::kUpperBound;
   }
 
-  // Attempt to update the transposition table with the evaluation of this
-  // position
-  const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, depth, tt_flag, best_score, best_move);
-  transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+  if (!stack->excluded_tt_move) {
+    // Attempt to update the transposition table with the evaluation of this
+    // position
+    const TranspositionTableEntry new_tt_entry(
+        state.zobrist_key, depth, tt_flag, best_score, best_move);
+    transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
-  if (!stack->excluded_tt_move && !state.InCheck() &&
-      (!best_move || !best_move.IsTactical(state))) {
-    history_.correction_history->UpdateScore(stack, best_score, tt_flag, depth);
+    if (!state.InCheck() && (!best_move || !best_move.IsTactical(state))) {
+      history_.correction_history->UpdateScore(
+          stack, best_score, tt_flag, depth);
+    }
   }
 
   return best_score;
