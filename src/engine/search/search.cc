@@ -285,8 +285,7 @@ Score Search::PVSearch(int depth,
     tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
     // Use the TT entry's evaluation if possible
-    const bool can_use_tt_eval =
-        tt_hit && tt_entry.CanUseScore(alpha, beta);
+    const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
@@ -294,7 +293,6 @@ Score Search::PVSearch(int depth,
       return transposition_table.CorrectScore(tt_entry.score, stack->ply);
     }
   }
-
 
   // An approximation of the current evaluation at this node
   Score eval;
@@ -566,7 +564,8 @@ Score Search::PVSearch(int depth,
       state.zobrist_key, depth, tt_flag, best_score, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
-  if (!state.InCheck() && (!best_move || !best_move.IsTactical(state))) {
+  if (!stack->excluded_tt_move && !state.InCheck() &&
+      (!best_move || !best_move.IsTactical(state))) {
     history_.correction_history->UpdateScore(stack, best_score, tt_flag, depth);
   }
 
