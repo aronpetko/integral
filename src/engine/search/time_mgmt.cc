@@ -4,7 +4,7 @@
 #include "../uci/uci.h"
 #include "search.h"
 
-Tunable base_time_scale("base_time_scale", 0.54, 0, 1.0);
+Tunable base_time_scale("base_time_scale", 0.054, 0, 0.10);
 Tunable increment_scale("increment_scale", 0.85, 0, 1.00);
 Tunable percent_limit("percent_limit", 0.76, 0, 1.00);
 Tunable hard_limit_scale("hard_limit_scale", 3.04, 1.00, 4.50);
@@ -12,20 +12,19 @@ Tunable soft_limit_scale("soft_limit_scale", 0.76, 0, 1.50);
 Tunable node_fraction_base("node_fraction_base", 1.52, 0.50, 2.50);
 Tunable node_fraction_scale("node_fraction_scale", 1.74, 0.50, 2.50);
 
-[[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config) : nodes_spent_({}) {
+[[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config)
+    : nodes_spent_({}) {
   SetConfig(config);
 }
 
 void TimeManagement::Start() {
-  const int base_time = config_.time_left * (base_time_scale / 1000.0) +
-                        config_.increment * (increment_scale / 100.0) -
+  const int base_time = config_.time_left * base_time_scale +
+                        config_.increment * increment_scale -
                         uci::GetOption("Move Overhead").GetValue<int>();
-  const auto maximum_time = percent_limit / 100.0 * config_.time_left;
+  const auto maximum_time = percent_limit * config_.time_left;
 
-  hard_limit_.store(
-      std::min((hard_limit_scale / 100.0) * base_time, maximum_time));
-  soft_limit_.store(
-      std::min((soft_limit_scale / 100.0) * base_time, maximum_time));
+  hard_limit_.store(std::min(hard_limit_scale * base_time, maximum_time));
+  soft_limit_.store(std::min(soft_limit_scale * base_time, maximum_time));
 
   start_time_.store(GetCurrentTime());
   nodes_spent_.fill(0);
@@ -81,8 +80,7 @@ bool TimeManagement::ShouldStop(Move best_move, U32 nodes_searched) {
   const auto percent_searched =
       NodesSpent(best_move) / std::max<double>(1, nodes_searched);
   const double percent_scale_factor =
-      (node_fraction_base / 100.0 - percent_searched) *
-      (node_fraction_scale / 100.0);
+      (node_fraction_base - percent_searched) * node_fraction_scale;
   const U32 optimal_limit =
       std::min<U32>(soft_limit_ * percent_scale_factor, hard_limit_);
 
