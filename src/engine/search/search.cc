@@ -275,19 +275,26 @@ Score Search::PVSearch(int depth,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  const auto &tt_entry = transposition_table.Probe(state.zobrist_key);
-  const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
-  const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
+  TranspositionTableEntry tt_entry;
+  Move tt_move = Move::NullMove();
+  bool tt_hit = false;
 
-  // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval =
-      tt_hit && tt_entry.CanUseScore(alpha, beta) && !stack->excluded_tt_move;
+  if (!stack->excluded_tt_move) {
+    tt_entry = transposition_table.Probe(state.zobrist_key);
+    tt_move = tt_hit ? tt_entry.move : Move::NullMove();
+    tt_hit = tt_entry.CompareKey(state.zobrist_key);
 
-  // Saved scores from non-PV nodes must fall within the current alpha/beta
-  // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
-    return transposition_table.CorrectScore(tt_entry.score, stack->ply);
+    // Use the TT entry's evaluation if possible
+    const bool can_use_tt_eval =
+        tt_hit && tt_entry.CanUseScore(alpha, beta);
+
+    // Saved scores from non-PV nodes must fall within the current alpha/beta
+    // window to allow early cutoff
+    if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
+      return transposition_table.CorrectScore(tt_entry.score, stack->ply);
+    }
   }
+
 
   // An approximation of the current evaluation at this node
   Score eval;
@@ -296,11 +303,11 @@ Score Search::PVSearch(int depth,
   // adjusting pruning thresholds
   bool improving = false;
 
-  if (!state.InCheck()) {
+  if (!state.InCheck() && !stack->excluded_tt_move) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
-    if (tt_hit && can_use_tt_eval) {
+    if (tt_hit) {
       eval = transposition_table.CorrectScore(tt_entry.score, stack->ply);
     } else {
       eval = stack->static_eval;
@@ -329,8 +336,7 @@ Score Search::PVSearch(int depth,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() &&
-        eval >= beta) {
+    if (!(stack - 1)->move.IsNull() && eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
