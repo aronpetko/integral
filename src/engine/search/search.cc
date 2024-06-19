@@ -417,13 +417,17 @@ Score Search::PVSearch(int depth,
     if (!in_root && depth >= 8 && move == tt_move && !stack->excluded_tt_move) {
       const bool is_accurate_tt_score =
           tt_entry.depth + 4 >= depth &&
-          tt_entry.flag != TranspositionTableEntry::kUpperBound;
+          tt_entry.flag != TranspositionTableEntry::kUpperBound &&
+          std::abs(tt_entry.score) < kMateScore - kMaxPlyFromRoot;
+
       if (is_accurate_tt_score) {
         stack->excluded_tt_move = tt_move;
 
         const int reduced_depth = (depth - 1) / 2;
+        const Score new_beta = tt_entry.score - depth;
+
         const Score tt_move_excluded_score = -PVSearch<NodeType::kNonPV>(
-            reduced_depth, tt_entry.score - 1, tt_entry.score, stack);
+            reduced_depth, new_beta - 1, new_beta, stack);
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < tt_entry.score) {
