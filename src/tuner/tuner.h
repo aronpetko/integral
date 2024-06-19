@@ -43,7 +43,7 @@ using TraceTerm = std::array<I16, 2>;
 struct EvalTrace {
   // The names, though they are not constant, must match the above names (for
   // ease of use with the tuner)
-  eval::PieceValueTable<TraceTerm> kPieceValues{};
+  eval::PieceTable<TraceTerm> kPieceValues{};
   eval::PieceSquareTable<TraceTerm> kPieceSquareTable{};
   eval::KnightMobilityTable<TraceTerm> kKnightMobility{};
   eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
@@ -57,6 +57,8 @@ struct EvalTrace {
   std::array<TraceTerm, 12> kPawnShelterTable{};
   std::array<TraceTerm, 21> kPawnStormTable{};
   std::array<eval::FileTable<TraceTerm>, 2> kKingOnFilePenalty{};
+  eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
+  eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
   TraceTerm kBishopPairBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};
