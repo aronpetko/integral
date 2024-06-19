@@ -23,9 +23,9 @@ class Option {
 
   explicit Option(
       std::string_view name,
-      int value,
-      int min,
-      int max,
+      I64 value,
+      I64 min,
+      I64 max,
       OptionVisibility visibility = OptionVisibility::kPublic,
       std::function<void(Option &)> callback = [](Option &) {})
       : name_(name),
@@ -72,7 +72,7 @@ class Option {
   template <typename T>
   [[nodiscard]] T GetValue() const {
     if constexpr (std::is_integral<T>::value) {
-      return T(std::stoi(value_));
+      return T(std::stoull(value_));
     } else if constexpr (std::is_same<T, bool>::value) {
       return StringToBool(value_);
     } else {
@@ -100,7 +100,7 @@ class Option {
   // Values are stored as a string for easy conversion
   std::string value_, default_;
   // Should only be used with spin types
-  int min_, max_;
+  I64 min_, max_;
   // Function to call when the value is changed
   std::function<void(Option &)> callback_;
   // The visibility of this option to the user
@@ -129,12 +129,12 @@ template <typename T, OptionVisibility visibility = OptionVisibility::kPublic>
 
 // Specialization for int
 template <OptionVisibility visibility>
-[[maybe_unused]] inline std::enable_if_t<std::is_same_v<int, int>, void>
+[[maybe_unused]] inline std::enable_if_t<std::is_same_v<I64, I64>, void>
 AddOption(
     std::string_view name,
-    int value,
-    int min,
-    int max,
+    I64 value,
+    I64 min,
+    I64 max,
     std::function<void(Option &)> callback = [](Option &) {}) {
   options[name] = Option(name, value, min, max, visibility, std::move(callback));
 }

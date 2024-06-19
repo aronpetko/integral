@@ -4,13 +4,13 @@
 #include "../uci/uci.h"
 #include "search.h"
 
-Tunable base_time_scale("base_time_scale", 54, 0, 1000, 20, 0.0020);
-Tunable increment_scale("increment_scale", 85, 0, 100, 5, 0.0020);
-Tunable percent_limit("percent_limit", 76, 0, 1000, 20, 0.0020);
-Tunable hard_limit_scale("hard_limit_scale", 304, 100, 450, 15, 0.0020);
-Tunable soft_limit_scale("soft_limit_scale", 76, 0, 150, 5, 0.0020);
-Tunable node_fraction_base("node_fraction_base", 152, 50, 250, 8, 0.0020);
-Tunable node_fraction_scale("node_fraction_scale", 174, 50, 250, 5, 0.0020);
+Tunable base_time_scale("base_time_scale", 0.54, 0, 1.0);
+Tunable increment_scale("increment_scale", 0.85, 0, 1.00);
+Tunable percent_limit("percent_limit", 0.76, 0, 1.00);
+Tunable hard_limit_scale("hard_limit_scale", 3.04, 1.00, 4.50);
+Tunable soft_limit_scale("soft_limit_scale", 0.76, 0, 1.50);
+Tunable node_fraction_base("node_fraction_base", 1.52, 0.50, 2.50);
+Tunable node_fraction_scale("node_fraction_scale", 1.74, 0.50, 2.50);
 
 [[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config) : nodes_spent_({}) {
   SetConfig(config);

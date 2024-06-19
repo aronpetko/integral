@@ -4,38 +4,64 @@
 #include "../engine/uci/uci.h"
 #include "tuner.h"
 
-// #define SPSA_TUNE
+#define SPSA_TUNE
 
 class Tunable {
  public:
   explicit Tunable(std::string_view name,
-                   int value,
-                   int min,
-                   int max,
-                   double step,
-                   double learning_rate)
+                   double value,
+                   double min,
+                   double max,
+                   double learning_rate = 0.002)
       : value_(value) {
+    const int exponent = std::max({GetScalingExponent(value),
+                                   GetScalingExponent(min),
+                                   GetScalingExponent(max)});
+    scaling_constant_ = std::pow(10, exponent);
+
+    const auto int_value = static_cast<I64>(value * scaling_constant_);
+    const auto int_min = static_cast<I64>(min * scaling_constant_);
+    const auto int_max = static_cast<I64>(max * scaling_constant_);
+
     uci::AddOption<uci::OptionVisibility::kHidden>(
-        name, value, min, max, [this](uci::Option &option) {
-          value_ = option.GetValue<int>();
+        name, int_value, int_min, int_max, [this](uci::Option &option) {
+          value_ = option.GetValue<I64>() / scaling_constant_;
         });
 
 #ifdef SPSA_TUNE
-    fmt::println(
-        "{}, {}, {}, {}, {}, {}", name, value, min, max, step, learning_rate);
+    constexpr double kStepFactor = 0.05;
+    const int step = (int_max - int_min) * kStepFactor;
+    fmt::println("{}, {}, {}, {}, {}, {}",
+                 name,
+                 int_value,
+                 int_min,
+                 int_max,
+                 step,
+                 learning_rate);
 #endif
   }
 
-  constexpr operator int() const {
+  constexpr operator double() const {
     return value_;
   }
 
-  [[nodiscard]] int Get() const {
+  [[nodiscard]] double Get() const {
     return value_;
   }
 
  private:
-  int value_;
+  [[nodiscard]] int GetScalingExponent(double number) const {
+    int exponent = 0;
+    while (std::floor(number) != number) {
+      number *= 10;
+      exponent++;
+    }
+    return exponent;
+  }
+
+ private:
+  double value_;
+  double scaling_constant_;
 };
 
 #endif  // INTEGRAL_SPSA_H
