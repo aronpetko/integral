@@ -316,7 +316,7 @@ constexpr inline BitBoard Shift(const BitBoard &bitboard) {
 
 // Returns the bitboard of all squares "higher" than the given square from the
 // given color
-inline constexpr BitBoard ForwardRanks(Color color, Square square) {
+constexpr BitBoard ForwardRanks(Color color, Square square) {
   if (color == Color::kWhite)
     return ~kRankMasks[kRank1] << 8 * Rank(square);
   else
@@ -325,7 +325,7 @@ inline constexpr BitBoard ForwardRanks(Color color, Square square) {
 
 // Returns the bitboard of all squares "in front" of the given square from the
 // given color
-inline constexpr BitBoard ForwardFileMask(Color color, Square square) {
+constexpr BitBoard ForwardFileMask(Color color, Square square) {
   return ForwardRanks(color, square) & kFileMasks[File(square)];
 }
 
