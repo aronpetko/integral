@@ -17,7 +17,7 @@ class Tunable {
     const int exponent = std::max({GetScalingExponent(value),
                                    GetScalingExponent(min),
                                    GetScalingExponent(max)});
-    scaling_constant_ = std::pow(10, exponent);
+    scaling_constant_ = static_cast<int>(std::pow(10, exponent));
 
     const auto int_value = static_cast<I64>(value * scaling_constant_);
     const auto int_min = static_cast<I64>(min * scaling_constant_);
@@ -25,7 +25,8 @@ class Tunable {
 
     uci::AddOption<uci::OptionVisibility::kHidden>(
         name, int_value, int_min, int_max, [this](uci::Option &option) {
-          value_ = option.GetValue<I64>() / scaling_constant_;
+          value_ =
+              option.GetValue<I64>() / static_cast<double>(scaling_constant_);
         });
 
 #ifdef SPSA_TUNE
@@ -61,7 +62,7 @@ class Tunable {
 
  private:
   double value_;
-  double scaling_constant_;
+  int scaling_constant_;
 };
 
 #endif  // INTEGRAL_SPSA_H
