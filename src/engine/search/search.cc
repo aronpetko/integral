@@ -426,7 +426,7 @@ Score Search::PVSearch(int depth,
             reduced_depth, tt_entry.score - 1, tt_entry.score, stack);
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
-        if (tt_move_excluded_score <= tt_entry.score) {
+        if (tt_move_excluded_score < tt_entry.score) {
           extensions++;
         }
 
