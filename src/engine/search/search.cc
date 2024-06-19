@@ -240,6 +240,11 @@ Score Search::PVSearch(int depth,
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
+  // Ensure we never fall into quiescent search when in check
+  if (state.InCheck()) {
+    depth++;
+  }
+
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
   if (depth == 0) {
@@ -403,11 +408,6 @@ Score Search::PVSearch(int depth,
     }
 
     int extensions = 0;
-
-    // Ensure we never fall into quiescent search when in check
-    if (state.InCheck()) {
-      extensions++;
-    }
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
