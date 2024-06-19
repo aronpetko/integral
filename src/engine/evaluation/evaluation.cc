@@ -300,8 +300,8 @@ ScorePair Evaluation::EvaluateBishops() {
       const int square_offset = 16 * (us == Color::kBlack ? -1 : 1);
       const int relative_square = RelativeSquare(square + square_offset, us);
 
-      score += kKnightOutpostTable[relative_square];
-      TRACE_INCREMENT(kKnightOutpostTable[relative_square], us);
+      score += kBishopOutpostTable[relative_square];
+      TRACE_INCREMENT(kBishopOutpostTable[relative_square], us);
     }
   }
 
