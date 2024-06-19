@@ -280,11 +280,12 @@ Score Search::PVSearch(int depth,
   const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
   // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
+  const bool can_use_tt_eval =
+      tt_hit && tt_entry.CanUseScore(alpha, beta) && !stack->excluded_tt_move;
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && !stack->excluded_tt_move && can_use_tt_eval && tt_entry.depth >= depth) {
+  if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
     return transposition_table.CorrectScore(tt_entry.score, stack->ply);
   }
 
@@ -295,7 +296,7 @@ Score Search::PVSearch(int depth,
   // adjusting pruning thresholds
   bool improving = false;
 
-  if (!state.InCheck() && !stack->excluded_tt_move) {
+  if (!state.InCheck()) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
@@ -328,7 +329,8 @@ Score Search::PVSearch(int depth,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() && eval >= beta) {
+    if (!(stack - 1)->move.IsNull() && !stack->excluded_tt_move &&
+        eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -373,7 +375,7 @@ Score Search::PVSearch(int depth,
   MovePicker move_picker(
       MovePickerType::kSearch, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    if (!board_.IsMoveLegal(move)) {
+    if (move == stack->excluded_tt_move || !board_.IsMoveLegal(move)) {
       continue;
     }
 
@@ -412,7 +414,7 @@ Score Search::PVSearch(int depth,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= 8 && !stack->excluded_tt_move && move == tt_move) {
+    if (!in_root && depth >= 8 && move == tt_move && !stack->excluded_tt_move) {
       const bool is_accurate_tt_score =
           tt_entry.depth + 4 >= depth &&
           tt_entry.flag != TranspositionTableEntry::kUpperBound;
@@ -421,7 +423,7 @@ Score Search::PVSearch(int depth,
 
         const int reduced_depth = (depth - 1) / 2;
         const Score tt_move_excluded_score = -PVSearch<NodeType::kNonPV>(
-            reduced_depth, tt_entry.score - 1, tt_entry.score, stack + 1);
+            reduced_depth, tt_entry.score - 1, tt_entry.score, stack);
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score <= tt_entry.score) {
