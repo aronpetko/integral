@@ -424,7 +424,7 @@ Score Search::PVSearch(int depth,
         stack->excluded_tt_move = tt_move;
 
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry.score - depth;
+        const Score new_beta = tt_entry.score - depth * 2;
 
         const Score tt_move_excluded_score = -PVSearch<NodeType::kNonPV>(
             reduced_depth, new_beta - 1, new_beta, stack);
