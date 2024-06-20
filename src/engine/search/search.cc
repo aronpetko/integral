@@ -321,6 +321,7 @@ Score Search::PVSearch(int depth,
   }
 
   (stack + 1)->ClearKillerMoves();
+  stack->double_extensions = (stack - 1)->double_extensions - 1;
 
   if (!in_pv_node && !state.InCheck() && !stack->excluded_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
@@ -438,10 +439,10 @@ Score Search::PVSearch(int depth,
         if (excluded_score < new_beta) {
           extensions++;
           // Double extend if the TT move seems like the only viable choice
-          if (!in_pv_node && excluded_score + 15 < new_beta &&
+          if (!in_pv_node && excluded_score + 20 < new_beta &&
               stack->double_extensions < 10) {
             extensions++;
-            stack->double_extensions = (stack - 1)->double_extensions + 1;
+            stack->double_extensions++;
           }
         }
 
