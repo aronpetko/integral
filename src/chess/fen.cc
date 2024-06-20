@@ -66,7 +66,7 @@ BoardState StringToBoard(std::string_view fen_str) {
 
   if (en_passant != "-") {
     state.en_passant =
-        Square(RankFileToSquare(en_passant[1] - '1', en_passant[0] - 'a'));
+        Square(Square::FromRankFile(en_passant[1] - '1', en_passant[0] - 'a'));
   }
 
   stream >> state.fifty_moves_clock;
@@ -83,7 +83,7 @@ std::string BoardToString(BoardState &state) {
     int empty = 0;
 
     for (int file = 0; file < 8; file++) {
-      const auto square = RankFileToSquare(rank, file);
+      const auto square = Square::FromRankFile(rank, file);
       if (state.Occupied().IsSet(square))
         output.push_back(GetPieceChar(state, square));
       else

@@ -7,24 +7,24 @@ std::array<std::array<BitBoard, kBishopBlockerCombinations>, kSquareCount> bisho
 std::array<std::array<BitBoard, kRookBlockerCombinations>, kSquareCount> rook_attacks{};
 
 template<Direction Dir>
-int DistanceToEdge(int square) {
+int DistanceToEdge(Square square) {
   switch (Dir) {
     case Direction::kEast:
-      return 7 - File(square);
+      return 7 - square.File();
     case Direction::kNorth:
-      return 7 - Rank(square);
+      return 7 - square.Rank();
     case Direction::kWest:
-      return File(square);
+      return square.File();
     case Direction::kSouth:
-      return Rank(square);
+      return square.Rank();
     case Direction::kNorthEast:
-      return std::min(7 - Rank(square), 7 - File(square));
+      return std::min(7 - square.Rank(), 7 - square.File());
     case Direction::kNorthWest:
-      return std::min(7 - Rank(square), File(square));
+      return std::min(7 - square.Rank(), square.File());
     case Direction::kSouthEast:
-      return std::min(Rank(square), 7 - File(square));
+      return std::min(square.Rank(), 7 - square.File());
     case Direction::kSouthWest:
-      return std::min(Rank(square), File(square));
+      return std::min(square.Rank(), square.File());
     default:
       throw std::invalid_argument("unexpected direction");
   }

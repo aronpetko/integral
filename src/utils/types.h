@@ -51,7 +51,7 @@ enum Color : U8 {
   kNumColors
 };
 
-inline constexpr Color FlipColor(const Color& color) {
+constexpr Color FlipColor(const Color& color) {
   return Color(!color);
 }
 
@@ -97,9 +97,89 @@ enum File : int {
   kNumFiles
 };
 
+class Square {
+ public:
+  constexpr Square(U8 square) : square_(square) {}
+
+  static constexpr Square FromRankFile(int rank, int file) {
+    return rank * kNumRanks + file;
+  }
+
+  constexpr operator U8() const {
+    return square_;
+  }
+
+  constexpr Square operator++() {
+    return ++square_;
+  }
+
+  constexpr Square operator++(int) {
+    return square_++;
+  }
+
+  [[nodiscard]] constexpr int DistanceTo(Square other) const {
+    const int file_diff = std::abs(File() - other.File());
+    const int rank_diff = std::abs(Rank() - other.Rank());
+    return std::max(file_diff, rank_diff);
+  }
+
+  [[nodiscard]] constexpr int Rank() const {
+    return square_ >> 3;
+  }
+
+  [[nodiscard]] constexpr int File() const {
+    return square_ & 7;
+  }
+
+  [[nodiscard]] constexpr Square RelativeTo(Color side) const {
+    return square_ ^ (56 * side);
+  }
+
+  template <Color side>
+  [[nodiscard]] constexpr Square RelativeTo() const {
+    return square_ ^ (56 * side);
+  }
+
+  template <Color side>
+  [[nodiscard]] constexpr Square RelativeRank() {
+    const int rank = Rank();
+    if constexpr (side == Color::kBlack)
+      return 7 - rank;
+    else
+      return rank;
+  }
+
+  template <Color side>
+  [[nodiscard]] constexpr Square RelativeFile() {
+    const int file = File();
+    if constexpr (side == Color::kBlack)
+      return 7 - file;
+    else
+      return file;
+  }
+
+  constexpr Square operator+(const int other) const {
+    return square_ + other;
+  }
+
+  constexpr Square operator-(const int other) const {
+    return square_ - other;
+  }
+
+  constexpr Square operator*(const Square other) const {
+    return square_ * other.square_;
+  }
+
+  constexpr Square operator*(int scalar) const {
+    return square_ * scalar;
+  }
+
+ private:
+  U8 square_;
+};
+
 // clang-format off
-using Square = U8;
-enum Squares : Square {
+enum Squares : U8 {
   kA1, kB1, kC1, kD1, kE1, kF1, kG1, kH1,
   kA2, kB2, kC2, kD2, kE2, kF2, kG2, kH2,
   kA3, kB3, kC3, kD3, kE3, kF3, kG3, kH3,

@@ -98,7 +98,7 @@ struct BoardState {
     piece_on_square[square] = piece_type;
 
     // Incrementally update the piece/square scores
-    const Square rel_square = RelativeSquare(square, color);
+    const Square rel_square = square.RelativeTo(color);
     piece_scores[color] += eval::kPieceSquareTable[piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
@@ -133,7 +133,7 @@ struct BoardState {
     side_bbs[color].ClearBit(square);
 
     // Incrementally update the piece/square scores
-    const Square rel_square = RelativeSquare(square, color);
+    const Square rel_square = square.RelativeTo(color);
     piece_scores[color] -= eval::kPieceSquareTable[piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
@@ -143,91 +143,91 @@ struct BoardState {
     piece_type = PieceType::kNone;
   }
 
-  [[nodiscard]] constexpr inline Color GetPieceColor(U8 square) const {
+  [[nodiscard]] constexpr Color GetPieceColor(U8 square) const {
     if (side_bbs[Color::kWhite].IsSet(square)) return Color::kWhite;
     if (side_bbs[Color::kBlack].IsSet(square)) return Color::kBlack;
     return Color::kNoColor;
   }
 
-  [[nodiscard]] constexpr inline PieceType GetPieceType(U8 square) const {
+  [[nodiscard]] constexpr PieceType GetPieceType(U8 square) const {
     return piece_on_square[square];
   }
 
-  [[nodiscard]] constexpr inline int GetPieceAndColor(U8 square) const {
+  [[nodiscard]] constexpr int GetPieceAndColor(U8 square) const {
     const auto piece = GetPieceType(square);
     return piece != PieceType::kNone ? piece * 2 + GetPieceColor(square) : -1;
   }
 
-  [[nodiscard]] constexpr inline bool PieceExists(Square square) const {
+  [[nodiscard]] constexpr bool PieceExists(Square square) const {
     return GetPieceType(square) != PieceType::kNone;
   }
 
-  [[nodiscard]] constexpr inline BitBoard Occupied() const {
+  [[nodiscard]] constexpr BitBoard Occupied() const {
     return side_bbs[Color::kWhite] | side_bbs[Color::kBlack];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &Occupied(Color side) const {
+  [[nodiscard]] constexpr const BitBoard &Occupied(Color side) const {
     return side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline BitBoard KinglessOccupied() const {
+  [[nodiscard]] constexpr BitBoard KinglessOccupied() const {
     return (side_bbs[Color::kWhite] | side_bbs[Color::kBlack]) &
            ~piece_bbs[kKing];
   }
 
-  [[nodiscard]] constexpr inline BitBoard KinglessOccupied(Color side) const {
+  [[nodiscard]] constexpr BitBoard KinglessOccupied(Color side) const {
     return side_bbs[side] ^ piece_bbs[kKing];
   }
 
-  [[nodiscard]] constexpr inline BitBoard Pawns(Color side) const {
+  [[nodiscard]] constexpr BitBoard Pawns(Color side) const {
     return piece_bbs[PieceType::kPawn] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &Pawns() const {
+  [[nodiscard]] constexpr const BitBoard &Pawns() const {
     return piece_bbs[PieceType::kPawn];
   }
 
-  [[nodiscard]] constexpr inline BitBoard Knights(Color side) const {
+  [[nodiscard]] constexpr BitBoard Knights(Color side) const {
     return piece_bbs[PieceType::kKnight] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &Knights() const {
+  [[nodiscard]] constexpr const BitBoard &Knights() const {
     return piece_bbs[PieceType::kKnight];
   }
 
-  [[nodiscard]] constexpr inline BitBoard Bishops(Color side) const {
+  [[nodiscard]] constexpr BitBoard Bishops(Color side) const {
     return piece_bbs[PieceType::kBishop] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &Bishops() const {
+  [[nodiscard]] constexpr const BitBoard &Bishops() const {
     return piece_bbs[PieceType::kBishop];
   }
 
-  [[nodiscard]] constexpr inline BitBoard Rooks(Color side) const {
+  [[nodiscard]] constexpr BitBoard Rooks(Color side) const {
     return piece_bbs[PieceType::kRook] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &Rooks() const {
+  [[nodiscard]] constexpr const BitBoard &Rooks() const {
     return piece_bbs[PieceType::kRook];
   }
 
-  [[nodiscard]] constexpr inline BitBoard Queens(Color side) const {
+  [[nodiscard]] constexpr BitBoard Queens(Color side) const {
     return piece_bbs[PieceType::kQueen] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &Queens() const {
+  [[nodiscard]] constexpr const BitBoard &Queens() const {
     return piece_bbs[PieceType::kQueen];
   }
 
-  [[nodiscard]] constexpr inline BitBoard King(Color side) const {
+  [[nodiscard]] constexpr BitBoard King(Color side) const {
     return piece_bbs[PieceType::kKing] & side_bbs[side];
   }
 
-  [[nodiscard]] constexpr inline const BitBoard &Kings() const {
+  [[nodiscard]] constexpr const BitBoard &Kings() const {
     return piece_bbs[PieceType::kKing];
   }
 
-  [[nodiscard]] constexpr inline bool InCheck() const {
+  [[nodiscard]] constexpr bool InCheck() const {
     return checkers != 0;
   }
 
