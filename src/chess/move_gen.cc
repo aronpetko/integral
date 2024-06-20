@@ -415,7 +415,7 @@ MoveList GenerateMoves(MoveType move_type, Board &board) {
   BitBoard single_pawn_moves_copy = single_pawn_moves;
 
   while (single_pawn_moves_copy) {
-    const Square to = single_pawn_moves_copy.PopLsb(), to_rank = Rank(to);
+    const Square to = single_pawn_moves_copy.PopLsb(), to_rank = to.Rank();
     const Square from = to - pushed_pawn_distance;
 
     if (to_rank == kNumRanks - 1 || to_rank == 0) {
@@ -450,7 +450,7 @@ MoveList GenerateMoves(MoveType move_type, Board &board) {
     BitBoard left_pawn_captures =
         AllLeftPawnAttacks(state.turn, state) & pawn_capture_targets;
     while (left_pawn_captures) {
-      const Square to = left_pawn_captures.PopLsb(), to_rank = Rank(to);
+      const Square to = left_pawn_captures.PopLsb(), to_rank = to.Rank();
       const Square from = to - left_pawn_capture_dist;
 
       if (to_rank == kNumRanks - 1 || to_rank == 0) {
@@ -467,7 +467,7 @@ MoveList GenerateMoves(MoveType move_type, Board &board) {
     BitBoard right_pawn_captures =
         AllRightPawnAttacks(state.turn, state) & pawn_capture_targets;
     while (right_pawn_captures) {
-      const Square to = right_pawn_captures.PopLsb(), to_rank = Rank(to);
+      const Square to = right_pawn_captures.PopLsb(), to_rank = to.Rank();
       const Square from = to - right_pawn_capture_dist;
 
       if (to_rank == kNumRanks - 1 || to_rank == 0) {

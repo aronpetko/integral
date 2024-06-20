@@ -436,7 +436,7 @@ void Board::HandlePromotions(Move move) {
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto to = move.GetTo();
-  const auto to_rank = Rank(to);
+  const auto to_rank = to.Rank();
 
   if ((is_white && to_rank == kNumRanks - 1) || (!is_white && to_rank == 0)) {
     // Since this pawn is promoting, we remove the pawn in place of the promoted
@@ -508,7 +508,7 @@ void Board::PrintPieces() {
   for (int rank = kNumRanks - 1; rank >= 0; rank--) {
     fmt::print("{} ", rank + 1);
     for (int file = 0; file < kNumFiles; file++) {
-      const auto square = RankFileToSquare(rank, file);
+      const auto square = Square::FromRankFile(rank, file);
       fmt::print("{}",
                  fen::GetPieceChar(const_cast<BoardState &>(state_), square));
       if (file < kNumFiles - 1) fmt::print(" ");  // Space separator for clarity

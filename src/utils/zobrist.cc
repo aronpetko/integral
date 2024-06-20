@@ -33,9 +33,8 @@ U64 HashSquare(Square square,
    * white king   11
    */
 
-  const int piece_idx =
-      kSquareCount * (static_cast<int>(piece) * 2 + color) +
-      kNumRanks * Rank(square) + File(square);
+  const int piece_idx = kSquareCount * (static_cast<int>(piece) * 2 + color) +
+                        kNumRanks * square.Rank() + square.File();
   return kRandomsArray[piece_idx];
 }
 
@@ -67,7 +66,7 @@ U64 HashEnPassant(const BoardState &state) {
   }
 
   if (en_passant_bb & state.Pawns(state.turn))
-    return kRandomsArray[Indices::kEnPassantFileA + File(ep_square)];
+    return kRandomsArray[Indices::kEnPassantFileA + ep_square.File()];
   return 0ULL;
 }
 

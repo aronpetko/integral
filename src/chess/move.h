@@ -49,35 +49,35 @@ class Move {
 
   [[nodiscard]] bool IsUnderPromotion() const;
 
-  [[nodiscard]] constexpr inline bool IsNull() const {
+  [[nodiscard]] constexpr bool IsNull() const {
     return data_ == 0;
   }
 
-  [[nodiscard]] constexpr inline U16 GetData() const {
+  [[nodiscard]] constexpr U16 GetData() const {
     return data_;
   }
 
-  [[nodiscard]] constexpr inline Square GetFrom() const {
+  [[nodiscard]] constexpr Square GetFrom() const {
     return Square(data_ & kFromMask);
   }
 
-  [[nodiscard]] constexpr inline Square GetTo() const {
+  [[nodiscard]] constexpr Square GetTo() const {
     return Square((data_ & kToMask) >> 6);
   }
 
-  [[nodiscard]] constexpr inline PromotionType GetPromotionType() const {
+  [[nodiscard]] constexpr PromotionType GetPromotionType() const {
     return PromotionType((data_ & kPromotionTypeMask) >> 12);
   }
 
-  constexpr inline void SetFrom(U8 from) {
+  constexpr void SetFrom(U8 from) {
     data_ |= static_cast<U32>(from);
   }
 
-  constexpr inline void SetTo(U8 to) {
+  constexpr void SetTo(U8 to) {
     data_ |= static_cast<U32>(to) << 6;
   }
 
-  constexpr inline void SetPromotionType(PromotionType promotion_type) {
+  constexpr void SetPromotionType(PromotionType promotion_type) {
     data_ |= static_cast<U8>(promotion_type) << 12;
   }
 

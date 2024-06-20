@@ -21,8 +21,8 @@ Move Move::FromStr(std::string_view str) {
     return Move::NullMove();
   ;
 
-  const auto from = RankFileToSquare(from_rank, from_file);
-  const auto to = RankFileToSquare(to_rank, to_file);
+  const auto from = Square::FromRankFile(from_rank, from_file);
+  const auto to = Square::FromRankFile(to_rank, to_file);
 
   if (str.length() < kMaxMoveLen) return Move(from, to);
 
@@ -79,8 +79,8 @@ bool Move::IsUnderPromotion() const {
 std::string Move::ToString() const {
   if (data_ == 0) return "null";
 
-  const auto from_rank = Rank(GetFrom()), from_file = File(GetFrom());
-  const auto to_rank = Rank(GetTo()), to_file = File(GetTo());
+  const auto from_rank = GetFrom().Rank(), from_file = GetFrom().File();
+  const auto to_rank = GetTo().Rank(), to_file = GetTo().File();
 
   std::string res = std::string(1, 'a' + from_file) +
                     std::to_string(from_rank + 1) +
