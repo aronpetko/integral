@@ -441,7 +441,7 @@ Score Search::PVSearch(int depth,
           if (!in_pv_node && excluded_score + 15 < new_beta &&
               stack->double_extensions < 10) {
             extensions++;
-            stack->double_extensions += (stack - 1)->double_extensions + 1;
+            stack->double_extensions = (stack - 1)->double_extensions + 1;
           }
         }
 
