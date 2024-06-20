@@ -439,7 +439,7 @@ Score Search::PVSearch(int depth,
         if (excluded_score < new_beta) {
           extensions++;
           // Double extend if the TT move seems like the only viable choice
-          if (!in_pv_node && excluded_score + 35 < new_beta &&
+          if (!in_pv_node && excluded_score + 50 < new_beta &&
               stack->double_extensions < 10) {
             extensions++;
             stack->double_extensions++;
