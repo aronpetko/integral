@@ -435,7 +435,10 @@ Score Search::PVSearch(int depth,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
-          extensions++;
+          // Double extend if the TT move seems like the only viable choice
+          const bool should_double_extend =
+              !in_pv_node && tt_move_excluded_score + 10 < new_beta;
+          extensions = 1 + should_double_extend;
         }
 
         stack->excluded_tt_move = Move::NullMove();
