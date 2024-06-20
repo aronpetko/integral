@@ -201,6 +201,7 @@ ScorePair Evaluation::EvaluatePawns() {
   const BitBoard their_pawns = state_.Pawns(FlipColor(us));
 
   const Square king_square = state_.King(us).GetLsb();
+  const Square enemy_king_square = state_.King(FlipColor(us)).GetLsb();
 
   // Pawn phalanxes
   const BitBoard connected_pawns =
@@ -222,9 +223,11 @@ ScorePair Evaluation::EvaluatePawns() {
       score += kPassedPawnBonus[square.RelativeRank<us>()];
       TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
 
-      score += kKingPassedPawnDistanceTable[square.DistanceTo(king_square)];
-      TRACE_INCREMENT(
-          kKingPassedPawnDistanceTable[square.DistanceTo(king_square)], us);
+      score += kKingPPDistanceTable[square.DistanceTo(king_square)];
+      TRACE_INCREMENT(kKingPPDistanceTable[square.DistanceTo(king_square)], us);
+
+      score += kEnemyKingPPDistanceTable[square.DistanceTo(enemy_king_square)];
+      TRACE_INCREMENT(kEnemyKingPPDistanceTable[square.DistanceTo(enemy_king_square)], us);
     }
 
     const int file = square.File();

@@ -136,7 +136,8 @@ void Tuner::InitBaseParameters() {
   Add2DArrayParameter(kRookOnFileBonus);
   AddArrayParameter(kPawnShelterTable);
   AddArrayParameter(kPawnStormTable);
-  AddArrayParameter(kKingPassedPawnDistanceTable);
+  AddArrayParameter(kKingPPDistanceTable);
+  AddArrayParameter(kEnemyKingPPDistanceTable);
   Add2DArrayParameter(kKingOnFilePenalty);
   AddArrayParameter(kKnightOutpostTable);
   AddArrayParameter(kBishopOutpostTable);
@@ -169,7 +170,8 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
-  GET_ARRAY_COEFFICIENTS(kKingPassedPawnDistanceTable);
+  GET_ARRAY_COEFFICIENTS(kKingPPDistanceTable);
+  GET_ARRAY_COEFFICIENTS(kEnemyKingPPDistanceTable);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
   GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
   GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
@@ -396,8 +398,12 @@ void Tuner::PrintParameters() {
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
 
   fmt::print(
-      "constexpr std::array<ScorePair, 8> kKingPassedPawnDistanceTable = ");
-  PrintArray(index, kKingPassedPawnDistanceTable.size(), parameters_);
+      "constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
+  PrintArray(index, kKingPPDistanceTable.size(), parameters_);
+
+  fmt::print(
+      "constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable = ");
+  PrintArray(index, kEnemyKingPPDistanceTable.size(), parameters_);
 
   fmt::print(
       "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = ");
