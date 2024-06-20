@@ -279,7 +279,7 @@ Score Search::PVSearch(int depth,
   Move tt_move = Move::NullMove();
   bool tt_hit = false;
 
-  if (!stack->excluded_tt_move) {
+  if (!stack->excluded_move) {
     tt_entry = transposition_table.Probe(state.zobrist_key);
     tt_hit = tt_entry.CompareKey(state.zobrist_key);
     tt_move = tt_hit ? tt_entry.move : Move::NullMove();
@@ -301,7 +301,7 @@ Score Search::PVSearch(int depth,
   // adjusting pruning thresholds
   bool improving = false;
 
-  if (!state.InCheck() && !stack->excluded_tt_move) {
+  if (!state.InCheck() && !stack->excluded_move) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
@@ -322,7 +322,7 @@ Score Search::PVSearch(int depth,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
+  if (!in_pv_node && !state.InCheck() && !stack->excluded_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
@@ -362,7 +362,7 @@ Score Search::PVSearch(int depth,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if (in_pv_node && depth >= 4 && !stack->excluded_tt_move && !tt_move) {
+  if (in_pv_node && depth >= 4 && !stack->excluded_move && !tt_move) {
     depth--;
   }
 
@@ -379,7 +379,7 @@ Score Search::PVSearch(int depth,
   MovePicker move_picker(
       MovePickerType::kSearch, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    if (move == stack->excluded_tt_move || !board_.IsMoveLegal(move)) {
+    if (move == stack->excluded_move || !board_.IsMoveLegal(move)) {
       continue;
     }
 
@@ -418,30 +418,34 @@ Score Search::PVSearch(int depth,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= 8 && move == tt_move && !stack->excluded_tt_move) {
+    if (!in_root && depth >= 8 && move == tt_move && !stack->excluded_move) {
       const bool is_accurate_tt_score =
           tt_entry.depth + 4 >= depth &&
           tt_entry.flag != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry.score) < kMateScore - kMaxPlyFromRoot;
 
       if (is_accurate_tt_score) {
-        stack->excluded_tt_move = tt_move;
+        stack->excluded_move = tt_move;
 
-        const int reduced_depth = (depth - 1) / 2;
         const Score new_beta = tt_entry.score - depth * 2;
+        const int singular_depth = (depth - 1) / 2;
 
-        const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
-            reduced_depth, new_beta - 1, new_beta, stack);
+        const Score excluded_score = PVSearch<NodeType::kNonPV>(
+            singular_depth, new_beta - 1, new_beta, stack);
+
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
-        if (tt_move_excluded_score < new_beta) {
+        if (excluded_score < new_beta) {
+          extensions++;
           // Double extend if the TT move seems like the only viable choice
-          const bool should_double_extend =
-              !in_pv_node && tt_move_excluded_score + 10 < new_beta;
-          extensions = 1 + should_double_extend;
+          if (!in_pv_node && excluded_score + 15 < new_beta &&
+              stack->double_extensions < 10) {
+            extensions++;
+            stack->double_extensions += (stack - 1)->double_extensions + 1;
+          }
         }
 
-        stack->excluded_tt_move = Move::NullMove();
+        stack->excluded_move = Move::NullMove();
       }
     }
 
@@ -561,7 +565,7 @@ Score Search::PVSearch(int depth,
     tt_flag = TranspositionTableEntry::kUpperBound;
   }
 
-  if (!stack->excluded_tt_move) {
+  if (!stack->excluded_move) {
     // Attempt to update the transposition table with the evaluation of this
     // position
     const TranspositionTableEntry new_tt_entry(
