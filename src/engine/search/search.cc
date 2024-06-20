@@ -440,7 +440,7 @@ Score Search::PVSearch(int depth,
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
         // cause a cutoff based on our current search window.
-        else if (tt_move_excluded_score >= beta) {
+        else if (new_beta >= beta) {
           return new_beta;
         }
 
