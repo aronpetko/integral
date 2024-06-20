@@ -430,7 +430,7 @@ Score Search::PVSearch(int depth,
         const int reduced_depth = (depth - 1) / 2;
         const Score new_beta = tt_entry.score - depth * 2;
 
-        const Score tt_move_excluded_score = -PVSearch<NodeType::kNonPV>(
+        const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
             reduced_depth, new_beta - 1, new_beta, stack);
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
