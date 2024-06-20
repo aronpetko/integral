@@ -60,6 +60,8 @@ struct SearchStackEntry {
   Move best_move;
   // Currently searched move at this ply
   Move move;
+  // The excluded TT move when performing singular extensions
+  Move excluded_tt_move;
   // Continuation history entry for this move
   void *continuation_entry;
   // Moves that caused a beta cutoff at this ply
@@ -82,6 +84,7 @@ struct SearchStackEntry {
         static_eval(kScoreNone),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
+        excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr) {
     ClearKillerMoves();
