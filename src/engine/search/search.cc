@@ -204,6 +204,7 @@ Score Search::QuiescentSearch(Score alpha,
       best_score = score;
 
       if (score > alpha) {
+        best_move = move;
         alpha = score;
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
