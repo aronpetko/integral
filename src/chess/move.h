@@ -45,6 +45,8 @@ class Move {
 
   [[nodiscard]] bool IsTactical(const BoardState &state) const;
 
+  [[nodiscard]] bool IsEnPassant(const BoardState &state) const;
+
   [[nodiscard]] bool IsUnderPromotion() const;
 
   [[nodiscard]] constexpr inline bool IsNull() const {

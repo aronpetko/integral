@@ -368,8 +368,8 @@ Score Search::PVSearch(int depth,
   // Keep track of the original alpha for bound determination when updating the
   // transposition table
   const int original_alpha = alpha;
-  // Keep track of quiet moves that failed to cause a beta cutoff
-  MoveList quiets;
+  // Keep track of quiet and capture moves that failed to cause a beta cutoff
+  MoveList quiets, captures;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -383,6 +383,7 @@ Score Search::PVSearch(int depth,
     }
 
     const bool is_quiet = !move.IsTactical(state);
+    const bool is_capture = move.IsCapture(state);
 
     // Pruning guards
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
@@ -527,9 +528,11 @@ Score Search::PVSearch(int depth,
         alpha = score;
         if (alpha >= beta) {
           if (is_quiet) {
+            stack->AddKillerMove(move);
             history_.quiet_history->UpdateScore(stack, depth, quiets);
             history_.continuation_history->UpdateScore(stack, depth, quiets);
-            stack->AddKillerMove(move);
+          } else if (is_capture) {
+            history_.capture_history->UpdateScore(stack, depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
@@ -537,9 +540,16 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    // Penalize the history score of quiet moves that failed to raise alpha
-    if (is_quiet && move != best_move) {
-      quiets.Push(move);
+    // Penalize the history score of moves that failed to raise alpha
+    if (move != best_move) {
+      if (is_quiet)
+        quiets.Push(move);
+      else if (is_capture)
+        captures.Push(move);
+
+      // Since "good" captures are expected to be the best moves, we apply a
+      // penalty to all captures even in the case where the best move was quiet
+      history_.capture_history->ApplyGravity(depth, captures);
     }
   }
 

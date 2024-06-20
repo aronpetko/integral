@@ -21,7 +21,7 @@ class QuietHistory {
     int &score = table_[turn][move.GetFrom()][move.GetTo()];
     score += ScaleBonus(score, bonus);
 
-    // Lower the score of the quiet moves that failed to raise alpha
+    // Lower the score of the quiet moves that failed to raise alpha (gravity)
     for (int i = 0; i < quiets.Size(); i++) {
       const Move bad_quiet = quiets[i];
       // Apply a linear dampening to the penalty as the depth increases

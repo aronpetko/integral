@@ -2,6 +2,7 @@
 #define INTEGRAL_HISTORY_H
 
 #include "../../../chess/board.h"
+#include "capture_history.h"
 #include "continuation_history.h"
 #include "correction_history.h"
 #include "quiet_history.h"
@@ -19,10 +20,12 @@ class SearchHistory {
     quiet_history = std::make_unique<QuietHistory>(state_);
     continuation_history = std::make_unique<ContinuationHistory>(state_);
     correction_history = std::make_unique<CorrectionHistory>(state_);
+    capture_history = std::make_unique<CaptureHistory>(state_);
   }
 
  public:
   std::unique_ptr<QuietHistory> quiet_history;
+  std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
 
