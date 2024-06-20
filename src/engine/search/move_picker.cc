@@ -1,16 +1,5 @@
 #include "move_picker.h"
 
-// clang-format off
-constexpr std::array<std::array<int, kNumPieceTypes>, kNumPieceTypes> kMVVLVATable = {{
-  {{10, 11, 12, 13, 14, 15}}, // victim P,    attacker K, Q, R, B, N, P
-  {{20, 21, 22, 23, 24, 25}}, // victim N,    attacker K, Q, R, B, N, P
-  {{30, 31, 32, 33, 34, 35}}, // victim B,    attacker K, Q, R, B, N, P
-  {{40, 41, 42, 43, 44, 45}}, // victim R,    attacker K, Q, R, B, N, P
-  {{50, 51, 52, 53, 54, 55}}, // victim Q,    attacker K, Q, R, B, N, P
-  {{0, 0, 0, 0, 0, 0}},       // victim K,    attacker K, Q, R, B, N, P
-}};
-// clang-format on
-
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -181,11 +170,10 @@ int MovePicker::ScoreMove(Move &move) {
   // Winning/neutral captures are searched next
   // Losing captures are searched last
   if (move.IsCapture(state)) {
-    const auto attacker = state.GetPieceType(from);
-    const auto victim = state.GetPieceType(to);
-    return kMVVLVATable[to == state.en_passant && attacker == PieceType::kPawn
-                            ? PieceType::kPawn
-                            : victim][attacker];
+    const auto victim =
+        move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
+    return eval::kSEEPieceScores[victim] +
+           history_.capture_history->GetScore(move);
   }
 
   // Order moves that caused a beta cutoff by their own history score

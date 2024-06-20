@@ -60,11 +60,16 @@ bool Move::IsCapture(const BoardState &state) const {
           state.en_passant == to);
 }
 
-[[nodiscard]] bool Move::IsTactical(const BoardState &state) const {
+bool Move::IsTactical(const BoardState &state) const {
   return IsCapture(state) || GetPromotionType() != PromotionType::kNone;
 }
 
-[[nodiscard]] bool Move::IsUnderPromotion() const {
+bool Move::IsEnPassant(const BoardState &state) const {
+  return state.GetPieceType(GetFrom()) == PieceType::kPawn &&
+         GetTo() == state.en_passant;
+}
+
+bool Move::IsUnderPromotion() const {
   const auto promo_type = GetPromotionType();
   return promo_type != PromotionType::kNone &&
          promo_type != PromotionType::kQueen &&
