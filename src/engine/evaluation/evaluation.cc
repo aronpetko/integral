@@ -2,7 +2,6 @@
 
 #include "../../chess/move_gen.h"
 #include "../../tuner/tuner.h"
-#include "pawn_structure_cache.h"
 
 namespace eval {
 

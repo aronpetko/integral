@@ -2,6 +2,7 @@
 #define INTEGRAL_EVAL_H_
 
 #include "../../chess/board.h"
+#include "pawn_structure_cache.h"
 #include "terms.h"
 
 namespace eval {
