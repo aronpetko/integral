@@ -76,8 +76,7 @@ constexpr SideTable<BitBoard> outposts = GenerateOutposts();
 
 class Evaluation {
  public:
-  explicit Evaluation(const BoardState &state)
-      : state_(state), cached_pawn_structure_(nullptr) {
+  explicit Evaluation(const BoardState &state) : state_(state) {
     Initialize();
   }
 
@@ -169,10 +168,8 @@ void Evaluation::Initialize() {
   black_pawn_storm_zone |= Shift<Direction::kNorth>(black_pawn_storm_zone);
 
   // Probe the pawn structure cache
-  auto pawn_entry = &pawn_cache[state_.pawn_key];
-  cached_pawn_structure_ =
-      pawn_entry->key == state_.pawn_key ? pawn_entry : nullptr;
-  has_pawn_structure_cache_ = cached_pawn_structure_ != nullptr;
+  cached_pawn_structure_ = &pawn_cache[state_.pawn_key];
+  has_pawn_structure_cache_ = cached_pawn_structure_->key == state_.pawn_key;
 }
 
 Score Evaluation::GetScore() {
@@ -261,9 +258,8 @@ ScorePair Evaluation::EvaluatePawns() {
 
 #ifndef TUNE
   if (!has_pawn_structure_cache_) {
-    auto &entry = pawn_cache[state_.pawn_key];
-    entry.key = state_.pawn_key;
-    entry.score[us] = score;
+    cached_pawn_structure_->key = state_.pawn_key;
+    cached_pawn_structure_->score[us] = score;
   }
 #endif
 
