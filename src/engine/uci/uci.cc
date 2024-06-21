@@ -18,7 +18,7 @@ void InitializeOptions() {
         transposition_table.Resize(option.GetValue<int>());
       });
   AddOption<OptionVisibility::kPublic>(
-      "Pawn Cache", 64, 1, 1048576, [](Option &option) {
+      "Pawn Cache", 2, 1, 1048576, [](Option &option) {
         eval::pawn_cache.Resize(option.GetValue<int>());
       });
   AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);

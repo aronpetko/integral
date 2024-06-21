@@ -32,6 +32,11 @@ class HashTable {
     return table_[Index(key)];
   }
 
+  void Prefetch(const U64 &key) {
+    auto &entry = (*this)[key];
+    __builtin_prefetch(&entry);
+  }
+
  private:
   [[nodiscard]] virtual U64 Index(const U64 &key) const {
     return (static_cast<U128>(key) * static_cast<U128>(table_.size())) >> 64;

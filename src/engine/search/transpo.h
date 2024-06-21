@@ -65,9 +65,6 @@ class TranspositionTable : public HashTable<TranspositionTableEntry> {
   TranspositionTable() = default;
 
   void Save(const U64 &key, U16 ply, const TranspositionTableEntry &entry);
-
-  // Uses an intrinsic to cache this entry for faster probing
-  void Prefetch(const U64 &key);
 };
 
 inline TranspositionTable transposition_table;

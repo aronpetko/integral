@@ -27,8 +27,3 @@ void TranspositionTable::Save(const U64 &key,
     tt_entry.score = TranspositionTableEntry::CorrectScore(entry.score, -ply);
   }
 }
-
-void TranspositionTable::Prefetch(const U64 &key) {
-  auto &tt_entry = (*this)[key];
-  __builtin_prefetch(&tt_entry);
-}
