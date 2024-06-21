@@ -124,6 +124,7 @@ class Evaluation {
   SideTable<BitBoard> mobility_zone_;
   SideTable<BitBoard> pawn_storm_zone_;
   PawnStructureEntry *cached_pawn_structure_;
+  bool has_pawn_structure_cache_;
 };
 
 void Evaluation::Initialize() {
@@ -169,6 +170,7 @@ void Evaluation::Initialize() {
   auto pawn_entry = &pawn_cache[state_.pawn_key];
   cached_pawn_structure_ =
       pawn_entry->key == state_.pawn_key ? pawn_entry : nullptr;
+  has_pawn_structure_cache_ = cached_pawn_structure_ != nullptr;
 }
 
 Score Evaluation::GetScore() {
@@ -202,7 +204,7 @@ Score Evaluation::GetScore() {
 template <Color us>
 ScorePair Evaluation::EvaluatePawns() {
 #ifndef TUNE
-  if (cached_pawn_structure_) {
+  if (has_pawn_structure_cache_) {
     return cached_pawn_structure_->score[us];
   }
 #endif
