@@ -1,6 +1,5 @@
 #include "search.h"
 
-#include <iomanip>
 #include <thread>
 
 #include "fmt/format.h"
