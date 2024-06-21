@@ -202,12 +202,6 @@ Score Evaluation::GetScore() {
 
 template <Color us>
 ScorePair Evaluation::EvaluatePawns() {
-#ifndef TUNE
-  if (has_pawn_structure_cache_) {
-    return cached_pawn_structure_->score[us];
-  }
-#endif
-
   ScorePair score;
 
   const BitBoard our_pawns = state_.Pawns(us);
@@ -223,26 +217,22 @@ ScorePair Evaluation::EvaluatePawns() {
       score += kPawnPhalanxBonus[square.RelativeRank<us>()];
       TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
     }
-  }
 
-  for (Square square : our_pawns) {
-    TRACE_INCREMENT(kPieceValues[PieceType::kPawn], us);
-    TRACE_INCREMENT(kPieceSquareTable[PieceType::kPawn][square.RelativeTo(us)],
-                    us);
+    for (Square square : our_pawns) {
+      TRACE_INCREMENT(kPieceValues[PieceType::kPawn], us);
+      TRACE_INCREMENT(
+          kPieceSquareTable[PieceType::kPawn][square.RelativeTo(us)], us);
 
-    // Passed pawns
-    const BitBoard their_pawns_ahead =
-        masks::forward_file_adjacent[us][square] & their_pawns;
-    if (!their_pawns_ahead) {
-      passed_pawns.SetBit(square);
+      // Passed pawns
+      const BitBoard their_pawns_ahead =
+          masks::forward_file_adjacent[us][square] & their_pawns;
+      if (!their_pawns_ahead) {
+        passed_pawns.SetBit(square);
 
-      if (!has_pawn_structure_cache_) {
         score += kPassedPawnBonus[square.RelativeRank<us>()];
         TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
       }
-    }
 
-    if (!has_pawn_structure_cache_) {
       const int file = square.File();
 
       // Doubled pawns
@@ -260,14 +250,14 @@ ScorePair Evaluation::EvaluatePawns() {
         TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
       }
     }
-  }
 
-#ifndef TUNE
-  if (!has_pawn_structure_cache_) {
     cached_pawn_structure_->key = state_.pawn_key;
     cached_pawn_structure_->score[us] = score;
+    cached_pawn_structure_->passed_pawns[us] = passed_pawns;
+  } else {
+    score = cached_pawn_structure_->score[us];
+    passed_pawns = cached_pawn_structure_->passed_pawns[us];
   }
-#endif
 
   // Don't cache the king/passed pawn proximity scores as it involves knowing
   // the position of the king, which the pawn cache doesn't store

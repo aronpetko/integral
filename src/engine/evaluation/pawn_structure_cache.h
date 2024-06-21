@@ -9,6 +9,7 @@ namespace eval {
 struct PawnStructureEntry {
   U64 key{};
   SideTable<ScorePair> score{};
+  SideTable<BitBoard> passed_pawns{};
 };
 
 inline HashTable<PawnStructureEntry> pawn_cache;
