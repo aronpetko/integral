@@ -258,12 +258,14 @@ ScorePair Evaluation::EvaluatePawns() {
   }
 
 #ifndef TUNE
-  if (!cached_pawn_structure_) {
+  if (!has_pawn_structure_cache_) {
     PawnStructureEntry entry;
     entry.key = state_.pawn_key;
     entry.score[us] = score;
 
     cached_pawn_structure_ = &(pawn_cache[state_.pawn_key] = entry);
+  } else {
+    pawn_cache[state_.pawn_key].score[us] += score;
   }
 #endif
 
