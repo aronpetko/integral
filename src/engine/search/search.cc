@@ -425,20 +425,25 @@ Score Search::PVSearch(int depth,
           std::abs(tt_entry.score) < kMateScore - kMaxPlyFromRoot;
 
       if (is_accurate_tt_score) {
-        stack->excluded_tt_move = tt_move;
-
         const int reduced_depth = (depth - 1) / 2;
         const Score new_beta = tt_entry.score - depth * 2;
 
+        stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
             reduced_depth, new_beta - 1, new_beta, stack);
+        stack->excluded_tt_move = Move::NullMove();
+
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
           extensions++;
         }
-
-        stack->excluded_tt_move = Move::NullMove();
+        // Multi-cut: The singular search had a beta cutoff, indicating that the
+        // TT move was not singular. Therefore, we prune if the same score would
+        // cause a cutoff based on our current search window
+        else if (new_beta >= beta) {
+          return new_beta;
+        }
       }
     }
 
