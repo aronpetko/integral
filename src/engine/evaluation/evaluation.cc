@@ -128,6 +128,8 @@ class Evaluation {
 };
 
 void Evaluation::Initialize() {
+  // pawn_cache.Prefetch(state_.pawn_key);
+
   const Square white_king_square = state_.King(Color::kWhite).GetLsb();
   const Square black_king_square = state_.King(Color::kBlack).GetLsb();
 
@@ -233,7 +235,7 @@ ScorePair Evaluation::EvaluatePawns() {
     const BitBoard their_pawns_ahead =
         masks::forward_file_adjacent[us][square] & their_pawns;
     if (!their_pawns_ahead) {
-      passed_pawns |= BitBoard::FromSquare(square);
+      passed_pawns.SetBit(square);
 
       score += kPassedPawnBonus[square.RelativeRank<us>()];
       TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
@@ -259,13 +261,9 @@ ScorePair Evaluation::EvaluatePawns() {
 
 #ifndef TUNE
   if (!has_pawn_structure_cache_) {
-    PawnStructureEntry entry;
+    auto &entry = pawn_cache[state_.pawn_key];
     entry.key = state_.pawn_key;
     entry.score[us] = score;
-
-    cached_pawn_structure_ = &(pawn_cache[state_.pawn_key] = entry);
-  } else {
-    pawn_cache[state_.pawn_key].score[us] += score;
   }
 #endif
 
