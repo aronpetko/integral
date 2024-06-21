@@ -215,12 +215,14 @@ ScorePair Evaluation::EvaluatePawns() {
 
   BitBoard passed_pawns;
 
-  // Pawn phalanxes
-  const BitBoard connected_pawns =
-      Shift<Direction::kEast>(our_pawns) & our_pawns;
-  for (Square square : connected_pawns) {
-    score += kPawnPhalanxBonus[square.RelativeRank<us>()];
-    TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
+  if (!has_pawn_structure_cache_) {
+    // Pawn phalanxes
+    const BitBoard connected_pawns =
+        Shift<Direction::kEast>(our_pawns) & our_pawns;
+    for (Square square : connected_pawns) {
+      score += kPawnPhalanxBonus[square.RelativeRank<us>()];
+      TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
+    }
   }
 
   for (Square square : our_pawns) {
@@ -234,25 +236,29 @@ ScorePair Evaluation::EvaluatePawns() {
     if (!their_pawns_ahead) {
       passed_pawns.SetBit(square);
 
-      score += kPassedPawnBonus[square.RelativeRank<us>()];
-      TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
+      if (!has_pawn_structure_cache_) {
+        score += kPassedPawnBonus[square.RelativeRank<us>()];
+        TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
+      }
     }
 
-    const int file = square.File();
+    if (!has_pawn_structure_cache_) {
+      const int file = square.File();
 
-    // Doubled pawns
-    const BitBoard pawns_ahead_on_file =
-        our_pawns & masks::forward_file[us][square];
-    if (pawns_ahead_on_file) {
-      score += kDoubledPawnPenalty[file];
-      TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
-    }
+      // Doubled pawns
+      const BitBoard pawns_ahead_on_file =
+          our_pawns & masks::forward_file[us][square];
+      if (pawns_ahead_on_file) {
+        score += kDoubledPawnPenalty[file];
+        TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
+      }
 
-    // Isolated pawns
-    const BitBoard adjacent_pawns = masks::adjacent_files[square] & our_pawns;
-    if (!adjacent_pawns) {
-      score += kIsolatedPawnPenalty[file];
-      TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
+      // Isolated pawns
+      const BitBoard adjacent_pawns = masks::adjacent_files[square] & our_pawns;
+      if (!adjacent_pawns) {
+        score += kIsolatedPawnPenalty[file];
+        TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
+      }
     }
   }
 
