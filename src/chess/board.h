@@ -6,14 +6,11 @@
 #include <utility>
 #include <vector>
 
-#include "../engine/evaluation/evaluation_terms.h"
+#include "../engine/evaluation/terms.h"
 #include "../engine/search/transpo.h"
 #include "../utils/zobrist.h"
 #include "bitboard.h"
 #include "fen.h"
-
-constexpr int kMaxPlyFromRoot = 256;
-constexpr int kMaxGamePly = 1024;
 
 class CastleRights {
  public:

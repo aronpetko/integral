@@ -149,7 +149,7 @@ Score Search::QuiescentSearch(Score alpha,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  const auto &tt_entry = transposition_table.Probe(state.zobrist_key);
+  const auto &tt_entry = transposition_table[state.zobrist_key];
   const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
   const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
@@ -159,7 +159,7 @@ Score Search::QuiescentSearch(Score alpha,
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
   if (!in_pv_node && can_use_tt_eval) {
-    return transposition_table.CorrectScore(tt_entry.score, stack->ply);
+    return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
   }
 
   const Score static_eval =
@@ -279,7 +279,7 @@ Score Search::PVSearch(int depth,
   bool tt_hit = false;
 
   if (!stack->excluded_tt_move) {
-    tt_entry = transposition_table.Probe(state.zobrist_key);
+    tt_entry = transposition_table[state.zobrist_key];
     tt_hit = tt_entry.CompareKey(state.zobrist_key);
     tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
@@ -289,7 +289,7 @@ Score Search::PVSearch(int depth,
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
     if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
-      return transposition_table.CorrectScore(tt_entry.score, stack->ply);
+      return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     }
   }
 
@@ -305,7 +305,7 @@ Score Search::PVSearch(int depth,
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit) {
-      eval = transposition_table.CorrectScore(tt_entry.score, stack->ply);
+      eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     } else {
       eval = stack->static_eval;
     }
@@ -563,16 +563,16 @@ Score Search::PVSearch(int depth,
     return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  auto tt_flag = TranspositionTableEntry::kExact;
-  if (alpha >= beta) {
-    // Beta cutoff
-    tt_flag = TranspositionTableEntry::kLowerBound;
-  } else if (alpha <= original_alpha) {
-    // Alpha failed to raise
-    tt_flag = TranspositionTableEntry::kUpperBound;
-  }
-
   if (!stack->excluded_tt_move) {
+    auto tt_flag = TranspositionTableEntry::kExact;
+    if (alpha >= beta) {
+      // Beta cutoff
+      tt_flag = TranspositionTableEntry::kLowerBound;
+    } else if (alpha <= original_alpha) {
+      // Alpha failed to raise
+      tt_flag = TranspositionTableEntry::kUpperBound;
+    }
+
     // Attempt to update the transposition table with the evaluation of this
     // position
     const TranspositionTableEntry new_tt_entry(

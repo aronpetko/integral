@@ -2,7 +2,7 @@
 #define INTEGRAL_TUNER_H
 
 #include "../chess/board.h"
-#include "../engine/evaluation/evaluation_terms.h"
+#include "../engine/evaluation/terms.h"
 #include "../utils/string.h"
 #include "../utils/types.h"
 

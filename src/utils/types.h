@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <vector>
 
 #include "list.h"
 
@@ -16,6 +17,9 @@ using I32 = std::int32_t;
 using U64 = std::uint64_t;
 using I64 = std::int64_t;
 using U128 = unsigned __int128;
+
+constexpr int kMaxPlyFromRoot = 256;
+constexpr int kMaxGamePly = 1024;
 
 enum PieceType : U8 {
   kPawn,

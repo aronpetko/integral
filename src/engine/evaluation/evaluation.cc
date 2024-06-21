@@ -2,6 +2,7 @@
 
 #include "../../chess/move_gen.h"
 #include "../../tuner/tuner.h"
+#include "pawn_structure_cache.h"
 
 namespace eval {
 
@@ -77,7 +78,8 @@ constexpr SideTable<BitBoard> outposts = GenerateOutposts();
 
 class Evaluation {
  public:
-  explicit Evaluation(const BoardState &state) : state_(state) {
+  explicit Evaluation(const BoardState &state)
+      : state_(state), cached_pawn_structure_(nullptr) {
     Initialize();
   }
 
@@ -123,6 +125,7 @@ class Evaluation {
   SideTable<BitBoard> pawn_attacks_;
   SideTable<BitBoard> mobility_zone_;
   SideTable<BitBoard> pawn_storm_zone_;
+  PawnStructureEntry *cached_pawn_structure_;
 };
 
 void Evaluation::Initialize() {
@@ -163,6 +166,11 @@ void Evaluation::Initialize() {
   // Add in the squares next to the king
   white_pawn_storm_zone |= Shift<Direction::kSouth>(white_pawn_storm_zone);
   black_pawn_storm_zone |= Shift<Direction::kNorth>(black_pawn_storm_zone);
+
+  // Probe the pawn structure cache
+  auto pawn_entry = &pawn_cache[state_.pawn_key];
+  cached_pawn_structure_ =
+      pawn_entry->key == state_.pawn_key ? pawn_entry : nullptr;
 }
 
 Score Evaluation::GetScore() {
@@ -195,12 +203,18 @@ Score Evaluation::GetScore() {
 
 template <Color us>
 ScorePair Evaluation::EvaluatePawns() {
+#ifndef TUNE
+  if (cached_pawn_structure_) {
+    return cached_pawn_structure_->score[us];
+  }
+#endif
+
   ScorePair score;
 
   const BitBoard our_pawns = state_.Pawns(us);
   const BitBoard their_pawns = state_.Pawns(FlipColor(us));
 
-  const Square king_square = state_.King(us).GetLsb();
+  BitBoard passed_pawns;
 
   // Pawn phalanxes
   const BitBoard connected_pawns =
@@ -219,12 +233,10 @@ ScorePair Evaluation::EvaluatePawns() {
     const BitBoard their_pawns_ahead =
         masks::forward_file_adjacent[us][square] & their_pawns;
     if (!their_pawns_ahead) {
+      passed_pawns |= BitBoard::FromSquare(square);
+
       score += kPassedPawnBonus[square.RelativeRank<us>()];
       TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
-
-      score += kKingPassedPawnDistanceTable[square.DistanceTo(king_square)];
-      TRACE_INCREMENT(
-          kKingPassedPawnDistanceTable[square.DistanceTo(king_square)], us);
     }
 
     const int file = square.File();
@@ -243,6 +255,25 @@ ScorePair Evaluation::EvaluatePawns() {
       score += kIsolatedPawnPenalty[file];
       TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
     }
+  }
+
+#ifndef TUNE
+  if (!cached_pawn_structure_) {
+    PawnStructureEntry entry;
+    entry.key = state_.pawn_key;
+    entry.score[us] = score;
+
+    cached_pawn_structure_ = &(pawn_cache[state_.pawn_key] = entry);
+  }
+#endif
+
+  // Don't cache the king/passed pawn proximity scores as it involves knowing
+  // the position of the king, which the pawn cache doesn't store
+  const Square king_square = state_.King(us).GetLsb();
+  for (Square square : passed_pawns) {
+    score += kKingPassedPawnDistanceTable[square.DistanceTo(king_square)];
+    TRACE_INCREMENT(
+        kKingPassedPawnDistanceTable[square.DistanceTo(king_square)], us);
   }
 
   return score;

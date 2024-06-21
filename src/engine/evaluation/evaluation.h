@@ -2,7 +2,7 @@
 #define INTEGRAL_EVAL_H_
 
 #include "../../chess/board.h"
-#include "evaluation_terms.h"
+#include "terms.h"
 
 namespace eval {
 
@@ -33,8 +33,6 @@ constexpr int kMaxPhase = 24;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state);
-
-int GetPhase(const BoardState &state);
 
 Score Evaluate(const BoardState &state);
 

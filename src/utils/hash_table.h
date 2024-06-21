@@ -1,0 +1,44 @@
+#ifndef INTEGRAL_CACHE_H
+#define INTEGRAL_CACHE_H
+
+#include "types.h"
+
+template <typename T>
+class HashTable {
+ public:
+  explicit HashTable(std::size_t mb_size) {
+    Resize(mb_size);
+  }
+
+  HashTable() = default;
+
+  void Resize(std::size_t mb_size) {
+    assert(mb_size > 0);
+
+    const std::size_t kBytesInMegabyte = 1024 * 1024;
+    mb_size *= kBytesInMegabyte;
+
+    table_.resize(mb_size / sizeof(T));
+    table_.shrink_to_fit();
+
+    Clear();
+  }
+
+  void Clear() {
+    std::ranges::fill(table_, T{});
+  }
+
+  T &operator[](const U64 &key) {
+    return table_[Index(key)];
+  }
+
+ private:
+  [[nodiscard]] virtual U64 Index(const U64 &key) const {
+    return (static_cast<U128>(key) * static_cast<U128>(table_.size())) >> 64;
+  }
+
+ private:
+  std::vector<T> table_;
+};
+
+#endif  // INTEGRAL_CACHE_H

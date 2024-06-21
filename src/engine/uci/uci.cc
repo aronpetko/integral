@@ -4,6 +4,7 @@
 
 #include "../../ascii_logo.h"
 #include "../../chess/move_gen.h"
+#include "../../engine/evaluation/pawn_structure_cache.h"
 #include "../../tests/tests.h"
 #include "../../tuner/tuner.h"
 #include "../search/search.h"
@@ -15,6 +16,10 @@ void InitializeOptions() {
   AddOption<OptionVisibility::kPublic>(
       "Hash", 64, 1, 1048576, [](Option &option) {
         transposition_table.Resize(option.GetValue<int>());
+      });
+  AddOption<OptionVisibility::kPublic>(
+      "Pawn Cache", 64, 1, 1048576, [](Option &option) {
+        eval::pawn_cache.Resize(option.GetValue<int>());
       });
   AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
   AddOption<OptionVisibility::kPublic>("Move Overhead", 50, 0, 10000);
@@ -130,9 +135,6 @@ void AcceptCommands(int arg_count, char **args) {
   tuner.LoadFromFile(args[1]);
   tuner.Tune();
 #endif
-
-  constexpr int kTTMbSize = 64;
-  transposition_table.Resize(kTTMbSize);
 
   Board board;
   board.SetFromFen(fen::kStartFen);
