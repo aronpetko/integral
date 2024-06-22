@@ -19,7 +19,6 @@ class HashTable {
     mb_size *= kBytesInMegabyte;
 
     table_.resize(mb_size / sizeof(T));
-    table_.shrink_to_fit();
 
     Clear();
   }
