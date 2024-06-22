@@ -103,10 +103,10 @@ class Evaluation {
   template <Color us>
   ScorePair EvaluateKing();
 
-  [[nodiscard]] BitBoard GetPieceMobility(PieceType piece,
-                                          Square square,
-                                          BitBoard moves,
-                                          Color us) const;
+  [[nodiscard]] BitBoard GetLegalMoves(PieceType piece,
+                                       Square square,
+                                       BitBoard moves,
+                                       Color us) const;
 
   [[nodiscard]] Score InterpolateScore(ScorePair score_pair) const;
 
@@ -256,7 +256,8 @@ ScorePair Evaluation::EvaluatePawns() {
     cached_pawn_structure_->key = state_.pawn_key;
     cached_pawn_structure_->score[us] = score;
 #endif
-    // Other pieces still need passed pawns despite, so we must keep this even when tuning
+    // Other pieces still need passed pawns despite, so we must keep this even
+    // when tuning
     cached_pawn_structure_->passed_pawns[us] = passed_pawns;
   } else {
     score = cached_pawn_structure_->score[us];
@@ -290,9 +291,9 @@ ScorePair Evaluation::EvaluateKnights() {
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kKnight][square.RelativeTo(us)], us);
 
-    const BitBoard moves = move_gen::KnightMoves(square);
-    const BitBoard mobility =
-        GetPieceMobility(PieceType::kKnight, square, moves, us);
+    const BitBoard moves = GetLegalMoves(
+        PieceType::kKnight, square, move_gen::KnightMoves(square), us);
+    const BitBoard mobility = moves & mobility_zone_[us];
 
     score += kKnightMobility[mobility.PopCount()];
     TRACE_INCREMENT(kKnightMobility[mobility.PopCount()], us);
@@ -333,9 +334,12 @@ ScorePair Evaluation::EvaluateBishops() {
     TRACE_INCREMENT(
         kPieceSquareTable[PieceType::kBishop][square.RelativeTo(us)], us);
 
-    const BitBoard moves = move_gen::BishopMoves(square, occupied);
-    const BitBoard mobility =
-        GetPieceMobility(PieceType::kBishop, square, moves, us);
+    const BitBoard moves =
+        GetLegalMoves(PieceType::kBishop,
+                      square,
+                      move_gen::BishopMoves(square, occupied),
+                      us);
+    const BitBoard mobility = moves & mobility_zone_[us];
 
     score += kBishopMobility[mobility.PopCount()];
     TRACE_INCREMENT(kBishopMobility[mobility.PopCount()], us);
@@ -373,9 +377,9 @@ ScorePair Evaluation::EvaluateRooks() {
     TRACE_INCREMENT(kPieceSquareTable[PieceType::kRook][square.RelativeTo(us)],
                     us);
 
-    const BitBoard moves = move_gen::RookMoves(square, occupied);
-    const BitBoard mobility =
-        GetPieceMobility(PieceType::kRook, square, moves, us);
+    const BitBoard moves = GetLegalMoves(
+        PieceType::kRook, square, move_gen::RookMoves(square, occupied), us);
+    const BitBoard mobility = moves & mobility_zone_[us];
 
     score += kRookMobility[mobility.PopCount()];
     TRACE_INCREMENT(kRookMobility[mobility.PopCount()], us);
@@ -398,8 +402,8 @@ ScorePair Evaluation::EvaluateRooks() {
     }
 
     // Rook behind a passed pawn
-    if (ForwardFileMask(us, square) &
-        cached_pawn_structure_->passed_pawns[us]) {
+    const BitBoard forward_moves = moves & ForwardFileMask(us, square);
+    if (cached_pawn_structure_->passed_pawns[us] & forward_moves) {
       score += kRookBehindPassedPawnBonus;
       TRACE_INCREMENT(kRookBehindPassedPawnBonus, us);
     }
@@ -420,9 +424,9 @@ ScorePair Evaluation::EvaluateQueens() {
     TRACE_INCREMENT(kPieceSquareTable[PieceType::kQueen][square.RelativeTo(us)],
                     us);
 
-    const BitBoard moves = move_gen::QueenMoves(square, occupied);
-    const BitBoard mobility =
-        GetPieceMobility(PieceType::kQueen, square, moves, us);
+    const BitBoard moves = GetLegalMoves(
+        PieceType::kQueen, square, move_gen::QueenMoves(square, occupied), us);
+    const BitBoard mobility = moves & mobility_zone_[us];
 
     score += kQueenMobility[mobility.PopCount()];
     TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
@@ -509,12 +513,11 @@ ScorePair Evaluation::EvaluateKing() {
   return score;
 }
 
-BitBoard Evaluation::GetPieceMobility(PieceType piece,
-                                      Square square,
-                                      BitBoard moves,
-                                      Color us) const {
-  moves &= mobility_zone_[us];
-
+// Pawns not supported
+BitBoard Evaluation::GetLegalMoves(PieceType piece,
+                                   Square square,
+                                   BitBoard moves,
+                                   Color us) const {
   if (state_.pinned.IsSet(square)) {
     if (piece == PieceType::kKnight) {
       moves = 0;
