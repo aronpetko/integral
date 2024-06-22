@@ -404,8 +404,8 @@ ScorePair Evaluation::EvaluateRooks() {
     // Rook behind a passed pawn
     const BitBoard forward_moves = moves & ForwardFileMask(us, square);
     if (cached_pawn_structure_->passed_pawns[us] & forward_moves) {
-      score += kRookBehindPassedPawnBonus;
-      TRACE_INCREMENT(kRookBehindPassedPawnBonus, us);
+      score += kRookBehindPassedPawnBonus[square.File()];
+      TRACE_INCREMENT(kRookBehindPassedPawnBonus[square.File()], us);
     }
   }
 

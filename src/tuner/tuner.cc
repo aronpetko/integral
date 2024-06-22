@@ -142,7 +142,7 @@ void Tuner::InitBaseParameters() {
   Add2DArrayParameter(kAttackPower);
   AddArrayParameter(kKnightOutpostTable);
   AddArrayParameter(kBishopOutpostTable);
-  AddSingleParameter(kRookBehindPassedPawnBonus);
+  AddArrayParameter(kRookBehindPassedPawnBonus);
   AddSingleParameter(kBishopPairBonus);
   AddSingleParameter(kTempoBonus);
 }
@@ -178,7 +178,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
   GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
   GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
-  GET_COEFFICIENT(kRookBehindPassedPawnBonus);
+  GET_ARRAY_COEFFICIENTS(kRookBehindPassedPawnBonus);
   GET_COEFFICIENT(kBishopPairBonus);
   GET_COEFFICIENT(kTempoBonus);
 
@@ -422,8 +422,9 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr OutpostTable<ScorePair> kBishopOutpostTable = ");
   PrintArray(index, kKnightOutpostTable.size(), parameters_);
 
-  fmt::print("constexpr ScorePair kRookBehindPassedPawnBonus = ");
-  PrintTerm(index, parameters_);
+  fmt::print("constexpr FileTable<ScorePair> kRookBehindPassedPawnBonus = ");
+  PrintArray(index, kNumFiles, parameters_);
+
   fmt::print("constexpr ScorePair kBishopPairBonus = ");
   PrintTerm(index, parameters_);
 
