@@ -1,4 +1,4 @@
-## <img src="https://i.imgur.com/Py8am6G.png" alt="Integral Chess Engine" width="30%" height="30%"/>
+## <p align="center"><img src="https://i.imgur.com/Py8am6G.png" alt="Integral Chess Engine" width="30%" height="30%"/></p>
 Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming. \
 \
 **Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)**
