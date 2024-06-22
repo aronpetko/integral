@@ -255,8 +255,9 @@ ScorePair Evaluation::EvaluatePawns() {
 #ifndef TUNE
     cached_pawn_structure_->key = state_.pawn_key;
     cached_pawn_structure_->score[us] = score;
-    cached_pawn_structure_->passed_pawns[us] = passed_pawns;
 #endif
+    // Other pieces still need passed pawns despite, so we must keep this even when tuning
+    cached_pawn_structure_->passed_pawns[us] = passed_pawns;
   } else {
     score = cached_pawn_structure_->score[us];
     passed_pawns = cached_pawn_structure_->passed_pawns[us];
@@ -386,6 +387,7 @@ ScorePair Evaluation::EvaluateRooks() {
       TRACE_INCREMENT(kAttackPower[PieceType::kRook][king_attack_count], us);
     }
 
+    // Open/Semi-Open file
     const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
     if (!our_pawns_on_file) {
       const BitBoard their_pawns_on_file = their_pawns & masks::files[square];
@@ -393,6 +395,13 @@ ScorePair Evaluation::EvaluateRooks() {
 
       score += kRookOnFileBonus[semi_open_file][square.File()];
       TRACE_INCREMENT(kRookOnFileBonus[semi_open_file][square.File()], us);
+    }
+
+    // Rook behind a passed pawn
+    if (ForwardFileMask(us, square) &
+        cached_pawn_structure_->passed_pawns[us]) {
+      score += kRookBehindPassedPawnBonus;
+      TRACE_INCREMENT(kRookBehindPassedPawnBonus, us);
     }
   }
 
