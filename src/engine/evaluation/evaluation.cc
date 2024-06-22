@@ -103,7 +103,7 @@ class Evaluation {
   template <Color us>
   ScorePair EvaluateKing();
 
-  [[nodiscard]] int GetPieceMobilityCount(PieceType piece,
+  [[nodiscard]] BitBoard GetPieceMobility(PieceType piece,
                                           Square square,
                                           BitBoard moves,
                                           Color us) const;
@@ -122,6 +122,7 @@ class Evaluation {
   SideTable<BitBoard> pawn_attacks_;
   SideTable<BitBoard> mobility_zone_;
   SideTable<BitBoard> pawn_storm_zone_;
+  SideTable<ScorePair> attack_power_;
   PawnStructureEntry *cached_pawn_structure_;
   bool has_pawn_structure_cache_;
 };
@@ -251,9 +252,11 @@ ScorePair Evaluation::EvaluatePawns() {
       }
     }
 
+#ifndef TUNE
     cached_pawn_structure_->key = state_.pawn_key;
     cached_pawn_structure_->score[us] = score;
     cached_pawn_structure_->passed_pawns[us] = passed_pawns;
+#endif
   } else {
     score = cached_pawn_structure_->score[us];
     passed_pawns = cached_pawn_structure_->passed_pawns[us];
@@ -283,11 +286,18 @@ ScorePair Evaluation::EvaluateKnights() {
         kPieceSquareTable[PieceType::kKnight][square.RelativeTo(us)], us);
 
     const BitBoard moves = move_gen::KnightMoves(square);
-    const int mobility_count =
-        GetPieceMobilityCount(PieceType::kKnight, square, moves, us);
+    const BitBoard mobility =
+        GetPieceMobility(PieceType::kKnight, square, moves, us);
 
-    score += kKnightMobility[mobility_count];
-    TRACE_INCREMENT(kKnightMobility[mobility_count], us);
+    score += kKnightMobility[mobility.PopCount()];
+    TRACE_INCREMENT(kKnightMobility[mobility.PopCount()], us);
+
+    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
+    if (enemy_king_attacks) {
+      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
+      attack_power_[us] += kAttackPower[PieceType::kKnight][king_attack_count];
+      TRACE_INCREMENT(kAttackPower[PieceType::kKnight][king_attack_count], us);
+    }
 
     if (IsOutpostSquare<us>(square)) {
       const int square_offset = 16 * (us == Color::kBlack ? -1 : 1);
@@ -319,11 +329,18 @@ ScorePair Evaluation::EvaluateBishops() {
         kPieceSquareTable[PieceType::kBishop][square.RelativeTo(us)], us);
 
     const BitBoard moves = move_gen::BishopMoves(square, occupied);
-    const int mobility_count =
-        GetPieceMobilityCount(PieceType::kBishop, square, moves, us);
+    const BitBoard mobility =
+        GetPieceMobility(PieceType::kBishop, square, moves, us);
 
-    score += kBishopMobility[mobility_count];
-    TRACE_INCREMENT(kBishopMobility[mobility_count], us);
+    score += kBishopMobility[mobility.PopCount()];
+    TRACE_INCREMENT(kBishopMobility[mobility.PopCount()], us);
+
+    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
+    if (enemy_king_attacks) {
+      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
+      attack_power_[us] += kAttackPower[PieceType::kBishop][king_attack_count];
+      TRACE_INCREMENT(kAttackPower[PieceType::kBishop][king_attack_count], us);
+    }
 
     if (IsOutpostSquare<us>(square)) {
       const int square_offset = 16 * (us == Color::kBlack ? -1 : 1);
@@ -352,11 +369,18 @@ ScorePair Evaluation::EvaluateRooks() {
                     us);
 
     const BitBoard moves = move_gen::RookMoves(square, occupied);
-    const int mobility_count =
-        GetPieceMobilityCount(PieceType::kRook, square, moves, us);
+    const BitBoard mobility =
+        GetPieceMobility(PieceType::kRook, square, moves, us);
 
-    score += kRookMobility[mobility_count];
-    TRACE_INCREMENT(kRookMobility[mobility_count], us);
+    score += kRookMobility[mobility.PopCount()];
+    TRACE_INCREMENT(kRookMobility[mobility.PopCount()], us);
+
+    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
+    if (enemy_king_attacks) {
+      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
+      attack_power_[us] += kAttackPower[PieceType::kRook][king_attack_count];
+      TRACE_INCREMENT(kAttackPower[PieceType::kRook][king_attack_count], us);
+    }
 
     const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
     if (!our_pawns_on_file) {
@@ -384,11 +408,18 @@ ScorePair Evaluation::EvaluateQueens() {
                     us);
 
     const BitBoard moves = move_gen::QueenMoves(square, occupied);
-    const int mobility_count =
-        GetPieceMobilityCount(PieceType::kQueen, square, moves, us);
+    const BitBoard mobility =
+        GetPieceMobility(PieceType::kQueen, square, moves, us);
 
-    score += kQueenMobility[mobility_count];
-    TRACE_INCREMENT(kQueenMobility[mobility_count], us);
+    score += kQueenMobility[mobility.PopCount()];
+    TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
+
+    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
+    if (enemy_king_attacks) {
+      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
+      attack_power_[us] += kAttackPower[PieceType::kQueen][king_attack_count];
+      TRACE_INCREMENT(kAttackPower[PieceType::kQueen][king_attack_count], us);
+    }
   }
 
   return score;
@@ -459,10 +490,13 @@ ScorePair Evaluation::EvaluateKing() {
     TRACE_INCREMENT(kKingOnFilePenalty[semi_open_file][square.File()], us);
   }
 
+  // King danger
+  score -= attack_power_[FlipColor(us)];
+
   return score;
 }
 
-int Evaluation::GetPieceMobilityCount(PieceType piece,
+BitBoard Evaluation::GetPieceMobility(PieceType piece,
                                       Square square,
                                       BitBoard moves,
                                       Color us) const {
@@ -476,7 +510,7 @@ int Evaluation::GetPieceMobilityCount(PieceType piece,
     }
   }
 
-  return moves.PopCount();
+  return moves;
 }
 
 Score Evaluation::InterpolateScore(ScorePair score_pair) const {
