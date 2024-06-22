@@ -1,6 +1,5 @@
 #include "evaluation.h"
 
-#include "../../chess/move_gen.h"
 #include "../../tuner/tuner.h"
 
 namespace eval {
@@ -123,9 +122,13 @@ class Evaluation {
   SideTable<BitBoard> pawn_attacks_;
   SideTable<BitBoard> mobility_zone_;
   SideTable<BitBoard> pawn_storm_zone_;
+  PawnStructureEntry *cached_pawn_structure_;
+  bool has_pawn_structure_cache_;
 };
 
 void Evaluation::Initialize() {
+  // pawn_cache.Prefetch(state_.pawn_key);
+
   const Square white_king_square = state_.King(Color::kWhite).GetLsb();
   const Square black_king_square = state_.King(Color::kBlack).GetLsb();
 
@@ -163,6 +166,10 @@ void Evaluation::Initialize() {
   // Add in the squares next to the king
   white_pawn_storm_zone |= Shift<Direction::kSouth>(white_pawn_storm_zone);
   black_pawn_storm_zone |= Shift<Direction::kNorth>(black_pawn_storm_zone);
+
+  // Probe the pawn structure cache
+  cached_pawn_structure_ = &pawn_cache[state_.pawn_key];
+  has_pawn_structure_cache_ = cached_pawn_structure_->key == state_.pawn_key;
 }
 
 Score Evaluation::GetScore() {
@@ -200,49 +207,65 @@ ScorePair Evaluation::EvaluatePawns() {
   const BitBoard our_pawns = state_.Pawns(us);
   const BitBoard their_pawns = state_.Pawns(FlipColor(us));
 
-  const Square king_square = state_.King(us).GetLsb();
+  BitBoard passed_pawns;
 
-  // Pawn phalanxes
-  const BitBoard connected_pawns =
-      Shift<Direction::kEast>(our_pawns) & our_pawns;
-  for (Square square : connected_pawns) {
-    score += kPawnPhalanxBonus[square.RelativeRank<us>()];
-    TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
+  if (!has_pawn_structure_cache_) {
+    // Pawn phalanxes
+    const BitBoard connected_pawns =
+        Shift<Direction::kEast>(our_pawns) & our_pawns;
+    for (Square square : connected_pawns) {
+      score += kPawnPhalanxBonus[square.RelativeRank<us>()];
+      TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
+    }
+
+    for (Square square : our_pawns) {
+      TRACE_INCREMENT(kPieceValues[PieceType::kPawn], us);
+      TRACE_INCREMENT(
+          kPieceSquareTable[PieceType::kPawn][square.RelativeTo(us)], us);
+
+      // Passed pawns
+      const BitBoard their_pawns_ahead =
+          masks::forward_file_adjacent[us][square] & their_pawns;
+      if (!their_pawns_ahead) {
+        passed_pawns.SetBit(square);
+
+        score += kPassedPawnBonus[square.RelativeRank<us>()];
+        TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
+      }
+
+      const int file = square.File();
+
+      // Doubled pawns
+      const BitBoard pawns_ahead_on_file =
+          our_pawns & masks::forward_file[us][square];
+      if (pawns_ahead_on_file) {
+        score += kDoubledPawnPenalty[file];
+        TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
+      }
+
+      // Isolated pawns
+      const BitBoard adjacent_pawns = masks::adjacent_files[square] & our_pawns;
+      if (!adjacent_pawns) {
+        score += kIsolatedPawnPenalty[file];
+        TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
+      }
+    }
+
+    cached_pawn_structure_->key = state_.pawn_key;
+    cached_pawn_structure_->score[us] = score;
+    cached_pawn_structure_->passed_pawns[us] = passed_pawns;
+  } else {
+    score = cached_pawn_structure_->score[us];
+    passed_pawns = cached_pawn_structure_->passed_pawns[us];
   }
 
-  for (Square square : our_pawns) {
-    TRACE_INCREMENT(kPieceValues[PieceType::kPawn], us);
-    TRACE_INCREMENT(kPieceSquareTable[PieceType::kPawn][square.RelativeTo(us)],
-                    us);
-
-    // Passed pawns
-    const BitBoard their_pawns_ahead =
-        masks::forward_file_adjacent[us][square] & their_pawns;
-    if (!their_pawns_ahead) {
-      score += kPassedPawnBonus[square.RelativeRank<us>()];
-      TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
-
-      score += kKingPassedPawnDistanceTable[square.DistanceTo(king_square)];
-      TRACE_INCREMENT(
-          kKingPassedPawnDistanceTable[square.DistanceTo(king_square)], us);
-    }
-
-    const int file = square.File();
-
-    // Doubled pawns
-    const BitBoard pawns_ahead_on_file =
-        our_pawns & masks::forward_file[us][square];
-    if (pawns_ahead_on_file) {
-      score += kDoubledPawnPenalty[file];
-      TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
-    }
-
-    // Isolated pawns
-    const BitBoard adjacent_pawns = masks::adjacent_files[square] & our_pawns;
-    if (!adjacent_pawns) {
-      score += kIsolatedPawnPenalty[file];
-      TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
-    }
+  // Don't cache the king/passed pawn proximity scores as it involves knowing
+  // the position of the king, which the pawn cache doesn't store
+  const Square king_square = state_.King(us).GetLsb();
+  for (Square square : passed_pawns) {
+    score += kKingPassedPawnDistanceTable[square.DistanceTo(king_square)];
+    TRACE_INCREMENT(
+        kKingPassedPawnDistanceTable[square.DistanceTo(king_square)], us);
   }
 
   return score;

@@ -1,5 +1,5 @@
-#ifndef INTEGRAL_EVALUATION_TERMS_H
-#define INTEGRAL_EVALUATION_TERMS_H
+#ifndef INTEGRAL_TERMS_H
+#define INTEGRAL_TERMS_H
 
 #include "../../utils/types.h"
 
@@ -198,4 +198,4 @@ constexpr std::array<int, kNumPieceTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};
 
 }  // namespace eval
 
-#endif  // INTEGRAL_EVALUATION_TERMS_H
+#endif  // INTEGRAL_TERMS_H

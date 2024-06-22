@@ -6,7 +6,7 @@
 #include <cstddef>
 
 #include "../../chess/move.h"
-#include "../../utils/types.h"
+#include "../../utils/hash_table.h"
 
 struct TranspositionTableEntry {
   enum Flag : U8 {
@@ -40,6 +40,17 @@ struct TranspositionTableEntry {
             (flag == kLowerBound && score >= beta) || flag == kExact);
   }
 
+  // Adjusts mate scores to correctly indicate the ply until mate
+  [[nodiscard]] static Score CorrectScore(Score score, U16 ply) {
+    constexpr int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
+    if (score >= kRoughlyMate) {
+      score -= ply;
+    } else if (score <= -kRoughlyMate) {
+      score += ply;
+    }
+    return score;
+  }
+
   U16 key;
   U8 depth;
   Flag flag;
@@ -47,36 +58,13 @@ struct TranspositionTableEntry {
   Move move;
 };
 
-class TranspositionTable {
+class TranspositionTable : public HashTable<TranspositionTableEntry> {
  public:
-  explicit TranspositionTable(std::size_t mb_size);
+  explicit TranspositionTable(std::size_t mb_size) : HashTable(mb_size) {}
 
-  TranspositionTable() : table_size_(0ULL), used_entries_(0ULL) {}
-
-  void Resize(std::size_t mb_size);
-
-  void Clear();
+  TranspositionTable() = default;
 
   void Save(const U64 &key, U16 ply, const TranspositionTableEntry &entry);
-
-  [[nodiscard]] const TranspositionTableEntry &Probe(const U64 &key) const;
-
-  // Uses an intrinsic to cache this entry for faster probing
-  void Prefetch(const U64 &key) const;
-
-  // Adjusts mate scores to correctly indicate the ply until mate
-  [[nodiscard]] Score CorrectScore(Score score, U16 ply) const;
-
-  // Returns how much of the table has been filled with entries
-  [[nodiscard]] int HashFull() const;
-
- private:
-  [[nodiscard]] U64 Index(const U64 &key) const;
-
- private:
-  std::vector<TranspositionTableEntry> table_;
-  std::size_t table_size_;
-  std::size_t used_entries_;
 };
 
 inline TranspositionTable transposition_table;

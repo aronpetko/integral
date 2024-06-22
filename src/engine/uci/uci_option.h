@@ -36,6 +36,7 @@ class Option {
         callback_(std::move(callback)),
         visibility_(visibility) {
     value_ = default_;
+    callback_(*this);
   }
 
   explicit Option(
@@ -49,6 +50,7 @@ class Option {
         callback_(std::move(callback)),
         visibility_(visibility) {
     value_ = default_;
+    callback_(*this);
   }
 
   explicit Option(
@@ -62,6 +64,7 @@ class Option {
         callback_(std::move(callback)),
         visibility_(visibility) {
     value_ = default_;
+    callback_(*this);
   }
 
   void SetValue(std::string_view value) {
