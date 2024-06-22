@@ -247,6 +247,14 @@ class ScorePair {
   constexpr ScorePair operator*(int scalar) const {
     return ScorePair{score_ * scalar};
   }
+  
+  constexpr ScorePair operator/(const ScorePair& other) const {
+    return ScorePair{score_ / other.score_};
+  }
+  
+  constexpr ScorePair operator/(int scalar) const {
+    return ScorePair{score_ / scalar};
+  }
 
   constexpr ScorePair& operator+=(const ScorePair& other) {
     score_ += other.score_;
