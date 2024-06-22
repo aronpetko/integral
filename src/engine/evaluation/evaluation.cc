@@ -265,10 +265,14 @@ ScorePair Evaluation::EvaluatePawns() {
   // Don't cache the king/passed pawn proximity scores as it involves knowing
   // the position of the king, which the pawn cache doesn't store
   const Square king_square = state_.King(us).GetLsb();
+  const Square enemy_king_square = state_.King(FlipColor(us)).GetLsb();
   for (Square square : passed_pawns) {
-    score += kKingPassedPawnDistanceTable[square.DistanceTo(king_square)];
+    score += kKingPPDistanceTable[square.DistanceTo(king_square)];
+    TRACE_INCREMENT(kKingPPDistanceTable[square.DistanceTo(king_square)], us);
+
+    score += kEnemyKingPPDistanceTable[square.DistanceTo(enemy_king_square)];
     TRACE_INCREMENT(
-        kKingPassedPawnDistanceTable[square.DistanceTo(king_square)], us);
+        kEnemyKingPPDistanceTable[square.DistanceTo(enemy_king_square)], us);
   }
 
   return score;
