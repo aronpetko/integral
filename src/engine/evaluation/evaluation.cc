@@ -123,6 +123,9 @@ class Evaluation {
   const BoardState &state_;
   SideTable<BitBoard> king_zone_;
   SideTable<BitBoard> pawn_attacks_;
+  SideTable<BitBoard> knight_attacks_;
+  SideTable<BitBoard> bishop_attacks_;
+  SideTable<BitBoard> rook_attacks_;
   SideTable<BitBoard> mobility_zone_;
   SideTable<BitBoard> pawn_storm_zone_;
   SideTable<ScorePair> attack_power_;
@@ -188,6 +191,7 @@ Score Evaluation::GetScore() {
   score += EvaluateRooks<Color::kWhite>() - EvaluateRooks<Color::kBlack>();
   score += EvaluateQueens<Color::kWhite>() - EvaluateQueens<Color::kBlack>();
   score += EvaluateKing<Color::kWhite>() - EvaluateKing<Color::kBlack>();
+  score += EvaluateThreats<Color::kWhite>() - EvaluateThreats<Color::kBlack>();
 
   // Flip the score if we are black, since the score is from white's perspective
   if (us == Color::kBlack) {
@@ -299,10 +303,7 @@ ScorePair Evaluation::EvaluateKnights() {
     score += kKnightMobility[mobility.PopCount()];
     TRACE_INCREMENT(kKnightMobility[mobility.PopCount()], us);
 
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kKnight];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kKnight], us);
-    }
+    knight_attacks_[us] |= mobility;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -347,10 +348,7 @@ ScorePair Evaluation::EvaluateBishops() {
     score += kBishopMobility[mobility.PopCount()];
     TRACE_INCREMENT(kBishopMobility[mobility.PopCount()], us);
 
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kBishop];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kBishop], us);
-    }
+    bishop_attacks_[us] |= mobility;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -392,10 +390,7 @@ ScorePair Evaluation::EvaluateRooks() {
     score += kRookMobility[mobility.PopCount()];
     TRACE_INCREMENT(kRookMobility[mobility.PopCount()], us);
 
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kRook];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kRook], us);
-    }
+    rook_attacks_[us] |= mobility;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -435,11 +430,6 @@ ScorePair Evaluation::EvaluateQueens() {
 
     score += kQueenMobility[mobility.PopCount()];
     TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
-
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kQueen];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kQueen], us);
-    }
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -519,6 +509,40 @@ ScorePair Evaluation::EvaluateKing() {
 
   // King danger
   score -= attack_power_[FlipColor(us)];
+
+  return score;
+}
+
+template <Color us>
+ScorePair Evaluation::EvaluateThreats() {
+  ScorePair score;
+
+  const Color them = FlipColor(us);
+  const BitBoard our_pieces = state_.Occupied(us);
+
+  for (Square square : knight_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByKnightPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByKnightPenalty[threatened_piece], us);
+  }
+  
+  for (Square square : bishop_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByBishopPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByBishopPenalty[threatened_piece], us);
+  }
+
+  for (Square square : rook_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByRookPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByRookPenalty[threatened_piece], us);
+  }
+
+  for (Square square : pawn_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByPawnPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByPawnPenalty[threatened_piece], us);
+  }
 
   return score;
 }
