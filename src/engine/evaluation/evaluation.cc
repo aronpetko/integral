@@ -103,6 +103,9 @@ class Evaluation {
   template <Color us>
   ScorePair EvaluateKing();
 
+  template <Color us>
+  ScorePair EvaluateThreats();
+
   [[nodiscard]] BitBoard GetPieceMobility(PieceType piece,
                                           Square square,
                                           BitBoard moves,
@@ -296,6 +299,11 @@ ScorePair Evaluation::EvaluateKnights() {
     score += kKnightMobility[mobility.PopCount()];
     TRACE_INCREMENT(kKnightMobility[mobility.PopCount()], us);
 
+    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
+      score += kThreatenedByPawnPenalty[PieceType::kKnight];
+      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kKnight], us);
+    }
+
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
       const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
@@ -339,6 +347,11 @@ ScorePair Evaluation::EvaluateBishops() {
     score += kBishopMobility[mobility.PopCount()];
     TRACE_INCREMENT(kBishopMobility[mobility.PopCount()], us);
 
+    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
+      score += kThreatenedByPawnPenalty[PieceType::kBishop];
+      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kBishop], us);
+    }
+
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
       const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
@@ -379,6 +392,11 @@ ScorePair Evaluation::EvaluateRooks() {
     score += kRookMobility[mobility.PopCount()];
     TRACE_INCREMENT(kRookMobility[mobility.PopCount()], us);
 
+    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
+      score += kThreatenedByPawnPenalty[PieceType::kRook];
+      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kRook], us);
+    }
+
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
       const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
@@ -418,6 +436,11 @@ ScorePair Evaluation::EvaluateQueens() {
     score += kQueenMobility[mobility.PopCount()];
     TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
 
+    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
+      score += kThreatenedByPawnPenalty[PieceType::kQueen];
+      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kQueen], us);
+    }
+
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
       const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
@@ -441,7 +464,7 @@ ScorePair Evaluation::EvaluateKing() {
   const int king_file = square.File();
 
   const BitBoard our_pawns_in_safety_zone = state_.Pawns(us) & king_zone_[us];
-  for (Square pawn_square : our_pawns_in_safety_zone) {
+  for (const Square pawn_square : our_pawns_in_safety_zone) {
     const int pawn_rank = pawn_square.Rank();
     const int pawn_file = pawn_square.File();
 
@@ -464,7 +487,7 @@ ScorePair Evaluation::EvaluateKing() {
 
   const BitBoard storming_pawns =
       state_.Pawns(us) & pawn_storm_zone_[FlipColor(us)];
-  for (Square pawn_square : storming_pawns) {
+  for (const Square pawn_square : storming_pawns) {
     const int pawn_rank = pawn_square.Rank();
     const int pawn_file = pawn_square.File();
 
