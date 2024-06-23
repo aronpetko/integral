@@ -68,6 +68,8 @@ class TimeManagement {
   // Table that keeps track of how many nodes were spent searching a particular
   // move
   std::array<U32, 4096> nodes_spent_;
+  Move previous_best_move_;
+  int best_move_stability_;
 };
 
 #endif  // INTEGRAL_TIME_MGMT_H_
