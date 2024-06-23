@@ -83,7 +83,9 @@ struct SearchStackEntry {
 
   void UpdateCounterMove() {
     const auto prev_move = (this - 1)->move;
-    counter_moves[prev_move.GetFrom()][prev_move.GetTo()] = move;
+    if (prev_move) {
+      counter_moves[prev_move.GetFrom()][prev_move.GetTo()] = move;
+    }
   }
 
   void ClearCounterMoves() {
