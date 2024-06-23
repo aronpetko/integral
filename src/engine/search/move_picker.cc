@@ -94,6 +94,8 @@ Move MovePicker::Next() {
       const auto counter_move =
           stack_->counter_moves[prev_move.GetFrom()][prev_move.GetTo()];
       if (counter_move && counter_move != tt_move_ &&
+          counter_move != stack_->killer_moves[0] &&
+          counter_move != stack_->killer_moves[1] &&
           board_.IsMovePseudoLegal(counter_move)) {
         return counter_move;
       }
@@ -154,10 +156,15 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 template <MoveType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = stack_->killer_moves;
+  const auto prev_move = (stack_ - 1)->move;
+  const auto counter_move =
+      stack_->counter_moves[prev_move.GetFrom()][prev_move.GetTo()];
+
   auto moves = move_gen::GenerateMoves(move_type, board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && killers[0] != move && killers[1] != move) {
+    if (move != tt_move_ && killers[0] != move && killers[1] != move &&
+        move != counter_move) {
       list.Push({move, ScoreMove(move)});
     }
   }
