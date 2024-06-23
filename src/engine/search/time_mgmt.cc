@@ -11,6 +11,13 @@ Tunable hard_limit_scale("hard_limit_scale", 3.04, 1.00, 4.50);
 Tunable soft_limit_scale("soft_limit_scale", 0.76, 0, 1.50);
 Tunable node_fraction_base("node_fraction_base", 1.52, 0.50, 2.50);
 Tunable node_fraction_scale("node_fraction_scale", 1.74, 0.50, 2.50);
+std::array<Tunable, 5> move_stability_scale = {
+    Tunable("mss_1", 2.43, 0.0, 5.0),
+    Tunable("mss_2", 1.35, 0.0, 5.0),
+    Tunable("mss_3", 1.09, 0.0, 5.0),
+    Tunable("mss_4", 0.88, 0.0, 5.0),
+    Tunable("mss_5", 0.68, 0.0, 5.0),
+};
 
 [[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config)
     : nodes_spent_({}) {
@@ -28,6 +35,8 @@ void TimeManagement::Start() {
 
   start_time_.store(GetCurrentTime());
   nodes_spent_.fill(0);
+
+  previous_best_move_ = Move::NullMove();
 }
 
 void TimeManagement::Stop() {
@@ -68,7 +77,7 @@ bool TimeManagement::TimesUp() {
   return TimeElapsed() >= hard_limit_;
 }
 
-bool TimeManagement::ShouldStop(Move best_move, U32 nodes_searched) {
+bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
   if (type_ != TimeType::kTimed) {
     return false;
   }
@@ -77,12 +86,25 @@ bool TimeManagement::ShouldStop(Move best_move, U32 nodes_searched) {
     return TimesUp();
   }
 
+  if (depth < 7) {
+    return TimeElapsed() >= soft_limit_;
+  }
+
+  // Keep track of how many times this move has been the best move
+  if (previous_best_move_ != best_move) {
+    previous_best_move_ = best_move;
+    best_move_stability_ = 0;
+  } else if (best_move_stability_ < 4) {
+    best_move_stability_++;
+  }
+
   const auto percent_searched =
       NodesSpent(best_move) / std::max<double>(1, nodes_searched);
   const double percent_scale_factor =
       (node_fraction_base - percent_searched) * node_fraction_scale;
-  const U32 optimal_limit =
-      std::min<U32>(soft_limit_ * percent_scale_factor, hard_limit_);
+  const double stability_scale = move_stability_scale[best_move_stability_];
+  const U32 optimal_limit = std::min<U32>(
+      soft_limit_ * percent_scale_factor * stability_scale, hard_limit_);
 
   return TimeElapsed() >= optimal_limit;
 }

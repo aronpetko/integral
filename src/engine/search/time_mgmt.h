@@ -49,7 +49,7 @@ class TimeManagement {
 
   // Determines if the search should end if we are confident that this move
   // shouldn't be searched further (soft limit)
-  [[nodiscard]] bool ShouldStop(Move best_move, U32 nodes_searched);
+  [[nodiscard]] bool ShouldStop(Move best_move, int depth, U32 nodes_searched);
 
   // Determine if the search must give up now to avoid losing
   [[nodiscard]] bool TimesUp();
@@ -68,6 +68,8 @@ class TimeManagement {
   // Table that keeps track of how many nodes were spent searching a particular
   // move
   std::array<U32, 4096> nodes_spent_;
+  Move previous_best_move_;
+  int best_move_stability_;
 };
 
 #endif  // INTEGRAL_TIME_MGMT_H_
