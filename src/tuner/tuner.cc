@@ -13,7 +13,7 @@ using namespace eval;
 constexpr int kMaxEpochs = 10000;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kLearningRate = 1.0;
+constexpr double kLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
@@ -139,6 +139,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kKingPPDistanceTable);
   AddArrayParameter(kEnemyKingPPDistanceTable);
   Add2DArrayParameter(kKingOnFilePenalty);
+  AddArrayParameter(kKingVirtualMobilityTable);
   Add2DArrayParameter(kAttackPower);
   AddArrayParameter(kThreatenedByPawnPenalty);
   AddArrayParameter(kKnightOutpostTable);
@@ -174,6 +175,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
   GET_ARRAY_COEFFICIENTS(kKingPPDistanceTable);
   GET_ARRAY_COEFFICIENTS(kEnemyKingPPDistanceTable);
+  GET_ARRAY_COEFFICIENTS(kKingVirtualMobilityTable);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
   GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
   GET_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);

@@ -460,6 +460,13 @@ ScorePair Evaluation::EvaluateKing() {
   TRACE_INCREMENT(kPieceSquareTable[PieceType::kKing][square.RelativeTo(us)],
                   us);
 
+  // Simulate queen mobility from the king as a form of king safety. Squares
+  // defended by our pawns should help reduce these dangerous squares.
+  const BitBoard virtual_mobility =
+      move_gen::QueenMoves(square, state_.Occupied()) & ~pawn_attacks_[us];
+  score += kKingVirtualMobilityTable[virtual_mobility.PopCount()];
+  TRACE_INCREMENT(kKingVirtualMobilityTable[virtual_mobility.PopCount()], us);
+
   const int king_rank = square.Rank();
   const int king_file = square.File();
 
