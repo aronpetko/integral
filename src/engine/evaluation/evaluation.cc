@@ -520,32 +520,28 @@ ScorePair Evaluation::EvaluateThreats() {
   const Color them = FlipColor(us);
   const BitBoard our_pieces = state_.Occupied(us);
 
-  for (int piece = PieceType::kKnight; piece <= PieceType::kQueen; piece++) {
-    const BitBoard our_piece_bb = state_.piece_bbs[piece] & our_pieces;
+  for (Square square : knight_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByKnightPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByKnightPenalty[threatened_piece], us);
+  }
+  
+  for (Square square : bishop_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByBishopPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByBishopPenalty[threatened_piece], us);
+  }
 
-    const BitBoard pawn_threats = pawn_attacks_[them] & our_piece_bb;
-    score += kThreatenedByPawnPenalty[piece] * pawn_threats.PopCount();
-    TRACE_ADD(kThreatenedByPawnPenalty[piece], pawn_threats.PopCount(), us);
-    
-    const BitBoard knight_threats = knight_attacks_[them] & our_piece_bb;
-    const BitBoard bishop_threats = bishop_attacks_[them] & our_piece_bb;
-    const BitBoard rook_threats = rook_attacks_[them] & our_piece_bb;
-    
-    if (piece == PieceType::kRook) {
-      score += kRookThreatenedByKnightPenalty * knight_threats.PopCount();
-      score += kRookThreatenedByBishopPenalty * bishop_threats.PopCount();
+  for (Square square : rook_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByRookPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByRookPenalty[threatened_piece], us);
+  }
 
-      TRACE_ADD(kRookThreatenedByKnightPenalty, knight_threats.PopCount(), us);
-      TRACE_ADD(kRookThreatenedByBishopPenalty, bishop_threats.PopCount(), us);
-    } else if (piece == PieceType::kQueen) {
-      score += kQueenThreatenedByKnightPenalty * knight_threats.PopCount();
-      score += kQueenThreatenedByBishopPenalty * bishop_threats.PopCount();
-      score += kQueenThreatenedByRookPenalty * rook_threats.PopCount();
-
-      TRACE_ADD(kQueenThreatenedByKnightPenalty, knight_threats.PopCount(), us);
-      TRACE_ADD(kQueenThreatenedByBishopPenalty, bishop_threats.PopCount(), us);
-      TRACE_ADD(kQueenThreatenedByRookPenalty, rook_threats.PopCount(), us);
-    }
+  for (Square square : pawn_attacks_[them] & our_pieces) {
+    const auto threatened_piece = state_.GetPieceType(square);
+    score += kThreatenedByPawnPenalty[threatened_piece];
+    TRACE_INCREMENT(kThreatenedByPawnPenalty[threatened_piece], us);
   }
 
   return score;

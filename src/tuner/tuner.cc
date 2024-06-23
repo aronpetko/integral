@@ -141,11 +141,9 @@ void Tuner::InitBaseParameters() {
   Add2DArrayParameter(kKingOnFilePenalty);
   Add2DArrayParameter(kAttackPower);
   AddArrayParameter(kThreatenedByPawnPenalty);
-  AddSingleParameter(kRookThreatenedByKnightPenalty);
-  AddSingleParameter(kRookThreatenedByBishopPenalty);
-  AddSingleParameter(kQueenThreatenedByKnightPenalty);
-  AddSingleParameter(kQueenThreatenedByBishopPenalty);
-  AddSingleParameter(kQueenThreatenedByRookPenalty);
+  AddArrayParameter(kThreatenedByKnightPenalty);
+  AddArrayParameter(kThreatenedByBishopPenalty);
+  AddArrayParameter(kThreatenedByRookPenalty);
   AddArrayParameter(kKnightOutpostTable);
   AddArrayParameter(kBishopOutpostTable);
   AddSingleParameter(kBishopPairBonus);
@@ -182,11 +180,9 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
   GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
   GET_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);
-  GET_COEFFICIENT(kRookThreatenedByKnightPenalty);
-  GET_COEFFICIENT(kRookThreatenedByBishopPenalty);
-  GET_COEFFICIENT(kQueenThreatenedByKnightPenalty);
-  GET_COEFFICIENT(kQueenThreatenedByBishopPenalty);
-  GET_COEFFICIENT(kQueenThreatenedByRookPenalty);
+  GET_ARRAY_COEFFICIENTS(kThreatenedByKnightPenalty);
+  GET_ARRAY_COEFFICIENTS(kThreatenedByBishopPenalty);
+  GET_ARRAY_COEFFICIENTS(kThreatenedByRookPenalty);
   GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
   GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
   GET_COEFFICIENT(kBishopPairBonus);
@@ -430,18 +426,14 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr PieceTable<ScorePair> kThreatenedByPawnPenalty = ");
   PrintArray(index, kNumPieceTypes, parameters_);
 
-  fmt::print("constexpr ScorePair kRookThreatenedByKnightPenalty = ");
-  PrintTerm(index, parameters_);
-  fmt::print("constexpr ScorePair kRookThreatenedByBishopPenalty = ");
-  PrintTerm(index, parameters_);
-  fmt::print("constexpr ScorePair kQueenThreatenedByKnightPenalty = ");
-  PrintTerm(index, parameters_);
-  fmt::print("constexpr ScorePair kQueenThreatenedByBishopPenalty = ");
-  PrintTerm(index, parameters_);
-  fmt::print("constexpr ScorePair kQueenThreatenedByRookPenalty = ");
-  PrintTerm(index, parameters_);
+  fmt::print("constexpr PieceTable<ScorePair> kThreatenedByKnightPenalty = ");
+  PrintArray(index, kNumPieceTypes, parameters_);
 
-  fmt::println("");
+  fmt::print("constexpr PieceTable<ScorePair> kThreatenedByBishopPenalty = ");
+  PrintArray(index, kNumPieceTypes, parameters_);
+
+  fmt::print("constexpr PieceTable<ScorePair> kThreatenedByRookPenalty = ");
+  PrintArray(index, kNumPieceTypes, parameters_);
 
   fmt::print("constexpr OutpostTable<ScorePair> kKnightOutpostTable = ");
   PrintArray(index, kKnightOutpostTable.size(), parameters_);
