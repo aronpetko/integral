@@ -175,8 +175,8 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
   GET_ARRAY_COEFFICIENTS(kKingPPDistanceTable);
   GET_ARRAY_COEFFICIENTS(kEnemyKingPPDistanceTable);
-  GET_ARRAY_COEFFICIENTS(kKingVirtualMobilityTable);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
+  GET_ARRAY_COEFFICIENTS(kKingVirtualMobilityTable);
   GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
   GET_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
@@ -403,8 +403,7 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
 
-  fmt::print(
-      "constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
+  fmt::print("constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
   PrintArray(index, kKingPPDistanceTable.size(), parameters_);
 
   fmt::print(
@@ -418,6 +417,10 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = ");
   Print2DArray(index, kNumPieceTypes, 8, parameters_);
+
+  fmt::print(
+      "constexpr QueenMobilityTable<ScorePair> kKingVirtualMobilityTable = ");
+  PrintArray(index, kKingVirtualMobilityTable.size(), parameters_);
 
   fmt::print("constexpr PieceTable<ScorePair> kThreatenedByPawnPenalty = ");
   PrintArray(index, kNumPieceTypes, parameters_);
