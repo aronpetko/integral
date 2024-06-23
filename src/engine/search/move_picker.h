@@ -44,6 +44,7 @@ class MovePicker {
     kGoodTacticals,
     kFirstKiller,
     kSecondKiller,
+    kCounterMove,
     kGenerateQuiets,
     kQuiets,
     kBadTacticals,

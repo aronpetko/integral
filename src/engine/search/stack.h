@@ -66,6 +66,8 @@ struct SearchStackEntry {
   void *continuation_entry;
   // Moves that caused a beta cutoff at this ply
   std::array<Move, 2> killer_moves;
+  // Moves that caused a beta cutoff when played as a counter to another move
+  MultiArray<Move, 64, 64> counter_moves;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -79,6 +81,15 @@ struct SearchStackEntry {
     killer_moves.fill(Move::NullMove());
   }
 
+  void UpdateCounterMove() {
+    const auto prev_move = (this - 1)->move;
+    counter_moves[prev_move.GetFrom()][prev_move.GetTo()] = move;
+  }
+
+  void ClearCounterMoves() {
+    for (auto &counters : counter_moves) counters.fill(Move::NullMove());
+  }
+
   explicit SearchStackEntry(U16 ply)
       : ply(ply),
         static_eval(kScoreNone),
@@ -86,8 +97,10 @@ struct SearchStackEntry {
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
+        counter_moves({}),
         continuation_entry(nullptr) {
     ClearKillerMoves();
+    ClearCounterMoves();
   }
 
   SearchStackEntry() : SearchStackEntry(0) {}

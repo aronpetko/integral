@@ -75,13 +75,27 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kSecondKiller) {
-    stage_ = Stage::kGenerateQuiets;
+    stage_ = Stage::kCounterMove;
 
     if (stack_) {
       const auto second_killer = stack_->killer_moves[1];
       if (second_killer && second_killer != tt_move_ &&
           board_.IsMovePseudoLegal(second_killer)) {
         return second_killer;
+      }
+    }
+  }
+
+  if (stage_ == Stage::kCounterMove) {
+    stage_ = Stage::kGenerateQuiets;
+
+    if (stack_) {
+      const auto prev_move = (stack_ - 1)->move;
+      const auto counter_move =
+          stack_->counter_moves[prev_move.GetFrom()][prev_move.GetTo()];
+      if (counter_move && counter_move != tt_move_ &&
+          board_.IsMovePseudoLegal(counter_move)) {
+        return counter_move;
       }
     }
   }

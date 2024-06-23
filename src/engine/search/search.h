@@ -53,7 +53,7 @@ class Search {
   Board &board_;
   TimeManagement time_mgmt_;
   history::SearchHistory history_;
-  SearchStack search_stack_;
+  std::unique_ptr<SearchStack> search_stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
   std::atomic_uint64_t nodes_searched_;

@@ -36,16 +36,17 @@ const LateMoveReductionTable kLateMoveReduction =
 Search::Search(Board &board)
     : board_(board),
       history_(board_.GetState()),
+      search_stack_(std::make_unique<SearchStack>()),
       sel_depth_(0),
       nodes_searched_(0),
       searching_(false) {
-  search_stack_.Reset();
+  search_stack_->Reset();
 }
 
 template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
-  const auto root_stack = &search_stack_.Front();
+  const auto root_stack = &search_stack_->Front();
 
   Move best_move = Move::NullMove();
   Score score = 0;
@@ -533,6 +534,7 @@ Score Search::PVSearch(int depth,
         if (alpha >= beta) {
           if (is_quiet) {
             stack->AddKillerMove(move);
+            stack->UpdateCounterMove();
             history_.quiet_history->UpdateScore(stack, depth, quiets);
             history_.continuation_history->UpdateScore(stack, depth, quiets);
           } else if (is_capture) {
@@ -636,7 +638,7 @@ void Search::NewGame() {
   transposition_table.Clear();
   eval::pawn_cache.Clear();
   history_.Clear();
-  search_stack_.Reset();
+  search_stack_->Reset();
 }
 
 U64 Search::GetNodesSearched() const {
