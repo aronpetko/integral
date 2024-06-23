@@ -241,7 +241,7 @@ Score Search::PVSearch(int depth,
 
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
-  if (depth == 0) {
+  if (depth == 0 && !state.InCheck()) {
     return QuiescentSearch<node_type>(alpha, beta, stack);
   }
 
@@ -408,7 +408,7 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    int extensions = 0;
+    int extensions = state.InCheck();
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
@@ -440,8 +440,6 @@ Score Search::PVSearch(int depth,
           return new_beta;
         }
       }
-    } else if (state.InCheck()) {
-      extensions++;
     }
 
     // Prefetch the TT entry for the next move as early as possible
