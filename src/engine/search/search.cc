@@ -119,7 +119,8 @@ void Search::IterativeDeepening() {
           root_stack->pv.UCIFormat());
     }
 
-    if (!searching_ || time_mgmt_.ShouldStop(best_move, nodes_searched_)) {
+    if (!searching_ ||
+        time_mgmt_.ShouldStop(best_move, depth, nodes_searched_)) {
       break;
     }
   }

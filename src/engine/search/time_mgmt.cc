@@ -35,6 +35,8 @@ void TimeManagement::Start() {
 
   start_time_.store(GetCurrentTime());
   nodes_spent_.fill(0);
+
+  previous_best_move_ = Move::NullMove();
 }
 
 void TimeManagement::Stop() {
@@ -75,13 +77,17 @@ bool TimeManagement::TimesUp() {
   return TimeElapsed() >= hard_limit_;
 }
 
-bool TimeManagement::ShouldStop(Move best_move, U32 nodes_searched) {
+bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
   if (type_ != TimeType::kTimed) {
     return false;
   }
 
   if (config_.move_time != 0) {
     return TimesUp();
+  }
+
+  if (depth < 7) {
+    return TimeElapsed() >= soft_limit_;
   }
 
   // Keep track of how many times this move has been the best move
