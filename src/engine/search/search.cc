@@ -239,11 +239,6 @@ Score Search::PVSearch(int depth,
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
-  // Ensure we never fall into quiescent search when in check
-  if (state.InCheck()) {
-    depth++;
-  }
-
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
   if (depth == 0) {
@@ -445,6 +440,8 @@ Score Search::PVSearch(int depth,
           return new_beta;
         }
       }
+    } else if (state.InCheck()) {
+      extensions++;
     }
 
     // Prefetch the TT entry for the next move as early as possible
