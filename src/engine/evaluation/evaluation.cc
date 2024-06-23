@@ -460,10 +460,15 @@ ScorePair Evaluation::EvaluateKing() {
   TRACE_INCREMENT(kPieceSquareTable[PieceType::kKing][square.RelativeTo(us)],
                   us);
 
+  const BitBoard our_pieces = state_.Occupied(us);
+
   // Simulate queen mobility from the king as a form of king safety, ignoring
   // enemy pieces for rays (except pawns)
+  const BitBoard safe_rank =
+      us == Color::kWhite ? kRankMasks[kRank1] : kRankMasks[kRank8];
   const BitBoard virtual_mobility =
-      move_gen::QueenMoves(square, state_.Occupied(us) | state_.Pawns());
+      move_gen::QueenMoves(square, our_pieces | state_.Pawns()) & ~our_pieces &
+      ~safe_rank;
   score += kKingVirtualMobilityTable[virtual_mobility.PopCount()];
   TRACE_INCREMENT(kKingVirtualMobilityTable[virtual_mobility.PopCount()], us);
 
