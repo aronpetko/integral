@@ -63,6 +63,7 @@ struct EvalTrace {
   std::array<TraceTerm, 8> kAttackCountModifier{};
   eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
   eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
+  eval::PieceTable<TraceTerm> kThreatenedByPawnPenalty{};
   TraceTerm kBishopPairBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};
