@@ -61,9 +61,14 @@ struct EvalTrace {
   std::array<eval::FileTable<TraceTerm>, 2> kKingOnFilePenalty{};
   eval::PieceTable<std::array<TraceTerm, 8>> kAttackPower{};
   std::array<TraceTerm, 8> kAttackCountModifier{};
+  eval::PieceTable<TraceTerm> kThreatenedByPawnPenalty{};
+  TraceTerm kRookThreatenedByKnightPenalty{};
+  TraceTerm kRookThreatenedByBishopPenalty{};
+  TraceTerm kQueenThreatenedByKnightPenalty{};
+  TraceTerm kQueenThreatenedByBishopPenalty{};
+  TraceTerm kQueenThreatenedByRookPenalty{};
   eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
   eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
-  eval::PieceTable<TraceTerm> kThreatenedByPawnPenalty{};
   TraceTerm kBishopPairBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};

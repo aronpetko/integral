@@ -123,6 +123,9 @@ class Evaluation {
   const BoardState &state_;
   SideTable<BitBoard> king_zone_;
   SideTable<BitBoard> pawn_attacks_;
+  SideTable<BitBoard> knight_attacks_;
+  SideTable<BitBoard> bishop_attacks_;
+  SideTable<BitBoard> rook_attacks_;
   SideTable<BitBoard> mobility_zone_;
   SideTable<BitBoard> pawn_storm_zone_;
   SideTable<ScorePair> attack_power_;
@@ -188,6 +191,7 @@ Score Evaluation::GetScore() {
   score += EvaluateRooks<Color::kWhite>() - EvaluateRooks<Color::kBlack>();
   score += EvaluateQueens<Color::kWhite>() - EvaluateQueens<Color::kBlack>();
   score += EvaluateKing<Color::kWhite>() - EvaluateKing<Color::kBlack>();
+  score += EvaluateThreats<Color::kWhite>() - EvaluateThreats<Color::kBlack>();
 
   // Flip the score if we are black, since the score is from white's perspective
   if (us == Color::kBlack) {
@@ -299,10 +303,7 @@ ScorePair Evaluation::EvaluateKnights() {
     score += kKnightMobility[mobility.PopCount()];
     TRACE_INCREMENT(kKnightMobility[mobility.PopCount()], us);
 
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kKnight];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kKnight], us);
-    }
+    knight_attacks_[us] |= mobility;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -347,10 +348,7 @@ ScorePair Evaluation::EvaluateBishops() {
     score += kBishopMobility[mobility.PopCount()];
     TRACE_INCREMENT(kBishopMobility[mobility.PopCount()], us);
 
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kBishop];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kBishop], us);
-    }
+    bishop_attacks_[us] |= mobility;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -392,10 +390,7 @@ ScorePair Evaluation::EvaluateRooks() {
     score += kRookMobility[mobility.PopCount()];
     TRACE_INCREMENT(kRookMobility[mobility.PopCount()], us);
 
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kRook];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kRook], us);
-    }
+    rook_attacks_[us] |= mobility;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -435,11 +430,6 @@ ScorePair Evaluation::EvaluateQueens() {
 
     score += kQueenMobility[mobility.PopCount()];
     TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
-
-    if (pawn_attacks_[FlipColor(us)].IsSet(square)) {
-      score += kThreatenedByPawnPenalty[PieceType::kQueen];
-      TRACE_INCREMENT(kThreatenedByPawnPenalty[PieceType::kQueen], us);
-    }
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -519,6 +509,44 @@ ScorePair Evaluation::EvaluateKing() {
 
   // King danger
   score -= attack_power_[FlipColor(us)];
+
+  return score;
+}
+
+template <Color us>
+ScorePair Evaluation::EvaluateThreats() {
+  ScorePair score;
+
+  const Color them = FlipColor(us);
+  const BitBoard our_pieces = state_.Occupied(us);
+
+  for (int piece = PieceType::kKnight; piece <= PieceType::kQueen; piece++) {
+    const BitBoard our_piece_bb = state_.piece_bbs[piece] & our_pieces;
+
+    const BitBoard pawn_threats = pawn_attacks_[them] & our_piece_bb;
+    score += kThreatenedByPawnPenalty[piece] * pawn_threats.PopCount();
+    TRACE_ADD(kThreatenedByPawnPenalty[piece], pawn_threats.PopCount(), us);
+    
+    const BitBoard knight_threats = knight_attacks_[them] & our_piece_bb;
+    const BitBoard bishop_threats = bishop_attacks_[them] & our_piece_bb;
+    const BitBoard rook_threats = rook_attacks_[them] & our_piece_bb;
+    
+    if (piece == PieceType::kRook) {
+      score += kRookThreatenedByKnightPenalty * knight_threats.PopCount();
+      score += kRookThreatenedByBishopPenalty * bishop_threats.PopCount();
+
+      TRACE_ADD(kRookThreatenedByKnightPenalty, knight_threats.PopCount(), us);
+      TRACE_ADD(kRookThreatenedByBishopPenalty, bishop_threats.PopCount(), us);
+    } else if (piece == PieceType::kQueen) {
+      score += kQueenThreatenedByKnightPenalty * knight_threats.PopCount();
+      score += kQueenThreatenedByBishopPenalty * bishop_threats.PopCount();
+      score += kQueenThreatenedByRookPenalty * rook_threats.PopCount();
+
+      TRACE_ADD(kQueenThreatenedByKnightPenalty, knight_threats.PopCount(), us);
+      TRACE_ADD(kQueenThreatenedByBishopPenalty, bishop_threats.PopCount(), us);
+      TRACE_ADD(kQueenThreatenedByRookPenalty, rook_threats.PopCount(), us);
+    }
+  }
 
   return score;
 }
