@@ -194,10 +194,14 @@ Score Search::QuiescentSearch(Score alpha,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    // Never evaluate bad tactical moves in quiescent search unless we still
-    // don't have a legal move to play
-    if (move_picker.GetStage() > MovePicker::Stage::kQuiets && moves_seen > 0) {
-      break;
+    // Prune only if we've found a legal move
+    if (moves_seen > 0) {
+      // Quiet Late Move Pruning: When searching quiet evasions, we only want to
+      // look at a few contending moves
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
+          moves_seen >= 3) {
+        break;
+      }
     }
 
     if (!board_.IsMoveLegal(move)) {
