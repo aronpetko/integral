@@ -149,36 +149,41 @@ Score Search::QuiescentSearch(Score alpha,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
+  const int tt_depth = state.InCheck();
   const auto &tt_entry = transposition_table[state.zobrist_key];
   const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
   const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
   // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
+  const bool can_use_tt_eval =
+      tt_hit && tt_entry.depth >= tt_depth && tt_entry.CanUseScore(alpha, beta);
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval) {
+  if (!in_pv_node && can_use_tt_eval && tt_entry.depth > tt_depth) {
     return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
   }
 
-  const Score static_eval =
-      can_use_tt_eval ? tt_entry.score
-                      : history_.correction_history->CorrectedStaticEval();
+  Score static_eval = kScoreNone;
+  if (!state.InCheck()) {
+    static_eval = can_use_tt_eval ? tt_entry.score
+                    : history_.correction_history->CorrectedStaticEval();
 
-  // Early beta cutoff
-  if (static_eval >= beta || stack->ply >= kMaxPlyFromRoot) {
-    return static_eval;
+    // Early beta cutoff
+    if (static_eval >= beta || stack->ply >= kMaxPlyFromRoot) {
+      return static_eval;
+    }
+
+    // Alpha can be updated if no cutoff occurred
+    alpha = std::max(alpha, static_eval);
   }
 
-  // Alpha can be updated if no cutoff occurred
-  alpha = std::max(alpha, static_eval);
   // Keep track of the original alpha for bound determination when updating the
   // transposition table
   const int original_alpha = alpha;
 
   int moves_seen = 0;
-  Score best_score = static_eval;
+  Score best_score = -kMateScore + stack->ply;
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
@@ -223,15 +228,11 @@ Score Search::QuiescentSearch(Score alpha,
     }
   }
 
-  if (moves_seen == 0 && !state.InCheck()) {
-    return -kMateScore + stack->ply;
-  }
-
-  auto tt_flag = TranspositionTableEntry::kExact;
+  TranspositionTableEntry::Flag tt_flag;
   if (alpha >= beta) {
     // Beta cutoff
     tt_flag = TranspositionTableEntry::kLowerBound;
-  } else if (alpha <= original_alpha) {
+  } else {
     // Alpha failed to raise
     tt_flag = TranspositionTableEntry::kUpperBound;
   }
@@ -239,7 +240,7 @@ Score Search::QuiescentSearch(Score alpha,
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, 0, tt_flag, best_score, best_move);
+      state.zobrist_key, tt_depth, tt_flag, best_score, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
@@ -255,7 +256,7 @@ Score Search::PVSearch(int depth,
 
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
-  if (depth == 0 && !state.InCheck()) {
+  if (depth == 0) {
     return QuiescentSearch<node_type>(alpha, beta, stack);
   }
 
