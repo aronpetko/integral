@@ -172,15 +172,11 @@ Score Search::QuiescentSearch(Score alpha,
   // transposition table
   const int original_alpha = alpha;
 
-  int moves_seen = 0;
-  Score best_score = -kMateScore + stack->ply;
-  Move best_move = Move::NullMove();
-
   Score static_eval = kScoreNone;
   if (!state.InCheck()) {
-    best_score = static_eval =
-        can_use_tt_eval ? tt_entry.score
-                        : history_.correction_history->CorrectedStaticEval();
+    static_eval = can_use_tt_eval
+                    ? tt_entry.score
+                    : history_.correction_history->CorrectedStaticEval();
 
     // Early beta cutoff
     if (static_eval >= beta) {
@@ -191,15 +187,18 @@ Score Search::QuiescentSearch(Score alpha,
     alpha = std::max(alpha, static_eval);
   }
 
+  int moves_seen = 0;
+  Score best_score = static_eval;
+  Move best_move = Move::NullMove();
+
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    // Prune only if we've found a legal move
-    if (moves_seen > 0) {
+    if (best_score > -kMateScore + kMaxPlyFromRoot) {
       // Quiet Late Move Pruning: When searching quiet evasions, we only want to
       // look at a few contending moves
       if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
-          moves_seen >= 3) {
+          moves_seen >= 2) {
         break;
       }
     }
@@ -234,6 +233,11 @@ Score Search::QuiescentSearch(Score alpha,
         }
       }
     }
+  }
+
+  // Terminal state if no legal moves were found
+  if (state.InCheck() && moves_seen == 0) {
+    return -kMateScore + stack->ply;
   }
 
   TranspositionTableEntry::Flag tt_flag;
