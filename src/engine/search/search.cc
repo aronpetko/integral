@@ -136,12 +136,17 @@ template <NodeType node_type>
 Score Search::QuiescentSearch(Score alpha,
                               Score beta,
                               SearchStackEntry *stack) {
+  const auto &state = board_.GetState();
+
+  if (stack->ply >= kMaxPlyFromRoot) {
+    return eval::Evaluate(state);
+  }
+
+  sel_depth_ = std::max(sel_depth_, stack->ply);
+
   if (board_.IsDraw(stack->ply)) {
     return kDrawScore;
   }
-
-  const auto &state = board_.GetState();
-  sel_depth_ = std::max(sel_depth_, stack->ply);
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
@@ -149,6 +154,7 @@ Score Search::QuiescentSearch(Score alpha,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
+  const int tt_depth = state.InCheck();
   const auto &tt_entry = transposition_table[state.zobrist_key];
   const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
   const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
@@ -158,31 +164,43 @@ Score Search::QuiescentSearch(Score alpha,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval) {
+  if (!in_pv_node && tt_entry.depth >= tt_depth && can_use_tt_eval) {
     return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
   }
 
-  const Score static_eval =
-      can_use_tt_eval ? tt_entry.score
-                      : history_.correction_history->CorrectedStaticEval();
-
-  // Early beta cutoff
-  if (static_eval >= beta || stack->ply >= kMaxPlyFromRoot) {
-    return static_eval;
-  }
-
-  // Alpha can be updated if no cutoff occurred
-  alpha = std::max(alpha, static_eval);
   // Keep track of the original alpha for bound determination when updating the
   // transposition table
   const int original_alpha = alpha;
 
-  Score best_score = static_eval;
+  int moves_seen = 0;
+  Score best_score = -kMateScore + stack->ply;
   Move best_move = Move::NullMove();
+
+  Score static_eval = kScoreNone;
+  if (!state.InCheck()) {
+    best_score = static_eval =
+        can_use_tt_eval ? tt_entry.score
+                        : history_.correction_history->CorrectedStaticEval();
+
+    // Early beta cutoff
+    if (static_eval >= beta) {
+      return static_eval;
+    }
+
+    // Alpha can be updated if no cutoff occurred
+    alpha = std::max(alpha, static_eval);
+  }
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
+    // Stop searching since all the good tactical moves have been searched,
+    // unless we need to find a quiet evasion
+    if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
+        moves_seen > 0) {
+      break;
+    }
+    
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -200,6 +218,8 @@ Score Search::QuiescentSearch(Score alpha,
       break;
     }
 
+    moves_seen++;
+
     if (score > best_score) {
       best_score = score;
 
@@ -213,11 +233,11 @@ Score Search::QuiescentSearch(Score alpha,
     }
   }
 
-  auto tt_flag = TranspositionTableEntry::kExact;
+  TranspositionTableEntry::Flag tt_flag;
   if (alpha >= beta) {
     // Beta cutoff
     tt_flag = TranspositionTableEntry::kLowerBound;
-  } else if (alpha <= original_alpha) {
+  } else {
     // Alpha failed to raise
     tt_flag = TranspositionTableEntry::kUpperBound;
   }
@@ -225,7 +245,7 @@ Score Search::QuiescentSearch(Score alpha,
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, 0, tt_flag, best_score, best_move);
+      state.zobrist_key, tt_depth, tt_flag, best_score, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
@@ -241,7 +261,7 @@ Score Search::PVSearch(int depth,
 
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
-  if (depth == 0 && !state.InCheck()) {
+  if (depth == 0) {
     return QuiescentSearch<node_type>(alpha, beta, stack);
   }
 
