@@ -43,10 +43,6 @@ Move MovePicker::Next() {
         return move;
       }
 
-      if (type_ == MovePickerType::kQuiescence && score < 0) {
-        return Move::NullMove();
-      }
-
       bad_tacticals_.Push({move, score});
     }
 

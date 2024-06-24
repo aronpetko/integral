@@ -187,6 +187,11 @@ Score Search::QuiescentSearch(Score alpha,
       continue;
     }
 
+    // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
+    // material
+    if (!eval::StaticExchange(move, -107, state))
+      continue;
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
