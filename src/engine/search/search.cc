@@ -194,6 +194,13 @@ Score Search::QuiescentSearch(Score alpha,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
+    // Stop searching since all the good tactical moves have been searched,
+    // unless we need to find a quiet evasion
+    if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
+        moves_seen > 0) {
+      break;
+    }
+    
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
