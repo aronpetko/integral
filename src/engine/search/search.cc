@@ -136,12 +136,17 @@ template <NodeType node_type>
 Score Search::QuiescentSearch(Score alpha,
                               Score beta,
                               SearchStackEntry *stack) {
+  const auto &state = board_.GetState();
+
+  if (stack->ply >= kMaxPlyFromRoot) {
+    return eval::Evaluate(state);
+  }
+
+  sel_depth_ = std::max(sel_depth_, stack->ply);
+
   if (board_.IsDraw(stack->ply)) {
     return kDrawScore;
   }
-
-  const auto &state = board_.GetState();
-  sel_depth_ = std::max(sel_depth_, stack->ply);
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
@@ -164,20 +169,6 @@ Score Search::QuiescentSearch(Score alpha,
     return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
   }
 
-  Score static_eval = kScoreNone;
-  if (!state.InCheck()) {
-    static_eval = can_use_tt_eval ? tt_entry.score
-                    : history_.correction_history->CorrectedStaticEval();
-
-    // Early beta cutoff
-    if (static_eval >= beta || stack->ply >= kMaxPlyFromRoot) {
-      return static_eval;
-    }
-
-    // Alpha can be updated if no cutoff occurred
-    alpha = std::max(alpha, static_eval);
-  }
-
   // Keep track of the original alpha for bound determination when updating the
   // transposition table
   const int original_alpha = alpha;
@@ -185,6 +176,21 @@ Score Search::QuiescentSearch(Score alpha,
   int moves_seen = 0;
   Score best_score = -kMateScore + stack->ply;
   Move best_move = Move::NullMove();
+
+  Score static_eval = kScoreNone;
+  if (!state.InCheck()) {
+    static_eval = can_use_tt_eval ? tt_entry.score
+                                  : history_.correction_history->CorrectedStaticEval();
+
+    // Early beta cutoff
+    if (static_eval >= beta) {
+      return static_eval;
+    }
+
+    best_score = static_eval;
+    // Alpha can be updated if no cutoff occurred
+    alpha = std::max(alpha, static_eval);
+  }
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
@@ -423,7 +429,7 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    int extensions = 0;
+    int extensions = state.InCheck();
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
