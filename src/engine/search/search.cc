@@ -179,15 +179,15 @@ Score Search::QuiescentSearch(Score alpha,
 
   Score static_eval = kScoreNone;
   if (!state.InCheck()) {
-    static_eval = can_use_tt_eval ? tt_entry.score
-                                  : history_.correction_history->CorrectedStaticEval();
+    best_score = static_eval =
+        can_use_tt_eval ? tt_entry.score
+                        : history_.correction_history->CorrectedStaticEval();
 
     // Early beta cutoff
     if (static_eval >= beta) {
       return static_eval;
     }
 
-    best_score = static_eval;
     // Alpha can be updated if no cutoff occurred
     alpha = std::max(alpha, static_eval);
   }
@@ -198,7 +198,7 @@ Score Search::QuiescentSearch(Score alpha,
     // Stop searching since all the good tactical moves have been searched,
     // unless we need to find a quiet evasion
     if ((move_picker.GetStage() > MovePicker::Stage::kGoodTacticals) &&
-        (!state.InCheck())) {
+        (!state.InCheck() || moves_seen > 0)) {
       break;
     }
 
