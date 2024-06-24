@@ -177,6 +177,7 @@ Score Search::QuiescentSearch(Score alpha,
   // transposition table
   const int original_alpha = alpha;
 
+  int moves_seen = 0;
   Score best_score = static_eval;
   Move best_move = Move::NullMove();
 
@@ -200,6 +201,8 @@ Score Search::QuiescentSearch(Score alpha,
       break;
     }
 
+    moves_seen++;
+
     if (score > best_score) {
       best_score = score;
 
@@ -211,6 +214,11 @@ Score Search::QuiescentSearch(Score alpha,
         }
       }
     }
+  }
+
+  // Terminal state if no legal moves were found
+  if (moves_seen == 0) {
+    return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
   auto tt_flag = TranspositionTableEntry::kExact;
