@@ -20,7 +20,8 @@ Move MovePicker::Next() {
     stage_ = Stage::kGenerateTacticals;
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
-      if (type_ != MovePickerType::kQuiescence || state.InCheck() || tt_move_.IsTactical(state)) {
+      if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
+          tt_move_.IsTactical(state)) {
         return tt_move_;
       }
     }
@@ -44,6 +45,10 @@ Move MovePicker::Next() {
       }
 
       bad_tacticals_.Push({move, score});
+    }
+
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
+      return Move::NullMove();
     }
 
     stage_ = Stage::kFirstKiller;
