@@ -28,7 +28,8 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kGenerateTacticals) {
-    stage_ = Stage::kGoodTacticals;
+    stage_ = type_ == MovePickerType::kQuiescence ? Stage::kQSTacticals
+                                                  : Stage::kGoodTacticals;
     GenerateAndScoreMoves<MoveType::kTactical>(tacticals_);
   }
 
@@ -39,9 +40,7 @@ Move MovePicker::Next() {
 
       moves_idx_++;
 
-      const int see_threshold = type_ == MovePickerType::kQuiescence ? -107 : 0;
-      const bool bad_capture =
-          !eval::StaticExchange(move, see_threshold, state);
+      const bool bad_capture = !eval::StaticExchange(move, 0, state);
       if (!bad_capture && !move.IsUnderPromotion()) {
         return move;
       }
@@ -49,11 +48,21 @@ Move MovePicker::Next() {
       bad_tacticals_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
+    stage_ = Stage::kFirstKiller;
+  }
+
+  if (stage_ == Stage::kQSTacticals) {
+    if (moves_idx_ < tacticals_.Size()) {
+      return SelectionSort(tacticals_, moves_idx_++);
+    }
+
+    // We don't need to generate any evasions
+    if (!state.InCheck()) {
       return Move::NullMove();
     }
 
-    stage_ = Stage::kFirstKiller;
+    stage_ = Stage::kGenerateQuiets;
+    moves_idx_ = 0;
   }
 
   if (stage_ == Stage::kFirstKiller) {
@@ -97,8 +106,8 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kBadTacticals) {
     if (moves_idx_ < bad_tacticals_.Size()) {
-      // The bad tacticals are already sorted when we split them off in the good
-      // tacticals stage
+      // Bad tactical moves are already sorted when we split them off in the
+      // good tactical moves stage
       return bad_tacticals_[moves_idx_++].move;
     }
   }

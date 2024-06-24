@@ -23,6 +23,7 @@ class MovePicker {
     kTTMove,
     kGenerateTacticals,
     kGoodTacticals,
+    kQSTacticals,  // Used in quiescent search
     kFirstKiller,
     kSecondKiller,
     kGenerateQuiets,
