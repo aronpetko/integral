@@ -223,6 +223,10 @@ Score Search::QuiescentSearch(Score alpha,
     }
   }
 
+  if (moves_seen == 0 && !state.InCheck()) {
+    return -kMateScore + stack->ply;
+  }
+
   auto tt_flag = TranspositionTableEntry::kExact;
   if (alpha >= beta) {
     // Beta cutoff
