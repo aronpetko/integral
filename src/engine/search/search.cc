@@ -208,7 +208,7 @@ Score Search::QuiescentSearch(Score alpha,
 
     // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
     // material
-    if (!eval::StaticExchange(move, -107, state)) {
+    if (!eval::StaticExchange(move, -20, state)) {
       continue;
     }
 
