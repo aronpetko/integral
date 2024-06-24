@@ -195,13 +195,6 @@ Score Search::QuiescentSearch(Score alpha,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    // Stop searching since all the good tactical moves have been searched,
-    // unless we still need to find an evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
-        moves_seen > 0) {
-      break;
-    }
-
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -429,7 +422,7 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    int extensions = 0;
+    int extensions = state.InCheck();
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
