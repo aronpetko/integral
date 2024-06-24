@@ -38,11 +38,7 @@ Move MovePicker::Next() {
 
       moves_idx_++;
 
-      // If the tactical move loses more than 1 pawn of material it's considered
-      // a bad capture. Good captures are searched first, bad captures are
-      // searched last
-      const bool loses_material = !eval::StaticExchange(
-          move, -eval::kSEEPieceScores[PieceType::kPawn], state);
+      const bool loses_material = !eval::StaticExchange(move, 0, state);
       if (!loses_material && !move.IsUnderPromotion()) {
         return move;
       }
