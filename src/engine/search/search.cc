@@ -194,18 +194,17 @@ Score Search::QuiescentSearch(Score alpha,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    // Evasion Pruning: When searching quiet evasions, we only look at the
-    // first move
-    if (move_picker.GetStage() == MovePicker::Stage::kQuiets &&
-        moves_seen >= 1) {
-      break;
-    }
-
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
 
-    if (best_score > -kMateScore - kMaxPlyFromRoot) {
+    if (moves_seen >= 1) {
+      // Evasion Pruning: When searching quiet evasions, we only look at the
+      // first move
+      if (move_picker.GetStage() == MovePicker::Stage::kQuiets) {
+        break;
+      }
+
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       if (!eval::StaticExchange(move, -107, state)) {
