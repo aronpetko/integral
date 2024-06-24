@@ -201,15 +201,15 @@ Score Search::QuiescentSearch(Score alpha,
     if (moves_seen >= 1) {
       // Evasion Pruning: When searching quiet evasions, we only look at the
       // first move
-      if (move_picker.GetStage() == MovePicker::Stage::kQuiets) {
+      if (move_picker.GetStage() > MovePicker::Stage::kQSTacticals) {
         break;
       }
+    }
 
-      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
-      // material
-      if (!eval::StaticExchange(move, -107, state)) {
-        continue;
-      }
+    // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
+    // material
+    if (!eval::StaticExchange(move, -107, state)) {
+      continue;
     }
 
     // Prefetch the TT entry for the next move as early as possible

@@ -61,7 +61,7 @@ Move MovePicker::Next() {
       return Move::NullMove();
     }
 
-    stage_ = Stage::kGenerateQuiets;
+    stage_ = Stage::kFirstKiller;
     moves_idx_ = 0;
   }
 
