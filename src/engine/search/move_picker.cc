@@ -55,7 +55,7 @@ Move MovePicker::Next() {
     }
 
     // Stop searching since all good tacticals have been searched
-    if (type_ == MovePickerType::kQuiescence) {
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
       return Move::NullMove();
     }
 
