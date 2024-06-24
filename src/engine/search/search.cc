@@ -422,7 +422,7 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    int extensions = state.InCheck();
+    int extensions = 0;
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
