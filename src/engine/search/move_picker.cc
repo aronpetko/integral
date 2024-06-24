@@ -46,11 +46,6 @@ Move MovePicker::Next() {
       bad_tacticals_.Push({move, score});
     }
 
-    // Stop searching since all good tacticals have been searched
-    if (type_ == MovePickerType::kQuiescence) {
-      return Move::NullMove();
-    }
-
     stage_ = Stage::kFirstKiller;
   }
 

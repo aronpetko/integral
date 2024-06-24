@@ -19,25 +19,6 @@ enum class MovePickerType {
 
 class MovePicker {
  public:
-  MovePicker(MovePickerType type,
-             Board &board,
-             Move tt_move,
-             history::SearchHistory &history,
-             SearchStackEntry *stack);
-
-  Move Next();
-
-  void SkipQuiets();
-
- private:
-  Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
-
-  template <MoveType move_type>
-  void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
-
-  int ScoreMove(Move &move);
-
- private:
   enum class Stage {
     kTTMove,
     kGenerateTacticals,
@@ -49,6 +30,29 @@ class MovePicker {
     kBadTacticals,
   };
 
+  MovePicker(MovePickerType type,
+             Board &board,
+             Move tt_move,
+             history::SearchHistory &history,
+             SearchStackEntry *stack);
+
+  Move Next();
+
+  void SkipQuiets();
+
+  [[nodiscard]] Stage GetStage() const {
+    return stage_;
+  }
+
+ private:
+  Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
+
+  template <MoveType move_type>
+  void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
+
+  int ScoreMove(Move &move);
+
+ private:
   Board &board_;
   Move tt_move_;
   MovePickerType type_;

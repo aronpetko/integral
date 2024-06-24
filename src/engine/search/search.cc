@@ -177,20 +177,23 @@ Score Search::QuiescentSearch(Score alpha,
   // transposition table
   const int original_alpha = alpha;
 
+  int moves_seen = 0;
   Score best_score = static_eval;
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
+    // Stop searching since all the good tactical moves have been searched,
+    // unless we need to find a quiet evasion
+    if ((move_picker.GetStage() > MovePicker::Stage::kGoodTacticals) &&
+        (!state.InCheck() || moves_seen > 0)) {
+      break;
+    }
+
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
-
-    // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
-    // material
-    if (!eval::StaticExchange(move, -107, state))
-      continue;
 
     // Prefetch the TT entry for the next move as early as possible
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
@@ -204,6 +207,8 @@ Score Search::QuiescentSearch(Score alpha,
     if (ShouldQuit()) {
       break;
     }
+
+    moves_seen++;
 
     if (score > best_score) {
       best_score = score;
