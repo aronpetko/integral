@@ -160,12 +160,11 @@ Score Search::QuiescentSearch(Score alpha,
   const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
   // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval =
-      tt_hit && tt_entry.depth >= tt_depth && tt_entry.CanUseScore(alpha, beta);
+  const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval) {
+  if (!in_pv_node && tt_entry.depth >= tt_depth && can_use_tt_eval) {
     return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
   }
 
