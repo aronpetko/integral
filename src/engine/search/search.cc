@@ -195,12 +195,14 @@ Score Search::QuiescentSearch(Score alpha,
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
     if (best_score > -kMateScore + kMaxPlyFromRoot) {
-      // Quiet Late Move Pruning: When searching quiet evasions, we only want to
-      // look at a few contending moves
+      // Evasion Pruning: When searching quiet evasions, we only look at the
+      // first move
       if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
-          moves_seen >= 2) {
+          moves_seen >= 1) {
         break;
       }
+
+
     }
 
     if (!board_.IsMoveLegal(move)) {

@@ -39,8 +39,10 @@ Move MovePicker::Next() {
 
       moves_idx_++;
 
-      const bool loses_material = !eval::StaticExchange(move, 0, state);
-      if (!loses_material && !move.IsUnderPromotion()) {
+      const int see_threshold = type_ == MovePickerType::kQuiescence ? -107 : 0;
+      const bool bad_capture =
+          !eval::StaticExchange(move, see_threshold, state);
+      if (!bad_capture && !move.IsUnderPromotion()) {
         return move;
       }
 
