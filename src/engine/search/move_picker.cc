@@ -47,7 +47,8 @@ Move MovePicker::Next() {
         return move;
       }
 
-      if (type_ == MovePickerType::kQuiescence && score < 0) {
+      // Static Exchange Evaluation (SEE) pruning in quiescent search
+      if (type_ == MovePickerType::kQuiescence && score < 0 && !state.InCheck()) {
         return Move::NullMove();
       }
 
@@ -102,6 +103,10 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kBadTacticals) {
+    if (type_ == MovePickerType::kQuiescence) {
+      return Move::NullMove();
+    }
+
     if (moves_idx_ < bad_tacticals_.Size()) {
       // The bad tacticals are already sorted when we split them off in the good
       // tacticals stage

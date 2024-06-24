@@ -19,13 +19,28 @@ enum class MovePickerType {
 
 class MovePicker {
  public:
+  enum class Stage {
+    kTTMove,
+    kGenerateTacticals,
+    kGoodTacticals,
+    kFirstKiller,
+    kSecondKiller,
+    kGenerateQuiets,
+    kQuiets,
+    kBadTacticals,
+  };
+
   MovePicker(MovePickerType type,
              Board &board,
              Move tt_move,
              history::SearchHistory &history,
              SearchStackEntry *stack);
 
-  Move Next();
+  [[nodiscard]] Move Next();
+
+  [[nodiscard]] Stage GetStage() const {
+    return stage_;
+  }
 
   void SkipQuiets();
 
@@ -38,16 +53,6 @@ class MovePicker {
   int ScoreMove(Move &move);
 
  private:
-  enum class Stage {
-    kTTMove,
-    kGenerateTacticals,
-    kGoodTacticals,
-    kFirstKiller,
-    kSecondKiller,
-    kGenerateQuiets,
-    kQuiets,
-    kBadTacticals,
-  };
 
   Board &board_;
   Move tt_move_;
