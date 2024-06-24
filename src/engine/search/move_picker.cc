@@ -37,10 +37,14 @@ Move MovePicker::Next() {
       const int score = tacticals_[moves_idx_].score;
 
       moves_idx_++;
-      
+
       const bool loses_material = !eval::StaticExchange(move, 0, state);
       if (!loses_material && !move.IsUnderPromotion()) {
         return move;
+      }
+
+      if (type_ == MovePickerType::kQuiescence && score < 0) {
+        return Move::NullMove();
       }
 
       bad_tacticals_.Push({move, score});
