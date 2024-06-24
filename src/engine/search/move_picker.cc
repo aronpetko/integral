@@ -20,7 +20,7 @@ Move MovePicker::Next() {
     stage_ = Stage::kGenerateTacticals;
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
-      if (type_ != MovePickerType::kQuiescence || tt_move_.IsTactical(state)) {
+      if (type_ != MovePickerType::kQuiescence || state.InCheck() || tt_move_.IsTactical(state)) {
         return tt_move_;
       }
     }
