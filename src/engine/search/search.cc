@@ -182,9 +182,11 @@ Score Search::QuiescentSearch(Score alpha,
       static_eval = tt_entry.static_eval;
     } else {
       static_eval = eval::Evaluate(state);
+    }
 
+    if (!tt_hit) {
       const TranspositionTableEntry new_tt_entry(
-          state.zobrist_key, tt_depth, tt_entry.flag, kScoreNone, static_eval, Move::NullMove());
+          state.zobrist_key, 0, tt_entry.flag, kScoreNone, static_eval, Move::NullMove());
       transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
     }
 
@@ -334,9 +336,11 @@ Score Search::PVSearch(int depth,
       raw_static_eval = tt_entry.static_eval;
     } else {
       raw_static_eval = eval::Evaluate(state);
+    }
 
+    if (!tt_hit) {
       const TranspositionTableEntry new_tt_entry(
-          state.zobrist_key, depth, tt_entry.flag, kScoreNone, raw_static_eval, Move::NullMove());
+          state.zobrist_key, 0, tt_entry.flag, kScoreNone, raw_static_eval, Move::NullMove());
       transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
     }
 
