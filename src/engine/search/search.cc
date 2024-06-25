@@ -182,6 +182,10 @@ Score Search::QuiescentSearch(Score alpha,
       static_eval = tt_entry.static_eval;
     } else {
       static_eval = eval::Evaluate(state);
+
+      const TranspositionTableEntry new_tt_entry(
+          state.zobrist_key, tt_depth, tt_entry.flag, kScoreNone, static_eval, Move::NullMove());
+      transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
     }
 
     if (can_use_tt_eval) {
@@ -330,6 +334,10 @@ Score Search::PVSearch(int depth,
       raw_static_eval = tt_entry.static_eval;
     } else {
       raw_static_eval = eval::Evaluate(state);
+
+      const TranspositionTableEntry new_tt_entry(
+          state.zobrist_key, depth, tt_entry.flag, kScoreNone, raw_static_eval, Move::NullMove());
+      transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
     }
 
     const Score corrected_static_eval =
@@ -348,7 +356,7 @@ Score Search::PVSearch(int depth,
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
   } else {
-    stack->static_eval = eval = kScoreNone;
+    stack->static_eval = raw_static_eval = eval = kScoreNone;
   }
 
   (stack + 1)->ClearKillerMoves();
