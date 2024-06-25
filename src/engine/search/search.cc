@@ -209,7 +209,7 @@ Score Search::QuiescentSearch(Score alpha,
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
       if (non_pawn_king_pieces) {
-        const Score futility_base = stack->static_eval + 192;
+        const Score futility_base = stack->static_eval + 250;
         if (futility_base <= alpha && !eval::StaticExchange(move, 1, state)) {
           best_score = std::max(best_score, futility_base);
           continue;
