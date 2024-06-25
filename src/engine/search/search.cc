@@ -176,33 +176,45 @@ Score Search::QuiescentSearch(Score alpha,
   Score best_score = -kMateScore + stack->ply;
   Move best_move = Move::NullMove();
 
-  Score static_eval = kScoreNone;
   if (!state.InCheck()) {
-    best_score = static_eval =
+    best_score = stack->static_eval =
         can_use_tt_eval ? tt_entry.score
                         : history_.correction_history->CorrectedStaticEval();
 
     // Early beta cutoff
-    if (static_eval >= beta) {
-      return static_eval;
+    if (stack->static_eval >= beta) {
+      return stack->static_eval;
     }
 
     // Alpha can be updated if no cutoff occurred
-    alpha = std::max(alpha, static_eval);
+    alpha = std::max(alpha, stack->static_eval);
   }
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    // Stop searching since all the good tactical moves have been searched,
-    // unless we need to find a quiet evasion
+    // If none of the good captures get us out of check, pick the first move
+    // that does and run with it
     if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
         moves_seen > 0) {
       break;
     }
-    
+
     if (!board_.IsMoveLegal(move)) {
       continue;
+    }
+
+    if (best_score > -kMateScore + kMaxPlyFromRoot && !state.InCheck()) {
+      // QS Futility Pruning: Only search moves that win material if the static eval is far below alpha
+      const BitBoard non_pawn_king_pieces =
+          state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
+      if (non_pawn_king_pieces) {
+        const Score futility_base = stack->static_eval + 192;
+        if (futility_base <= alpha && !eval::StaticExchange(move, 1, state)) {
+          best_score = std::max(best_score, futility_base);
+          continue;
+        }
+      }
     }
 
     // Prefetch the TT entry for the next move as early as possible
@@ -487,7 +499,7 @@ Score Search::PVSearch(int depth,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    const int lmr_move_threshold = 1 + in_pv_node * 2;
+    const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[depth][moves_seen];
       reduction += !in_pv_node;
