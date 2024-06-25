@@ -172,6 +172,9 @@ Score Search::QuiescentSearch(Score alpha,
   // transposition table
   const int original_alpha = alpha;
 
+  // Used for futility pruning
+  const Score futile_score = stack->static_eval + 100;
+
   int moves_seen = 0;
   Score best_score = -kMateScore + stack->ply;
   Move best_move = Move::NullMove();
@@ -188,6 +191,8 @@ Score Search::QuiescentSearch(Score alpha,
 
     // Alpha can be updated if no cutoff occurred
     alpha = std::max(alpha, stack->static_eval);
+  } else {
+    stack->static_eval = kScoreNone;
   }
 
   MovePicker move_picker(
@@ -205,13 +210,13 @@ Score Search::QuiescentSearch(Score alpha,
     }
 
     if (best_score > -kMateScore + kMaxPlyFromRoot && !state.InCheck()) {
-      // QS Futility Pruning: Only search moves that win material if the static eval is far below alpha
+      // QS Futility Pruning: Skip moves that don't win material if the static
+      // eval is far below alpha
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
       if (non_pawn_king_pieces) {
-        const Score futility_base = stack->static_eval + 192;
-        if (futility_base <= alpha && !eval::StaticExchange(move, 1, state)) {
-          best_score = std::max(best_score, futility_base);
+        if (futile_score <= alpha && !eval::StaticExchange(move, 1, state)) {
+          best_score = std::max(best_score, futile_score);
           continue;
         }
       }
