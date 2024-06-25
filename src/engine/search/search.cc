@@ -348,10 +348,10 @@ Score Search::PVSearch(int depth,
       const Score raw_static_eval = eval::Evaluate(state);
       eval = stack->static_eval =
           history_.correction_history->CorrectStaticEval(raw_static_eval);
-      
+
       const TranspositionTableEntry new_tt_entry{
           .key = static_cast<U16>(state.zobrist_key),
-          .depth = 0,
+          .depth = static_cast<U8>(depth),
           .flag = TranspositionTableEntry::kNone,
           .score = kScoreNone,
           .static_eval = raw_static_eval,
