@@ -33,12 +33,10 @@ class CorrectionHistory {
     score += ScaleBonus(score, bonus, kHistoryGravity);
   }
 
-  [[nodiscard]] Score CorrectedStaticEval() const {
-    const Score static_eval = eval::Evaluate(state_);
+  [[nodiscard]] Score CorrectStaticEval(Score static_eval) const {
     const Score correction = table_[state_.turn][GetTableIndex()];
     const Score adjusted_score =
         static_eval + (correction * std::abs(correction)) / kHistorySize;
-
     // Ensure no static evaluations are mate scores
     return std::clamp(adjusted_score,
                       -kMateScore + kMaxPlyFromRoot + 1,

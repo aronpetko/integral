@@ -17,14 +17,20 @@ struct TranspositionTableEntry {
   };
 
   TranspositionTableEntry()
-      : key(0), depth(0), flag(kNone), score(0), move(Move::NullMove()) {}
+      : key(0),
+        depth(0),
+        flag(kNone),
+        score(kScoreNone),
+        static_eval(kScoreNone),
+        move(Move::NullMove()) {}
 
   explicit TranspositionTableEntry(
-      U64 key, U8 depth, Flag flag, Score score, Move move)
+      U64 key, U8 depth, Flag flag, Score score, Score static_eval, Move move)
       : key(static_cast<U16>(key)),
         depth(depth),
         flag(flag),
         score(score),
+        static_eval(static_eval),
         move(move) {}
 
   // Keys are packed to maximize the number of entries the table can hold
@@ -55,6 +61,7 @@ struct TranspositionTableEntry {
   U8 depth;
   Flag flag;
   Score score;
+  Score static_eval;
   Move move;
 };
 

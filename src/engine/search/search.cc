@@ -173,22 +173,31 @@ Score Search::QuiescentSearch(Score alpha,
   const int original_alpha = alpha;
 
   int moves_seen = 0;
+  Score static_eval = kScoreNone;
   Score best_score = -kMateScore + stack->ply;
   Move best_move = Move::NullMove();
 
-  Score static_eval = kScoreNone;
   if (!state.InCheck()) {
-    best_score = static_eval =
-        can_use_tt_eval ? tt_entry.score
-                        : history_.correction_history->CorrectedStaticEval();
+    if (tt_hit && tt_entry.static_eval != kScoreNone) {
+      static_eval = tt_entry.static_eval;
+    } else {
+      static_eval = eval::Evaluate(state);
+    }
+
+    if (can_use_tt_eval) {
+      best_score =
+          TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+    } else {
+      best_score = history_.correction_history->CorrectStaticEval(static_eval);
+    }
 
     // Early beta cutoff
-    if (static_eval >= beta) {
-      return static_eval;
+    if (best_score >= beta) {
+      return best_score;
     }
 
     // Alpha can be updated if no cutoff occurred
-    alpha = std::max(alpha, static_eval);
+    alpha = std::max(alpha, best_score);
   }
 
   MovePicker move_picker(
@@ -200,7 +209,7 @@ Score Search::QuiescentSearch(Score alpha,
         moves_seen > 0) {
       break;
     }
-    
+
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -245,7 +254,7 @@ Score Search::QuiescentSearch(Score alpha,
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, tt_depth, tt_flag, best_score, best_move);
+      state.zobrist_key, tt_depth, tt_flag, best_score, static_eval, best_move);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
@@ -310,20 +319,27 @@ Score Search::PVSearch(int depth,
   }
 
   // An approximation of the current evaluation at this node
-  Score eval;
+  Score eval, raw_static_eval;
   // This condition is dependent on if the side to move's static evaluation has
   // improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   bool improving = false;
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
-    stack->static_eval = history_.correction_history->CorrectedStaticEval();
+    if (tt_hit && tt_entry.static_eval != kScoreNone) {
+      raw_static_eval = tt_entry.static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(state);
+    }
 
-    // Adjust eval depending on if we can use the score stored in the TT
+    const Score corrected_static_eval =
+        history_.correction_history->CorrectStaticEval(raw_static_eval);
+    stack->static_eval = corrected_static_eval;
+
     if (can_use_tt_eval) {
       eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     } else {
-      eval = stack->static_eval;
+      eval = corrected_static_eval;
     }
 
     if ((stack - 2)->static_eval != kScoreNone) {
@@ -376,7 +392,7 @@ Score Search::PVSearch(int depth,
   }
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
-  // TT move, so we save time on searching this position now
+  // TT move, so we save time on searching this position
   if (in_pv_node && depth >= 4 && !stack->excluded_tt_move && !tt_move) {
     depth--;
   }
@@ -592,7 +608,7 @@ Score Search::PVSearch(int depth,
     // Attempt to update the transposition table with the evaluation of this
     // position
     const TranspositionTableEntry new_tt_entry(
-        state.zobrist_key, depth, tt_flag, best_score, best_move);
+        state.zobrist_key, depth, tt_flag, best_score, raw_static_eval, best_move);
     transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
     if (!state.InCheck() && (!best_move || !best_move.IsTactical(state))) {
