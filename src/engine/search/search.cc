@@ -292,6 +292,7 @@ Score Search::PVSearch(int depth,
   TranspositionTableEntry tt_entry;
   Move tt_move = Move::NullMove();
   bool tt_hit = false;
+  bool can_use_tt_eval = false;
 
   if (!stack->excluded_tt_move) {
     tt_entry = transposition_table[state.zobrist_key];
@@ -299,7 +300,7 @@ Score Search::PVSearch(int depth,
     tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
     // Use the TT entry's evaluation if possible
-    const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
+    can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
@@ -319,7 +320,7 @@ Score Search::PVSearch(int depth,
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
-    if (tt_hit) {
+    if (can_use_tt_eval) {
       eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     } else {
       eval = stack->static_eval;
