@@ -16,17 +16,6 @@ struct TranspositionTableEntry {
     kUpperBound
   };
 
-  TranspositionTableEntry()
-      : key(0), depth(0), flag(kNone), score(0), move(Move::NullMove()) {}
-
-  explicit TranspositionTableEntry(
-      U64 key, U8 depth, Flag flag, Score score, Move move)
-      : key(static_cast<U16>(key)),
-        depth(depth),
-        flag(flag),
-        score(score),
-        move(move) {}
-
   // Keys are packed to maximize the number of entries the table can hold
   // Therefore, we must down-cast when checking for key equality
   [[nodiscard]] bool CompareKey(const U64 &test_key) const {
@@ -51,11 +40,12 @@ struct TranspositionTableEntry {
     return score;
   }
 
-  U16 key;
-  U8 depth;
-  Flag flag;
-  Score score;
-  Move move;
+  U16 key = 0;
+  U8 depth = 0;
+  Flag flag = kNone;
+  Score score = kScoreNone;
+  Score static_eval = kScoreNone;
+  Move move = Move::NullMove();
 };
 
 class TranspositionTable : public HashTable<TranspositionTableEntry> {
