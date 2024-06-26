@@ -58,6 +58,7 @@ struct EvalTrace {
   std::array<TraceTerm, 21> kPawnStormTable{};
   std::array<TraceTerm, 8> kKingPPDistanceTable{};
   std::array<TraceTerm, 8> kEnemyKingPPDistanceTable{};
+  TraceTerm kKingCantReachPPBonus{};
   std::array<eval::FileTable<TraceTerm>, 2> kKingOnFilePenalty{};
   eval::PieceTable<std::array<TraceTerm, 8>> kAttackPower{};
   std::array<TraceTerm, 8> kAttackCountModifier{};

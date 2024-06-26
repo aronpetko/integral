@@ -429,7 +429,7 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    int extensions = state.InCheck();
+    int extensions = 0;
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
@@ -452,7 +452,7 @@ Score Search::PVSearch(int depth,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
-          extensions++;
+          extensions = 1;
         }
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
@@ -461,6 +461,11 @@ Score Search::PVSearch(int depth,
           return new_beta;
         }
       }
+    }
+
+    // Check Extensions: Integral's not yet strong enough to simplify this out :)
+    if (state.InCheck()) {
+      extensions++;
     }
 
     // Prefetch the TT entry for the next move as early as possible
