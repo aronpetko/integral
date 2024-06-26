@@ -173,7 +173,7 @@ struct BoardState {
   }
 
   [[nodiscard]] constexpr BitBoard KinglessOccupied(Color side) const {
-    return side_bbs[side] ^ piece_bbs[kKing];
+    return side_bbs[side] & ~King(side);
   }
 
   [[nodiscard]] constexpr BitBoard Pawns(Color side) const {

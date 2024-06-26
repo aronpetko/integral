@@ -212,8 +212,10 @@ template <Color us>
 ScorePair Evaluation::EvaluatePawns() {
   ScorePair score;
 
+  const Color them = FlipColor(us);
+
   const BitBoard our_pawns = state_.Pawns(us);
-  const BitBoard their_pawns = state_.Pawns(FlipColor(us));
+  const BitBoard their_pawns = state_.Pawns(them);
 
   BitBoard passed_pawns;
 
@@ -272,14 +274,25 @@ ScorePair Evaluation::EvaluatePawns() {
   // Don't cache the king/passed pawn proximity scores as it involves knowing
   // the position of the king, which the pawn cache doesn't store
   const Square king_square = state_.King(us).GetLsb();
-  const Square enemy_king_square = state_.King(FlipColor(us)).GetLsb();
+  const Square enemy_king_square = state_.King(them).GetLsb();
   for (Square square : passed_pawns) {
     score += kKingPPDistanceTable[square.DistanceTo(king_square)];
     TRACE_INCREMENT(kKingPPDistanceTable[square.DistanceTo(king_square)], us);
 
-    score += kEnemyKingPPDistanceTable[square.DistanceTo(enemy_king_square)];
-    TRACE_INCREMENT(
-        kEnemyKingPPDistanceTable[square.DistanceTo(enemy_king_square)], us);
+    const int dist_to_enemy_king = square.DistanceTo(enemy_king_square);
+
+    score += kEnemyKingPPDistanceTable[dist_to_enemy_king];
+    TRACE_INCREMENT(kEnemyKingPPDistanceTable[dist_to_enemy_king], us);
+
+    // Square rule for passed pawns
+    const BitBoard enemy_non_pawn_king_pieces =
+        state_.KinglessOccupied(them) & ~state_.Pawns(them);
+    const int dist_to_promotion = kRank8 - square.RelativeRank<us>();
+    if (enemy_non_pawn_king_pieces == 0 &&
+        dist_to_promotion < dist_to_enemy_king - (state_.turn == them)) {
+      score += kKingCantReachPPBonus;
+      TRACE_INCREMENT(kKingCantReachPPBonus, us);
+    }
   }
 
   return score;
@@ -525,7 +538,7 @@ ScorePair Evaluation::EvaluateThreats() {
     score += kThreatenedByKnightPenalty[threatened_piece];
     TRACE_INCREMENT(kThreatenedByKnightPenalty[threatened_piece], us);
   }
-  
+
   for (Square square : bishop_attacks_[them] & our_pieces) {
     const auto threatened_piece = state_.GetPieceType(square);
     score += kThreatenedByBishopPenalty[threatened_piece];
