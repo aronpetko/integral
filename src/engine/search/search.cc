@@ -445,7 +445,7 @@ Score Search::PVSearch(int depth,
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry.score - depth * 2;
+        const Score new_beta = tt_entry.score - 10 * depth / 16;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
@@ -458,7 +458,7 @@ Score Search::PVSearch(int depth,
           extensions = 1;
           // Double extend if this move proves to be better than the rest by a
           // reasonable margin
-          if (!in_pv_node && tt_move_excluded_score < new_beta - 30) {
+          if (!in_pv_node && tt_move_excluded_score < new_beta - 25) {
             extensions = 2;
           }
         }
