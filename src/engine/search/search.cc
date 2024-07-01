@@ -398,6 +398,9 @@ Score Search::PVSearch(int depth,
       continue;
     }
 
+    // Prefetch the TT entry for the next move as early as possible
+    transposition_table.Prefetch(board_.PredictKeyAfter(move));
+
     const bool is_quiet = !move.IsTactical(state);
     const bool is_capture = move.IsCapture(state);
 
@@ -467,9 +470,6 @@ Score Search::PVSearch(int depth,
     if (state.InCheck()) {
       extensions++;
     }
-
-    // Prefetch the TT entry for the next move as early as possible
-    transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
     // Ensure that the PV only contains moves down this path
     if (in_pv_node) {

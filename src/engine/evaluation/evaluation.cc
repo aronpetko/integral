@@ -134,7 +134,7 @@ class Evaluation {
 };
 
 void Evaluation::Initialize() {
-  // pawn_cache.Prefetch(state_.pawn_key);
+  pawn_cache.Prefetch(state_.pawn_key);
 
   const Square white_king_square = state_.King(Color::kWhite).GetLsb();
   const Square black_king_square = state_.King(Color::kBlack).GetLsb();
@@ -463,10 +463,14 @@ ScorePair Evaluation::EvaluateKing() {
   TRACE_INCREMENT(kPieceSquareTable[PieceType::kKing][square.RelativeTo(us)],
                   us);
 
+  const Color them = FlipColor(us);
+
+  const BitBoard our_pawns = state_.Pawns(us);
+
   const int king_rank = square.Rank();
   const int king_file = square.File();
 
-  const BitBoard our_pawns_in_safety_zone = state_.Pawns(us) & king_zone_[us];
+  const BitBoard our_pawns_in_safety_zone = our_pawns & king_zone_[us];
   for (const Square pawn_square : our_pawns_in_safety_zone) {
     const int pawn_rank = pawn_square.Rank();
     const int pawn_file = pawn_square.File();
@@ -484,12 +488,11 @@ ScorePair Evaluation::EvaluateKing() {
     TRACE_INCREMENT(kPawnShelterTable[idx], us);
   }
 
-  const Square their_king_square = state_.King(FlipColor(us)).GetLsb();
+  const Square their_king_square = state_.King(them).GetLsb();
   const int their_king_rank = their_king_square.Rank();
   const int their_king_file = their_king_square.File();
 
-  const BitBoard storming_pawns =
-      state_.Pawns(us) & pawn_storm_zone_[FlipColor(us)];
+  const BitBoard storming_pawns = our_pawns & pawn_storm_zone_[them];
   for (const Square pawn_square : storming_pawns) {
     const int pawn_rank = pawn_square.Rank();
     const int pawn_file = pawn_square.File();
@@ -500,20 +503,17 @@ ScorePair Evaluation::EvaluateKing() {
     const int rank_diff = (pawn_rank - their_king_rank);
     const int file_diff = (pawn_file - their_king_file);
 
-    const int idx =
-        kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
-                               (FlipColor(us) == Color::kBlack ? -1 : 1);
+    const int idx = kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
+                                           (them == Color::kBlack ? -1 : 1);
 
     score += kPawnStormTable[idx];
     TRACE_INCREMENT(kPawnStormTable[idx], us);
   }
 
-  const BitBoard our_pawns = state_.Pawns(us);
-  const BitBoard their_pawns = state_.Pawns(FlipColor(us));
-
   const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
   if (!our_pawns_on_file) {
-    const BitBoard their_pawns_on_file = their_pawns & masks::files[square];
+    const BitBoard their_pawns_on_file =
+        state_.Pawns(them) & masks::files[square];
     const bool semi_open_file = their_pawns_on_file != 0;
 
     score += kKingOnFilePenalty[semi_open_file][square.File()];
@@ -521,7 +521,7 @@ ScorePair Evaluation::EvaluateKing() {
   }
 
   // King danger
-  score -= attack_power_[FlipColor(us)];
+  score -= attack_power_[them];
 
   return score;
 }
@@ -692,7 +692,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & knights)) {
       attacker_value = kSEEPieceScores[PieceType::kKnight];
-      occupied ^= BitBoard::FromSquare(next_attacker.GetLsb());
+      occupied.ClearBit(next_attacker.GetLsb());
     } else if ((next_attacker = our_attackers & bishops)) {
       attacker_value = kSEEPieceScores[PieceType::kBishop];
       occupied.ClearBit(next_attacker.GetLsb());
@@ -728,7 +728,6 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
     // gain 3 - 9 = -6 points. If we flip it and initially a queen captured a
     // knight, the other side can gain 9 - 3 = 6 points
     score = -score + 1 + attacker_value;
-
     // Quit early if the exchange is lost or neutral
     if (score <= 0) {
       break;

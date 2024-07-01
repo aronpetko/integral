@@ -87,7 +87,7 @@ class BitBoard {
   }
 
   constexpr void ClearBit(U8 square) {
-    bitboard_ &= ~(1ULL << square);
+    bitboard_ ^= 1ULL << square;
   }
 
   constexpr void MoveBit(U8 from, U8 to) {
