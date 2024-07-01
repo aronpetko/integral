@@ -200,7 +200,7 @@ Score Search::QuiescentSearch(Score alpha,
         moves_seen > 0) {
       break;
     }
-    
+
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -456,6 +456,11 @@ Score Search::PVSearch(int depth,
         // move's search
         if (tt_move_excluded_score < new_beta) {
           extensions = 1;
+          // Double extend if this move proves to be better than the rest by a
+          // reasonable margin
+          if (!in_pv_node && tt_move_excluded_score < new_beta - 30) {
+            extensions = 2;
+          }
         }
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
@@ -466,7 +471,8 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    // Check Extensions: Integral's not yet strong enough to simplify this out :)
+    // Check Extensions: Integral's not yet strong enough to simplify this out
+    // :)
     if (state.InCheck()) {
       extensions++;
     }
@@ -581,6 +587,7 @@ Score Search::PVSearch(int depth,
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
+    if (stack->excluded_tt_move) return alpha;
     return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
