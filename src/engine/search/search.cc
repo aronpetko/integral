@@ -372,15 +372,15 @@ Score Search::PVSearch(int depth,
           return score >= kMateScore - kMaxPlyFromRoot ? beta : score;
         }
       }
+    }
 
-      // Razoring: If our eval is far behind alpha, we assume only captures can
-      // catch us up and prune if they can't.
-      if (!in_root && depth <= 5 && std::abs(alpha) < 2000 && alpha - eval >= 300 * depth) {
-        const Score razoring_score =
-            QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
-        if (razoring_score <= alpha) {
-          return razoring_score;
-        }
+    // Razoring: If our eval is far behind alpha, we assume only captures can
+    // catch us up and prune if they can't.
+    if (!in_root && depth <= 5 && std::abs(alpha) < 2000 && alpha - eval >= 300 * depth) {
+      const Score razoring_score =
+          QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
+      if (razoring_score <= alpha) {
+        return razoring_score;
       }
     }
   }
