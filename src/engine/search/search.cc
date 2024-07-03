@@ -337,29 +337,19 @@ Score Search::PVSearch(int depth,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
+  if (!state.InCheck() && !stack->excluded_tt_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
+    if (!in_pv_node && depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = depth * 75;
       if (eval - futility_margin >= beta) {
         return eval;
       }
     }
 
-    // Razoring: If our eval is far behind alpha, we assume only captures can
-    // catch us up and prune if they can't.
-    if (depth <= 4 && std::abs(alpha) < 2000 && alpha - eval >= 250 * depth) {
-      const Score razoring_score =
-          QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
-      if (razoring_score <= alpha) {
-        return razoring_score;
-      }
-    }
-
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() && eval >= beta) {
+    if (!in_pv_node && !(stack - 1)->move.IsNull() && eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -380,6 +370,16 @@ Score Search::PVSearch(int depth,
         // that the opponent still doesn't gain an advantage from the null move
         if (score >= beta) {
           return score >= kMateScore - kMaxPlyFromRoot ? beta : score;
+        }
+      }
+
+      // Razoring: If our eval is far behind alpha, we assume only captures can
+      // catch us up and prune if they can't.
+      if (!in_root && depth <= 5 && std::abs(alpha) < 2000 && alpha - eval >= 300 * depth) {
+        const Score razoring_score =
+            QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
+        if (razoring_score <= alpha) {
+          return razoring_score;
         }
       }
     }
