@@ -375,7 +375,7 @@ Score Search::PVSearch(int depth,
 
         board_.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
-            depth - reduction, -beta, -beta + 1, stack + 1, true);
+            depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
         board_.UndoMove();
 
         // Prune if the result from our null window search around beta indicates
@@ -518,7 +518,7 @@ Score Search::PVSearch(int depth,
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
-          new_depth - reduction, -alpha - 1, -alpha, stack + 1, !cut_node);
+          new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
       needs_full_search = score > alpha && reduction != 0;
     } else {
       // If we didn't perform late move reduction, then we search this move at
