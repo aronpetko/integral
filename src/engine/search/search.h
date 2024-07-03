@@ -10,6 +10,7 @@
 constexpr int kMaxSearchDepth = 100;
 
 enum class NodeType {
+  kRoot,
   kPV,
   kNonPV
 };

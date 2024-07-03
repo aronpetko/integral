@@ -102,8 +102,8 @@ class SearchStack {
   }
 
   void Reset() {
-    for (std::size_t i = 0; i < stack_.size(); i++) {
-      stack_[i] = SearchStackEntry(std::max<std::size_t>(0, i - kPadding));
+    for (int i = 0; i < stack_.size(); i++) {
+      stack_[i] = SearchStackEntry(i - kPadding);
     }
   }
 

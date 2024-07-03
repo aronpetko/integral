@@ -1,5 +1,5 @@
-#ifndef INTEGRAL_UCI_OPTION_H
-#define INTEGRAL_UCI_OPTION_H
+#ifndef INTEGRAL_OPTION_H
+#define INTEGRAL_OPTION_H
 
 #include <functional>
 #include <iostream>
@@ -19,7 +19,7 @@ enum class OptionVisibility {
 
 class Option {
  public:
-  Option() : min_(0), max_(0) {}
+  Option() : min_(0), max_(0), visibility_(OptionVisibility::kPublic) {}
 
   explicit Option(
       std::string_view name,
@@ -119,62 +119,6 @@ struct CaseInsensitive {
   }
 };
 
-inline std::map<std::string_view, Option, CaseInsensitive> options;
-
-// Primary template
-template <typename T, OptionVisibility visibility = OptionVisibility::kPublic>
-[[maybe_unused]] inline void AddOption(
-    std::string_view name,
-    T value,
-    std::function<void(Option &)> callback = [](Option &) {}) {
-  static_assert(std::is_same<T, void>::value, "Unsupported type for AddOption");
-}
-
-// Specialization for int
-template <OptionVisibility visibility>
-[[maybe_unused]] inline std::enable_if_t<std::is_same_v<I64, I64>, void>
-AddOption(
-    std::string_view name,
-    I64 value,
-    I64 min,
-    I64 max,
-    std::function<void(Option &)> callback = [](Option &) {}) {
-  options[name] = Option(name, value, min, max, visibility, std::move(callback));
-}
-
-// Specialization for bool
-template <OptionVisibility visibility>
-[[maybe_unused]] inline std::enable_if_t<std::is_same_v<bool, bool>, void>
-AddOption(
-    std::string_view name,
-    bool value,
-    std::function<void(Option &)> callback = [](Option &) {}) {
-  options[name] = Option(name, value, visibility, std::move(callback));
-}
-
-// Specialization for std::string_view
-template <OptionVisibility visibility>
-[[maybe_unused]] inline std::
-    enable_if_t<std::is_same_v<std::string_view, std::string_view>, void>
-    AddOption(
-        std::string_view name,
-        std::string_view value,
-        std::function<void(Option &)> callback = [](Option &) {}) {
-  options[name] = Option(name, value, visibility, std::move(callback));
-}
-
-[[maybe_unused]] static Option &GetOption(std::string_view option) {
-  return options[option];
-}
-
-[[maybe_unused]] static void PrintOptions() {
-  for (const auto &[_, option] : options) {
-    if (option.IsPublic()) {
-      fmt::println("{}", option.ToString());
-    }
-  }
-}
-
 }  // namespace uci
 
-#endif  // INTEGRAL_UCI_OPTION_H
+#endif  // INTEGRAL_OPTION_H

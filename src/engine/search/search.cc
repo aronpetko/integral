@@ -200,7 +200,7 @@ Score Search::QuiescentSearch(Score alpha,
         moves_seen > 0) {
       break;
     }
-    
+
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -432,7 +432,7 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    int extensions = 0;
+    int extensions = state.InCheck();
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
@@ -455,7 +455,7 @@ Score Search::PVSearch(int depth,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
-          extensions = 1;
+          extensions++;
         }
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
@@ -466,10 +466,14 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    // Check Extensions: Integral's not yet strong enough to simplify this out :)
+    // Check Extensions: Integral's not yet strong enough to simplify this out
+    // :)
     if (state.InCheck()) {
       extensions++;
     }
+
+    // Prefetch the TT entry for the next move as early as possible
+    transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
     // Ensure that the PV only contains moves down this path
     if (in_pv_node) {

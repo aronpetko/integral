@@ -25,9 +25,10 @@ std::array<Tunable, 5> move_stability_scale = {
 }
 
 void TimeManagement::Start() {
-  const int base_time = config_.time_left * base_time_scale +
-                        config_.increment * increment_scale -
-                        uci::GetOption("Move Overhead").GetValue<int>();
+  const int base_time =
+      config_.time_left * base_time_scale +
+      config_.increment * increment_scale -
+      uci::listener.GetOption("Move Overhead").GetValue<int>();
   const auto maximum_time = percent_limit * config_.time_left;
 
   hard_limit_.store(std::min(hard_limit_scale * base_time, maximum_time));
