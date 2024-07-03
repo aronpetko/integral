@@ -337,10 +337,20 @@ Score Search::PVSearch(int depth,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!state.InCheck() && !stack->excluded_tt_move) {
+  if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
+    // Razoring: If our eval is far behind alpha, we assume only captures can
+    // catch us up and prune if they can't.
+    if (std::abs(alpha) < 2000 && alpha - eval >= 430 * depth) {
+      const Score razoring_score =
+          QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
+      if (razoring_score <= alpha) {
+        return razoring_score;
+      }
+    }
+
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (!in_pv_node && depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
+    if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = depth * 75;
       if (eval - futility_margin >= beta) {
         return eval;
@@ -349,7 +359,7 @@ Score Search::PVSearch(int depth,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!in_pv_node && !(stack - 1)->move.IsNull() && eval >= beta) {
+    if (!(stack - 1)->move.IsNull() && eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -371,16 +381,6 @@ Score Search::PVSearch(int depth,
         if (score >= beta) {
           return score >= kMateScore - kMaxPlyFromRoot ? beta : score;
         }
-      }
-    }
-
-    // Razoring: If our eval is far behind alpha, we assume only captures can
-    // catch us up and prune if they can't.
-    if (!in_root && depth <= 5 && std::abs(alpha) < 2000 && alpha - eval >= 300 * depth) {
-      const Score razoring_score =
-          QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
-      if (razoring_score <= alpha) {
-        return razoring_score;
       }
     }
   }
