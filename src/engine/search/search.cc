@@ -200,7 +200,7 @@ Score Search::QuiescentSearch(Score alpha,
         moves_seen > 0) {
       break;
     }
-    
+
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -349,9 +349,9 @@ Score Search::PVSearch(int depth,
 
     // Razoring: If our eval is far behind alpha, we assume only captures can
     // catch us up and prune if they can't.
-    if (depth <= 5 && std::abs(alpha) < 2000 && alpha - eval >= 300 * depth) {
+    if (depth <= 4 && std::abs(alpha) < 2000 && alpha - eval >= 250 * depth) {
       const Score razoring_score =
-          QuiescentSearch<node_type>(alpha, alpha + 1, stack);
+          QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
       if (razoring_score <= alpha) {
         return razoring_score;
       }
@@ -476,7 +476,8 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    // Check Extensions: Integral's not yet strong enough to simplify this out :)
+    // Check Extensions: Integral's not yet strong enough to simplify this out
+    // :)
     if (state.InCheck()) {
       extensions++;
     }
