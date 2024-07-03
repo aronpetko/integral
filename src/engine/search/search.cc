@@ -389,7 +389,8 @@ Score Search::PVSearch(int depth,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if (in_pv_node && depth >= 4 && !stack->excluded_tt_move && !tt_move) {
+  if ((in_pv_node || cut_node) && depth >= 4 && !stack->excluded_tt_move &&
+      !tt_move) {
     depth--;
   }
 
@@ -510,7 +511,7 @@ Score Search::PVSearch(int depth,
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node;
-      reduction += cut_node * 2;
+      reduction += cut_node;
       reduction -= state.InCheck();
 
       // Ensure the reduction doesn't give us a depth below 0
@@ -530,13 +531,14 @@ Score Search::PVSearch(int depth,
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a PV move hence, we search it with a null window
     if (needs_full_search) {
-      score =
-          -PVSearch<NodeType::kNonPV>(new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+      score = -PVSearch<NodeType::kNonPV>(
+          new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
     }
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
-      score = -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack + 1, false);
+      score =
+          -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack + 1, false);
     }
 
     board_.UndoMove();
