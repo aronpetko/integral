@@ -20,7 +20,7 @@ class CaptureHistory {
     score += ScaleBonus(score, bonus);
   }
 
-  void ApplyGravity(int depth, MoveList &captures) {
+  void Penalize(int depth, MoveList &captures) {
     const int bonus = HistoryBonus(depth);
     // Lower the score of the capture moves that failed to raise alpha
     for (int i = 0; i < captures.Size(); i++) {

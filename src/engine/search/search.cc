@@ -589,7 +589,7 @@ Score Search::PVSearch(int depth,
 
       // Since "good" captures are expected to be the best moves, we apply a
       // penalty to all captures even in the case where the best move was quiet
-      history_.capture_history->ApplyGravity(depth, captures);
+      history_.capture_history->Penalize(depth, captures);
     }
   }
 
