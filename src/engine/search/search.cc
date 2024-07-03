@@ -29,9 +29,9 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
-      table[false][depth][move] =
-          CalculateLMR(depth, move, kQuietBaseReduction, kQuietDivisor);
       table[true][depth][move] =
+          CalculateLMR(depth, move, kQuietBaseReduction, kQuietDivisor);
+      table[false][depth][move] =
           CalculateLMR(depth, move, kTacticalBaseReduction, kTacticalDivisor);
     }
   }
