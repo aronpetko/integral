@@ -510,7 +510,7 @@ Score Search::PVSearch(int depth,
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node;
-      reduction += cut_node;
+      reduction += cut_node * 2;
       reduction -= state.InCheck();
 
       // Ensure the reduction doesn't give us a depth below 0
