@@ -347,6 +347,16 @@ Score Search::PVSearch(int depth,
       }
     }
 
+    // Razoring: If our eval is far behind alpha, we assume only captures can
+    // catch us up and prune if they can't.
+    if (depth <= 5 && std::abs(alpha) < 2000 && alpha - eval >= 300 * depth) {
+      const Score razoring_score =
+          QuiescentSearch<node_type>(alpha, alpha + 1, stack);
+      if (razoring_score <= alpha) {
+        return razoring_score;
+      }
+    }
+
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
     if (!(stack - 1)->move.IsNull() && eval >= beta) {
