@@ -9,19 +9,30 @@
 
 namespace tables {
 
-using LateMoveReductionTable = MultiArray<int, kMaxSearchDepth + 1, kMaxMoves>;
+using LateMoveReductionTable =
+    MultiArray<int, 2, kMaxSearchDepth + 1, kMaxMoves>;
+
+int CalculateLMR(int depth, int moves, double base, double divisor) {
+  auto ln_depth = std::log(depth), ln_moves = std::log(moves);
+  return static_cast<int>(base + ln_depth * ln_moves / divisor);
+}
 
 LateMoveReductionTable GenerateLateMoveReductionTable() {
   LateMoveReductionTable table;
 
-  constexpr double kBaseReduction = 0.39;
-  constexpr double kDivisor = 2.36;
+  constexpr double kQuietBaseReduction = 0.85;
+  constexpr double kQuietDivisor = 2.15;
+
+  constexpr double kTacticalBaseReduction = -0.15;
+  constexpr double kTacticalDivisor = 2.57;
 
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
-      table[depth][move] = static_cast<int>(
-          kBaseReduction + std::log(depth) * std::log(move) / kDivisor);
+      table[true][depth][move] =
+          CalculateLMR(depth, move, kQuietBaseReduction, kQuietDivisor);
+      table[false][depth][move] =
+          CalculateLMR(depth, move, kTacticalBaseReduction, kTacticalDivisor);
     }
   }
 
@@ -200,7 +211,7 @@ Score Search::QuiescentSearch(Score alpha,
         moves_seen > 0) {
       break;
     }
-    
+
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
@@ -466,7 +477,8 @@ Score Search::PVSearch(int depth,
       }
     }
 
-    // Check Extensions: Integral's not yet strong enough to simplify this out :)
+    // Check Extensions: Integral's not yet strong enough to simplify this out
+    // :)
     if (state.InCheck()) {
       extensions++;
     }
@@ -495,7 +507,7 @@ Score Search::PVSearch(int depth,
     // move ordering) are searched at lower depths
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
-      int reduction = tables::kLateMoveReduction[depth][moves_seen];
+      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node;
       reduction -= state.InCheck();
 
