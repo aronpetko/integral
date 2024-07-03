@@ -340,7 +340,7 @@ Score Search::PVSearch(int depth,
   if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
     // Razoring: If our eval is far behind alpha, we assume only captures can
     // catch us up and prune if they can't.
-    if (std::abs(alpha) < 2000 && alpha - eval >= 430 * depth) {
+    if (alpha < 2000 && eval < alpha - 400 * depth) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(alpha, beta, stack);
       if (razoring_score <= alpha) {
