@@ -476,6 +476,11 @@ Score Search::PVSearch(int depth,
         else if (new_beta >= beta) {
           return new_beta;
         }
+        // Negative Extensions: Search less since the TT move was not singular,
+        // and it might cause a beta cutoff again.
+        else if (tt_entry.score >= beta) {
+          extensions = -2;
+        }
       }
     }
 
