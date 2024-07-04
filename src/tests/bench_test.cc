@@ -60,7 +60,7 @@ constexpr std::array kBenchFens = {
 };
 // clang-format on
 
-constexpr int kDefaultBenchDepth = 10;
+constexpr int kDefaultBenchDepth = 13;
 
 void BenchSuite(Board &board, Search &search, int depth) {
   if (depth == 0) {
