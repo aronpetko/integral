@@ -373,7 +373,7 @@ Score Search::PVSearch(int depth,
         stack->continuation_entry = nullptr;
 
         // Ensure the reduction doesn't give us a depth below 0
-        const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);
+        const int reduction = std::clamp<int>(depth / 4 + 3 + std::min(2, (eval - beta) / 200), 0, depth);
 
         board_.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
