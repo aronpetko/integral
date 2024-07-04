@@ -19,7 +19,7 @@ struct TimeConfig {
 };
 
 using SteadyClock = std::chrono::steady_clock;
-using TimeStamp = U32;
+using TimeStamp = U64;
 
 [[maybe_unused]] static U64 GetCurrentTime() {
   const auto duration = SteadyClock::now().time_since_epoch();

@@ -56,7 +56,9 @@ Search::Search(Board &board)
 template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
+
   const auto root_stack = &search_stack_.Front();
+  root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
   Score score = 0;
@@ -631,7 +633,8 @@ Score Search::PVSearch(int depth,
 }
 
 bool Search::ShouldQuit() {
-  return !searching_ || ((nodes_searched_ & 4095) && time_mgmt_.TimesUp());
+  return search_stack_.Front().best_move &&
+         (!searching_ || ((nodes_searched_ & 4095) && time_mgmt_.TimesUp()));
 }
 
 void Search::Start(TimeConfig &time_config) {

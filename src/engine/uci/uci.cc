@@ -22,7 +22,7 @@ void InitializeOptions() {
         eval::pawn_cache.Resize(option.GetValue<int>());
       });
   AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
-  AddOption<OptionVisibility::kPublic>("Move Overhead", 50, 0, 10000);
+  AddOption<OptionVisibility::kPublic>("Move Overhead", 10, 0, 10000);
 }
 
 void Position(Board &board, std::stringstream &input_stream) {

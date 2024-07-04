@@ -25,17 +25,21 @@ std::array<Tunable, 5> move_stability_scale = {
 }
 
 void TimeManagement::Start() {
+  const int overhead = uci::GetOption("Move Overhead").GetValue<int>();
   const int base_time = config_.time_left * base_time_scale +
-                        config_.increment * increment_scale -
-                        uci::GetOption("Move Overhead").GetValue<int>();
-  const auto maximum_time = percent_limit * config_.time_left;
+                        config_.increment * increment_scale - overhead;
+  const int maximum_time = percent_limit * config_.time_left;
 
-  hard_limit_.store(std::min(hard_limit_scale * base_time, maximum_time));
-  soft_limit_.store(std::min(soft_limit_scale * base_time, maximum_time));
+  const int scaled_hard_limit =
+      std::min(static_cast<int>(hard_limit_scale * base_time), maximum_time);
+  const int scaled_soft_limit =
+      std::min(static_cast<int>(soft_limit_scale * base_time), maximum_time);
+
+  hard_limit_.store(std::max(5, scaled_hard_limit));
+  soft_limit_.store(std::max(1, scaled_soft_limit));
 
   start_time_.store(GetCurrentTime());
   nodes_spent_.fill(0);
-
   previous_best_move_ = Move::NullMove();
 }
 
