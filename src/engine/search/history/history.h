@@ -23,6 +23,17 @@ class SearchHistory {
     capture_history = std::make_unique<CaptureHistory>(state_);
   }
 
+  [[nodiscard]] int GetQuietMoveScore(Move move,
+                                      SearchStackEntry *stack) const {
+    return quiet_history->GetScore(move) +
+           continuation_history->GetScore(move, stack - 1) +
+           continuation_history->GetScore(move, stack - 2);
+  }
+
+  [[nodiscard]] int GetCaptureMoveScore(Move move) const {
+    return capture_history->GetScore(move);
+  }
+
  public:
   std::unique_ptr<QuietHistory> quiet_history;
   std::unique_ptr<CaptureHistory> capture_history;
