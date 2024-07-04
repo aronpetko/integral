@@ -134,8 +134,6 @@ class Evaluation {
 };
 
 void Evaluation::Initialize() {
-  pawn_cache.Prefetch(state_.pawn_key);
-
   const Square white_king_square = state_.King(Color::kWhite).GetLsb();
   const Square black_king_square = state_.King(Color::kBlack).GetLsb();
 
@@ -466,6 +464,7 @@ ScorePair Evaluation::EvaluateKing() {
   const Color them = FlipColor(us);
 
   const BitBoard our_pawns = state_.Pawns(us);
+  const BitBoard their_pawns = state_.Pawns(them);
 
   const int king_rank = square.Rank();
   const int king_file = square.File();
@@ -512,8 +511,7 @@ ScorePair Evaluation::EvaluateKing() {
 
   const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
   if (!our_pawns_on_file) {
-    const BitBoard their_pawns_on_file =
-        state_.Pawns(them) & masks::files[square];
+    const BitBoard their_pawns_on_file = their_pawns & masks::files[square];
     const bool semi_open_file = their_pawns_on_file != 0;
 
     score += kKingOnFilePenalty[semi_open_file][square.File()];

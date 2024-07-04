@@ -9,19 +9,30 @@
 
 namespace tables {
 
-using LateMoveReductionTable = MultiArray<int, kMaxSearchDepth + 1, kMaxMoves>;
+using LateMoveReductionTable =
+    MultiArray<int, 2, kMaxSearchDepth + 1, kMaxMoves>;
+
+int CalculateLMR(int depth, int moves, double base, double divisor) {
+  auto ln_depth = std::log(depth), ln_moves = std::log(moves);
+  return static_cast<int>(base + ln_depth * ln_moves / divisor);
+}
 
 LateMoveReductionTable GenerateLateMoveReductionTable() {
   LateMoveReductionTable table;
 
-  constexpr double kBaseReduction = 0.39;
-  constexpr double kDivisor = 2.36;
+  constexpr double kQuietBaseReduction = 0.85;
+  constexpr double kQuietDivisor = 2.15;
+
+  constexpr double kTacticalBaseReduction = -0.15;
+  constexpr double kTacticalDivisor = 2.57;
 
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
-      table[depth][move] = static_cast<int>(
-          kBaseReduction + std::log(depth) * std::log(move) / kDivisor);
+      table[true][depth][move] =
+          CalculateLMR(depth, move, kQuietBaseReduction, kQuietDivisor);
+      table[false][depth][move] =
+          CalculateLMR(depth, move, kTacticalBaseReduction, kTacticalDivisor);
     }
   }
 
@@ -45,7 +56,9 @@ Search::Search(Board &board)
 template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
+
   const auto root_stack = &search_stack_.Front();
+  root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
   Score score = 0;
@@ -69,7 +82,7 @@ void Search::IterativeDeepening() {
 
     while (true) {
       const Score new_score = PVSearch<NodeType::kPV>(
-          depth - fail_high_count, alpha, beta, root_stack);
+          depth - fail_high_count, alpha, beta, root_stack, false);
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
@@ -255,7 +268,8 @@ template <NodeType node_type>
 Score Search::PVSearch(int depth,
                        Score alpha,
                        Score beta,
-                       SearchStackEntry *stack) {
+                       SearchStackEntry *stack,
+                       bool cut_node) {
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
@@ -359,11 +373,11 @@ Score Search::PVSearch(int depth,
         stack->continuation_entry = nullptr;
 
         // Ensure the reduction doesn't give us a depth below 0
-        const int reduction = std::clamp<int>(depth / 4 + 4, 0, depth);
+        const int reduction = std::clamp<int>(depth / 4 + 3 + std::min(2, (eval - beta) / 200), 0, depth);
 
         board_.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
-            depth - reduction, -beta, -beta + 1, stack + 1);
+            depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
         board_.UndoMove();
 
         // Prune if the result from our null window search around beta indicates
@@ -377,7 +391,8 @@ Score Search::PVSearch(int depth,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if (in_pv_node && depth >= 4 && !stack->excluded_tt_move && !tt_move) {
+  if ((in_pv_node || cut_node) && depth >= 4 && !stack->excluded_tt_move &&
+      !tt_move) {
     depth--;
   }
 
@@ -449,7 +464,7 @@ Score Search::PVSearch(int depth,
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
-            reduced_depth, new_beta - 1, new_beta, stack);
+            reduced_depth, new_beta - 1, new_beta, stack, cut_node);
         stack->excluded_tt_move = Move::NullMove();
 
         // No move was able to beat the TT entries score, so we extend the TT
@@ -462,6 +477,11 @@ Score Search::PVSearch(int depth,
         // cause a cutoff based on our current search window
         else if (new_beta >= beta) {
           return new_beta;
+        }
+        // Negative Extensions: Search less since the TT move was not singular,
+        // and it might cause a beta cutoff again.
+        else if (tt_entry.score >= beta) {
+          extensions = -1;
         }
       }
     }
@@ -499,8 +519,9 @@ Score Search::PVSearch(int depth,
     // move ordering) are searched at lower depths
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
-      int reduction = tables::kLateMoveReduction[depth][moves_seen];
+      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node;
+      reduction += cut_node;
       reduction -= state.InCheck();
 
       // Ensure the reduction doesn't give us a depth below 0
@@ -508,7 +529,7 @@ Score Search::PVSearch(int depth,
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
-          new_depth - reduction, -alpha - 1, -alpha, stack + 1);
+          new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
       needs_full_search = score > alpha && reduction != 0;
     } else {
       // If we didn't perform late move reduction, then we search this move at
@@ -520,13 +541,14 @@ Score Search::PVSearch(int depth,
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a PV move hence, we search it with a null window
     if (needs_full_search) {
-      score =
-          -PVSearch<NodeType::kNonPV>(new_depth, -alpha - 1, -alpha, stack + 1);
+      score = -PVSearch<NodeType::kNonPV>(
+          new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
     }
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
-      score = -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack + 1);
+      score =
+          -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack + 1, false);
     }
 
     board_.UndoMove();
@@ -579,7 +601,7 @@ Score Search::PVSearch(int depth,
 
       // Since "good" captures are expected to be the best moves, we apply a
       // penalty to all captures even in the case where the best move was quiet
-      history_.capture_history->ApplyGravity(depth, captures);
+      history_.capture_history->Penalize(depth, captures);
     }
   }
 
@@ -614,7 +636,8 @@ Score Search::PVSearch(int depth,
 }
 
 bool Search::ShouldQuit() {
-  return !searching_ || ((nodes_searched_ & 4095) && time_mgmt_.TimesUp());
+  return search_stack_.Front().best_move &&
+         (!searching_ || ((nodes_searched_ & 4095) && time_mgmt_.TimesUp()));
 }
 
 void Search::Start(TimeConfig &time_config) {

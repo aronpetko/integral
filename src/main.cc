@@ -2,7 +2,7 @@
 
 int main(int arg_count, char **args) {
   // Change output buffer size
-  setvbuf(stdout, nullptr, _IOLBF, 1024);
+  setbuf(stdout, nullptr);
 
   uci::AcceptCommands(arg_count, args);
 }

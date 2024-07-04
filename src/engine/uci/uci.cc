@@ -23,7 +23,7 @@ void Initialize() {
     eval::pawn_cache.Resize(option.GetValue<int>());
   });
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
-  listener.AddOption<OptionVisibility::kPublic>("Move Overhead", 50, 0, 10000);
+  listener.AddOption<OptionVisibility::kPublic>("Move Overhead", 10, 0, 10000);
   // clang-format on
 }
 
@@ -82,6 +82,8 @@ void Initialize(Board &board, Search &search) {
 
     const auto move_time = cmd->ParseArgument<int>("movetime");
     if (move_time) time_config.move_time = *move_time;
+
+    if (cmd->ArgumentExists("infinite")) time_config.infinite = true;
 
     const Color turn = board.GetState().turn;
     time_config.time_left = time_left[turn];
@@ -212,10 +214,7 @@ void AcceptCommands(int arg_count, char **args) {
 #endif
 
   if (args[1] && std::string(args[1]) == "bench") {
-    Board board;
     board.SetFromFen(fen::kStartFen);
-
-    Search search(board);
     search.NewGame();
 
     const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
@@ -225,7 +224,7 @@ void AcceptCommands(int arg_count, char **args) {
 
   PrintAsciiLogo();
   fmt::println(
-      "    {} by \n", constants::kEngineName, constants::kEngineAuthor);
+      "    {} by {}\n", constants::kEngineName, constants::kEngineAuthor);
 
   listener.Listen();
 }
