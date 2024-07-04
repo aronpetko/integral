@@ -217,6 +217,10 @@ Score Search::QuiescentSearch(Score alpha,
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
+    
+    // Set the currently searched move in the stack for continuation history
+    stack->move = move;
+    stack->continuation_entry = history_.continuation_history->GetEntry(move);
 
     // Prefetch the TT entry for the next move as early as possible
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
