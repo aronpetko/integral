@@ -1,6 +1,7 @@
 #ifndef INTEGRAL_UCI_H_
 #define INTEGRAL_UCI_H_
 
+#include <mutex>
 #include <utility>
 
 #include "../../chess/board.h"
