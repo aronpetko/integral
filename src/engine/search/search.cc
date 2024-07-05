@@ -357,8 +357,11 @@ Score Search::PVSearch(int depth,
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
 
+    const double growth_rate = 0.5;
+    const double target = improving ? 1.0 : 0.0;
     stack->improving_rate =
-        std::lerp(stack->improving_rate, static_cast<double>(improving), 0.33);
+        stack->improving_rate +
+        (target - stack->improving_rate) * (1 - std::exp(-growth_rate));
   } else {
     stack->static_eval = eval = kScoreNone;
     stack->improving_rate = 0.0;
