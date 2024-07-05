@@ -348,15 +348,17 @@ Score Search::PVSearch(int depth,
       eval = stack->static_eval;
     }
 
+    double prev_improving_rate = 0.0;
     bool improving = false;
     if ((stack - 2)->static_eval != kScoreNone) {
       improving = stack->static_eval > (stack - 2)->static_eval;
+      prev_improving_rate = (stack - 2)->improving_rate;
     } else if ((stack - 4)->static_eval != kScoreNone) {
       improving = stack->static_eval > (stack - 4)->static_eval;
+      prev_improving_rate = (stack - 4)->improving_rate;
     }
 
-    const double prev_rate = (stack - 1)->improving_rate;
-    stack->improving_rate = std::lerp(prev_rate, improving, 0.33);
+    stack->improving_rate = std::lerp(prev_improving_rate, improving, 0.33);
     stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
   } else {
     stack->static_eval = eval = kScoreNone;
