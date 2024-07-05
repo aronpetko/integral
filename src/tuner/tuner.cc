@@ -130,6 +130,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kRookMobility);
   AddArrayParameter(kQueenMobility);
   AddArrayParameter(kPassedPawnBonus);
+  AddArrayParameter(kDefendedPassedPawnBonus);
   AddArrayParameter(kPawnPhalanxBonus);
   AddArrayParameter(kDoubledPawnPenalty);
   AddArrayParameter(kIsolatedPawnPenalty);
@@ -170,6 +171,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kRookMobility);
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
   GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
+  GET_ARRAY_COEFFICIENTS(kDefendedPassedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
@@ -390,6 +392,9 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
   PrintArray(index, kPassedPawnBonus.size(), parameters_);
 
+  fmt::print("constexpr RankTable<ScorePair> kDefendedPassedPawnBonus = ");
+  PrintArray(index, kDefendedPassedPawnBonus.size(), parameters_);
+
   fmt::print("constexpr RankTable<ScorePair> kPawnPhalanxBonus = ");
   PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
 
@@ -409,8 +414,7 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
 
-  fmt::print(
-      "constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
+  fmt::print("constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
   PrintArray(index, kKingPPDistanceTable.size(), parameters_);
 
   fmt::print(

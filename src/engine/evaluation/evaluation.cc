@@ -291,6 +291,11 @@ ScorePair Evaluation::EvaluatePawns() {
       score += kKingCantReachPPBonus;
       TRACE_INCREMENT(kKingCantReachPPBonus, us);
     }
+
+    if (IsDefendedByPawn<us>(square)) {
+      score += kDefendedPassedPawnBonus[square.RelativeRank<us>()];
+      TRACE_INCREMENT(kDefendedPassedPawnBonus[square.RelativeRank<us>()], us);
+    }
   }
 
   return score;
