@@ -150,8 +150,7 @@ void Initialize(Board &board, Search &search) {
     else tests::BenchSuite(board, search, tests::kDefaultBenchDepth);
   });
 
-  listener.RegisterCommand("uci", CommandType::kUnordered, {},
-  [](Command *cmd) {
+  listener.RegisterCommand("uci", CommandType::kUnordered, {}, [](Command *cmd) {
     fmt::println(
       "id name {}\n"
       "id author {}",
@@ -159,6 +158,10 @@ void Initialize(Board &board, Search &search) {
       constants::kEngineAuthor
     );
     listener.PrintOptions();
+  });
+
+  listener.RegisterCommand("isready", CommandType::kUnordered, {}, [](Command *cmd) {
+    fmt::println("readyok");
   });
   // clang-format on
 }
