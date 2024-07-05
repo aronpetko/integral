@@ -5,7 +5,7 @@
 
 int main(int arg_count, char **args) {
   // Change output buffer size
-  setbuf(stdout, nullptr);
+  setvbuf(stdout, nullptr, _IONBF, 0);
 
 #ifdef WIN32
   // Enable ANSI escape codes

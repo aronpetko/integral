@@ -80,6 +80,7 @@ class Argument {
 
   void SetProcessed(bool value) {
     processed_ = value;
+    if (!value) input_.clear();
   }
 
   [[nodiscard]] bool HasInput() const {

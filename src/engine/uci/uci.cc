@@ -90,13 +90,13 @@ void Initialize(Board &board, Search &search) {
     const auto move_time = cmd->ParseArgument<int>("movetime");
     if (move_time) time_config.move_time = *move_time;
 
-    // No arguments passed has the same behavior as passing 'infinite'
-    if (cmd->ArgumentExists("infinite") || !time_config.HasBeenModified())
-      time_config.infinite = true;
-
     const Color turn = board.GetState().turn;
     time_config.time_left = time_left[turn];
     time_config.increment = increment[turn];
+
+    // No arguments passed has the same behavior as passing 'infinite'
+    if (cmd->ArgumentExists("infinite") || !time_config.HasBeenModified())
+      time_config.infinite = true;
 
     search.Start(time_config);
   });
@@ -158,10 +158,15 @@ void Initialize(Board &board, Search &search) {
       constants::kEngineAuthor
     );
     listener.PrintOptions();
+    fmt::println("uciok");
   });
 
   listener.RegisterCommand("isready", CommandType::kUnordered, {}, [](Command *cmd) {
     fmt::println("readyok");
+  });
+
+  listener.RegisterCommand("quit", CommandType::kUnordered, {}, [](Command *cmd) {
+    exit(EXIT_SUCCESS);
   });
   // clang-format on
 }
