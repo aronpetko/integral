@@ -34,7 +34,7 @@ namespace commands {
 void Initialize(Board &board, Search &search) {
   // clang-format off
   listener.RegisterCommand("position", CommandType::kOrdered, {
-    CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<5>()),
+    CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
     CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("moves", ArgumentType::kOptional, UnlimitedInputProcessor())
   }, [&board](Command *cmd) {
@@ -56,6 +56,7 @@ void Initialize(Board &board, Search &search) {
   });
 
   listener.RegisterCommand("go", CommandType::kOrdered, {
+    CreateArgument("perft", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("infinite", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("movetime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
@@ -64,6 +65,12 @@ void Initialize(Board &board, Search &search) {
     CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("binc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [&board, &search](Command *cmd) {
+    const auto perft_depth = cmd->ParseArgument<int>("perft");
+    if (perft_depth) {
+      tests::Perft(board, *perft_depth);
+      return;
+    }
+
     TimeConfig time_config;
     std::array<int, 2> time_left = {};
     std::array<int, 2> increment = {};
@@ -83,7 +90,9 @@ void Initialize(Board &board, Search &search) {
     const auto move_time = cmd->ParseArgument<int>("movetime");
     if (move_time) time_config.move_time = *move_time;
 
-    if (cmd->ArgumentExists("infinite")) time_config.infinite = true;
+    // No arguments passed has the same behavior as passing 'infinite'
+    if (cmd->ArgumentExists("infinite") || !time_config.HasBeenModified())
+      time_config.infinite = true;
 
     const Color turn = board.GetState().turn;
     time_config.time_left = time_left[turn];
@@ -91,118 +100,88 @@ void Initialize(Board &board, Search &search) {
 
     search.Start(time_config);
   });
+
+  listener.RegisterCommand("stop", CommandType::kUnordered, {}, [&search](Command *cmd) {
+    search.Stop();
+    search.WaitUntilFinished();
+  });
+
+  listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {
+    search.Stop();
+    search.WaitUntilFinished();
+    search.NewGame();
+  });
+
+  listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
+    fmt::println("info string cp {}", eval::Evaluate(board.GetState()));
+  });
+
+  listener.RegisterCommand("print", CommandType::kUnordered, {}, [&board](Command *cmd) {
+    board.PrintPieces();
+  });
+
+  listener.RegisterCommand("setoption", CommandType::kUnordered, {
+    CreateArgument("name", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("value", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("wtime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+  }, [](Command *cmd) {
+    const auto option_name = *cmd->ParseArgument<std::string>("name");
+    const auto option_value = *cmd->ParseArgument<std::string>("value");
+    listener.GetOption(option_name).SetValue(option_value);
+  });
+
+  listener.RegisterCommand("test", CommandType::kUnordered, {
+    CreateArgument("see", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("perft", ArgumentType::kOptional, NoInputProcessor()),
+  }, [](Command *cmd) {
+    if (cmd->ArgumentExists("see")) tests::SEESuite();
+    if (cmd->ArgumentExists("perft")) tests::PerftSuite();
+    else {
+      tests::SEESuite();
+      tests::PerftSuite();
+    }
+  });
+
+  listener.RegisterCommand("bench", CommandType::kUnordered, {
+    CreateArgument("depth", ArgumentType::kOptional, NoInputProcessor()),
+  }, [&board, &search](Command *cmd) {
+    constexpr int kDefaultBenchDepth = 10;
+    const auto bench_depth = cmd->ParseArgument<int>("depth");
+    if (bench_depth) tests::BenchSuite(board, search, *bench_depth);
+    else tests::BenchSuite(board, search, kDefaultBenchDepth);
+  });
+
+  listener.RegisterCommand("uci", CommandType::kUnordered, {},
+  [](Command *cmd) {
+    fmt::println(
+      "id name {}\n"
+      "id author {}",
+      constants::kEngineName,
+      constants::kEngineAuthor
+    );
+    listener.PrintOptions();
+  });
   // clang-format on
 }
 
 }  // namespace commands
 
-void Position(Board &board, std::stringstream &input_stream) {
-  std::string position_type;
-  input_stream >> position_type;
-
-  std::string position_fen;
-  if (position_type == "fen") {
-    position_fen =
-        input_stream.str().substr(static_cast<int>(input_stream.tellg()) + 1);
-  } else if (position_type == "startpos") {
-    position_fen = fen::kStartFen;
-  }
-
-  board.SetFromFen(position_fen);
-
-  std::string dummy;
-  while (input_stream >> dummy && dummy != "moves")
-    ;
-
-  std::string move_input;
-  while (input_stream >> move_input) {
-    const auto move = Move::FromStr(move_input);
-    if (move && board.IsMovePseudoLegal(move)) {
-      board.MakeMove(move);
-    } else {
-      std::cerr << fmt::format("invalid move: {}\n", move_input);
-    }
-  }
-}
-
-void Go(Board &board, Search &search, std::stringstream &input_stream) {
-  TimeConfig time_config;
-  std::array<int, 2> time_left = {};
-  std::array<int, 2> increment = {};
-
-  std::string option;
-  while (input_stream >> option) {
-    if (option == "wtime") {
-      input_stream >> time_left[Color::kWhite];
-    } else if (option == "btime") {
-      input_stream >> time_left[Color::kBlack];
-    } else if (option == "winc") {
-      input_stream >> increment[Color::kWhite];
-    } else if (option == "binc") {
-      input_stream >> increment[Color::kBlack];
-    } else if (option == "movetime") {
-      input_stream >> time_config.move_time;
-    } else if (option == "depth") {
-      input_stream >> time_config.depth;
-    } else if (option == "infinite") {
-      time_config.infinite = true;
-    } else if (option == "perft") {
-      int depth;
-      input_stream >> depth;
-      tests::Perft(board, depth);
-      return;
-    }
-  }
-
-  if (option.empty()) {
-    time_config.infinite = true;
-  }
-
-  const Color turn = board.GetState().turn;
-  time_config.time_left = time_left[turn];
-  time_config.increment = increment[turn];
-
-  search.Start(time_config);
-}
-
-void Test(std::stringstream &input_stream) {
-  std::string type;
-  input_stream >> type;
-
-  if (type == "perft") {
-    tests::PerftSuite();
-  } else if (type == "see") {
-    tests::SEESuite();
-  } else {
-    tests::PerftSuite();
-    tests::SEESuite();
-  }
-}
-
-void SetOption(std::stringstream &input_stream) {
-  std::string arg;
-  input_stream >> arg;
-
-  if (arg == "name") {
-    std::string name;
-    input_stream >> name;
-
-    input_stream >> arg;
-    if (arg == "value") {
-      std::string value;
-      input_stream >> value;
-      listener.GetOption(name).SetValue(value);
-    }
-  }
-}
-
 void AcceptCommands(int arg_count, char **args) {
-  move_gen::InitializeAttacks();
+  PrintAsciiLogo();
+  fmt::println(
+      "    {} by {}\n", constants::kEngineName, constants::kEngineAuthor);
 
   Board board;
   board.SetFromFen(fen::kStartFen);
 
   Search search(board);
+
+  // OpenBench requires the bench command to be parsed from the command line
+  if (args[1] && std::string(args[1]) == "bench") {
+    const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
+    tests::BenchSuite(board, search, depth);
+    return;
+  }
 
   options::Initialize();
   commands::Initialize(board, search);
@@ -212,19 +191,6 @@ void AcceptCommands(int arg_count, char **args) {
   tuner.LoadFromFile(args[1]);
   tuner.Tune();
 #endif
-
-  if (args[1] && std::string(args[1]) == "bench") {
-    board.SetFromFen(fen::kStartFen);
-    search.NewGame();
-
-    const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
-    tests::BenchSuite(board, search, depth);
-    return;
-  }
-
-  PrintAsciiLogo();
-  fmt::println(
-      "    {} by {}\n", constants::kEngineName, constants::kEngineAuthor);
 
   listener.Listen();
 }

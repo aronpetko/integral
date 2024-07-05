@@ -60,13 +60,7 @@ constexpr std::array kBenchFens = {
 };
 // clang-format on
 
-constexpr int kDefaultBenchDepth = 10;
-
 void BenchSuite(Board &board, Search &search, int depth) {
-  if (depth == 0) {
-    depth = kDefaultBenchDepth;
-  }
-
   Board old_board = board;
   U64 nodes = 0, elapsed = 0;
 

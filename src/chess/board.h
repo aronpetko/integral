@@ -30,43 +30,43 @@ class CastleRights {
     return rights_ == other.rights_;
   }
 
-  [[nodiscard]] inline bool CanKingsideCastle(Color turn) const {
+  [[nodiscard]] constexpr bool CanKingsideCastle(Color turn) const {
     return rights_ & kMasks[turn][kKingsideIndex];
   }
 
-  [[nodiscard]] inline bool CanQueensideCastle(Color turn) const {
+  [[nodiscard]] constexpr bool CanQueensideCastle(Color turn) const {
     return rights_ & kMasks[turn][kQueensideIndex];
   }
 
-  [[nodiscard]] inline bool CanCastle(Color turn) const {
+  [[nodiscard]] constexpr bool CanCastle(Color turn) const {
     return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
-  inline void SetCanKingsideCastle(Color turn, bool value) {
+  constexpr void SetCanKingsideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kKingsideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  inline void SetCanQueensideCastle(Color turn, bool value) {
+  constexpr void SetCanQueensideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  inline void SetBothRights(Color turn, bool value) {
+  constexpr void SetBothRights(Color turn, bool value) {
     const U8 mask =
         kMasks[turn][kKingsideIndex] | kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  [[nodiscard]] inline Square GetKingsideRook(Color turn) const {
+  [[nodiscard]] constexpr Square GetKingsideRook(Color turn) const {
     return kRookSquares[turn][kKingsideIndex];
   }
 
-  [[nodiscard]] inline Square GetQueensideRook(Color turn) const {
+  [[nodiscard]] constexpr Square GetQueensideRook(Color turn) const {
     return kRookSquares[turn][kQueensideIndex];
   }
 
-  inline U8 GetRights() const {
+  [[nodiscard]] constexpr U8 GetRights() const {
     return rights_;
   }
 

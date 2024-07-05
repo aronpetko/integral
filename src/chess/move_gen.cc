@@ -6,49 +6,93 @@
 
 namespace move_gen {
 
-inline std::array<BitBoard, 64> knight_masks;
-inline std::array<BitBoard, 64> king_masks;
-inline std::array<std::array<BitBoard, 64>, 2> pawn_attack_masks;
-inline std::array<std::array<BitBoard, 64>, 64> ray_between_masks;
-inline std::array<std::array<BitBoard, 64>, 64> ray_intersecting_masks;
+constexpr std::array<BitBoard, 64> GenerateKnightMasks() {
+  std::array<BitBoard, 64> masks{};
+  for (int square = 0; square < kSquareCount; square++) {
+    const BitBoard src_mask = BitBoard::FromSquare(square);
+    masks[square] |= (src_mask & ~kFileMasks[kFileH]) << 17;
+    masks[square] |= (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG]))
+                  << 10;
+    masks[square] |=
+        (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG])) >> 6;
+    masks[square] |= (src_mask & ~kFileMasks[kFileH]) >> 15;
+    masks[square] |= (src_mask & ~kFileMasks[kFileA]) << 15;
+    masks[square] |= (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB]))
+                  << 6;
+    masks[square] |=
+        (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB])) >> 10;
+    masks[square] |= (src_mask & ~kFileMasks[kFileA]) >> 17;
+  }
+  return masks;
+}
 
-void InitializeAttacks() {
-  magics::attacks::Initialize();
-
+constexpr std::array<BitBoard, 64> GenerateKingMasks() {
+  std::array<BitBoard, 64> masks{};
   for (int square = 0; square < kSquareCount; square++) {
     const BitBoard src_mask = BitBoard::FromSquare(square);
 
-    knight_masks[square] |= (src_mask & ~kFileMasks[kFileH]) << 17;
-    knight_masks[square] |=
-        (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG])) << 10;
-    knight_masks[square] |=
-        (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG])) >> 6;
-    knight_masks[square] |= (src_mask & ~kFileMasks[kFileH]) >> 15;
-    knight_masks[square] |= (src_mask & ~kFileMasks[kFileA]) << 15;
-    knight_masks[square] |=
-        (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB])) << 6;
-    knight_masks[square] |=
-        (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB])) >> 10;
-    knight_masks[square] |= (src_mask & ~kFileMasks[kFileA]) >> 17;
+    masks[square] |= Shift<Direction::kNorth>(src_mask);
+    masks[square] |= Shift<Direction::kSouth>(src_mask);
+    masks[square] |= Shift<Direction::kEast>(src_mask);
+    masks[square] |= Shift<Direction::kWest>(src_mask);
+    masks[square] |= Shift<Direction::kNorthEast>(src_mask);
+    masks[square] |= Shift<Direction::kNorthWest>(src_mask);
+    masks[square] |= Shift<Direction::kSouthEast>(src_mask);
+    masks[square] |= Shift<Direction::kSouthWest>(src_mask);
+  }
+  return masks;
+}
 
-    king_masks[square] |= Shift<Direction::kNorth>(src_mask);
-    king_masks[square] |= Shift<Direction::kSouth>(src_mask);
-    king_masks[square] |= Shift<Direction::kEast>(src_mask);
-    king_masks[square] |= Shift<Direction::kWest>(src_mask);
-    king_masks[square] |= Shift<Direction::kNorthEast>(src_mask);
-    king_masks[square] |= Shift<Direction::kNorthWest>(src_mask);
-    king_masks[square] |= Shift<Direction::kSouthEast>(src_mask);
-    king_masks[square] |= Shift<Direction::kSouthWest>(src_mask);
+constexpr std::array<std::array<BitBoard, 64>, 2> GeneratePawnAttackMasks() {
+  std::array<std::array<BitBoard, 64>, 2> masks{};
+  for (int square = 0; square < kSquareCount; square++) {
+    const BitBoard src_mask = BitBoard::FromSquare(square);
 
-    pawn_attack_masks[Color::kWhite][square] |=
-        Shift<Direction::kNorthEast>(src_mask);
-    pawn_attack_masks[Color::kWhite][square] |=
-        Shift<Direction::kNorthWest>(src_mask);
-    pawn_attack_masks[Color::kBlack][square] |=
-        Shift<Direction::kSouthEast>(src_mask);
-    pawn_attack_masks[Color::kBlack][square] |=
-        Shift<Direction::kSouthWest>(src_mask);
+    masks[Color::kWhite][square] |= Shift<Direction::kNorthEast>(src_mask);
+    masks[Color::kWhite][square] |= Shift<Direction::kNorthWest>(src_mask);
+    masks[Color::kBlack][square] |= Shift<Direction::kSouthEast>(src_mask);
+    masks[Color::kBlack][square] |= Shift<Direction::kSouthWest>(src_mask);
+  }
+  return masks;
+}
 
+constexpr std::array<std::array<BitBoard, 64>, 64> GenerateRayBetweenMasks() {
+  std::array<std::array<BitBoard, 64>, 64> masks{};
+  for (int square = 0; square < kSquareCount; square++) {
+    const BitBoard src_mask = BitBoard::FromSquare(square);
+    const BitBoard src_bishop_rays =
+        magics::attacks::GenerateBishopMoves(Square(square), 0ULL);
+    const BitBoard src_rook_rays =
+        magics::attacks::GenerateRookMoves(Square(square), 0ULL);
+
+    for (int other_square = 0; other_square < kSquareCount; other_square++) {
+      if (square == other_square) {
+        continue;
+      }
+
+      const BitBoard dest_mask = BitBoard::FromSquare(other_square);
+      if (src_bishop_rays & dest_mask) {
+        // Calculate the rays between square and other_square
+        masks[square][other_square] =
+            magics::attacks::GenerateBishopMoves(Square(square), dest_mask) &
+            magics::attacks::GenerateBishopMoves(Square(other_square),
+                                                 src_mask);
+      } else if (src_rook_rays & dest_mask) {
+        // Calculate the rays between square and other_square
+        masks[square][other_square] =
+            magics::attacks::GenerateRookMoves(Square(square), dest_mask) &
+            magics::attacks::GenerateRookMoves(Square(other_square), src_mask);
+      }
+    }
+  }
+  return masks;
+}
+
+constexpr std::array<std::array<BitBoard, 64>, 64>
+GenerateRayIntersectingMasks() {
+  std::array<std::array<BitBoard, 64>, 64> masks{};
+  for (int square = 0; square < kSquareCount; square++) {
+    const BitBoard src_mask = BitBoard::FromSquare(square);
     const BitBoard src_bishop_rays =
         magics::attacks::GenerateBishopMoves(Square(square), 0ULL);
     const BitBoard src_rook_rays =
@@ -62,35 +106,32 @@ void InitializeAttacks() {
       const BitBoard dest_mask = BitBoard::FromSquare(other_square);
       if (src_bishop_rays & dest_mask) {
         // Calculate the rays that intersect square and other_square
-        ray_intersecting_masks[square][other_square] =
+        masks[square][other_square] =
             (src_mask | src_bishop_rays) &
             (dest_mask |
              magics::attacks::GenerateBishopMoves(Square(other_square), 0ULL));
-
-        // Calculate the rays between square and other_square
-        ray_between_masks[square][other_square] =
-            magics::attacks::GenerateBishopMoves(Square(square), dest_mask) &
-            magics::attacks::GenerateBishopMoves(Square(other_square),
-                                                 src_mask);
       } else if (src_rook_rays & dest_mask) {
         // Calculate the rays that intersect square and other_square
-        ray_intersecting_masks[square][other_square] =
+        masks[square][other_square] =
             (src_mask | src_rook_rays) &
             (dest_mask |
              magics::attacks::GenerateRookMoves(Square(other_square), 0ULL));
-
-        // Calculate the rays between square and other_square
-        ray_between_masks[square][other_square] =
-            magics::attacks::GenerateRookMoves(Square(square), dest_mask) &
-            magics::attacks::GenerateRookMoves(Square(other_square), src_mask);
       }
     }
   }
+  return masks;
 }
 
-inline bool IsSquareAttackedSlidingPieces(Square square,
-                                          Color attacker,
-                                          const BoardState &state) {
+constexpr auto kKnightMasks = GenerateKnightMasks();
+constexpr auto kKingMasks = GenerateKingMasks();
+constexpr auto kPawnAttackMasks = GeneratePawnAttackMasks();
+// Must be const because magic attacks are initialized at runtime
+const auto kRayBetweenMasks = GenerateRayBetweenMasks();
+const auto kRayIntersectingMasks = GenerateRayIntersectingMasks();
+
+bool IsSquareAttackedSlidingPieces(Square square,
+                                   Color attacker,
+                                   const BoardState &state) {
   const BitBoard occupied = state.Occupied();
   const BitBoard queens = state.Queens(attacker);
 
@@ -107,18 +148,16 @@ inline bool IsSquareAttackedSlidingPieces(Square square,
   return false;
 }
 
-inline bool IsSquareAttackedNonSlidingPieces(Square square,
-                                             Color attacker,
-                                             const BoardState &state) {
+bool IsSquareAttackedNonSlidingPieces(Square square,
+                                      Color attacker,
+                                      const BoardState &state) {
   return (state.Knights(attacker) & KnightMoves(square)) != 0 ||
          (state.Pawns(attacker) & PawnAttacks(square, FlipColor(attacker))) !=
              0 ||
          (state.King(attacker) & KingAttacks(square)) != 0;
 }
 
-inline bool IsSquareAttacked(Square square,
-                             Color attacker,
-                             const BoardState &state) {
+bool IsSquareAttacked(Square square, Color attacker, const BoardState &state) {
   return IsSquareAttackedNonSlidingPieces(square, attacker, state) ||
          IsSquareAttackedSlidingPieces(square, attacker, state);
 }
@@ -133,8 +172,8 @@ BitBoard PawnAttacks(BitBoard pawns, Color side) {
   }
 }
 
-BitBoard &PawnAttacks(Square square, Color side) {
-  return pawn_attack_masks[side][square];
+BitBoard PawnAttacks(Square square, Color side) {
+  return kPawnAttackMasks[side][square];
 }
 
 BitBoard AllLeftPawnAttacks(Color side, const BoardState &state) {
@@ -201,40 +240,20 @@ BitBoard PawnPushes(Color side, const BoardState &state) {
   return moves;
 }
 
-BitBoard PawnDoublePushes(Color side, const BoardState &state) {
-  BitBoard moves, pawns = state.Pawns(side), occupied = state.Occupied();
-
-  if (side == Color::kWhite) {
-    const BitBoard double_pushers = pawns & kRankMasks[kRank2];
-    if (double_pushers) {
-      BitBoard up_up = Shift<Direction::kNorth>(double_pushers) & ~occupied;
-      moves |= up_up;
-    }
-  } else {
-    const BitBoard double_pushers = pawns & kRankMasks[kRank7];
-    if (double_pushers) {
-      BitBoard up_up = Shift<Direction::kSouth>(double_pushers) & ~occupied;
-      moves |= up_up;
-    }
-  }
-
-  return moves;
+BitBoard KnightMoves(Square square) {
+  return kKnightMasks[square];
 }
 
-BitBoard &KnightMoves(Square square) {
-  return knight_masks[square];
-}
-
-BitBoard &BishopMoves(Square square, const BitBoard &occupied) {
+BitBoard BishopMoves(Square square, const BitBoard &occupied) {
   const auto &entry = magics::kBishopMagics[square];
   const auto magic_index = (occupied & entry.mask) * entry.magic >> entry.shift;
-  return magics::attacks::bishop_attacks[square][magic_index.AsU64()];
+  return magics::attacks::kBishopAttacks[square][magic_index.AsU64()];
 }
 
-BitBoard &RookMoves(Square square, const BitBoard &occupied) {
+BitBoard RookMoves(Square square, const BitBoard &occupied) {
   const auto &entry = magics::kRookMagics[square];
   const auto magic_index = (occupied & entry.mask) * entry.magic >> entry.shift;
-  return magics::attacks::rook_attacks[square][magic_index.AsU64()];
+  return magics::attacks::kRookAttacks[square][magic_index.AsU64()];
 }
 
 BitBoard QueenMoves(Square square, const BitBoard &occupied) {
@@ -251,8 +270,8 @@ BitBoard KingMoves(Square square, const BoardState &state) {
   return moves;
 }
 
-BitBoard &KingAttacks(Square square) {
-  return king_masks[square];
+BitBoard KingAttacks(Square square) {
+  return kKingMasks[square];
 }
 
 BitBoard CastlingMoves(Color side, const BoardState &state) {
@@ -362,12 +381,12 @@ BitBoard GetSlidingAttackersTo(const BoardState &state,
   return attackers & state.Occupied(attacker);
 }
 
-BitBoard &RayBetween(Square first, Square second) {
-  return ray_between_masks[first][second];
+BitBoard RayBetween(Square first, Square second) {
+  return kRayBetweenMasks[first][second];
 }
 
-BitBoard &RayIntersecting(Square first, Square second) {
-  return ray_intersecting_masks[first][second];
+BitBoard RayIntersecting(Square first, Square second) {
+  return kRayIntersectingMasks[first][second];
 }
 
 MoveList GenerateMoves(MoveType move_type, Board &board) {
