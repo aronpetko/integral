@@ -357,11 +357,11 @@ Score Search::PVSearch(int depth,
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
 
-    const double growth_rate = 0.5;
+    const double growth = 0.33;
     const double target = improving ? 1.0 : 0.0;
-    stack->improving_rate =
-        stack->improving_rate +
-        (target - stack->improving_rate) * (1 - std::exp(-growth_rate));
+    double diff = target - stack->improving_rate;
+    stack->improving_rate += growth * diff * std::abs(diff);
+    stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
   } else {
     stack->static_eval = eval = kScoreNone;
     stack->improving_rate = 0.0;
