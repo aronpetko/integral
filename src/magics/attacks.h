@@ -2,14 +2,18 @@
 #define INTEGRAL_MAGICS_ATTACKS_H_
 
 #include "../chess/bitboard.h"
+#include "../utils/multi_array.h"
 
 namespace magics::attacks {
 
 constexpr int kBishopBlockerCombinations = 512;
 constexpr int kRookBlockerCombinations = 4096;
 
-extern std::array<std::array<BitBoard, kBishopBlockerCombinations>, kSquareCount> bishop_attacks;
-extern std::array<std::array<BitBoard, kRookBlockerCombinations>, kSquareCount> rook_attacks;
+using BishopAttacksTable = MultiArray<BitBoard, kSquareCount, kBishopBlockerCombinations>;
+using RookAttacksTable = MultiArray<BitBoard, kSquareCount, kRookBlockerCombinations>;
+
+extern BishopAttacksTable kBishopAttacks;
+extern RookAttacksTable kRookAttacks;
 
 BitBoard GenerateBishopMask(Square square);
 
@@ -21,7 +25,6 @@ BitBoard GenerateRookMoves(Square square, const BitBoard &occupied);
 
 std::vector<BitBoard> CreateBlockers(BitBoard moves);
 
-void Initialize();
 
 }
 

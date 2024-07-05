@@ -23,7 +23,7 @@ class Tunable {
     const auto int_min = static_cast<I64>(min * scaling_constant_);
     const auto int_max = static_cast<I64>(max * scaling_constant_);
 
-    uci::AddOption<uci::OptionVisibility::kHidden>(
+    uci::listener.AddOption<uci::OptionVisibility::kHidden>(
         name, int_value, int_min, int_max, [this](uci::Option &option) {
           value_ =
               option.GetValue<I64>() / static_cast<double>(scaling_constant_);

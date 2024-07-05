@@ -3,35 +3,35 @@
 
 namespace magics::attacks {
 
-std::array<std::array<BitBoard, kBishopBlockerCombinations>, kSquareCount> bishop_attacks{};
-std::array<std::array<BitBoard, kRookBlockerCombinations>, kSquareCount> rook_attacks{};
-
 template<Direction Dir>
-int DistanceToEdge(Square square) {
-  switch (Dir) {
-    case Direction::kEast:
-      return 7 - square.File();
-    case Direction::kNorth:
-      return 7 - square.Rank();
-    case Direction::kWest:
-      return square.File();
-    case Direction::kSouth:
-      return square.Rank();
-    case Direction::kNorthEast:
-      return std::min(7 - square.Rank(), 7 - square.File());
-    case Direction::kNorthWest:
-      return std::min(7 - square.Rank(), square.File());
-    case Direction::kSouthEast:
-      return std::min(square.Rank(), 7 - square.File());
-    case Direction::kSouthWest:
-      return std::min(square.Rank(), square.File());
-    default:
-      throw std::invalid_argument("unexpected direction");
+constexpr int DistanceToEdge(Square square) {
+  if constexpr (Dir == Direction::kEast) {
+    return 7 - square.File();
+  } else if constexpr (Dir == Direction::kNorth) {
+    return 7 - square.Rank();
+  } else if constexpr (Dir == Direction::kWest) {
+    return square.File();
+  } else if constexpr (Dir == Direction::kSouth) {
+    return square.Rank();
+  } else if constexpr (Dir == Direction::kNorthEast) {
+    return std::min(7 - square.Rank(), 7 - square.File());
+  } else if constexpr (Dir == Direction::kNorthWest) {
+    return std::min(7 - square.Rank(), square.File());
+  } else if constexpr (Dir == Direction::kSouthEast) {
+    return std::min(square.Rank(), 7 - square.File());
+  } else if constexpr (Dir == Direction::kSouthWest) {
+    return std::min(square.Rank(), square.File());
+  } else {
+    return 0; // This line will never be reached, it's just to satisfy the compiler
   }
 }
 
+// Helper type trait for the static_assert
+template<Direction>
+bool always_false = false;
+
 template<Direction dir>
-BitBoard SlidingAttacks(U8 from, const BitBoard &occupied) {
+constexpr BitBoard SlidingAttacks(U8 from, const BitBoard &occupied) {
   BitBoard attacks;
   BitBoard current = BitBoard::FromSquare(from);
 
@@ -47,7 +47,7 @@ BitBoard SlidingAttacks(U8 from, const BitBoard &occupied) {
 }
 
 template<Direction dir>
-BitBoard SlidingOccupancies(U8 from) {
+constexpr BitBoard SlidingOccupancies(U8 from) {
   BitBoard attacks;
   BitBoard current = BitBoard::FromSquare(from);
 
@@ -112,8 +112,9 @@ BitBoard GenerateRookMoves(Square square, const BitBoard &occupied) {
       | SlidingAttacks<Direction::kSouth>(square, occupied) | SlidingAttacks<Direction::kWest>(square, occupied);
 }
 
-void Initialize() {
-  // Initialize the mask + blocker combinations for bishops and rooks
+BishopAttacksTable GenerateBishopAttacks() {
+  BishopAttacksTable bishop_attacks{};
+
   for (int square = 0; square < kSquareCount; square++) {
     // Compute the attack and blocker combinations for bishops
     auto entry = kBishopMagics[square];
@@ -127,10 +128,18 @@ void Initialize() {
     }
 
     bishop_attacks[square] = square_bishop_attacks;
+  }
 
+  return bishop_attacks;
+}
+
+RookAttacksTable GenerateRookAttacks() {
+  RookAttacksTable rook_attacks{};
+
+  for (int square = 0; square < kSquareCount; square++) {
     // Compute the attack and blocker combinations for rooks
-    entry = kRookMagics[square];
-    blockers = attacks::CreateBlockers(entry.mask);
+    auto entry = kRookMagics[square];
+    auto blockers = attacks::CreateBlockers(entry.mask);
 
     std::array<BitBoard, kRookBlockerCombinations> square_rook_attacks{};
 
@@ -141,6 +150,11 @@ void Initialize() {
 
     rook_attacks[square] = square_rook_attacks;
   }
+
+  return rook_attacks;
 }
+
+BishopAttacksTable kBishopAttacks = GenerateBishopAttacks();
+RookAttacksTable kRookAttacks = GenerateRookAttacks();
 
 } // namespace magic::attacks
