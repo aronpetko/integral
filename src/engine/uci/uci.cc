@@ -166,10 +166,6 @@ void Initialize(Board &board, Search &search) {
 }  // namespace commands
 
 void AcceptCommands(int arg_count, char **args) {
-  PrintAsciiLogo();
-  fmt::println(
-      "    {} by {}\n", constants::kEngineName, constants::kEngineAuthor);
-
   Board board;
   board.SetFromFen(fen::kStartFen);
 
@@ -185,6 +181,10 @@ void AcceptCommands(int arg_count, char **args) {
     tests::BenchSuite(board, search, depth);
     return;
   }
+
+  PrintAsciiLogo();
+  fmt::println(
+      "    {} by {}\n", constants::kEngineName, constants::kEngineAuthor);
 
 #ifdef TUNE
   Tuner tuner;
