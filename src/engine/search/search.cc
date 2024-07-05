@@ -355,8 +355,7 @@ Score Search::PVSearch(int depth,
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
 
-    const double prev_rate =
-        (stack - 1)->improving_rate == 0 ? 0.15 : (stack - 1)->improving_rate;
+    const double prev_rate = (stack - 1)->improving_rate;
     stack->improving_rate = std::lerp(prev_rate, improving, 0.33);
     stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
   } else {
