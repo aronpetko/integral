@@ -145,7 +145,7 @@ void Initialize(Board &board, Search &search) {
   listener.RegisterCommand("bench", CommandType::kUnordered, {
     CreateArgument("depth", ArgumentType::kOptional, NoInputProcessor()),
   }, [&board, &search](Command *cmd) {
-    constexpr int kDefaultBenchDepth = 10;
+    constexpr int kDefaultBenchDepth = 12;
     const auto bench_depth = cmd->ParseArgument<int>("depth");
     if (bench_depth) tests::BenchSuite(board, search, *bench_depth);
     else tests::BenchSuite(board, search, kDefaultBenchDepth);
