@@ -53,14 +53,6 @@ Search::Search(Board &board)
   search_stack_.Reset();
 }
 
-double ease_in(double current, double target, double growth) {
-  if (current == target) {
-    return target;
-  }
-  double next_value = current * growth;
-  return (next_value > target) ? target : next_value;
-}
-
 template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
@@ -358,14 +350,14 @@ Score Search::PVSearch(int depth,
       prev_improving_rate = (stack - 4)->improving_rate;
     }
 
-    if (prev_improving_rate != 0) {
-      const Score static_eval_diff = stack->static_eval - prev_static_eval;
-      stack->improving_rate = prev_improving_rate + static_eval_diff / 25.0;
+    if (prev_improving_rate != kScoreNone) {
+      const Score static_eval_diff = stack->static_eval - prev_static_eval + 10;
+      stack->improving_rate = prev_improving_rate + static_eval_diff / 50.0;
       stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
-    stack->improving_rate = 0.0;
+    stack->improving_rate = kScoreNone;
   }
 
   (stack + 1)->ClearKillerMoves();

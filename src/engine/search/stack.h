@@ -89,7 +89,7 @@ struct SearchStackEntry {
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr),
-        improving_rate(0.0) {
+        improving_rate(kScoreNone) {
     ClearKillerMoves();
   }
 
