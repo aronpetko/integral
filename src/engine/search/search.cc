@@ -53,6 +53,16 @@ Search::Search(Board &board)
   search_stack_.Reset();
 }
 
+double ease_in_quart(double t) {
+  t *= t;
+  return t * t;
+}
+
+double ease_out_quart(double t) {
+  t = (--t) * t;
+  return 1 - t * t;
+}
+
 template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
@@ -328,7 +338,7 @@ Score Search::PVSearch(int depth,
   // This condition is dependent on if the side to move's static evaluation has
   // improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
-  bool improving = false;
+  double prev_improving_rate = stack->improving_rate;
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
@@ -340,13 +350,18 @@ Score Search::PVSearch(int depth,
       eval = stack->static_eval;
     }
 
+    bool improving = false;
     if ((stack - 2)->static_eval != kScoreNone) {
       improving = stack->static_eval > (stack - 2)->static_eval;
     } else if ((stack - 4)->static_eval != kScoreNone) {
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
+
+    stack->improving_rate =
+        std::lerp(stack->improving_rate, static_cast<double>(improving), 0.33);
   } else {
     stack->static_eval = eval = kScoreNone;
+    stack->improving_rate = 0.0;
   }
 
   (stack + 1)->ClearKillerMoves();
@@ -424,7 +439,8 @@ Score Search::PVSearch(int depth,
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = (3 + depth * depth) / (2 - improving);
+      const int lmp_threshold = static_cast<int>((3.0 + depth * depth) /
+                                                 (2.0 - stack->improving_rate));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -603,6 +619,8 @@ Score Search::PVSearch(int depth,
       history_.capture_history->Penalize(depth, captures);
     }
   }
+
+  stack->improving_rate = prev_improving_rate;
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {

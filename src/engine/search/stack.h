@@ -66,6 +66,8 @@ struct SearchStackEntry {
   void *continuation_entry;
   // Moves that caused a beta cutoff at this ply
   std::array<Move, 2> killer_moves;
+  // Overall improving rate from the last couple plies
+  double improving_rate;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -86,7 +88,8 @@ struct SearchStackEntry {
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
-        continuation_entry(nullptr) {
+        continuation_entry(nullptr),
+        improving_rate(0.0) {
     ClearKillerMoves();
   }
 
