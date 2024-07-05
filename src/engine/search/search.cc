@@ -338,7 +338,7 @@ Score Search::PVSearch(int depth,
   // This condition is dependent on if the side to move's static evaluation has
   // improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
-  double prev_improving_rate = stack->improving_rate;
+  stack->improving_rate = 0.0;
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
@@ -357,10 +357,11 @@ Score Search::PVSearch(int depth,
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
 
-    const double growth = 0.5;
-    const double target = improving ? 1.0 : 0.0;
-    double diff = target - stack->improving_rate;
-    stack->improving_rate += growth * diff * std::abs(diff);
+    constexpr double kImprovingBase = 0.45;
+    const double diff = improving - (stack - 1)->improving_rate;
+
+    stack->improving_rate =
+        (stack - 1)->improving_rate + kImprovingBase * std::pow(diff, 3);
     stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
   } else {
     stack->static_eval = eval = kScoreNone;
@@ -622,8 +623,6 @@ Score Search::PVSearch(int depth,
       history_.capture_history->Penalize(depth, captures);
     }
   }
-
-  stack->improving_rate = prev_improving_rate;
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
