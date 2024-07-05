@@ -53,14 +53,12 @@ Search::Search(Board &board)
   search_stack_.Reset();
 }
 
-double ease_in_quart(double t) {
-  t *= t;
-  return t * t;
-}
-
-double ease_out_quart(double t) {
-  t = (--t) * t;
-  return 1 - t * t;
+double ease_in(double current, double target, double growth) {
+  if (current == target) {
+    return target;
+  }
+  double next_value = current * growth;
+  return (next_value > target) ? target : next_value;
 }
 
 template <SearchType type>
@@ -357,11 +355,8 @@ Score Search::PVSearch(int depth,
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
 
-    constexpr double kImprovingBase = 0.45;
-    const double diff = improving - (stack - 1)->improving_rate;
-
     stack->improving_rate =
-        (stack - 1)->improving_rate + kImprovingBase * std::pow(diff, 3);
+        std::lerp((stack - 1)->improving_rate + 0.15, improving, 0.33);
     stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
   } else {
     stack->static_eval = eval = kScoreNone;
