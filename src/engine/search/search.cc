@@ -341,7 +341,7 @@ Score Search::PVSearch(int depth,
     }
 
     Score prev_static_eval;
-    double prev_improving_rate = 0.0;
+    double prev_improving_rate = kScoreNone;
     if ((stack - 2)->static_eval != kScoreNone) {
       prev_static_eval = (stack - 2)->static_eval;
       prev_improving_rate = (stack - 2)->improving_rate;
