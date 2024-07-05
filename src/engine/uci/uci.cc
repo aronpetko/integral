@@ -176,15 +176,15 @@ void AcceptCommands(int arg_count, char **args) {
 
   Search search(board);
 
+  options::Initialize();
+  commands::Initialize(board, search);
+
   // OpenBench requires the bench command to be parsed from the command line
   if (args[1] && std::string(args[1]) == "bench") {
     const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
     tests::BenchSuite(board, search, depth);
     return;
   }
-
-  options::Initialize();
-  commands::Initialize(board, search);
 
 #ifdef TUNE
   Tuner tuner;
