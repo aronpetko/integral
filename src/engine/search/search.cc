@@ -357,7 +357,7 @@ Score Search::PVSearch(int depth,
       improving = stack->static_eval > (stack - 4)->static_eval;
     }
 
-    const double growth = 0.33;
+    const double growth = 0.5;
     const double target = improving ? 1.0 : 0.0;
     double diff = target - stack->improving_rate;
     stack->improving_rate += growth * diff * std::abs(diff);
