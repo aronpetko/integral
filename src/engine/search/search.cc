@@ -340,24 +340,22 @@ Score Search::PVSearch(int depth,
       eval = stack->static_eval;
     }
 
-    Score prev_static_eval;
-    double prev_improving_rate = kScoreNone;
+    Score static_eval_diff = kScoreNone;
+    double prev_improving_rate = 0.0;
     if ((stack - 2)->static_eval != kScoreNone) {
-      prev_static_eval = (stack - 2)->static_eval;
+      static_eval_diff = stack->static_eval - (stack - 2)->static_eval;
       prev_improving_rate = (stack - 2)->improving_rate;
     } else if ((stack - 4)->static_eval != kScoreNone) {
-      prev_static_eval = (stack - 4)->static_eval;
+      static_eval_diff = stack->static_eval - (stack - 4)->static_eval;
       prev_improving_rate = (stack - 4)->improving_rate;
     }
 
-    if (prev_improving_rate != kScoreNone) {
-      const Score static_eval_diff = stack->static_eval - prev_static_eval + 10;
-      stack->improving_rate = prev_improving_rate + static_eval_diff / 50.0;
+    if (static_eval_diff != kScoreNone) {
+      stack->improving_rate = prev_improving_rate + (static_eval_diff + 10) / 50.0;
       stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
-    stack->improving_rate = kScoreNone;
   }
 
   (stack + 1)->ClearKillerMoves();
