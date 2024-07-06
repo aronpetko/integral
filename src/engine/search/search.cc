@@ -334,13 +334,14 @@ Score Search::PVSearch(int depth,
   stack->improving_rate = 0.0;
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
-    stack->static_eval = eval::Evaluate(state);
+    stack->static_eval =
+        history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (can_use_tt_eval) {
       eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     } else {
-      eval = history_.correction_history->CorrectStaticEval(stack->static_eval);
+      eval = stack->static_eval;
     }
 
     SearchStackEntry *past_stack = nullptr;
@@ -368,7 +369,7 @@ Score Search::PVSearch(int depth,
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin =
-          depth * 75 - static_cast<int>(65.0 * stack->improving_rate);
+          depth * 85 - static_cast<int>(65.0 * stack->improving_rate);
       if (eval - futility_margin >= beta) {
         return eval;
       }
