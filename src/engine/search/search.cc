@@ -356,7 +356,7 @@ Score Search::PVSearch(int depth,
       // previous turns
       const Score diff = stack->static_eval - past_stack->static_eval;
       stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / 25.0, -1.0, 1.0);
+          std::clamp(past_stack->improving_rate + diff / 100.0, -1.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
@@ -367,7 +367,7 @@ Score Search::PVSearch(int depth,
   if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= 8 && eval < kMateScore - kMaxPlyFromRoot) {
+    if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = static_cast<int>(
           (static_cast<double>(depth) - stack->improving_rate) * 75.0);
       if (eval - futility_margin >= beta) {
