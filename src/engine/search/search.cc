@@ -1,5 +1,6 @@
 #include "search.h"
 
+#include <numeric>
 #include <thread>
 
 #include "fmt/format.h"
@@ -264,6 +265,37 @@ Score Search::QuiescentSearch(Score alpha,
   return best_score;
 }
 
+const int kRollingWindowSize = 5;
+
+void UpdateImprovingRate(SearchStackEntry *stack, int stack_size) {
+  std::vector<double> past_improving_rates;
+  for (int i = 2;
+       i < stack_size && past_improving_rates.size() < kRollingWindowSize &&
+       stack->ply >= i;
+       i += 2) {
+    if ((stack - i)->static_eval != kScoreNone) {
+      past_improving_rates.push_back((stack - i)->improving_rate);
+    }
+  }
+
+  if (!past_improving_rates.empty()) {
+    const Score diff = stack->static_eval - (stack - 2)->static_eval;
+    double new_rate =
+        std::clamp((stack - 2)->improving_rate + diff / 25.0, -1.0, 1.0);
+
+    past_improving_rates.push_back(new_rate);
+    if (past_improving_rates.size() > kRollingWindowSize) {
+      past_improving_rates.erase(past_improving_rates.begin());
+    }
+
+    double rolling_average =
+        std::accumulate(
+            past_improving_rates.begin(), past_improving_rates.end(), 0.0) /
+        past_improving_rates.size();
+    stack->improving_rate = rolling_average;
+  }
+}
+
 template <NodeType node_type>
 Score Search::PVSearch(int depth,
                        Score alpha,
@@ -340,39 +372,7 @@ Score Search::PVSearch(int depth,
       eval = stack->static_eval;
     }
 
-    const int WINDOW_SIZE = 4;  // Number of past evaluations to consider
-    const double ALPHA = 0.2;   // Weighting factor for the newest value
-
-    SearchStackEntry *past_stacks[WINDOW_SIZE] = {nullptr};
-    int valid_entries = 0;
-
-    // Find valid past stack entries
-    for (int i = 0; i < WINDOW_SIZE; ++i) {
-      SearchStackEntry *past_stack = stack - (i * 2 + 2);
-      if (past_stack->static_eval != kScoreNone && stack->ply >= i * 2 + 2) {
-        past_stacks[valid_entries++] = past_stack;
-      }
-      if (valid_entries == WINDOW_SIZE) break;
-    }
-
-    if (valid_entries > 0) {
-      double sum_diffs = 0.0;
-      for (int i = 0; i < valid_entries; ++i) {
-        sum_diffs += stack->static_eval - past_stacks[i]->static_eval;
-      }
-      double avg_diff = sum_diffs / valid_entries;
-
-      // Exponential moving average
-      if (valid_entries == WINDOW_SIZE) {
-        stack->improving_rate = ALPHA * (avg_diff / 25.0) +
-                                (1 - ALPHA) * past_stacks[0]->improving_rate;
-      } else {
-        // Fall back to simple average if we don't have enough data points
-        stack->improving_rate = avg_diff / 25.0;
-      }
-
-      stack->improving_rate = std::clamp(stack->improving_rate, -1.0, 1.0);
-    }
+    UpdateImprovingRate(stack, 4);
   } else {
     stack->static_eval = eval = kScoreNone;
   }
