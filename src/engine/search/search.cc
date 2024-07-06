@@ -189,19 +189,22 @@ Score Search::QuiescentSearch(Score alpha,
   Score best_score = -kMateScore + stack->ply;
   Move best_move = Move::NullMove();
 
-  Score static_eval = kScoreNone;
   if (!state.InCheck()) {
-    best_score = static_eval =
-        can_use_tt_eval ? tt_entry.score
-                        : history_.correction_history->CorrectedStaticEval();
+    best_score = eval::Evaluate(state);
+    if (can_use_tt_eval) {
+      best_score = tt_entry.score;
+    } else {
+      best_score =
+          history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
+    }
 
     // Early beta cutoff
-    if (static_eval >= beta) {
-      return static_eval;
+    if (best_score >= beta) {
+      return best_score;
     }
 
     // Alpha can be updated if no cutoff occurred
-    alpha = std::max(alpha, static_eval);
+    alpha = std::max(alpha, best_score);
   }
 
   MovePicker move_picker(
@@ -331,13 +334,13 @@ Score Search::PVSearch(int depth,
   stack->improving_rate = 0.0;
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
-    stack->static_eval = history_.correction_history->CorrectedStaticEval();
+    stack->static_eval = eval::Evaluate(state);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (can_use_tt_eval) {
       eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     } else {
-      eval = stack->static_eval;
+      eval = history_.correction_history->CorrectStaticEval(stack->static_eval);
     }
 
     SearchStackEntry *past_stack = nullptr;
@@ -364,8 +367,8 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = static_cast<int>(
-          std::round(depth * 75.0 / (2 - stack->improving_rate)));
+      const int futility_margin =
+          depth * 75 - static_cast<int>(65.0 * stack->improving_rate);
       if (eval - futility_margin >= beta) {
         return eval;
       }
