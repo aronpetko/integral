@@ -442,7 +442,7 @@ Score Search::PVSearch(int depth,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = 150 + 100 * depth;
+      const int futility_margin = 150 + static_cast<int>(100 - 20 * std::max(0.0, stack->improving_rate)) * depth;
       if (depth <= 8 && !state.InCheck() && is_quiet &&
           eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
