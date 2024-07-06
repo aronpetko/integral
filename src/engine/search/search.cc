@@ -363,7 +363,7 @@ Score Search::PVSearch(int depth,
   if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
+    if (depth <= 8 && eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = depth * 75;
       if (eval - futility_margin >= beta) {
         return eval;
