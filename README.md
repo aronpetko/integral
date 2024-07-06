@@ -35,4 +35,4 @@ make <native|x86_64_bmi2|x86_64_modern|x86_64>
 ```
 
 ## Rating
-Integral is estimated to be around 3050 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz, which puts it at a super-human level.
+Integral is estimated to be around 3050 [CCRL Blitz](https://www.computerchess.org.uk/ccrl/404), which puts it at a super-human level.
