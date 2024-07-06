@@ -352,7 +352,7 @@ Score Search::PVSearch(int depth,
       // previous turns
       const Score diff = stack->static_eval - past_stack->static_eval;
       stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / 25.0, 0.0, 1.0);
+          std::clamp(past_stack->improving_rate + diff / 25.0, -1.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
@@ -433,8 +433,8 @@ Score Search::PVSearch(int depth,
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = static_cast<int>((3.0 + depth * depth) /
-                                                 (2.0 - stack->improving_rate));
+      const int lmp_threshold = static_cast<int>(
+          (3.0 + depth * depth) / (2.0 - std::max(0.0, stack->improving_rate)));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
