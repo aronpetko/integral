@@ -352,7 +352,7 @@ Score Search::PVSearch(int depth,
       // previous turns
       const Score diff = stack->static_eval - past_stack->static_eval;
       stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / 100.0, -1.0, 1.0);
+          std::clamp(past_stack->improving_rate + diff / 25.0, -1.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
