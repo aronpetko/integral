@@ -340,19 +340,19 @@ Score Search::PVSearch(int depth,
       eval = stack->static_eval;
     }
 
-    Score static_eval_diff = kScoreNone;
-    double prev_improving_rate = 0.0;
+    SearchStackEntry *past_stack = nullptr;
     if ((stack - 2)->static_eval != kScoreNone) {
-      static_eval_diff = stack->static_eval - (stack - 2)->static_eval;
-      prev_improving_rate = (stack - 2)->improving_rate;
+      past_stack = stack - 2;
     } else if ((stack - 4)->static_eval != kScoreNone) {
-      static_eval_diff = stack->static_eval - (stack - 4)->static_eval;
-      prev_improving_rate = (stack - 4)->improving_rate;
+      past_stack = stack - 4;
     }
 
-    if (static_eval_diff != kScoreNone) {
-      stack->improving_rate = prev_improving_rate + static_eval_diff / 50.0;
-      stack->improving_rate = std::clamp(stack->improving_rate, 0.0, 1.0);
+    if (past_stack) {
+      // Smoothen the improving rate from the static eval of our position in
+      // previous turns
+      const Score diff = stack->static_eval - past_stack->static_eval;
+      stack->improving_rate =
+          std::clamp(past_stack->improving_rate + diff / 25.0, 0.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
