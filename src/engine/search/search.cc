@@ -332,6 +332,7 @@ Score Search::PVSearch(int depth,
   // improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   stack->improving_rate = 0.0;
+  bool improving = false;
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
     stack->static_eval =
@@ -355,8 +356,9 @@ Score Search::PVSearch(int depth,
       // Smoothen the improving rate from the static eval of our position in
       // previous turns
       const Score diff = stack->static_eval - past_stack->static_eval;
+      improving = diff > 0;
       stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / 100.0, -1.0, 1.0);
+          std::clamp(past_stack->improving_rate + diff / 25.0, -1.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
@@ -368,8 +370,7 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = static_cast<int>(
-          (static_cast<double>(depth) - stack->improving_rate) * 75.0);
+      const int futility_margin = (depth - improving) * 75;
       if (eval - futility_margin >= beta) {
         return eval;
       }
