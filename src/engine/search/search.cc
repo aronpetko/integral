@@ -340,19 +340,38 @@ Score Search::PVSearch(int depth,
       eval = stack->static_eval;
     }
 
-    SearchStackEntry *past_stack = nullptr;
-    if ((stack - 2)->static_eval != kScoreNone) {
-      past_stack = stack - 2;
-    } else if ((stack - 4)->static_eval != kScoreNone) {
-      past_stack = stack - 4;
+    const int WINDOW_SIZE = 4;  // Number of past evaluations to consider
+    const double ALPHA = 0.2;   // Weighting factor for the newest value
+
+    SearchStackEntry *past_stacks[WINDOW_SIZE] = {nullptr};
+    int valid_entries = 0;
+
+    // Find valid past stack entries
+    for (int i = 0; i < WINDOW_SIZE; ++i) {
+      SearchStackEntry *past_stack = stack - (i * 2 + 2);
+      if (past_stack->static_eval != kScoreNone && stack->ply >= i * 2 + 2) {
+        past_stacks[valid_entries++] = past_stack;
+      }
+      if (valid_entries == WINDOW_SIZE) break;
     }
 
-    if (past_stack) {
-      // Smoothen the improving rate from the static eval of our position in
-      // previous turns
-      const Score diff = stack->static_eval - past_stack->static_eval;
-      stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / 25.0, -1.0, 1.0);
+    if (valid_entries > 0) {
+      double sum_diffs = 0.0;
+      for (int i = 0; i < valid_entries; ++i) {
+        sum_diffs += stack->static_eval - past_stacks[i]->static_eval;
+      }
+      double avg_diff = sum_diffs / valid_entries;
+
+      // Exponential moving average
+      if (valid_entries == WINDOW_SIZE) {
+        stack->improving_rate = ALPHA * (avg_diff / 25.0) +
+                                (1 - ALPHA) * past_stacks[0]->improving_rate;
+      } else {
+        // Fall back to simple average if we don't have enough data points
+        stack->improving_rate = avg_diff / 25.0;
+      }
+
+      stack->improving_rate = std::clamp(stack->improving_rate, -1.0, 1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
@@ -442,7 +461,7 @@ Score Search::PVSearch(int depth,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = 150 + static_cast<int>(100 - 20 * std::max(0.0, stack->improving_rate)) * depth;
+      const int futility_margin = 150 + 100 * depth;
       if (depth <= 8 && !state.InCheck() && is_quiet &&
           eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
