@@ -369,7 +369,7 @@ Score Search::PVSearch(int depth,
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
       const int futility_margin = static_cast<int>(
-          depth / (1.0 + std::max(stack->improving_rate, 0.0)) * 100.0);
+          depth / (1.0 + std::max(stack->improving_rate, 0.0)) * 80.0);
       if (eval - futility_margin >= beta) {
         return eval;
       }
