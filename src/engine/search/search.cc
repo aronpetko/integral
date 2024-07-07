@@ -368,8 +368,8 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = static_cast<int>(
-          depth / (1.0 + std::max(stack->improving_rate, 0.0)) * 80.0);
+      const int futility_margin =
+          depth * 75 - static_cast<int>(120 * stack->improving_rate);
       if (eval - futility_margin >= beta) {
         return eval;
       }
