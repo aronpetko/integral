@@ -277,8 +277,7 @@ Score Search::PVSearch(int depth,
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
   // Enter quiescent search when we've reached the depth limit
-  assert(depth >= 0);
-  if (depth == 0) {
+  if (depth <= 0) {
     return QuiescentSearch<node_type>(alpha, beta, stack);
   }
 
@@ -386,8 +385,7 @@ Score Search::PVSearch(int depth,
         stack->continuation_entry = nullptr;
 
         // Ensure the reduction doesn't give us a depth below 0
-        const int reduction = std::clamp<int>(
-            depth / 4 + 3 + std::min(2, (eval - beta) / 200), 0, depth - 1);
+        const int reduction = depth / 4 + 3 + std::min(2, (eval - beta) / 200);
 
         board_.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
@@ -538,7 +536,7 @@ Score Search::PVSearch(int depth,
       reduction -= state.InCheck();
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, 0, new_depth - 1);
+      reduction = std::clamp<int>(reduction, 0, new_depth);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
