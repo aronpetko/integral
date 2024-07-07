@@ -277,8 +277,7 @@ Score Search::PVSearch(int depth,
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
   // Enter quiescent search when we've reached the depth limit
-  assert(depth >= 0);
-  if (depth == 0) {
+  if (depth <= 0) {
     return QuiescentSearch<node_type>(alpha, beta, stack);
   }
 
@@ -368,9 +367,7 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin =
-          depth * 75 +
-          static_cast<int>(20 * std::max(0.0, stack->improving_rate));
+      const int futility_margin = depth * 75;
       if (eval - futility_margin >= beta) {
         return eval;
       }
@@ -388,8 +385,8 @@ Score Search::PVSearch(int depth,
         stack->continuation_entry = nullptr;
 
         // Ensure the reduction doesn't give us a depth below 0
-        const int reduction = std::clamp<int>(
-            depth / 4 + 3 + std::min(2, (eval - beta) / 200), 0, depth);
+        const int reduction =
+            depth / 4 + 3 + std::min(2, (eval - beta) / 200);
 
         board_.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
@@ -538,9 +535,6 @@ Score Search::PVSearch(int depth,
       reduction += cut_node;
       reduction -= is_quiet * history_.GetQuietMoveScore(move, stack) / 10000;
       reduction -= state.InCheck();
-
-      // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, 0, new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
