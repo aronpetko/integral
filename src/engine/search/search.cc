@@ -168,7 +168,7 @@ Score Search::QuiescentSearch(Score alpha,
   // Probe the transposition table to see if we have already evaluated this
   // position
   const int tt_depth = state.InCheck();
-  const auto &tt_entry = transposition_table[state.zobrist_key];
+  const auto &tt_entry = transposition_table.Probe(state.zobrist_key);
   const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
   const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
@@ -309,7 +309,7 @@ Score Search::PVSearch(int depth,
   bool can_use_tt_eval = false;
 
   if (!stack->excluded_tt_move) {
-    tt_entry = transposition_table[state.zobrist_key];
+    tt_entry = transposition_table.Probe(state.zobrist_key);
     tt_hit = tt_entry.CompareKey(state.zobrist_key);
     tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 

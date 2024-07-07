@@ -52,19 +52,35 @@ struct TranspositionTableEntry {
   }
 
   U16 key;
+  Move move;
+  Score score;
   U8 depth;
   Flag flag;
-  Score score;
-  Move move;
 };
 
-class TranspositionTable : public HashTable<TranspositionTableEntry> {
+struct TranspositionTableCluster {
+  [[nodiscard]] TranspositionTableEntry &MatchEntry(const U64 &test_key) {
+    for (auto &entry : entries) {
+      if (entry.CompareKey(test_key)) {
+        return entry;
+      }
+    }
+    // Just return the first one
+    return entries[0];
+  }
+
+  std::array<TranspositionTableEntry, 3> entries;
+};
+
+class TranspositionTable : public HashTable<TranspositionTableCluster> {
  public:
   explicit TranspositionTable(std::size_t mb_size) : HashTable(mb_size) {}
 
   TranspositionTable() = default;
 
   void Save(const U64 &key, U16 ply, const TranspositionTableEntry &entry);
+
+  [[nodiscard]] TranspositionTableEntry &Probe(const U64 &key);
 };
 
 inline TranspositionTable transposition_table;
