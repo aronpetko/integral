@@ -187,7 +187,6 @@ Score Search::QuiescentSearch(Score alpha,
 
   int moves_seen = 0;
   Score best_score = -kMateScore + stack->ply;
-  Score futility_score = state.InCheck() ? best_score : best_score + 60;
   Move best_move = Move::NullMove();
 
   Score static_eval = kScoreNone;
@@ -205,6 +204,8 @@ Score Search::QuiescentSearch(Score alpha,
     alpha = std::max(alpha, static_eval);
   }
 
+  const Score futility_score = best_score + 60;
+
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
@@ -219,6 +220,7 @@ Score Search::QuiescentSearch(Score alpha,
       continue;
     }
 
+    // QS Futility Pruning:
     if (!state.InCheck() && futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
