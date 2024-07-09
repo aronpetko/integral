@@ -215,7 +215,7 @@ Score Search::QuiescentSearch(Score alpha,
     if (!board_.IsMoveLegal(move)) {
       continue;
     }
-    
+
     // Ensure that the PV only contains moves down this path
     if (in_pv_node) {
       (stack + 1)->pv.Clear();
@@ -470,6 +470,15 @@ Score Search::PVSearch(int depth,
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
+
+      // History Pruning: Prune quiet moves with a low history score moves at
+      // near-leaf nodes
+      if (is_quiet) {
+        const int history_score = history_.GetQuietMoveScore(move, stack);
+        if (depth <= 5 && history_score <= -500 - 1500 * depth) {
+          continue;
+        }
+      }
     }
 
     int extensions = 0;
@@ -512,7 +521,6 @@ Score Search::PVSearch(int depth,
     }
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
-    // :)
     if (state.InCheck()) {
       extensions++;
     }

@@ -131,6 +131,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kQueenMobility);
   AddArrayParameter(kPassedPawnBonus);
   AddArrayParameter(kPawnPhalanxBonus);
+  AddArrayParameter(kDefendedPawnBonus);
   AddArrayParameter(kDoubledPawnPenalty);
   AddArrayParameter(kIsolatedPawnPenalty);
   Add2DArrayParameter(kRookOnFileBonus);
@@ -171,6 +172,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
   GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
+  GET_ARRAY_COEFFICIENTS(kDefendedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
@@ -388,16 +390,19 @@ void Tuner::PrintParameters() {
   PrintArray(index, kQueenMobility.size(), parameters_);
 
   fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
-  PrintArray(index, kPassedPawnBonus.size(), parameters_);
+  PrintArray(index, kNumRanks, parameters_);
 
   fmt::print("constexpr RankTable<ScorePair> kPawnPhalanxBonus = ");
-  PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
+  PrintArray(index, kNumRanks, parameters_);
+
+  fmt::print("constexpr RankTable<ScorePair> kDefendedPawnBonus = ");
+  PrintArray(index, kNumRanks, parameters_);
 
   fmt::print("constexpr FileTable<ScorePair> kDoubledPawnPenalty = ");
-  PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
+  PrintArray(index, kNumFiles, parameters_);
 
   fmt::print("constexpr FileTable<ScorePair> kIsolatedPawnPenalty = ");
-  PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
+  PrintArray(index, kNumFiles, parameters_);
 
   fmt::print(
       "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
@@ -409,8 +414,7 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
 
-  fmt::print(
-      "constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
+  fmt::print("constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
   PrintArray(index, kKingPPDistanceTable.size(), parameters_);
 
   fmt::print(
