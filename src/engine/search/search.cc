@@ -474,7 +474,7 @@ Score Search::PVSearch(int depth,
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
       if (is_quiet) {
-        const int history_threshold = -800 - 5000 * depth;
+        const int history_threshold = -500 - 1500 * depth;
         const int history_score = history_.GetQuietMoveScore(move, stack);
         if (depth <= 4 && history_score <= history_threshold) {
           continue;
