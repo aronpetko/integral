@@ -187,21 +187,19 @@ Score Search::QuiescentSearch(Score alpha,
 
   int moves_seen = 0;
   Score best_score = -kMateScore + stack->ply;
-  Move best_move = Move::NullMove();
 
-  Score static_eval = kScoreNone;
   if (!state.InCheck()) {
-    best_score = static_eval =
-        can_use_tt_eval ? tt_entry.score
-                        : history_.correction_history->CorrectedStaticEval();
+    best_score = can_use_tt_eval
+                   ? tt_entry.score
+                   : history_.correction_history->CorrectedStaticEval();
 
     // Early beta cutoff
-    if (static_eval >= beta) {
-      return static_eval;
+    if (best_score >= beta) {
+      return best_score;
     }
 
     // Alpha can be updated if no cutoff occurred
-    alpha = std::max(alpha, static_eval);
+    alpha = std::max(alpha, best_score);
   }
 
   const Score futility_score = best_score + 60;
@@ -247,6 +245,13 @@ Score Search::QuiescentSearch(Score alpha,
       best_score = score;
 
       if (score > alpha) {
+        // Only update the PV line if this node was expected to be in the PV
+        if (in_pv_node) {
+          stack->pv.Clear();
+          stack->pv.Push(move);
+          stack->pv.AppendPV((stack + 1)->pv);
+        }
+
         alpha = score;
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
@@ -268,7 +273,7 @@ Score Search::QuiescentSearch(Score alpha,
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, tt_depth, tt_flag, best_score, best_move);
+      state.zobrist_key, tt_depth, tt_flag, best_score, Move::NullMove());
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
