@@ -220,7 +220,8 @@ Score Search::QuiescentSearch(Score alpha,
       continue;
     }
 
-    // QS Futility Pruning:
+    // QS Futility Pruning: Prune capture moves that don't win material if the static
+    // eval is behind alpha by some margin
     if (!state.InCheck() && move.IsCapture(state) && futility_score <= alpha &&
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
