@@ -202,7 +202,7 @@ Score Search::QuiescentSearch(Score alpha,
     alpha = std::max(alpha, best_score);
   }
 
-  const Score futility_score = best_score + 60;
+  const Score futility_score = best_score + 100;
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
