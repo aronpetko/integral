@@ -221,7 +221,8 @@ Score Search::QuiescentSearch(Score alpha,
     }
 
     // QS Futility Pruning:
-    if (!state.InCheck() && futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
+    if (!state.InCheck() && move.IsCapture(state) && futility_score <= alpha &&
+        !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
     }
