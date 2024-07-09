@@ -202,6 +202,8 @@ Score Search::QuiescentSearch(Score alpha,
     alpha = std::max(alpha, best_score);
   }
 
+  const Score futility_score = best_score + 100;
+
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
@@ -216,6 +218,14 @@ Score Search::QuiescentSearch(Score alpha,
       continue;
     }
 
+    // QS Futility Pruning: Prune capture moves that don't win material if the static
+    // eval is behind alpha by some margin
+    if (!state.InCheck() && move.IsCapture(state) && futility_score <= alpha &&
+        !eval::StaticExchange(move, 1, state)) {
+      best_score = std::max(best_score, futility_score);
+      continue;
+    }
+    
     // Ensure that the PV only contains moves down this path
     if (in_pv_node) {
       (stack + 1)->pv.Clear();
