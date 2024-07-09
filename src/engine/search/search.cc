@@ -187,6 +187,7 @@ Score Search::QuiescentSearch(Score alpha,
 
   int moves_seen = 0;
   Score best_score = -kMateScore + stack->ply;
+  Score futility_score = state.InCheck() ? best_score : best_score + 60;
   Move best_move = Move::NullMove();
 
   Score static_eval = kScoreNone;
@@ -215,6 +216,11 @@ Score Search::QuiescentSearch(Score alpha,
     }
 
     if (!board_.IsMoveLegal(move)) {
+      continue;
+    }
+
+    if (!state.InCheck() && futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
+      best_score = std::max(best_score, futility_score);
       continue;
     }
 
