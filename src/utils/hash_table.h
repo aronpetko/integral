@@ -31,7 +31,7 @@ class HashTable {
     return table_[Index(key)];
   }
 
-  void Prefetch(const U64 &key) {
+  virtual void Prefetch(const U64 &key) {
     auto &entry = (*this)[key];
     __builtin_prefetch(&entry);
   }

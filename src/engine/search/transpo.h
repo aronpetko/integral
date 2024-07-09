@@ -52,10 +52,10 @@ struct TranspositionTableEntry {
   }
 
   U16 key;
-  Move move;
-  Score score;
   U8 depth;
   Flag flag;
+  Score score;
+  Move move;
 };
 
 struct TranspositionTableCluster {
@@ -78,9 +78,13 @@ class TranspositionTable : public HashTable<TranspositionTableCluster> {
 
   TranspositionTable() = default;
 
-  void Save(const U64 &key, U16 ply, const TranspositionTableEntry &entry);
+  void Save(TranspositionTableEntry &entry,
+            U16 ply,
+            const TranspositionTableEntry &new_entry);
 
   [[nodiscard]] TranspositionTableEntry &Probe(const U64 &key);
+
+  void Prefetch(const U64 &key) override;
 };
 
 inline TranspositionTable transposition_table;

@@ -259,7 +259,7 @@ Score Search::QuiescentSearch(Score alpha,
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(
       state.zobrist_key, tt_depth, tt_flag, best_score, best_move);
-  transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+  transposition_table.Save(tt_entry, stack->ply, new_tt_entry);
 
   return best_score;
 }
@@ -633,7 +633,7 @@ Score Search::PVSearch(int depth,
     // position
     const TranspositionTableEntry new_tt_entry(
         state.zobrist_key, depth, tt_flag, best_score, best_move);
-    transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+    transposition_table.Save(tt_entry, stack->ply, new_tt_entry);
 
     if (!state.InCheck() && (!best_move || !best_move.IsTactical(state))) {
       history_.correction_history->UpdateScore(
