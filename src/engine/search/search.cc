@@ -186,7 +186,7 @@ Score Search::QuiescentSearch(Score alpha,
   const int original_alpha = alpha;
 
   int moves_seen = 0;
-  Score best_score = -kMateScore + stack->ply;
+  Score best_score = kScoreNone;
 
   if (!state.InCheck()) {
     best_score = can_use_tt_eval
@@ -225,6 +225,11 @@ Score Search::QuiescentSearch(Score alpha,
       best_score = std::max(best_score, futility_score);
       continue;
     }
+    
+    // Ensure that the PV only contains moves down this path
+    if (in_pv_node) {
+      (stack + 1)->pv.Clear();
+    }
 
     // Prefetch the TT entry for the next move as early as possible
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
@@ -245,20 +250,24 @@ Score Search::QuiescentSearch(Score alpha,
       best_score = score;
 
       if (score > alpha) {
+        alpha = score;
+        if (alpha >= beta) {
+          // Beta cutoff: The opponent had a better move earlier in the tree
+          break;
+        }
+
         // Only update the PV line if this node was expected to be in the PV
         if (in_pv_node) {
           stack->pv.Clear();
           stack->pv.Push(move);
           stack->pv.AppendPV((stack + 1)->pv);
         }
-
-        alpha = score;
-        if (alpha >= beta) {
-          // Beta cutoff: The opponent had a better move earlier in the tree
-          break;
-        }
       }
     }
+  }
+
+  if (state.InCheck() && moves_seen == 0) {
+    return -kMateScore + stack->ply;
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -471,6 +480,15 @@ Score Search::PVSearch(int depth,
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
+
+      // History Pruning: Prune quiet moves with a low history score moves at
+      // near-leaf nodes
+      if (is_quiet) {
+        const int history_score = history_.GetQuietMoveScore(move, stack);
+        if (depth <= 5 && history_score <= -500 - 1500 * depth) {
+          continue;
+        }
+      }
     }
 
     int extensions = 0;
@@ -513,7 +531,6 @@ Score Search::PVSearch(int depth,
     }
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
-    // :)
     if (state.InCheck()) {
       extensions++;
     }
@@ -594,13 +611,6 @@ Score Search::PVSearch(int depth,
       if (score > alpha) {
         stack->best_move = best_move = move;
 
-        // Only update the PV line if this node was expected to be in the PV
-        if (in_pv_node) {
-          stack->pv.Clear();
-          stack->pv.Push(best_move);
-          stack->pv.AppendPV((stack + 1)->pv);
-        }
-
         alpha = score;
         if (alpha >= beta) {
           if (is_quiet) {
@@ -612,6 +622,13 @@ Score Search::PVSearch(int depth,
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
+        }
+
+        // Only update the PV line if this node was expected to be in the PV
+        if (in_pv_node) {
+          stack->pv.Clear();
+          stack->pv.Push(best_move);
+          stack->pv.AppendPV((stack + 1)->pv);
         }
       }
     }

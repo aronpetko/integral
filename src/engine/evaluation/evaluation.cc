@@ -231,17 +231,23 @@ ScorePair Evaluation::EvaluatePawns() {
       TRACE_INCREMENT(
           kPieceSquareTable[PieceType::kPawn][square.RelativeTo(us)], us);
 
+      const int file = square.File();
+      const int rank = square.RelativeRank<us>();
+
       // Passed pawns
       const BitBoard their_pawns_ahead =
           masks::forward_file_adjacent[us][square] & their_pawns;
       if (!their_pawns_ahead) {
         passed_pawns.SetBit(square);
 
-        score += kPassedPawnBonus[square.RelativeRank<us>()];
-        TRACE_INCREMENT(kPassedPawnBonus[square.RelativeRank<us>()], us);
+        score += kPassedPawnBonus[rank];
+        TRACE_INCREMENT(kPassedPawnBonus[rank], us);
       }
 
-      const int file = square.File();
+      if (IsDefendedByPawn<us>(square)) {
+        score += kDefendedPawnBonus[rank];
+        TRACE_INCREMENT(kDefendedPawnBonus[rank], us);
+      }
 
       // Doubled pawns
       const BitBoard pawns_ahead_on_file =
