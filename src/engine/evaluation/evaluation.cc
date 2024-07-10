@@ -126,6 +126,7 @@ class Evaluation {
   SideTable<BitBoard> knight_attacks_;
   SideTable<BitBoard> bishop_attacks_;
   SideTable<BitBoard> rook_attacks_;
+  SideTable<BitBoard> queen_attacks_;
   SideTable<BitBoard> mobility_zone_;
   SideTable<BitBoard> pawn_storm_zone_;
   SideTable<ScorePair> attack_power_;
@@ -439,6 +440,8 @@ ScorePair Evaluation::EvaluateQueens() {
     score += kQueenMobility[mobility.PopCount()];
     TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
 
+    queen_attacks_[us] |= mobility;
+
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
       const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
@@ -551,41 +554,40 @@ ScorePair Evaluation::EvaluateThreats() {
     TRACE_INCREMENT(kThreatenedByPawnPenalty[threatened_piece], us);
   }
 
+  // Count the number of squares that our pieces can make to place the enemy
+  // king in check
   const BitBoard occupied = state_.Occupied();
   const Square their_king_square = state_.King(them).GetLsb();
 
-  const BitBoard possible_checking_rooks =
-      move_gen::RookMoves(their_king_square, occupied);
-  const BitBoard possible_checking_bishops =
+  const BitBoard rook_checks = move_gen::RookMoves(their_king_square, occupied);
+  const BitBoard bishop_checks =
       move_gen::BishopMoves(their_king_square, occupied);
 
   const BitBoard safe =
       ~(pawn_attacks_[them] | knight_attacks_[them] | bishop_attacks_[them] |
         rook_attacks_[them] | move_gen::KingAttacks(their_king_square));
-  const BitBoard safe_checking_pawns =
-      (safe & state_.Pawns(us) &
-       move_gen::PawnAttacks(their_king_square, them));
-  const BitBoard safe_checking_knights =
-      safe & state_.Knights(us) & move_gen::KnightMoves(their_king_square);
-  const BitBoard safe_checking_bishops =
-      safe & state_.Bishops(us) & possible_checking_bishops;
-  const BitBoard safe_checking_rooks =
-      safe & state_.Rooks(us) & possible_checking_rooks;
-  const BitBoard safe_checking_queens =
-      safe & state_.Queens(us) &
-      (possible_checking_bishops | possible_checking_rooks);
+  const BitBoard safe_pawn_checks =
+      move_gen::PawnAttacks(their_king_square, them) &
+      move_gen::PawnPushes(state_.Pawns(us), us) & ~pawn_attacks_[them];
+  const BitBoard safe_knight_checks =
+      safe & knight_attacks_[us] & move_gen::KnightMoves(their_king_square);
+  const BitBoard safe_bishop_checks =
+      safe & bishop_attacks_[us] & bishop_checks;
+  const BitBoard safe_rook_checks = safe & rook_attacks_[us] & rook_checks;
+  const BitBoard safe_queen_checks =
+      safe & queen_attacks_[us] & (bishop_checks | rook_checks);
 
-  score += kSafeCheckBonus[kPawn] * safe_checking_pawns.PopCount();
-  score += kSafeCheckBonus[kKnight] * safe_checking_knights.PopCount();
-  score += kSafeCheckBonus[kBishop] * safe_checking_bishops.PopCount();
-  score += kSafeCheckBonus[kRook] * safe_checking_rooks.PopCount();
-  score += kSafeCheckBonus[kQueen] * safe_checking_queens.PopCount();
+  score += kSafeCheckBonus[kPawn] * safe_pawn_checks.PopCount();
+  score += kSafeCheckBonus[kKnight] * safe_knight_checks.PopCount();
+  score += kSafeCheckBonus[kBishop] * safe_bishop_checks.PopCount();
+  score += kSafeCheckBonus[kRook] * safe_rook_checks.PopCount();
+  score += kSafeCheckBonus[kQueen] * safe_queen_checks.PopCount();
 
-  TRACE_ADD(kSafeCheckBonus[kPawn], safe_checking_pawns.PopCount(), us);
-  TRACE_ADD(kSafeCheckBonus[kKnight], safe_checking_knights.PopCount(), us);
-  TRACE_ADD(kSafeCheckBonus[kBishop], safe_checking_bishops.PopCount(), us);
-  TRACE_ADD(kSafeCheckBonus[kRook], safe_checking_rooks.PopCount(), us);
-  TRACE_ADD(kSafeCheckBonus[kQueen], safe_checking_queens.PopCount(), us);
+  TRACE_ADD(kSafeCheckBonus[kPawn], safe_pawn_checks.PopCount(), us);
+  TRACE_ADD(kSafeCheckBonus[kKnight], safe_knight_checks.PopCount(), us);
+  TRACE_ADD(kSafeCheckBonus[kBishop], safe_bishop_checks.PopCount(), us);
+  TRACE_ADD(kSafeCheckBonus[kRook], safe_rook_checks.PopCount(), us);
+  TRACE_ADD(kSafeCheckBonus[kQueen], safe_queen_checks.PopCount(), us);
 
   return score;
 }
