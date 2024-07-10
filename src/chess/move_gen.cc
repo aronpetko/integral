@@ -162,6 +162,14 @@ bool IsSquareAttacked(Square square, Color attacker, const BoardState &state) {
          IsSquareAttackedSlidingPieces(square, attacker, state);
 }
 
+BitBoard PawnPushes(BitBoard pawns, Color side) {
+  if (side == Color::kWhite) {
+    return Shift<Direction::kNorth>(pawns);
+  } else {
+    return Shift<Direction::kSouth>(pawns);
+  }
+}
+
 BitBoard PawnAttacks(BitBoard pawns, Color side) {
   if (side == Color::kWhite) {
     return Shift<Direction::kNorthEast>(pawns) |

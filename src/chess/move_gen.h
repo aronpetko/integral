@@ -14,6 +14,8 @@ BitBoard PawnAttacks(BitBoard pawns, Color side);
 
 BitBoard PawnAttacks(Square square, Color side);
 
+BitBoard PawnPushes(BitBoard pawns, Color side);
+
 BitBoard PawnMoves(Square square, const BoardState &state);
 
 BitBoard KnightMoves(Square square);
