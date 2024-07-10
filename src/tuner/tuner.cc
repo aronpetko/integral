@@ -142,6 +142,7 @@ void Tuner::InitBaseParameters() {
   AddSingleParameter(kKingCantReachPPBonus);
   Add2DArrayParameter(kKingOnFilePenalty);
   Add2DArrayParameter(kAttackPower);
+  AddArrayParameter(kSafeCheckBonus);
   AddArrayParameter(kThreatenedByPawnPenalty);
   AddArrayParameter(kThreatenedByKnightPenalty);
   AddArrayParameter(kThreatenedByBishopPenalty);
@@ -183,6 +184,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_COEFFICIENT(kKingCantReachPPBonus);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
   GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
+  GET_ARRAY_COEFFICIENTS(kSafeCheckBonus);
   GET_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kThreatenedByKnightPenalty);
   GET_ARRAY_COEFFICIENTS(kThreatenedByBishopPenalty);
@@ -433,6 +435,9 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = ");
   Print2DArray(index, kNumPieceTypes, 8, parameters_);
+
+  fmt::print("constexpr PieceTable<ScorePair> kSafeCheckBonus = ");
+  PrintArray(index, kNumPieceTypes, parameters_);
 
   fmt::print("constexpr PieceTable<ScorePair> kThreatenedByPawnPenalty = ");
   PrintArray(index, kNumPieceTypes, parameters_);
