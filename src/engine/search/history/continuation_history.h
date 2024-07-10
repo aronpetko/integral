@@ -20,12 +20,14 @@ class ContinuationHistory {
     const int bonus = HistoryBonus(depth);
     UpdateIndividualScore(move, bonus, stack - 1);
     UpdateIndividualScore(move, bonus, stack - 2);
+    UpdateIndividualScore(move, bonus, stack - 4);
 
     // Lower the score of the quiet moves that failed to raise alpha
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
       UpdateIndividualScore(quiets[i], -bonus, stack - 1);
       UpdateIndividualScore(quiets[i], -bonus, stack - 2);
+      UpdateIndividualScore(quiets[i], -bonus, stack - 4);
     }
   }
 
