@@ -72,7 +72,7 @@ void Tuner::LoadFromFile(const std::string& source_file) {
   }
 
   file.close();
-  fmt::println("Finished loading data source...");
+  fmt::println("Loaded {} positions", entries_.size());
 }
 
 void Tuner::Tune() {
@@ -81,7 +81,6 @@ void Tuner::Tune() {
   velocity.resize(num_terms_);
 
   const std::size_t num_entries = entries_.size();
-  fmt::println("Num Positions: {}", num_entries);
 
   const double K = ComputeOptimalK();
   fmt::println("Optimal K: {}", K);

@@ -54,6 +54,8 @@ void TimeManagement::SetConfig(const TimeConfig &config) {
     type_ = TimeType::kInfinite;
   } else if (config.depth != 0) {
     type_ = TimeType::kDepth;
+  } else if (config.nodes != 0) {
+    type_ = TimeType::kNodes;
   } else {
     type_ = TimeType::kTimed;
   }
@@ -65,6 +67,8 @@ int TimeManagement::GetSearchDepth() const {
       return std::numeric_limits<int>::max();
     case TimeType::kDepth:
       return config_.depth;
+    case TimeType::kNodes:
+      [[fallthrough]];
     case TimeType::kTimed:
       return kMaxSearchDepth;
     default:
@@ -73,22 +77,22 @@ int TimeManagement::GetSearchDepth() const {
   }
 }
 
-bool TimeManagement::TimesUp() {
-  if (type_ != TimeType::kTimed) {
+bool TimeManagement::TimesUp(U32 nodes_searched) {
+  if (type_ == TimeType::kNodes) {
+    return nodes_searched >= config_.nodes;
+  } else if (type_ != TimeType::kTimed) {
     return false;
   }
-
-  return TimeElapsed() >= hard_limit_;
+  return nodes_searched & 4096 && TimeElapsed() >= hard_limit_;
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
-  if (type_ != TimeType::kTimed) {
+  if (type_ == TimeType::kNodes)
+    return nodes_searched >= config_.nodes;
+  if (type_ != TimeType::kTimed)
     return false;
-  }
-
-  if (config_.move_time != 0) {
-    return TimesUp();
-  }
+  if (config_.move_time != 0)
+    return TimesUp(nodes_searched);
 
   if (depth < 7) {
     return TimeElapsed() >= soft_limit_;
