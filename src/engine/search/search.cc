@@ -604,7 +604,7 @@ Score Search::PVSearch(int depth,
     }
 
     // Either the move has potential from a reduced depth search or it's not
-    // expected to be a PV move hence, we search it with a null window
+    // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
           new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
