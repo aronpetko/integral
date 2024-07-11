@@ -149,6 +149,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kKnightOutpostTable);
   AddArrayParameter(kBishopOutpostTable);
   AddSingleParameter(kBishopPairBonus);
+  AddArrayParameter(kClosedPositionKnightBonus);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -191,6 +192,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
   GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
   GET_COEFFICIENT(kBishopPairBonus);
+  GET_ARRAY_COEFFICIENTS(kClosedPositionKnightBonus);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -459,6 +461,9 @@ void Tuner::PrintParameters() {
   PrintTerm(index, parameters_);
 
   fmt::println("");
+
+  fmt::print("constexpr std::array<ScorePair, kNumFiles> kClosedPositionKnightBonus = ");
+  PrintArray(index, kNumFiles, parameters_);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);

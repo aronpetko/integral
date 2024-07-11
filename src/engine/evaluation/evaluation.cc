@@ -307,6 +307,8 @@ ScorePair Evaluation::EvaluateKnights() {
   ScorePair score;
 
   const BitBoard our_knights = state_.Knights(us);
+  const BitBoard blocked_pawns =
+      move_gen::PawnPushes(state_.Pawns(us), us) & state_.Pawns(FlipColor(us));
 
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
@@ -333,6 +335,12 @@ ScorePair Evaluation::EvaluateKnights() {
 
       score += kKnightOutpostTable[relative_square];
       TRACE_INCREMENT(kKnightOutpostTable[relative_square], us);
+    }
+
+    if (blocked_pawns) {
+      const int blocked_pawn_count = blocked_pawns.PopCount() - 1;
+      score += kClosedPositionKnightBonus[blocked_pawn_count];
+      TRACE_INCREMENT(kClosedPositionKnightBonus[blocked_pawn_count], us);
     }
   }
 
