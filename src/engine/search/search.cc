@@ -122,7 +122,7 @@ void Search::IterativeDeepening() {
       break;
     }
 
-    if (searching_ && print_info) {
+    if (searching_ && false) {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
