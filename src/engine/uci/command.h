@@ -129,7 +129,7 @@ class Command {
 
   // Processes the input stream based on the command type (Ordered or Unordered)
   void ProcessLine(std::stringstream &stream) {
-    args_idx_ = 0;
+    ResetArguments();
     if (type_ == CommandType::kOrdered) {
       ProcessOrderedArguments(stream);
     } else {
@@ -177,6 +177,11 @@ class Command {
   }
 
  private:
+  void ResetArguments() {
+    args_idx_ = 0;
+    for (auto &arg : args_) arg.SetProcessed(false);
+  }
+
   // Processes arguments in order, matching argument names with their expected
   // positions
   void ProcessOrderedArguments(std::stringstream &stream) {

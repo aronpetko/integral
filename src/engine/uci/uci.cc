@@ -50,7 +50,7 @@ void Initialize(Board &board, Search &search) {
       while (stream >> move_str) {
         const auto move = Move::FromStr(move_str);
         if (move) board.MakeMove(move);
-        else fmt::println("invalid move '{}'", move_str);
+        else fmt::println("error: invalid move '{}'", move_str);
       }
     }
   });
