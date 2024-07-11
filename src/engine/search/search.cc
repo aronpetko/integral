@@ -701,7 +701,7 @@ Score Search::PVSearch(int depth,
 }
 
 bool Search::ShouldQuit() {
-  return search_stack_[0].best_move &&
+  return search_stack_.Front().best_move &&
          (!searching_ || time_mgmt_.TimesUp(nodes_searched_));
 }
 
