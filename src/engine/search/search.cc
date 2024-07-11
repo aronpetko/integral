@@ -225,7 +225,7 @@ Score Search::QuiescentSearch(Score alpha,
       best_score = std::max(best_score, futility_score);
       continue;
     }
-
+    
     // Ensure that the PV only contains moves down this path
     if (in_pv_node) {
       (stack + 1)->pv.Clear();
