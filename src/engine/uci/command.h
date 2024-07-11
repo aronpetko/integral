@@ -142,8 +142,8 @@ class Command {
     // Check if all required arguments have been provided
     for (const auto &arg : args_) {
       if (arg.GetType() == ArgumentType::kRequired && arg.GetInput().empty()) {
-        throw std::runtime_error(
-            fmt::format("required argument '{}' is missing", arg.GetName()));
+        throw std::runtime_error(fmt::format(
+            "error: required argument '{}' is missing", arg.GetName()));
       }
     }
     // Call the command handler
@@ -162,8 +162,9 @@ class Command {
       std::stringstream stream(argument->GetInput());
       T value;
       if (!(stream >> value)) {
-        throw std::runtime_error(fmt::format(
-            "argument '{}' couldn't be parsed correctly", argument_name));
+        throw std::runtime_error(
+            fmt::format("error: argument '{}' couldn't be parsed correctly",
+                        argument_name));
       }
       return value;
     }
