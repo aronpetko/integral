@@ -13,6 +13,7 @@ using std::chrono::duration_cast;
 struct TimeConfig {
   bool infinite = false;
   int depth = 0;
+  int nodes = 0;
   int move_time = 0;
   int time_left = 0;
   int increment = 0;
@@ -25,7 +26,7 @@ struct TimeConfig {
   bool operator==(const TimeConfig &other) const {
     return infinite == other.infinite && depth == other.depth &&
            move_time == other.move_time && time_left == other.time_left &&
-           increment == other.increment;
+           increment == other.increment && nodes == other.nodes;
   }
 };
 
@@ -42,6 +43,8 @@ enum class TimeType {
   kTimed,
   // Search up to a certain depth
   kDepth,
+  // Search up to a specific number of nodes
+  kNodes,
   // Search until a "stop" command
   kInfinite
 };
@@ -63,7 +66,7 @@ class TimeManagement {
   [[nodiscard]] bool ShouldStop(Move best_move, int depth, U32 nodes_searched);
 
   // Determine if the search must give up now to avoid losing
-  [[nodiscard]] bool TimesUp();
+  [[nodiscard]] bool TimesUp(U32 nodes_searched);
 
   [[nodiscard]] int GetSearchDepth() const;
 

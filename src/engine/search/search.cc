@@ -117,6 +117,11 @@ void Search::IterativeDeepening() {
       window += window / 2;
     }
 
+    if (!searching_ ||
+        time_mgmt_.ShouldStop(best_move, depth, nodes_searched_)) {
+      break;
+    }
+
     if (searching_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
@@ -130,11 +135,6 @@ void Search::IterativeDeepening() {
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
           root_stack->pv.UCIFormat());
-    }
-
-    if (!searching_ ||
-        time_mgmt_.ShouldStop(best_move, depth, nodes_searched_)) {
-      break;
     }
   }
 
@@ -218,8 +218,8 @@ Score Search::QuiescentSearch(Score alpha,
       continue;
     }
 
-    // QS Futility Pruning: Prune capture moves that don't win material if the static
-    // eval is behind alpha by some margin
+    // QS Futility Pruning: Prune capture moves that don't win material if the
+    // static eval is behind alpha by some margin
     if (!state.InCheck() && move.IsCapture(state) && futility_score <= alpha &&
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
@@ -240,8 +240,8 @@ Score Search::QuiescentSearch(Score alpha,
     const Score score = -QuiescentSearch<node_type>(-beta, -alpha, stack + 1);
     board_.UndoMove();
 
-    if (ShouldQuit()) {
-      break;
+    if (!searching_ || ShouldQuit()) {
+      return 0;
     }
 
     moves_seen++;
@@ -322,6 +322,10 @@ Score Search::PVSearch(int depth,
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
       return alpha;
+    }
+
+    if (!searching_ || ShouldQuit()) {
+      return 0;
     }
   }
 
@@ -413,6 +417,10 @@ Score Search::PVSearch(int depth,
         const Score score = -PVSearch<NodeType::kNonPV>(
             depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
         board_.UndoMove();
+
+        if (ShouldQuit()) {
+          return 0;
+        }
 
         // Prune if the result from our null window search around beta indicates
         // that the opponent still doesn't gain an advantage from the null move
@@ -511,6 +519,10 @@ Score Search::PVSearch(int depth,
             reduced_depth, new_beta - 1, new_beta, stack, cut_node);
         stack->excluded_tt_move = Move::NullMove();
 
+        if (ShouldQuit()) {
+          return 0;
+        }
+
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
@@ -599,8 +611,8 @@ Score Search::PVSearch(int depth,
       nodes_spent += nodes_searched_ - prev_nodes_searched;
     }
 
-    if (ShouldQuit()) {
-      break;
+    if (!searching_ || ShouldQuit()) {
+      return 0;
     }
 
     moves_seen++;
@@ -677,8 +689,8 @@ Score Search::PVSearch(int depth,
 }
 
 bool Search::ShouldQuit() {
-  return search_stack_.Front().best_move &&
-         (!searching_ || ((nodes_searched_ & 4095) && time_mgmt_.TimesUp()));
+  return search_stack_[0].best_move &&
+         (!searching_ || time_mgmt_.TimesUp(nodes_searched_));
 }
 
 void Search::Start(TimeConfig &time_config) {

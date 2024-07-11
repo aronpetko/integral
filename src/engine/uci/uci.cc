@@ -59,6 +59,7 @@ void Initialize(Board &board, Search &search) {
     CreateArgument("perft", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("infinite", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("movetime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("depth", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("wtime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
@@ -89,6 +90,12 @@ void Initialize(Board &board, Search &search) {
 
     const auto move_time = cmd->ParseArgument<int>("movetime");
     if (move_time) time_config.move_time = *move_time;
+
+    const auto depth = cmd->ParseArgument<int>("depth");
+    if (depth) time_config.depth = *depth;
+
+    const auto nodes = cmd->ParseArgument<int>("nodes");
+    if (nodes) time_config.nodes = *nodes;
 
     const Color turn = board.GetState().turn;
     time_config.time_left = time_left[turn];

@@ -566,9 +566,6 @@ ScorePair Evaluation::EvaluateThreats() {
   const BitBoard safe =
       ~(pawn_attacks_[them] | knight_attacks_[them] | bishop_attacks_[them] |
         rook_attacks_[them] | move_gen::KingAttacks(their_king_square));
-  const BitBoard safe_pawn_checks =
-      move_gen::PawnAttacks(their_king_square, them) &
-      move_gen::PawnPushes(state_.Pawns(us), us) & ~pawn_attacks_[them];
   const BitBoard safe_knight_checks =
       safe & knight_attacks_[us] & move_gen::KnightMoves(their_king_square);
   const BitBoard safe_bishop_checks =
@@ -577,13 +574,11 @@ ScorePair Evaluation::EvaluateThreats() {
   const BitBoard safe_queen_checks =
       safe & queen_attacks_[us] & (bishop_checks | rook_checks);
 
-  score += kSafeCheckBonus[kPawn] * safe_pawn_checks.PopCount();
   score += kSafeCheckBonus[kKnight] * safe_knight_checks.PopCount();
   score += kSafeCheckBonus[kBishop] * safe_bishop_checks.PopCount();
   score += kSafeCheckBonus[kRook] * safe_rook_checks.PopCount();
   score += kSafeCheckBonus[kQueen] * safe_queen_checks.PopCount();
 
-  TRACE_ADD(kSafeCheckBonus[kPawn], safe_pawn_checks.PopCount(), us);
   TRACE_ADD(kSafeCheckBonus[kKnight], safe_knight_checks.PopCount(), us);
   TRACE_ADD(kSafeCheckBonus[kBishop], safe_bishop_checks.PopCount(), us);
   TRACE_ADD(kSafeCheckBonus[kRook], safe_rook_checks.PopCount(), us);
