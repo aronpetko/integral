@@ -61,8 +61,8 @@ void Initialize(Board &board, Search &search) {
     CreateArgument("movetime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("wtime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
-    CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("binc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [&board, &search](Command *cmd) {
     const auto perft_depth = cmd->ParseArgument<int>("perft");
