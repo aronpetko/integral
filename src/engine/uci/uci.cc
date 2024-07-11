@@ -55,7 +55,7 @@ void Initialize(Board &board, Search &search) {
     }
   });
 
-  listener.RegisterCommand("go", CommandType::kOrdered, {
+  listener.RegisterCommand("go", CommandType::kUnordered, {
     CreateArgument("perft", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("infinite", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("movetime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
