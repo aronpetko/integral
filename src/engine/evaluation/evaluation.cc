@@ -574,7 +574,6 @@ ScorePair Evaluation::EvaluateThreats() {
   const BitBoard safe_queen_checks =
       safe & queen_attacks_[us] & (bishop_checks | rook_checks);
 
-  // score += kSafeCheckBonus[kPawn] * safe_pawn_checks.PopCount();
   score += kSafeCheckBonus[kKnight] * safe_knight_checks.PopCount();
   score += kSafeCheckBonus[kBishop] * safe_bishop_checks.PopCount();
   score += kSafeCheckBonus[kRook] * safe_rook_checks.PopCount();
