@@ -132,6 +132,7 @@ class Evaluation {
   SideTable<ScorePair> attack_power_;
   PawnStructureEntry *cached_pawn_structure_;
   bool has_pawn_structure_cache_;
+  int blocked_pawns_;
 };
 
 void Evaluation::Initialize() {
@@ -172,6 +173,16 @@ void Evaluation::Initialize() {
   // Add in the squares next to the king
   white_pawn_storm_zone |= Shift<Direction::kSouth>(white_pawn_storm_zone);
   black_pawn_storm_zone |= Shift<Direction::kNorth>(black_pawn_storm_zone);
+
+  const BitBoard occupied = state_.Occupied();
+  const BitBoard white_blocked_pawns =
+      move_gen::PawnPushes(state_.Pawns(Color::kWhite), Color::kWhite) &
+      (occupied | pawn_attacks_[Color::kBlack]);
+  const BitBoard black_blocked_pawns =
+      move_gen::PawnPushes(state_.Pawns(Color::kBlack), Color::kBlack) &
+      (occupied | pawn_attacks_[Color::kWhite]);
+  blocked_pawns_ =
+      std::min(4, (white_blocked_pawns | black_blocked_pawns).PopCount() / 2);
 
   // Probe the pawn structure cache
   cached_pawn_structure_ = &pawn_cache[state_.pawn_key];
@@ -307,8 +318,6 @@ ScorePair Evaluation::EvaluateKnights() {
   ScorePair score;
 
   const BitBoard our_knights = state_.Knights(us);
-  const BitBoard blocked_pawns =
-      move_gen::PawnPushes(state_.Pawns(us), us) & state_.Pawns(FlipColor(us));
 
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
@@ -337,11 +346,8 @@ ScorePair Evaluation::EvaluateKnights() {
       TRACE_INCREMENT(kKnightOutpostTable[relative_square], us);
     }
 
-    if (blocked_pawns) {
-      const int blocked_pawn_count = blocked_pawns.PopCount() - 1;
-      score += kClosedPositionKnightBonus[blocked_pawn_count];
-      TRACE_INCREMENT(kClosedPositionKnightBonus[blocked_pawn_count], us);
-    }
+    score += kClosedPositionKnightBonus[blocked_pawns_];
+    TRACE_INCREMENT(kClosedPositionKnightBonus[blocked_pawns_], us);
   }
 
   return score;

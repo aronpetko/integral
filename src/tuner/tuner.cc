@@ -462,8 +462,8 @@ void Tuner::PrintParameters() {
 
   fmt::println("");
 
-  fmt::print("constexpr std::array<ScorePair, kNumFiles> kClosedPositionKnightBonus = ");
-  PrintArray(index, kNumFiles, parameters_);
+  fmt::print("constexpr std::array<ScorePair, 9> kClosedPositionKnightBonus = ");
+  PrintArray(index, kClosedPositionKnightBonus.size(), parameters_);
 
   fmt::print("constexpr ScorePair kTempoBonus = ");
   PrintTerm(index, parameters_);

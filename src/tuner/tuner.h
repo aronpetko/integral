@@ -70,7 +70,7 @@ struct EvalTrace {
   eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
   eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
   TraceTerm kBishopPairBonus{};
-  std::array<TraceTerm, kNumFiles> kClosedPositionKnightBonus{};
+  std::array<TraceTerm, 9> kClosedPositionKnightBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};
 };
