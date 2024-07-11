@@ -390,6 +390,7 @@ Score Search::PVSearch(int depth,
     stack->static_eval = eval = kScoreNone;
   }
 
+  stack->double_extensions = (stack - 1)->double_extensions;
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
@@ -533,9 +534,11 @@ Score Search::PVSearch(int depth,
           extensions = 1;
           // Double extend if the TT move is singular by a big margin
           if (stack->double_extensions < 10) {
-            const bool double_extend = !in_pv_node && tt_move_excluded_score < new_beta - 60;
+            const bool double_extend =
+                !in_pv_node && tt_move_excluded_score < new_beta - 30;
             extensions += double_extend;
-            stack->double_extensions += double_extend;
+            stack->double_extensions =
+                (stack - 1)->double_extensions + double_extend;
           }
         }
         // Multi-cut: The singular search had a beta cutoff, indicating that the
