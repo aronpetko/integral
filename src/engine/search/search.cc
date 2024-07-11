@@ -225,7 +225,7 @@ Score Search::QuiescentSearch(Score alpha,
       best_score = std::max(best_score, futility_score);
       continue;
     }
-    
+
     // Ensure that the PV only contains moves down this path
     if (in_pv_node) {
       (stack + 1)->pv.Clear();
@@ -296,6 +296,10 @@ Score Search::PVSearch(int depth,
                        bool cut_node) {
   const auto &state = board_.GetState();
   sel_depth_ = std::max(sel_depth_, stack->ply);
+
+  if (stack->ply >= kMaxPlyFromRoot) {
+    return eval::Evaluate(state);
+  }
 
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
@@ -386,6 +390,7 @@ Score Search::PVSearch(int depth,
     stack->static_eval = eval = kScoreNone;
   }
 
+  stack->double_extensions = (stack - 1)->double_extensions;
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
@@ -526,7 +531,14 @@ Score Search::PVSearch(int depth,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
-          extensions = 1;
+          // Double extend if the TT move is singular by a big margin
+          if (!in_pv_node && tt_move_excluded_score < new_beta - 25 &&
+              (stack->double_extensions <= 8)) {
+            extensions = 2;
+            stack->double_extensions++;
+          } else {
+            extensions = 1;
+          }
         }
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
@@ -592,7 +604,7 @@ Score Search::PVSearch(int depth,
     }
 
     // Either the move has potential from a reduced depth search or it's not
-    // expected to be a PV move hence, we search it with a null window
+    // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
           new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);

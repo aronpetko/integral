@@ -68,6 +68,8 @@ struct SearchStackEntry {
   std::array<Move, 2> killer_moves;
   // Overall improving rate from the last couple plies
   double improving_rate;
+  // Number of double extensions performed
+  int double_extensions;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -89,7 +91,8 @@ struct SearchStackEntry {
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr),
-        improving_rate(kScoreNone) {
+        improving_rate(kScoreNone),
+        double_extensions(0) {
     ClearKillerMoves();
   }
 
