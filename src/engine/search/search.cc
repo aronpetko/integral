@@ -526,7 +526,8 @@ Score Search::PVSearch(int depth,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
-          extensions = 1 + (!in_pv_node && tt_move_excluded_score - new_beta > 100);
+          // Double extend if the TT move is singular by a big margin
+          extensions = 1 + (!in_pv_node && tt_move_excluded_score < new_beta - 100);
         }
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
