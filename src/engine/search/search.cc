@@ -2,6 +2,7 @@
 
 #include <thread>
 
+#include "constants.h"
 #include "fmt/format.h"
 #include "move_picker.h"
 #include "time_mgmt.h"
@@ -20,19 +21,13 @@ int CalculateLMR(int depth, int moves, double base, double divisor) {
 LateMoveReductionTable GenerateLateMoveReductionTable() {
   LateMoveReductionTable table;
 
-  constexpr double kQuietBaseReduction = 0.85;
-  constexpr double kQuietDivisor = 2.15;
-
-  constexpr double kTacticalBaseReduction = -0.15;
-  constexpr double kTacticalDivisor = 2.57;
-
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
       table[true][depth][move] =
-          CalculateLMR(depth, move, kQuietBaseReduction, kQuietDivisor);
+          CalculateLMR(depth, move, lmr_quiet_base, lmr_quiet_div);
       table[false][depth][move] =
-          CalculateLMR(depth, move, kTacticalBaseReduction, kTacticalDivisor);
+          CalculateLMR(depth, move, lmr_tact_base, lmr_tact_div);
     }
   }
 
@@ -66,14 +61,11 @@ void Search::IterativeDeepening() {
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     sel_depth_ = 0;
 
-    constexpr int kAspirationWindowDepth = 4;
-    constexpr int kAspirationWindowDelta = 10;
-
-    int window = kAspirationWindowDelta;
+    int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
-    if (depth >= kAspirationWindowDepth) {
+    if (depth >= asp_window_depth) {
       alpha = std::max<int>(-kInfiniteScore, score - window);
       beta = std::min<int>(kInfiniteScore, score + window);
     }
@@ -114,7 +106,7 @@ void Search::IterativeDeepening() {
 
       // Widen the aspiration window for the next iteration if we fail low or
       // high again
-      window += window / 2;
+      window += static_cast<int>(window * asp_window_growth);
     }
 
     if (!searching_ ||
@@ -203,7 +195,7 @@ Score Search::QuiescentSearch(Score alpha,
     alpha = std::max(alpha, best_score);
   }
 
-  const Score futility_score = best_score + 100;
+  const Score futility_score = best_score + qs_fut_margin;
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
@@ -379,7 +371,9 @@ Score Search::PVSearch(int depth,
       // previous turns
       const Score diff = stack->static_eval - past_stack->static_eval;
       stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / 25.0, -1.0, 1.0);
+          std::clamp(past_stack->improving_rate + diff / improving_rate_divisor,
+                     -1.0,
+                     1.0);
     }
   } else {
     stack->static_eval = eval = kScoreNone;
@@ -391,8 +385,8 @@ Score Search::PVSearch(int depth,
   if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= 6 && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = depth * 75;
+    if (depth <= rev_fut_depth && eval < kMateScore - kMaxPlyFromRoot) {
+      const int futility_margin = depth * rev_fut_margin;
       if (eval - futility_margin >= beta) {
         return eval;
       }
@@ -410,8 +404,11 @@ Score Search::PVSearch(int depth,
         stack->continuation_entry = nullptr;
 
         // Ensure the reduction doesn't give us a depth below 0
+
+        const int eval_reduction =
+            std::min<int>(2, (eval - beta) / null_move_re);
         const int reduction = std::clamp<int>(
-            depth / 4 + 3 + std::min(2, (eval - beta) / 200), 0, depth);
+            depth / null_move_rf + null_move_rb + eval_reduction, 0, depth);
 
         board_.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
@@ -433,8 +430,8 @@ Score Search::PVSearch(int depth,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if ((in_pv_node || cut_node) && depth >= 4 && !stack->excluded_tt_move &&
-      !tt_move) {
+  if ((in_pv_node || cut_node) && depth >= iir_depth &&
+      !stack->excluded_tt_move && !tt_move) {
     depth--;
   }
 
@@ -465,8 +462,9 @@ Score Search::PVSearch(int depth,
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = static_cast<int>(
-          (3.0 + depth * depth) / (2.0 - std::max(0.0, stack->improving_rate)));
+      const int lmp_threshold =
+          static_cast<int>((lmp_base + depth * depth) /
+                           (lmp_mult - std::max(0.0, stack->improving_rate)));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -474,8 +472,8 @@ Score Search::PVSearch(int depth,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = 150 + 100 * depth;
-      if (depth <= 8 && !state.InCheck() && is_quiet &&
+      const int futility_margin = fut_margin_base + fut_margin_mult * depth;
+      if (depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
           eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
@@ -483,8 +481,9 @@ Score Search::PVSearch(int depth,
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
-      const int see_threshold = is_quiet ? -60 * depth : -130 * depth;
-      if (depth <= 8 && moves_seen >= 1 &&
+      const int see_threshold =
+          is_quiet ? see_quiet_thresh * depth : see_noisy_thresh * depth;
+      if (depth <= see_prune_depth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
@@ -493,7 +492,8 @@ Score Search::PVSearch(int depth,
       // near-leaf nodes
       if (is_quiet) {
         const int history_score = history_.GetQuietMoveScore(move, stack);
-        if (depth <= 5 && history_score <= -500 - 1500 * depth) {
+        if (depth <= hist_prune_depth &&
+            history_score <= hist_thresh_base + hist_thresh_mult * depth) {
           continue;
         }
       }
@@ -512,7 +512,7 @@ Score Search::PVSearch(int depth,
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry.score - depth * 2;
+        const Score new_beta = tt_entry.score - depth * sing_ext_margin;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
@@ -527,7 +527,8 @@ Score Search::PVSearch(int depth,
         // move's search
         if (tt_move_excluded_score < new_beta) {
           // Double extend if the TT move is singular by a big margin
-          if (!in_pv_node && tt_move_excluded_score < new_beta - 25 &&
+          if (!in_pv_node &&
+              tt_move_excluded_score < new_beta - sing_double_margin &&
               (stack->double_extensions <= 8)) {
             extensions = 2;
             stack->double_extensions++;
