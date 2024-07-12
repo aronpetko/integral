@@ -742,6 +742,10 @@ void Search::Bench(int depth) {
   time_mgmt_.Start();
 
   nodes_searched_ = 0;
+
+  while (benching_.load(std::memory_order_acquire)) {
+    std::this_thread::yield();
+  }
 }
 
 void Search::WaitUntilFinished() const {
