@@ -4,12 +4,12 @@
 #include "../../tuner/spsa.h"
 
 Tunable lmr_quiet_base("lmr_quiet_base", 0.85, 0.5, 1.2, 0.05);
-Tunable lmr_quiet_div("lmr_quiet_div", 2.15, 1.5, 3.0, 0.1);
+Tunable lmr_quiet_div("lmr_quiet_div", 2.15, 1.5, 3.0, 0.05);
 Tunable lmr_tact_base("lmr_tact_base", -0.15, -0.5, 0.2, 0.05);
-Tunable lmr_tact_div("lmr_tact_div", 2.57, 2.0, 3.5, 0.1);
+Tunable lmr_tact_div("lmr_tact_div", 2.57, 2.0, 3.5, 0.05);
 
 Tunable asp_window_depth("asp_window_depth", 4, 2, 8, 1, true);
-Tunable asp_window_delta("asp_window_delta", 10, 5, 20, 2);
+Tunable asp_window_delta("asp_window_delta", 10, 5, 20, 0.8);
 Tunable asp_window_growth("asp_window_growth", 0.5, 0.25, 0.75, 0.08);
 
 Tunable qs_fut_margin("qs_fut_margin", 100, 50, 200, 10);

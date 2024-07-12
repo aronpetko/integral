@@ -59,6 +59,7 @@ class Search {
   U16 sel_depth_;
   std::atomic_uint64_t nodes_searched_;
   std::atomic_bool searching_;
+  mutable std::mutex search_mutex_;
 };
 
 #endif  // INTEGRAL_SEARCH_H_

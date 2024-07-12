@@ -53,6 +53,21 @@ void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &search_stack_.Front();
+
+  srand(GetCurrentTime());
+
+  MoveList legal_moves;
+  auto moves = move_gen::GenerateMoves(MoveType::kAll, board_);
+  for (int i = 0; i < moves.Size(); i++) {
+    if (board_.IsMoveLegal(moves[i])) {
+      legal_moves.Push(moves[i]);
+    }
+  }
+  if (!legal_moves.Empty())
+    fmt::println("bestmove {}", legal_moves[rand() % legal_moves.Size()].ToString());
+  Stop();
+  return;
+
   root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
@@ -695,6 +710,8 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
+  std::lock_guard<std::mutex> lock(search_mutex_);
+
   if (searching_) return;
   searching_ = true;
 
@@ -706,9 +723,16 @@ void Search::Start(TimeConfig &time_config) {
   std::thread([this] { IterativeDeepening<SearchType::kRegular>(); }).detach();
 }
 
+void Search::Stop() {
+  time_mgmt_.Stop();
+  searching_.store(false, std::memory_order_release);
+}
+
 void Search::Bench(int depth) {
-  if (searching_) return;
-  searching_ = true;
+  std::lock_guard<std::mutex> lock(search_mutex_);
+
+  if (searching_.load()) return;
+  searching_.store(true);
 
   TimeConfig time_config;
   time_config.depth = depth;
@@ -722,13 +746,10 @@ void Search::Bench(int depth) {
   IterativeDeepening<SearchType::kBench>();
 }
 
-void Search::Stop() {
-  time_mgmt_.Stop();
-  searching_ = false;
-}
-
 void Search::WaitUntilFinished() const {
-  while (searching_) std::this_thread::yield();
+  while (searching_.load(std::memory_order_acquire)) {
+    std::this_thread::yield();
+  }
 }
 
 TimeManagement &Search::GetTimeManagement() {
