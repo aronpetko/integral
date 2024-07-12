@@ -8,13 +8,13 @@
 
 namespace eval {
 
-inline Tunable see_pawn_score("see_pawn_score", 100, 50, 150, 10);
-inline Tunable see_knight_score("see_knight_score", 300, 200, 400, 25);
-inline Tunable see_bishop_score("see_bishop_score", 300, 200, 400, 25);
-inline Tunable see_rook_score("see_rook_score", 500, 400, 600, 25);
+inline Tunable see_pawn_score("see_pawn_score", 100, 50, 150, 5);
+inline Tunable see_knight_score("see_knight_score", 300, 250, 350, 5);
+inline Tunable see_bishop_score("see_bishop_score", 300, 250, 350, 5);
+inline Tunable see_rook_score("see_rook_score", 500, 450, 600, 25);
 inline Tunable see_queen_score("see_queen_score", 900, 700, 1100, 50);
-inline Tunable see_king_score("see_king_score", 0, 0, 0, 1);  // Always 0
-inline Tunable see_none_score("see_none_score", 0, 0, 0, 1);  // Always 0
+inline Tunable see_king_score("see_king_score", 0, 0, 0, 1, true);  // Always 0
+inline Tunable see_none_score("see_none_score", 0, 0, 0, 1, true);  // Always 0
 
 // clang-format off
 inline std::array<Tunable, kNumPieceTypes + 1> kSEEPieceScores = {

@@ -41,7 +41,7 @@ class Tunable {
                  int_value,
                  int_min,
                  int_max,
-                 step,
+                 int_step,
                  learning_rate);
 #endif
   }

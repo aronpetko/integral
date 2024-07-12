@@ -21,7 +21,7 @@ Tunable null_move_rb("null_move_rb", 3, 1, 5, 0.5);
 Tunable null_move_rf("null_move_rf", 4, 2, 8, 1, true);
 Tunable null_move_re("null_move_re", 200, 100, 400, 20);
 
-Tunable iir_depth("iir_depth", 4, 2, 8, 1);
+Tunable iir_depth("iir_depth", 4, 2, 8, 1, true);
 
 Tunable improving_rate_divisor("improving_rate_divisor", 25.0, 5.0, 100.0, 15.0);
 
