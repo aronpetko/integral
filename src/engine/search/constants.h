@@ -10,16 +10,16 @@ Tunable lmr_tact_div("lmr_tact_div", 2.57, 2.0, 3.5, 0.1);
 
 Tunable asp_window_depth("asp_window_depth", 4, 2, 8, 1, true);
 Tunable asp_window_delta("asp_window_delta", 10, 5, 20, 2);
-Tunable asp_window_growth("asp_window_growth", 0.5, 0.1, 1.0, 0.05);
+Tunable asp_window_growth("asp_window_growth", 0.5, 0.25, 0.75, 0.08);
 
 Tunable qs_fut_margin("qs_fut_margin", 100, 50, 200, 10);
 
 Tunable rev_fut_depth("rev_fut_depth", 6, 4, 10, 1, true);
 Tunable rev_fut_margin("rev_fut_margin", 75, 50, 150, 8);
 
-Tunable null_move_rb("null_move_rb", 3, 1, 5, 0.5);
+Tunable null_move_rb("null_move_rb", 3, 1, 5, 0.5, true);
 Tunable null_move_rf("null_move_rf", 4, 2, 8, 1, true);
-Tunable null_move_re("null_move_re", 200, 100, 400, 20);
+Tunable null_move_re("null_move_re", 200, 100, 400, 15);
 
 Tunable iir_depth("iir_depth", 4, 2, 8, 1, true);
 
@@ -30,7 +30,7 @@ Tunable lmp_mult("lmp_mult", 2.0, 1.0, 4.0, 0.25);
 
 Tunable fut_prune_depth("fut_prune_depth", 8, 6, 12, 1, true);
 Tunable fut_margin_base("fut_margin_base", 150, 100, 250, 20);
-Tunable fut_margin_mult("fut_margin_mult", 100, 50, 200, 15);
+Tunable fut_margin_mult("fut_margin_mult", 100, 50, 200, 8);
 
 Tunable see_prune_depth("see_prune_depth", 8, 6, 12, 1, true);
 Tunable see_quiet_thresh("see_quiet_thresh", -60, -100, -20, 6);

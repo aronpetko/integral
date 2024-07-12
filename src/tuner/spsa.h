@@ -35,13 +35,12 @@ class Tunable {
         });
 
 #ifdef SPSA_TUNE
-    const int int_step = static_cast<I64>(step * scaling_constant_);
-    fmt::println("{}, int, {}, {}, {}, {}, {}",
+    fmt::println("{}, int, {}, {}, {}, {:.2f}, {}",
                  name,
                  int_value,
                  int_min,
                  int_max,
-                 int_step,
+                 step * scaling_constant_,
                  learning_rate);
 #endif
   }
