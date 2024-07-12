@@ -53,21 +53,6 @@ void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &search_stack_.Front();
-
-  srand(GetCurrentTime());
-
-  MoveList legal_moves;
-  auto moves = move_gen::GenerateMoves(MoveType::kAll, board_);
-  for (int i = 0; i < moves.Size(); i++) {
-    if (board_.IsMoveLegal(moves[i])) {
-      legal_moves.Push(moves[i]);
-    }
-  }
-  if (!legal_moves.Empty())
-    fmt::println("bestmove {}", legal_moves[rand() % legal_moves.Size()].ToString());
-  Stop();
-  return;
-
   root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
