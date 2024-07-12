@@ -66,6 +66,8 @@ void Initialize(Board &board, Search &search) {
     CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("binc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [&board, &search](Command *cmd) {
+    search.WaitUntilFinished();
+
     const auto perft_depth = cmd->ParseArgument<int>("perft");
     if (perft_depth) {
       tests::Perft(board, *perft_depth);
@@ -110,12 +112,12 @@ void Initialize(Board &board, Search &search) {
 
   listener.RegisterCommand("stop", CommandType::kUnordered, {}, [&search](Command *cmd) {
     search.Stop();
-    //search.WaitUntilFinished();
+    search.WaitUntilFinished();
   });
 
   listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {
-    //search.Stop();
-    //search.WaitUntilFinished();
+    search.Stop();
+    search.WaitUntilFinished();
     search.NewGame();
   });
 
