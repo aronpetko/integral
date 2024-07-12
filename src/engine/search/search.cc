@@ -705,7 +705,7 @@ void Search::Start(TimeConfig &time_config) {
 
   nodes_searched_ = 0;
 
-  std::thread([this] { IterativeDeepening<SearchType::kRegular>(); }).detach();
+  IterativeDeepening<SearchType::kRegular>();
 }
 
 void Search::Stop() {
