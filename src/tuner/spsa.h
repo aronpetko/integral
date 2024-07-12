@@ -4,7 +4,7 @@
 #include "../engine/uci/uci.h"
 #include "tuner.h"
 
-// #define SPSA_TUNE
+#define SPSA_TUNE
 
 class Tunable {
  public:
