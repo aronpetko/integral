@@ -710,6 +710,8 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
+  std::lock_guard<std::mutex> lock(search_mutex_);
+
   if (searching_) return;
   searching_ = true;
 
@@ -718,10 +720,17 @@ void Search::Start(TimeConfig &time_config) {
 
   nodes_searched_ = 0;
 
-  IterativeDeepening<SearchType::kRegular>();
+  std::thread([this] { IterativeDeepening<SearchType::kRegular>(); }).detach();
+}
+
+void Search::Stop() {
+  time_mgmt_.Stop();
+  searching_.store(false, std::memory_order_release);
 }
 
 void Search::Bench(int depth) {
+  std::lock_guard<std::mutex> lock(search_mutex_);
+
   if (searching_.load()) return;
   searching_.store(true);
 
@@ -737,13 +746,10 @@ void Search::Bench(int depth) {
   IterativeDeepening<SearchType::kBench>();
 }
 
-void Search::Stop() {
-  time_mgmt_.Stop();
-  searching_.store(false);
-}
-
 void Search::WaitUntilFinished() const {
-  while (searching_.load()) std::this_thread::yield();
+  while (searching_.load(std::memory_order_acquire)) {
+    std::this_thread::yield();
+  }
 }
 
 TimeManagement &Search::GetTimeManagement() {
