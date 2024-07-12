@@ -38,12 +38,12 @@ Tunable see_noisy_thresh("see_noisy_thresh", -130, -200, -50, 8);
 
 Tunable hist_prune_depth("hist_prune_depth", 5, 3, 8, 1, true);
 Tunable hist_thresh_base("hist_thresh_base", -500, -1000, 500, 100);
-Tunable hist_thresh_mult("hist_thresh_mult", -1500, -3000, -250, 300);
+Tunable hist_thresh_mult("hist_thresh_mult", -1500, -3000, -250, 100);
 
 Tunable lmr_hist_div("lmr_hist_div", 10000, 5000, 20000, 750);
 
 Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
 Tunable sing_ext_margin("sing_ext_margin", 2.0, 1.0, 4.0, 0.5);
-Tunable sing_double_margin("sing_double_margin", 25, 10, 40, 5);
+Tunable sing_double_margin("sing_double_margin", 25, 10, 40, 2);
  
 #endif  // SPRT_SH_CONSTANTS_H

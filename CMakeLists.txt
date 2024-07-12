@@ -31,7 +31,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -fomit-frame-pointer -DNDEBUG
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -O2 -DNDEBUG")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -pthread")
 endif()
 
 # Conditionally add static linking flag on Windows
