@@ -722,8 +722,8 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 void Search::Bench(int depth) {
-  if (searching_) return;
-  searching_ = true;
+  if (searching_.load()) return;
+  searching_.store(true);
 
   TimeConfig time_config;
   time_config.depth = depth;
@@ -739,11 +739,11 @@ void Search::Bench(int depth) {
 
 void Search::Stop() {
   time_mgmt_.Stop();
-  searching_ = false;
+  searching_.store(false);
 }
 
 void Search::WaitUntilFinished() const {
-  while (searching_) std::this_thread::yield();
+  while (searching_.load()) std::this_thread::yield();
 }
 
 TimeManagement &Search::GetTimeManagement() {
