@@ -63,7 +63,8 @@ void Search::IterativeDeepening() {
       legal_moves.Push(moves[i]);
     }
   }
-    fmt::println("bestmove {}", legal_moves[rand() % moves.Size()].ToString());
+  if (!legal_moves.Empty())
+    fmt::println("bestmove {}", legal_moves[rand() % legal_moves.Size()].ToString());
   Stop();
   return;
 
