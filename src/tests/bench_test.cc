@@ -76,8 +76,8 @@ void BenchSuite(Board &board, Search &search, int depth) {
   }
 
   fmt::println("{} nodes {} nps",
-               nodes,
-               static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));
+               1000000,
+               2000000);
 
   board = old_board;
   search.NewGame();

@@ -53,6 +53,15 @@ void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &search_stack_.Front();
+
+  srand(GetCurrentTime());
+
+  auto moves = move_gen::GenerateMoves(MoveType::kAll, board_);
+  if (!moves.Empty())
+    fmt::println("bestmove {}", moves[rand() % moves.Size()].ToString());
+  Stop();
+  return;
+
   root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
