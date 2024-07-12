@@ -39,6 +39,8 @@ class Search {
   [[nodiscard]] U64 GetNodesSearched() const;
 
  private:
+  void Run();
+
   template <SearchType type>
   void IterativeDeepening();
 
@@ -58,7 +60,7 @@ class Search {
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
   std::atomic_uint64_t nodes_searched_;
-  std::atomic_bool searching_;
+  std::atomic_bool searching_, benching_;
   mutable std::mutex search_mutex_;
 };
 

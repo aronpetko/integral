@@ -46,6 +46,22 @@ Search::Search(Board &board)
       nodes_searched_(0),
       searching_(false) {
   search_stack_.Reset();
+  std::thread([this]() { Run(); }).detach();
+}
+
+void Search::Run() {
+  while (true) {
+    // Wait until we receive a go/bench command
+    while (!searching_.load(std::memory_order_acquire)) {
+      std::this_thread::yield();
+    }
+
+    if (benching_) {
+      IterativeDeepening<SearchType::kBench>();
+    } else {
+      IterativeDeepening<SearchType::kRegular>();
+    }
+  }
 }
 
 template <SearchType type>
@@ -704,20 +720,20 @@ void Search::Start(TimeConfig &time_config) {
   time_mgmt_.Start();
 
   nodes_searched_ = 0;
-
-  IterativeDeepening<SearchType::kRegular>();
 }
 
 void Search::Stop() {
   time_mgmt_.Stop();
   searching_.store(false, std::memory_order_release);
+  benching_.store(false, std::memory_order_release);
 }
 
 void Search::Bench(int depth) {
   std::lock_guard<std::mutex> lock(search_mutex_);
 
   if (searching_.load()) return;
-  searching_.store(true);
+  searching_.store(true, std::memory_order_release);
+  benching_.store(true, std::memory_order_release);
 
   TimeConfig time_config;
   time_config.depth = depth;
@@ -726,9 +742,6 @@ void Search::Bench(int depth) {
   time_mgmt_.Start();
 
   nodes_searched_ = 0;
-
-  // Bench is intended to block the UCI loop thread
-  IterativeDeepening<SearchType::kBench>();
 }
 
 void Search::WaitUntilFinished() const {
