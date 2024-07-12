@@ -56,9 +56,14 @@ void Search::IterativeDeepening() {
 
   srand(GetCurrentTime());
 
+  MoveList legal_moves;
   auto moves = move_gen::GenerateMoves(MoveType::kAll, board_);
-  if (!moves.Empty())
-    fmt::println("bestmove {}", moves[rand() % moves.Size()].ToString());
+  for (int i = 0; i < moves.Size(); i++) {
+    if (board_.IsMoveLegal(moves[i])) {
+      legal_moves.Push(moves[i]);
+    }
+  }
+    fmt::println("bestmove {}", legal_moves[rand() % moves.Size()].ToString());
   Stop();
   return;
 
