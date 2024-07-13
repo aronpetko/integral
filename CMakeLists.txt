@@ -27,7 +27,7 @@ elseif(BUILD_NATIVE)
 endif()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -fsanitize=thread -O3 -fomit-frame-pointer -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -fomit-frame-pointer -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -O0 -fsanitize=thread")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")

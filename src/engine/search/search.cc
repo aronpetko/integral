@@ -58,13 +58,58 @@ void Search::Run() {
   while (!quit_.load()) {
     if (start_search_.load()) {
       start_search_.store(false);
+      searching_.store(true);
 
-      if (!searching_.load()) {
-        searching_.store(true);
-        IterativeDeepening<SearchType::kRegular>();
-      }
+      fmt::println("go!");
+      IterativeDeepening<SearchType::kRegular>();
     }
   }
+}
+
+bool Search::ShouldQuit() {
+  return !searching_.load() ||
+         search_stack_.Front().best_move && time_mgmt_.TimesUp(nodes_searched_);
+}
+
+void Search::Start(TimeConfig &time_config) {
+  if (searching_.load()) return;
+  std::unique_lock lock(mutex_);
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
+  nodes_searched_ = 0;
+
+  start_search_.store(true);
+}
+
+void Search::Stop() {
+  time_mgmt_.Stop();
+  searching_.store(false);
+}
+
+void Search::Bench(int depth) {
+  TimeConfig time_config;
+  time_config.depth = depth;
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
+
+  nodes_searched_ = 0;
+}
+
+TimeManagement &Search::GetTimeManagement() {
+  return time_mgmt_;
+}
+
+void Search::NewGame() {
+  transposition_table.Clear();
+  eval::pawn_cache.Clear();
+  history_.Clear();
+  search_stack_.Reset();
+}
+
+U64 Search::GetNodesSearched() const {
+  return nodes_searched_;
 }
 
 template <SearchType type>
@@ -134,7 +179,7 @@ void Search::IterativeDeepening() {
       break;
     }
 
-    if (ShouldQuit() && print_info) {
+    if (!ShouldQuit() && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
@@ -707,48 +752,4 @@ Score Search::PVSearch(int depth,
   }
 
   return best_score;
-}
-
-bool Search::ShouldQuit() {
-  return !searching_.load() ||
-         search_stack_.Front().best_move && time_mgmt_.TimesUp(nodes_searched_);
-}
-
-void Search::Start(TimeConfig &time_config) {
-  std::unique_lock lock(mutex_);
-
-  time_mgmt_.SetConfig(time_config);
-  nodes_searched_ = 0;
-
-  start_search_.store(true);
-}
-
-void Search::Stop() {
-  time_mgmt_.Stop();
-  searching_.store(false);
-}
-
-void Search::Bench(int depth) {
-  TimeConfig time_config;
-  time_config.depth = depth;
-
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  nodes_searched_ = 0;
-}
-
-TimeManagement &Search::GetTimeManagement() {
-  return time_mgmt_;
-}
-
-void Search::NewGame() {
-  transposition_table.Clear();
-  eval::pawn_cache.Clear();
-  history_.Clear();
-  search_stack_.Reset();
-}
-
-U64 Search::GetNodesSearched() const {
-  return nodes_searched_;
 }
