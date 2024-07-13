@@ -117,6 +117,7 @@ void Search::Bench(int depth) {
   nodes_searched_.store(0, std::memory_order_seq_cst);
   start_search_.store(true, std::memory_order_seq_cst);
   stopped_.store(false, std::memory_order_seq_cst);
+  benching_.store(true, std::memory_order_relaxed);
 
   {
     std::unique_lock lock(mutex_);
