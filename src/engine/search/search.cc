@@ -58,7 +58,8 @@ void Search::Run() {
   while (!quit_.load(std::memory_order_relaxed)) {
     if (start_search_.load(std::memory_order_relaxed)) {
       start_search_.store(false, std::memory_order_release);
-      IterativeDeepening<SearchType::kRegular>();
+      fmt::println("going!");
+      //IterativeDeepening<SearchType::kRegular>();
     }
   }
 }
