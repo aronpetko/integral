@@ -67,7 +67,7 @@ void Search::Run() {
       start_search_.store(false, std::memory_order_seq_cst);
       searching_.store(true, std::memory_order_seq_cst);
 
-      if (benching_) {
+      if (benching_.load(std::memory_order_relaxed)) {
         IterativeDeepening<SearchType::kBench>();
       } else {
         IterativeDeepening<SearchType::kRegular>();
@@ -148,7 +148,6 @@ U64 Search::GetNodesSearched() const {
 
 template <SearchType type>
 void Search::IterativeDeepening() {
-  searching_.store(true);
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &search_stack_.Front();
