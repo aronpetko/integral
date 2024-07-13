@@ -252,7 +252,7 @@ Score Search::QuiescentSearch(Score alpha,
     const Score score = -QuiescentSearch<node_type>(-beta, -alpha, stack + 1);
     board_.UndoMove();
 
-    if (!searching_ || ShouldQuit()) {
+    if (!searching_.load(std::memory_order_acquire) || ShouldQuit()) {
       return 0;
     }
 
@@ -339,7 +339,7 @@ Score Search::PVSearch(int depth,
       return alpha;
     }
 
-    if (!searching_ || ShouldQuit()) {
+    if (!searching_.load(std::memory_order_acquire) || ShouldQuit()) {
       return 0;
     }
   }
@@ -639,7 +639,7 @@ Score Search::PVSearch(int depth,
       nodes_spent += nodes_searched_ - prev_nodes_searched;
     }
 
-    if (!searching_ || ShouldQuit()) {
+    if (!searching_.load(std::memory_order_acquire) || ShouldQuit()) {
       return 0;
     }
 
