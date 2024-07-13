@@ -46,6 +46,7 @@ Search::Search(Board &board)
       nodes_searched_(0),
       start_search_(false),
       searching_(false),
+      stopped_(true),
       benching_(false),
       quit_(false) {
   search_stack_.Reset();
@@ -139,7 +140,7 @@ TimeManagement &Search::GetTimeManagement() {
 }
 
 void Search::NewGame() {
-  if (!searching_.load(std::memory_order_relaxed)) {
+  if (stopped_.load(std::memory_order_relaxed)) {
     transposition_table.Clear();
     eval::pawn_cache.Clear();
     history_.Clear();
