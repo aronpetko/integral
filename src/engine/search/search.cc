@@ -752,15 +752,12 @@ void Search::Bench(int depth) {
   if (searching_.load()) return;
   searching_.store(true, std::memory_order_release);
   benching_.store(true, std::memory_order_release);
-
-  while (benching_.load(std::memory_order_acquire)) {
-    std::this_thread::yield();
-  }
 }
 
 void Search::WaitUntilFinished() {
-  std::unique_lock<std::mutex> lock(search_mutex_);
-  cv_.wait(lock, [this]() { return !searching_.load(std::memory_order_acquire); });
+  while (searching_.load(std::memory_order_acquire)) {
+    std::this_thread::yield();
+  }
 }
 
 TimeManagement &Search::GetTimeManagement() {
