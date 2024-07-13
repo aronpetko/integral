@@ -94,6 +94,7 @@ void Search::Start(TimeConfig &time_config) {
 
   nodes_searched_ = 0;
   start_search_ = true;
+  stopped_ = false;
 }
 
 void Search::Stop() {
