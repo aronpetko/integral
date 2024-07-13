@@ -70,8 +70,7 @@ void Search::Run() {
       if (benching_.load(std::memory_order_relaxed)) {
         // IterativeDeepening<SearchType::kBench>();
       } else {
-        fmt::println("yep");
-        // IterativeDeepening<SearchType::kRegular>();
+        IterativeDeepening<SearchType::kRegular>();
       }
 
       Stop();
@@ -80,7 +79,7 @@ void Search::Run() {
 }
 
 bool Search::ShouldQuit() {
-  return stopped_.load(std::memory_order_relaxed) ||
+  return 
          (search_stack_.Front().best_move &&
           time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
 }
