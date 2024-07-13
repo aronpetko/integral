@@ -92,7 +92,7 @@ void Search::Start(TimeConfig &time_config) {
     time_mgmt_.Start();
   }
   nodes_searched_.store(0, std::memory_order_seq_cst);
-  start_search_.store(true, std::memory_order_seq_cst);
+  //start_search_.store(true, std::memory_order_seq_cst);
   stopped_.store(false, std::memory_order_seq_cst);
 }
 
