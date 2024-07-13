@@ -55,21 +55,11 @@ Search::~Search() {
 }
 
 void Search::Run() {
-  while (true) {
-    // Wait until we receive a go/bench command
-    while (!searching_.load(std::memory_order_relaxed) &&
-           !quit_.load(std::memory_order_relaxed)) {
-      std::this_thread::yield();
-    }
-
-    if (quit_.load(std::memory_order_relaxed)) break;
-
-    fmt::println("going!");
-    /*if (benching_) {
-      IterativeDeepening<SearchType::kBench>();
-    } else {
+  while (!quit_.load(std::memory_order_relaxed)) {
+    if (start_search_.load(std::memory_order_relaxed)) {
+      start_search_.store(false, std::memory_order_release);
       IterativeDeepening<SearchType::kRegular>();
-    }*/
+    }
   }
 }
 
@@ -720,7 +710,7 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  searching_.store(true, std::memory_order_release);
+  start_search_.store(true, std::memory_order_release);
 }
 
 void Search::Stop() {
@@ -736,8 +726,6 @@ void Search::Bench(int depth) {
 
   nodes_searched_ = 0;
 }
-
-void Search::WaitUntilFinished() {}
 
 TimeManagement &Search::GetTimeManagement() {
   return time_mgmt_;

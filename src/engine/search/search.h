@@ -30,8 +30,6 @@ class Search {
 
   void Stop();
 
-  void WaitUntilFinished();
-
   void Bench(int depth);
 
   TimeManagement &GetTimeManagement();
@@ -62,7 +60,7 @@ class Search {
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
   std::atomic_uint64_t nodes_searched_;
-  std::atomic_bool searching_, benching_, quit_;
+  std::atomic_bool start_search_, searching_, quit_;
   std::mutex search_mutex_;
   std::condition_variable cv_;
   std::vector<std::thread> threads_;

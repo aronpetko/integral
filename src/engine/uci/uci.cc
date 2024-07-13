@@ -110,12 +110,12 @@ void Initialize(Board &board, Search &search) {
 
   listener.RegisterCommand("stop", CommandType::kUnordered, {}, [&search](Command *cmd) {
     search.Stop();
-    search.WaitUntilFinished();
+
   });
 
   listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {
     search.Stop();
-    search.WaitUntilFinished();
+
     search.NewGame();
   });
 

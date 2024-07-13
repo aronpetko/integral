@@ -70,7 +70,7 @@ void BenchSuite(int depth) {
     board.SetFromFen(position);
     search.NewGame();
     search.Bench(depth);
-    search.WaitUntilFinished();
+
 
     auto &time_mgmt = search.GetTimeManagement();
     nodes += search.GetNodesSearched();
