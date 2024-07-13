@@ -14,7 +14,7 @@ using LateMoveReductionTable =
     MultiArray<int, 2, kMaxSearchDepth + 1, kMaxMoves>;
 
 int CalculateLMR(int depth, int moves, double base, double divisor) {
-  auto ln_depth = std::log(depth), ln_moves = std::log(moves);
+  const double ln_depth = std::log(depth), ln_moves = std::log(moves);
   return static_cast<int>(base + ln_depth * ln_moves / divisor);
 }
 
@@ -57,18 +57,19 @@ Search::~Search() {
 void Search::Run() {
   while (true) {
     // Wait until we receive a go/bench command
-    while (!searching_.load(std::memory_order_acquire) &&
-           !quit_.load(std::memory_order_acquire)) {
+    while (!searching_.load(std::memory_order_relaxed) &&
+           !quit_.load(std::memory_order_relaxed)) {
       std::this_thread::yield();
     }
 
-    if (quit_.load(std::memory_order_acquire)) break;
+    if (quit_.load(std::memory_order_relaxed)) break;
 
-    if (benching_) {
+    fmt::println("going!");
+    /*if (benching_) {
       IterativeDeepening<SearchType::kBench>();
     } else {
       IterativeDeepening<SearchType::kRegular>();
-    }
+    }*/
   }
 }
 
@@ -726,21 +727,13 @@ void Search::Start(TimeConfig &time_config) {
   time_mgmt_.Start();
 
   nodes_searched_ = 0;
-
-  searching_.store(true, std::memory_order_release);
 }
 
 void Search::Stop() {
-  std::lock_guard<std::mutex> lock(search_mutex_);
   time_mgmt_.Stop();
-  searching_.store(false, std::memory_order_release);
-  benching_.store(false, std::memory_order_release);
 }
 
 void Search::Bench(int depth) {
-  std::lock_guard<std::mutex> lock(search_mutex_);
-  if (searching_.load(std::memory_order_acquire)) return;
-
   TimeConfig time_config;
   time_config.depth = depth;
 
@@ -748,16 +741,9 @@ void Search::Bench(int depth) {
   time_mgmt_.Start();
 
   nodes_searched_ = 0;
-
-  searching_.store(true, std::memory_order_release);
-  benching_.store(true, std::memory_order_release);
 }
 
-void Search::WaitUntilFinished() {
-  while (searching_.load(std::memory_order_relaxed)) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-}
+void Search::WaitUntilFinished() {}
 
 TimeManagement &Search::GetTimeManagement() {
   return time_mgmt_;
