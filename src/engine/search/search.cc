@@ -148,6 +148,8 @@ U64 Search::GetNodesSearched() const {
 
 template <SearchType type>
 void Search::IterativeDeepening() {
+  std::unique_lock lock(mutex_);
+  
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &search_stack_.Front();
@@ -159,7 +161,7 @@ void Search::IterativeDeepening() {
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     fmt::println("{}", depth);
     continue;
-    
+
     sel_depth_ = 0;
 
     int window = static_cast<int>(asp_window_delta);
