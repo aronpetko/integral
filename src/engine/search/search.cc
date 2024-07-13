@@ -98,6 +98,8 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 void Search::Stop() {
+  if (!searching_.load(std::memory_order_acquire)) return;
+
   stopped_.store(true, std::memory_order_seq_cst);
   searching_.store(false, std::memory_order_seq_cst);
   benching_.store(false, std::memory_order_seq_cst);
