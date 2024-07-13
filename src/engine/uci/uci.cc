@@ -113,7 +113,7 @@ void Initialize(Board &board, Search &search) {
   });
 
   listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {
-    search.NewGame();
+    // search.NewGame();
   });
 
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
