@@ -73,8 +73,6 @@ void Search::Run() {
       } else {
         IterativeDeepening<SearchType::kRegular>();
       }
-
-      Stop();
     }
   }
 }
@@ -233,6 +231,8 @@ void Search::IterativeDeepening() {
           root_stack->pv.UCIFormat());
     }
   }
+
+  Stop();
 
   if (print_info) {
     fmt::println("bestmove {}", best_move.ToString());
