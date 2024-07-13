@@ -85,7 +85,7 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  if (searching_.load(std::memory_order_relaxed)) return;
+  if (searching_.load(std::memory_order_acquire)) return;
   {
     std::unique_lock lock(mutex_);
     time_mgmt_.SetConfig(time_config);
@@ -97,9 +97,9 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 void Search::Stop() {
-  stopped_.store(true, std::memory_order_relaxed);
-  searching_.store(false, std::memory_order_relaxed);
-  benching_.store(false, std::memory_order_relaxed);
+  stopped_.store(true, std::memory_order_seq_cst);
+  searching_.store(false, std::memory_order_seq_cst);
+  benching_.store(false, std::memory_order_seq_cst);
 
   std::unique_lock lock(mutex_);
   time_mgmt_.Stop();
