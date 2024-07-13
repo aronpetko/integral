@@ -62,12 +62,10 @@ Search::~Search() {
 }
 
 void Search::Run() {
-  return;
-
   while (!quit_.load(std::memory_order_acquire)) {
-    if (start_search_) {
-      start_search_ = false;
-      searching_ = true;
+    if (start_search_.load(std::memory_order_relaxed)) {
+      start_search_.store(false, std::memory_order_seq_cst);
+      searching_.store(true, std::memory_order_seq_cst);
 
       if (benching_) {
         IterativeDeepening<SearchType::kBench>();
@@ -87,28 +85,23 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  std::unique_lock lock(mutex_);
-  if (searching_) return;
+  if (searching_.load(std::memory_order_relaxed)) return;
 
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  start_search_.store(true, std::memory_order_seq_cst);
+  stopped_.store(false, std::memory_order_seq_cst);
+
+  std::unique_lock lock(mutex_);
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
-
-  nodes_searched_ = 0;
-  start_search_ = true;
-  stopped_ = false;
-
-  if (benching_) {
-    IterativeDeepening<SearchType::kBench>();
-  } else {
-    IterativeDeepening<SearchType::kRegular>();
-  }
 }
 
 void Search::Stop() {
-  // std::unique_lock lock(mutex_);
-  stopped_ = true;
-  searching_ = false;
-  benching_ = false;
+  stopped_.store(true, std::memory_order_relaxed);
+  searching_.store(false, std::memory_order_relaxed);
+  benching_.store(false, std::memory_order_relaxed);
+
+  std::unique_lock lock(mutex_);
   time_mgmt_.Stop();
 }
 
@@ -119,24 +112,17 @@ void Search::Wait() {
 }
 
 void Search::Bench(int depth) {
+  if (searching_.load(std::memory_order_relaxed)) return;
+
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  start_search_.store(true, std::memory_order_seq_cst);
+  stopped_.store(false, std::memory_order_seq_cst);
+
   {
     std::unique_lock lock(mutex_);
-    if (searching_) return;
-
     TimeConfig time_config{.depth = depth};
     time_mgmt_.SetConfig(time_config);
     time_mgmt_.Start();
-
-    nodes_searched_ = 0;
-    benching_ = true;
-    start_search_ = true;
-    stopped_ = false;
-  }
-
-  if (benching_) {
-    IterativeDeepening<SearchType::kBench>();
-  } else {
-    IterativeDeepening<SearchType::kRegular>();
   }
 
   while (!stopped_.load(std::memory_order_relaxed)) {
@@ -245,8 +231,6 @@ void Search::IterativeDeepening() {
   if (print_info) {
     fmt::println("bestmove {}", best_move.ToString());
   }
-
-  Stop();
 }
 
 template <NodeType node_type>
