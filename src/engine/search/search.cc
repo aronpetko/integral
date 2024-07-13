@@ -86,9 +86,9 @@ bool Search::ShouldQuit() {
 
 void Search::Start(TimeConfig &time_config) {
   {
-    std::unique_lock lock(mutex_);
     if (searching_.load(std::memory_order_acquire)) return;
 
+    std::unique_lock lock(mutex_);
     time_mgmt_.SetConfig(time_config);
     time_mgmt_.Start();
   }
