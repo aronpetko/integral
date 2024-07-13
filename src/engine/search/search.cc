@@ -135,10 +135,12 @@ TimeManagement &Search::GetTimeManagement() {
 }
 
 void Search::NewGame() {
-  transposition_table.Clear();
-  eval::pawn_cache.Clear();
-  history_.Clear();
-  search_stack_.Reset();
+  if (!searching_.load(std::memory_order_relaxed)) {
+    transposition_table.Clear();
+    eval::pawn_cache.Clear();
+    history_.Clear();
+    search_stack_.Reset();
+  }
 }
 
 U64 Search::GetNodesSearched() const {
