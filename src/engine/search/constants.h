@@ -10,12 +10,12 @@ Tunable lmr_tact_div("lmr_tact_div", 2.57, 2.0, 3.5, 0.05);
 
 Tunable asp_window_depth("asp_window_depth", 4, 2, 8, 1, true);
 Tunable asp_window_delta("asp_window_delta", 10, 5, 20, 0.8);
-Tunable asp_window_growth("asp_window_growth", 0.5, 0.25, 0.75, 0.08);
+Tunable asp_window_growth("asp_window_growth", 1.5, 1.05, 2.0, 0.08);
 
 Tunable qs_fut_margin("qs_fut_margin", 100, 50, 200, 10);
 
 Tunable rev_fut_depth("rev_fut_depth", 6, 4, 10, 1, true);
-Tunable rev_fut_margin("rev_fut_margin", 75, 50, 150, 8);
+Tunable rev_fut_margin("rev_fut_margin", 75, 50, 150, 4);
 
 Tunable null_move_rb("null_move_rb", 3, 1, 5, 0.5, true);
 Tunable null_move_rf("null_move_rf", 4, 2, 8, 1, true);
