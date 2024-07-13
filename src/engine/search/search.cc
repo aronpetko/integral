@@ -133,12 +133,12 @@ void Search::IterativeDeepening() {
       window += static_cast<int>(window * asp_window_growth);
     }
 
-    if (!searching_ ||
+    if (!searching_.load(std::memory_order_acquire) ||
         time_mgmt_.ShouldStop(best_move, depth, nodes_searched_)) {
       break;
     }
 
-    if (searching_ && print_info) {
+    if (searching_.load(std::memory_order_acquire) && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
@@ -715,7 +715,8 @@ Score Search::PVSearch(int depth,
 
 bool Search::ShouldQuit() {
   return search_stack_.Front().best_move &&
-         (!searching_ || time_mgmt_.TimesUp(nodes_searched_));
+         (!searching_.load(std::memory_order_acquire) ||
+          time_mgmt_.TimesUp(nodes_searched_));
 }
 
 void Search::Start(TimeConfig &time_config) {
