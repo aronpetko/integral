@@ -65,11 +65,12 @@ class Search {
   U16 sel_depth_;
   std::atomic<U64> nodes_searched_;
   std::atomic<bool> start_search_;
-  std::atomic<bool> stop_requested_;
   std::atomic<bool> searching_;
+  std::atomic<bool> stopped_;
   std::atomic<bool> benching_;
   std::atomic<bool> quit_;
-  mutable std::mutex search_mutex_;
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
   std::vector<std::thread> threads_;
 };
 

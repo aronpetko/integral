@@ -71,7 +71,6 @@ void BenchSuite(int depth) {
     search.NewGame();
     search.Bench(depth);
 
-
     auto &time_mgmt = search.GetTimeManagement();
     nodes += search.GetNodesSearched();
     elapsed += time_mgmt.TimeElapsed();
