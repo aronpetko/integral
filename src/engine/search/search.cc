@@ -68,7 +68,7 @@ void Search::Run() {
       searching_.store(true, std::memory_order_seq_cst);
 
       if (benching_.load(std::memory_order_relaxed)) {
-        // IterativeDeepening<SearchType::kBench>();
+        IterativeDeepening<SearchType::kBench>();
       } else {
         IterativeDeepening<SearchType::kRegular>();
       }
@@ -85,9 +85,10 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  if (searching_.load(std::memory_order_acquire)) return;
   {
     std::unique_lock lock(mutex_);
+    if (searching_.load(std::memory_order_acquire)) return;
+
     time_mgmt_.SetConfig(time_config);
     time_mgmt_.Start();
   }
@@ -106,29 +107,27 @@ void Search::Stop() {
 }
 
 void Search::Wait() {
-  while (searching_.load(std::memory_order_relaxed)) {
+  while (!stopped_.load(std::memory_order_relaxed)) {
     std::this_thread::yield();
   }
 }
 
 void Search::Bench(int depth) {
-  if (searching_.load(std::memory_order_relaxed)) return;
-
-  nodes_searched_.store(0, std::memory_order_seq_cst);
-  start_search_.store(true, std::memory_order_seq_cst);
-  stopped_.store(false, std::memory_order_seq_cst);
-  benching_.store(true, std::memory_order_relaxed);
-
   {
     std::unique_lock lock(mutex_);
+    if (searching_.load(std::memory_order_relaxed)) return;
+
     TimeConfig time_config{.depth = depth};
     time_mgmt_.SetConfig(time_config);
     time_mgmt_.Start();
   }
 
-  while (!stopped_.load(std::memory_order_relaxed)) {
-    std::this_thread::yield();
-  }
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  benching_.store(true, std::memory_order_seq_cst);
+  stopped_.store(false, std::memory_order_seq_cst);
+  start_search_.store(true, std::memory_order_seq_cst);
+
+  Wait();
 }
 
 TimeManagement &Search::GetTimeManagement() {
