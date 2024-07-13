@@ -109,7 +109,7 @@ void Search::Stop() {
 }
 
 void Search::Wait() {
-  while (!stopped_.load(std::memory_order_relaxed)) {
+  while (searching_.load(std::memory_order_relaxed)) {
     std::this_thread::yield();
   }
 }
@@ -129,7 +129,9 @@ void Search::Bench(int depth) {
   stopped_.store(false, std::memory_order_seq_cst);
   start_search_.store(true, std::memory_order_seq_cst);
 
-  Wait();
+  while (!stopped_.load(std::memory_order_relaxed)) {
+    std::this_thread::yield();
+  };
 }
 
 TimeManagement &Search::GetTimeManagement() {
