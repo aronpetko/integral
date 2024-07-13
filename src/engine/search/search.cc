@@ -67,7 +67,7 @@ void Search::Run() {
 }
 
 bool Search::ShouldQuit() {
-  return !searching_.load() ||
+  return !searching_.load(std::memory_order_relaxed) ||
          search_stack_.Front().best_move && time_mgmt_.TimesUp(nodes_searched_);
 }
 
@@ -83,6 +83,7 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 void Search::Stop() {
+  std::unique_lock lock(mutex_);
   time_mgmt_.Stop();
   searching_.store(false);
 }
