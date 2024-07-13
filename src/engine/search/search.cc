@@ -719,6 +719,7 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
+  std::lock_guard<std::mutex> lock(search_mutex_);
   if (searching_.load()) return;
 
   time_mgmt_.SetConfig(time_config);
@@ -730,12 +731,14 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 void Search::Stop() {
+  std::lock_guard<std::mutex> lock(search_mutex_);
   time_mgmt_.Stop();
   searching_.store(false, std::memory_order_release);
   benching_.store(false, std::memory_order_release);
 }
 
 void Search::Bench(int depth) {
+  std::lock_guard<std::mutex> lock(search_mutex_);
   if (searching_.load()) return;
 
   TimeConfig time_config;
@@ -755,12 +758,9 @@ void Search::Bench(int depth) {
   }
 }
 
-void Search::WaitUntilFinished() const {
-  std::lock_guard<std::mutex> lock(search_mutex_);
-
-  while (searching_.load(std::memory_order_acquire)) {
-    std::this_thread::yield();
-  }
+void Search::WaitUntilFinished() {
+  std::unique_lock<std::mutex> lock(search_mutex_);
+  cv_.wait(lock, [this]() { return !searching_.load(std::memory_order_acquire); });
 }
 
 TimeManagement &Search::GetTimeManagement() {

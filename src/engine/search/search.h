@@ -30,7 +30,7 @@ class Search {
 
   void Stop();
 
-  void WaitUntilFinished() const;
+  void WaitUntilFinished();
 
   void Bench(int depth);
 
@@ -63,7 +63,8 @@ class Search {
   U16 sel_depth_;
   std::atomic_uint64_t nodes_searched_;
   std::atomic_bool searching_, benching_, quit_;
-  mutable std::mutex search_mutex_;
+  std::mutex search_mutex_;
+  std::condition_variable cv_;
   std::vector<std::thread> threads_;
 };
 
