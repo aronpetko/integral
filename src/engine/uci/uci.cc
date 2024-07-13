@@ -153,10 +153,10 @@ void Initialize(Board &board, Search &search) {
 
   listener.RegisterCommand("bench", CommandType::kUnordered, {
     CreateArgument("depth", ArgumentType::kOptional, NoInputProcessor()),
-  }, [&board, &search](Command *cmd) {
+  }, [](Command *cmd) {
     const auto bench_depth = cmd->ParseArgument<int>("depth");
-    if (bench_depth) tests::BenchSuite(board, search, *bench_depth);
-    else tests::BenchSuite(board, search, tests::kDefaultBenchDepth);
+    if (bench_depth) tests::BenchSuite(*bench_depth);
+    else tests::BenchSuite(tests::kDefaultBenchDepth);
   });
 
   listener.RegisterCommand("uci", CommandType::kUnordered, {}, [](Command *cmd) {
@@ -195,7 +195,7 @@ void AcceptCommands(int arg_count, char **args) {
   if (args[1] && std::string(args[1]) == "bench") {
     const int depth =
         arg_count == 3 ? std::stoi(args[2]) : tests::kDefaultBenchDepth;
-    tests::BenchSuite(board, search, depth);
+    tests::BenchSuite(depth);
     return;
   }
 

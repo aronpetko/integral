@@ -46,15 +46,23 @@ Search::Search(Board &board)
       nodes_searched_(0),
       searching_(false) {
   search_stack_.Reset();
-  std::thread([this]() { Run(); }).detach();
+  threads_.emplace_back([this]() { Run(); });
+}
+
+Search::~Search() {
+  quit_.store(true, std::memory_order_release);
+  for (auto &thread : threads_) thread.join();
 }
 
 void Search::Run() {
   while (true) {
     // Wait until we receive a go/bench command
-    while (!searching_.load(std::memory_order_acquire)) {
+    while (!searching_.load(std::memory_order_acquire) &&
+           !quit_.load(std::memory_order_acquire)) {
       std::this_thread::yield();
     }
+
+    if (quit_.load(std::memory_order_acquire)) break;
 
     if (benching_) {
       IterativeDeepening<SearchType::kBench>();
@@ -711,15 +719,14 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  std::lock_guard<std::mutex> lock(search_mutex_);
-
-  if (searching_) return;
-  searching_ = true;
+  if (searching_.load()) return;
 
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
   nodes_searched_ = 0;
+
+  searching_.store(true, std::memory_order_release);
 }
 
 void Search::Stop() {
@@ -729,11 +736,7 @@ void Search::Stop() {
 }
 
 void Search::Bench(int depth) {
-  std::lock_guard<std::mutex> lock(search_mutex_);
-
   if (searching_.load()) return;
-  searching_.store(true, std::memory_order_release);
-  benching_.store(true, std::memory_order_release);
 
   TimeConfig time_config;
   time_config.depth = depth;
@@ -743,12 +746,18 @@ void Search::Bench(int depth) {
 
   nodes_searched_ = 0;
 
+  if (searching_.load()) return;
+  searching_.store(true, std::memory_order_release);
+  benching_.store(true, std::memory_order_release);
+
   while (benching_.load(std::memory_order_acquire)) {
     std::this_thread::yield();
   }
 }
 
 void Search::WaitUntilFinished() const {
+  std::lock_guard<std::mutex> lock(search_mutex_);
+
   while (searching_.load(std::memory_order_acquire)) {
     std::this_thread::yield();
   }
