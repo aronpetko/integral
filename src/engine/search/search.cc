@@ -79,7 +79,7 @@ void Search::Run() {
 }
 
 bool Search::ShouldQuit() {
-  return
+  return stopped_.load(std::memory_order_relaxed) ||
          (search_stack_.Front().best_move &&
           time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
 }
