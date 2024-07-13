@@ -8,6 +8,8 @@
 namespace history {
 
 inline Tunable corr_history_size("corr_history_size", 16384, 8192, 32768, 1024);
+inline Tunable corr_history_divisor(
+    "corr_history_divisor", 16384, 8192, 32768, 1024);
 inline Tunable corr_history_gravity("corr_history_gravity", 512, 256, 1024, 32);
 
 class CorrectionHistory {
@@ -38,7 +40,7 @@ class CorrectionHistory {
     const Score correction = table_[state_.turn][GetTableIndex()];
     const Score adjusted_score =
         static_eval + (correction * std::abs(correction)) /
-                          static_cast<int>(corr_history_size);
+                          static_cast<int>(corr_history_divisor);
 
     // Ensure no static evaluations are mate scores
     return std::clamp(adjusted_score,
