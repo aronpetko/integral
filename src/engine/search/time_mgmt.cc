@@ -25,7 +25,18 @@ std::array<Tunable, 5> move_stability_scale = {
 }
 
 void TimeManagement::Start() {
+  start_time_.store(GetCurrentTime());
+  nodes_spent_.fill(0);
   const int overhead = uci::listener.GetOption("Move Overhead").GetValue<int>();
+
+  if (config_.move_time != 0) {
+    hard_limit_.store(config_.move_time - overhead);
+    soft_limit_.store(hard_limit_);
+    return;
+  }
+
+  previous_best_move_ = Move::NullMove();
+  
   const int base_time = config_.time_left * base_time_scale +
                         config_.increment * increment_scale - overhead;
   const int maximum_time = percent_limit * config_.time_left;
@@ -37,10 +48,6 @@ void TimeManagement::Start() {
 
   hard_limit_.store(std::max(5, scaled_hard_limit));
   soft_limit_.store(std::max(1, scaled_soft_limit));
-
-  start_time_.store(GetCurrentTime());
-  nodes_spent_.fill(0);
-  previous_best_move_ = Move::NullMove();
 }
 
 void TimeManagement::Stop() {
@@ -83,16 +90,16 @@ bool TimeManagement::TimesUp(U32 nodes_searched) {
   } else if (type_ != TimeType::kTimed) {
     return false;
   }
+  if (config_.move_time != 0 && TimeElapsed() >= config_.move_time) {
+    fmt::println("{}", config_.move_time);
+  }
   return nodes_searched & 4096 && TimeElapsed() >= hard_limit_;
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
-  if (type_ == TimeType::kNodes)
-    return nodes_searched >= config_.nodes;
-  if (type_ != TimeType::kTimed)
-    return false;
-  if (config_.move_time != 0)
-    return TimesUp(nodes_searched);
+  if (type_ == TimeType::kNodes) return nodes_searched >= config_.nodes;
+  if (type_ != TimeType::kTimed) return false;
+  if (config_.move_time != 0) return TimesUp(nodes_searched);
 
   if (depth < 7) {
     return TimeElapsed() >= soft_limit_;
