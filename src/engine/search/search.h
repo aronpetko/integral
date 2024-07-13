@@ -4,8 +4,8 @@
 #include "../../chess/move_gen.h"
 #include "../evaluation/evaluation.h"
 #include "history/history.h"
-#include "time_mgmt.h"
 #include "stack.h"
+#include "time_mgmt.h"
 
 constexpr int kMaxSearchDepth = 100;
 
@@ -48,7 +48,11 @@ class Search {
   Score QuiescentSearch(Score alpha, Score beta, SearchStackEntry *stack);
 
   template <NodeType node_type>
-  Score PVSearch(int depth, Score alpha, Score beta, SearchStackEntry *stack, bool cut_node);
+  Score PVSearch(int depth,
+                 Score alpha,
+                 Score beta,
+                 SearchStackEntry *stack,
+                 bool cut_node);
 
   [[nodiscard]] bool ShouldQuit();
 
@@ -61,8 +65,7 @@ class Search {
   U16 sel_depth_;
   std::atomic_uint64_t nodes_searched_;
   std::atomic_bool start_search_, searching_, quit_;
-  std::mutex search_mutex_;
-  std::condition_variable cv_;
+  std::mutex mutex_;
   std::vector<std::thread> threads_;
 };
 

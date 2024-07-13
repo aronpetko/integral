@@ -69,6 +69,7 @@ void Search::Run() {
 
 template <SearchType type>
 void Search::IterativeDeepening() {
+  searching_.store(true);
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &search_stack_.Front();
@@ -714,11 +715,17 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
+  std::unique_lock lock(mutex_);
+
+  time_mgmt_.SetConfig(time_config);
+  nodes_searched_ = 0;
+
   start_search_.store(true);
 }
 
 void Search::Stop() {
   time_mgmt_.Stop();
+  searching_.store(false);
 }
 
 void Search::Bench(int depth) {
