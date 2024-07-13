@@ -44,73 +44,78 @@ Search::Search(Board &board)
       history_(board_.GetState()),
       sel_depth_(0),
       nodes_searched_(0),
-      searching_(false) {
+      start_search_(false),
+      stop_requested_(false),
+      searching_(false),
+      benching_(false),
+      quit_(false) {
   search_stack_.Reset();
   threads_.emplace_back([this]() { Run(); });
 }
 
 Search::~Search() {
   quit_.store(true, std::memory_order_release);
-  for (auto &thread : threads_) thread.join();
+  for (auto &thread : threads_) {
+    if (thread.joinable()) {
+      thread.join();
+    }
+  }
 }
 
 void Search::Run() {
   while (!quit_.load(std::memory_order_acquire)) {
-    std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [this]() { return searching_ || quit_; });
+    if (start_search_.load(std::memory_order_acquire)) {
+      start_search_.store(false, std::memory_order_release);
 
-    if (quit_) break;
-
-    if (searching_) {
-      lock.unlock();
-      fmt::println("go!");
-      IterativeDeepening<SearchType::kRegular>();
-      lock.lock();
-      searching_ = false;
-      stop_requested_ = false;
+      if (benching_.load(std::memory_order_acquire)) {
+        IterativeDeepening<SearchType::kBench>();
+      } else {
+        IterativeDeepening<SearchType::kRegular>();
+      }
     }
   }
 }
 
 bool Search::ShouldQuit() {
-  return stop_requested_.load(std::memory_order_acquire) ||
+  std::lock_guard<std::mutex> lock(search_mutex_);
+  return !searching_.load(std::memory_order_acquire) ||
          (search_stack_.Front().best_move &&
-          time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
+          time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_acquire)));
 }
 
 void Search::Start(TimeConfig &time_config) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (searching_) return;
+  std::lock_guard<std::mutex> lock(search_mutex_);
+  if (searching_.load(std::memory_order_acquire)) return;
+
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
-  nodes_searched_.store(0, std::memory_order_relaxed);
-  stop_requested_ = false;
-  searching_ = true;
-  cv_.notify_one();
+
+  nodes_searched_.store(0, std::memory_order_release);
+  start_search_.store(true, std::memory_order_release);
+  searching_.store(true, std::memory_order_release);
 }
 
 void Search::Stop() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (!searching_) return;
-  stop_requested_ = true;
+  std::lock_guard<std::mutex> lock(search_mutex_);
+  searching_.store(false, std::memory_order_release);
+  benching_.store(false, std::memory_order_release);
   time_mgmt_.Stop();
 }
 
 void Search::Bench(int depth) {
-  TimeConfig time_config;
-  time_config.depth = depth;
-
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  nodes_searched_ = 0;
+  std::lock_guard<std::mutex> lock(search_mutex_);
+  benching_.store(true, std::memory_order_release);
+  auto time_config = TimeConfig{.depth = depth};
+  Start(time_config);
 }
 
 TimeManagement &Search::GetTimeManagement() {
+  std::lock_guard<std::mutex> lock(search_mutex_);
   return time_mgmt_;
 }
 
 void Search::NewGame() {
+  std::lock_guard<std::mutex> lock(search_mutex_);
   transposition_table.Clear();
   eval::pawn_cache.Clear();
   history_.Clear();
@@ -118,7 +123,7 @@ void Search::NewGame() {
 }
 
 U64 Search::GetNodesSearched() const {
-  return nodes_searched_;
+  return nodes_searched_.load(std::memory_order_acquire);
 }
 
 template <SearchType type>

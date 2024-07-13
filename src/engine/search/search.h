@@ -63,10 +63,13 @@ class Search {
   SearchStack search_stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
-  std::atomic_uint64_t nodes_searched_;
-  std::atomic_bool start_search_, stop_requested_, searching_, quit_;
-  std::condition_variable cv_;
-  std::mutex mutex_;
+  std::atomic<U64> nodes_searched_;
+  std::atomic<bool> start_search_;
+  std::atomic<bool> stop_requested_;
+  std::atomic<bool> searching_;
+  std::atomic<bool> benching_;
+  std::atomic<bool> quit_;
+  mutable std::mutex search_mutex_;
   std::vector<std::thread> threads_;
 };
 
