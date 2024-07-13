@@ -55,11 +55,14 @@ Search::~Search() {
 }
 
 void Search::Run() {
-  while (!quit_.load(std::memory_order_relaxed)) {
-    if (start_search_.load(std::memory_order_relaxed)) {
-      start_search_.store(false, std::memory_order_release);
-      fmt::println("going!");
-      //IterativeDeepening<SearchType::kRegular>();
+  while (!quit_.load()) {
+    if (start_search_.load()) {
+      start_search_.store(false);
+
+      if (!searching_.load()) {
+        searching_.store(true);
+        IterativeDeepening<SearchType::kRegular>();
+      }
     }
   }
 }
@@ -706,12 +709,12 @@ Score Search::PVSearch(int depth,
 }
 
 bool Search::ShouldQuit() {
-  return !searching_.load(std::memory_order_relaxed) ||
+  return !searching_.load() ||
          search_stack_.Front().best_move && time_mgmt_.TimesUp(nodes_searched_);
 }
 
 void Search::Start(TimeConfig &time_config) {
-  start_search_.store(true, std::memory_order_release);
+  start_search_.store(true);
 }
 
 void Search::Stop() {
