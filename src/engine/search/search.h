@@ -30,6 +30,8 @@ class Search {
 
   void Stop();
 
+  void Wait();
+
   void Bench(int depth);
 
   TimeManagement &GetTimeManagement();

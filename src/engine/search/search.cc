@@ -73,8 +73,7 @@ void Search::Run() {
         IterativeDeepening<SearchType::kRegular>();
       }
 
-      searching_ = false;
-      stopped_ = true;
+      Stop();
     }
   }
 }
@@ -100,8 +99,15 @@ void Search::Start(TimeConfig &time_config) {
 void Search::Stop() {
   std::unique_lock lock(mutex_);
   stopped_ = true;
+  searching_ = false;
   benching_ = false;
   time_mgmt_.Stop();
+}
+
+void Search::Wait() {
+  while (searching_.load(std::memory_order_relaxed)) {
+    std::this_thread::yield();
+  }
 }
 
 void Search::Bench(int depth) {
@@ -225,8 +231,6 @@ void Search::IterativeDeepening() {
   if (print_info) {
     fmt::println("bestmove {}", best_move.ToString());
   }
-
-  Stop();
 }
 
 template <NodeType node_type>
