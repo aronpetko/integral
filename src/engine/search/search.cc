@@ -79,7 +79,7 @@ void Search::Run() {
 }
 
 bool Search::ShouldQuit() {
-  return 
+  return
          (search_stack_.Front().best_move &&
           time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
 }
@@ -157,6 +157,9 @@ void Search::IterativeDeepening() {
   Score score = 0;
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
+    fmt::println("{}", depth);
+    continue;
+    
     sel_depth_ = 0;
 
     int window = static_cast<int>(asp_window_delta);
