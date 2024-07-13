@@ -105,7 +105,7 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 void Search::Stop() {
-  std::unique_lock lock(mutex_);
+  // std::unique_lock lock(mutex_);
   stopped_ = true;
   searching_ = false;
   benching_ = false;
