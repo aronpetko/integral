@@ -720,13 +720,7 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  std::lock_guard<std::mutex> lock(search_mutex_);
-  if (searching_.load(std::memory_order_acquire)) return;
-
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  nodes_searched_ = 0;
+  searching_.store(true, std::memory_order_release);
 }
 
 void Search::Stop() {
