@@ -4,19 +4,19 @@
 #include "../uci/uci.h"
 #include "search.h"
 
-Tunable base_time_scale("base_time_scale", 0.053, 0, 0.10, 0.03);
-Tunable increment_scale("increment_scale", 0.86, 0, 1.00, 0.04);
-Tunable percent_limit("percent_limit", 0.75, 0, 1.00, 0.03);
-Tunable hard_limit_scale("hard_limit_scale", 3.14, 1.00, 4.50, 0.08);
-Tunable soft_limit_scale("soft_limit_scale", 0.85, 0, 1.50, 0.08);
-Tunable node_fraction_base("node_fraction_base", 1.48, 0.50, 2.50, 0.08);
-Tunable node_fraction_scale("node_fraction_scale", 1.63, 0.50, 2.50, 0.08);
+Tunable base_time_scale("base_time_scale", 0.056, 0, 0.10, 0.03);
+Tunable increment_scale("increment_scale", 0.88, 0, 1.00, 0.04);
+Tunable percent_limit("percent_limit", 0.77, 0, 1.00, 0.03);
+Tunable hard_limit_scale("hard_limit_scale", 3.22, 1.00, 4.50, 0.08);
+Tunable soft_limit_scale("soft_limit_scale", 0.87, 0, 1.50, 0.08);
+Tunable node_fraction_base("node_fraction_base", 1.47, 0.50, 2.50, 0.08);
+Tunable node_fraction_scale("node_fraction_scale", 1.52, 0.50, 2.50, 0.08);
 std::array<Tunable, 5> move_stability_scale = {
-    Tunable("mss_1", 2.30, 0.0, 5.0, 0.07),
-    Tunable("mss_2", 1.27, 0.0, 5.0, 0.07),
-    Tunable("mss_3", 1.07, 0.0, 5.0, 0.07),
-    Tunable("mss_4", 0.74, 0.0, 5.0, 0.07),
-    Tunable("mss_5", 0.77, 0.0, 5.0, 0.07),
+    Tunable("mss_1", 2.33, 0.0, 5.0, 0.07),
+    Tunable("mss_2", 1.19, 0.0, 5.0, 0.07),
+    Tunable("mss_3", 1.05, 0.0, 5.0, 0.07),
+    Tunable("mss_4", 0.76, 0.0, 5.0, 0.07),
+    Tunable("mss_5", 0.72, 0.0, 5.0, 0.07),
 };
 
 [[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config)

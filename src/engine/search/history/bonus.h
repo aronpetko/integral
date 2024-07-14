@@ -7,10 +7,10 @@
 namespace history {
 
 inline Tunable hist_default_gravity(
-    "hist_default_gravity", 16267, 8192, 32768, 1024);
-inline Tunable hist_default_scale("hist_default_scale", 138, 65, 260, 5);
+    "hist_default_gravity", 15501, 8192, 32768, 1024);
+inline Tunable hist_default_scale("hist_default_scale", 139, 65, 260, 5);
 inline Tunable hist_default_max_bonus(
-    "hist_default_max_bonus", 1153, 580, 2318, 50);
+    "hist_default_max_bonus", 1173, 580, 2318, 50);
 
 static int HistoryBonus(int depth,
                         int scale = hist_default_scale,
