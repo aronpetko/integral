@@ -130,11 +130,11 @@ void Search::IterativeDeepening() {
     }
   }
 
+  Stop();
+
   if (print_info) {
     fmt::println("bestmove {}", best_move.ToString());
   }
-
-  Stop();
 }
 
 template <NodeType node_type>
