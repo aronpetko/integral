@@ -182,9 +182,12 @@ Score Search::QuiescentSearch(Score alpha,
   Score best_score = kScoreNone;
 
   if (!state.InCheck()) {
-    best_score = can_use_tt_eval
-                   ? tt_entry.score
-                   : history_.correction_history->CorrectedStaticEval();
+    if (tt_hit &&
+        tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
+      best_score = tt_entry.score;
+    } else {
+      best_score = history_.correction_history->CorrectedStaticEval();
+    }
 
     // Early beta cutoff
     if (best_score >= beta) {
@@ -353,7 +356,8 @@ Score Search::PVSearch(int depth,
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
-    if (can_use_tt_eval) {
+    if (tt_hit &&
+        tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
       eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     } else {
       eval = stack->static_eval;
