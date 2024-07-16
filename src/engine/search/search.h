@@ -1,11 +1,13 @@
 #ifndef INTEGRAL_SEARCH_H_
 #define INTEGRAL_SEARCH_H_
 
+#include <thread>
+
 #include "../../chess/move_gen.h"
 #include "../evaluation/evaluation.h"
 #include "history/history.h"
-#include "time_mgmt.h"
 #include "stack.h"
+#include "time_mgmt.h"
 
 constexpr int kMaxSearchDepth = 100;
 
@@ -46,7 +48,11 @@ class Search {
   Score QuiescentSearch(Score alpha, Score beta, SearchStackEntry *stack);
 
   template <NodeType node_type>
-  Score PVSearch(int depth, Score alpha, Score beta, SearchStackEntry *stack, bool cut_node);
+  Score PVSearch(int depth,
+                 Score alpha,
+                 Score beta,
+                 SearchStackEntry *stack,
+                 bool cut_node);
 
   [[nodiscard]] bool ShouldQuit();
 

@@ -10,7 +10,7 @@ Tunable lmr_tact_div("lmr_tact_div", 2.60, 2.0, 3.5, 0.1);
 
 Tunable asp_window_depth("asp_window_depth", 4, 2, 8, 1, true);
 Tunable asp_window_delta("asp_window_delta", 9, 5, 20, 2);
-Tunable asp_window_growth("asp_window_growth", 1.55, 0.1, 1.0, 0.05);
+Tunable asp_window_growth("asp_window_growth", 1.55, 0.1, 2.0, 0.05);
 
 Tunable qs_fut_margin("qs_fut_margin", 101, 50, 200, 10);
 
