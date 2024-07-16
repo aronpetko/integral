@@ -106,7 +106,7 @@ void Search::IterativeDeepening() {
 
       // Widen the aspiration window for the next iteration if we fail low or
       // high again
-      window += static_cast<int>(window * asp_window_growth);
+      window *= asp_window_growth;
     }
 
     if (!searching_ ||
