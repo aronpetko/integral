@@ -15,7 +15,7 @@ std::array<Tunable, 5> move_stability_scale = {
     Tunable("mss_2", 1.22, 0.0, 5.0, 0.07),
     Tunable("mss_3", 1.07, 0.0, 5.0, 0.07),
     Tunable("mss_4", 0.79, 0.0, 5.0, 0.07),
-    Tunable("mss_5", 0.69, 0.0, 5.0, 0.07),
+    Tunable("mss_5", 0.68, 0.0, 5.0, 0.07),
 };
 
 [[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config)
