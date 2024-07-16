@@ -7,10 +7,10 @@
 
 namespace history {
 
-inline Tunable corr_history_size("corr_history_size", 15240, 8192, 32768, 1024);
+inline Tunable corr_history_size("corr_history_size", 15221, 8192, 32768, 1024);
 inline Tunable corr_history_divisor(
-    "corr_history_divisor", 14812, 8192, 32768, 1024);
-inline Tunable corr_history_gravity("corr_history_gravity", 564, 256, 1024, 32);
+    "corr_history_divisor", 14457, 8192, 32768, 1024);
+inline Tunable corr_history_gravity("corr_history_gravity", 582, 256, 1024, 32);
 
 class CorrectionHistory {
  public:

@@ -1,22 +1,21 @@
 #include "time_mgmt.h"
 
 #include "../../tuner/spsa.h"
-#include "../uci/uci.h"
 #include "search.h"
 
-Tunable base_time_scale("base_time_scale", 0.055, 0, 0.10, 0.03);
+Tunable base_time_scale("base_time_scale", 0.055, 0, 0.10, 0.003);
 Tunable increment_scale("increment_scale", 0.91, 0, 1.00, 0.04);
 Tunable percent_limit("percent_limit", 0.77, 0, 1.00, 0.03);
-Tunable hard_limit_scale("hard_limit_scale", 3.26, 1.00, 4.50, 0.08);
-Tunable soft_limit_scale("soft_limit_scale", 0.87, 0, 1.50, 0.08);
-Tunable node_fraction_base("node_fraction_base", 1.47, 0.50, 2.50, 0.08);
-Tunable node_fraction_scale("node_fraction_scale", 1.54, 0.50, 2.50, 0.08);
+Tunable hard_limit_scale("hard_limit_scale", 3.25, 1.00, 4.50, 0.08);
+Tunable soft_limit_scale("soft_limit_scale", 0.83, 0, 1.50, 0.08);
+Tunable node_fraction_base("node_fraction_base", 1.49, 0.50, 2.50, 0.08);
+Tunable node_fraction_scale("node_fraction_scale", 1.56, 0.50, 2.50, 0.08);
 std::array<Tunable, 5> move_stability_scale = {
-    Tunable("mss_1", 2.31, 0.0, 5.0, 0.07),
-    Tunable("mss_2", 1.23, 0.0, 5.0, 0.07),
-    Tunable("mss_3", 1.09, 0.0, 5.0, 0.07),
-    Tunable("mss_4", 0.78, 0.0, 5.0, 0.07),
-    Tunable("mss_5", 0.70, 0.0, 5.0, 0.07),
+    Tunable("mss_1", 2.32, 0.0, 5.0, 0.07),
+    Tunable("mss_2", 1.22, 0.0, 5.0, 0.07),
+    Tunable("mss_3", 1.07, 0.0, 5.0, 0.07),
+    Tunable("mss_4", 0.79, 0.0, 5.0, 0.07),
+    Tunable("mss_5", 0.69, 0.0, 5.0, 0.07),
 };
 
 [[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config)
@@ -36,7 +35,7 @@ void TimeManagement::Start() {
   }
 
   previous_best_move_ = Move::NullMove();
-  
+
   const int base_time = config_.time_left * base_time_scale +
                         config_.increment * increment_scale - overhead;
   const int maximum_time = percent_limit * config_.time_left;
