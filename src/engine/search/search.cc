@@ -354,14 +354,7 @@ Score Search::PVSearch(int depth,
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
-
-    // Adjust eval depending on if we can use the score stored in the TT
-    if (tt_hit &&
-        tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
-      eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
-    } else {
-      eval = stack->static_eval;
-    }
+    eval = stack->static_eval;
 
     SearchStackEntry *past_stack = nullptr;
     if ((stack - 2)->static_eval != kScoreNone) {
@@ -406,8 +399,6 @@ Score Search::PVSearch(int depth,
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
         stack->continuation_entry = nullptr;
-
-        // Ensure the reduction doesn't give us a depth below 0
 
         const int eval_reduction =
             std::min<int>(2, (eval - beta) / null_move_re);
