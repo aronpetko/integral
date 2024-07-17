@@ -392,8 +392,7 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = static_cast<int>(
-          (depth - improving) * rev_fut_margin);
+      const int futility_margin = depth * (improving ? 40 : 86);
       if (eval - futility_margin >= beta) {
         return eval;
       }
@@ -501,6 +500,7 @@ Score Search::PVSearch(int depth,
         const int history_score = history_.GetQuietMoveScore(move, stack);
         if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
+          move_picker.SkipQuiets();
           continue;
         }
       }

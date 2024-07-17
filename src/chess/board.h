@@ -251,8 +251,8 @@ class Board {
     return state_;
   }
 
-  inline BoardState &GetPrevState() {
-    return history_.Back();
+  inline List<BoardState, kMaxGamePly> &GetHistory() {
+    return history_;
   }
 
   void SetFromFen(std::string_view fen_str);
