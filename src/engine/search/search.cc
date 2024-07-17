@@ -353,7 +353,7 @@ Score Search::PVSearch(int depth,
   stack->improving_rate = 0.0;
   bool improving = false;
 
-  if (!state.InCheck() && !stack->excluded_tt_move) {
+  if (!state.InCheck()) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
@@ -381,6 +381,8 @@ Score Search::PVSearch(int depth,
                      -1.0,
                      1.0);
     }
+  } else if (stack->excluded_tt_move) {
+    eval = stack->static_eval;
   } else {
     stack->static_eval = eval = kScoreNone;
   }
@@ -586,7 +588,7 @@ Score Search::PVSearch(int depth,
       reduction -= is_quiet * history_.GetQuietMoveScore(move, stack) /
                    static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
-      reduction -= stack->improving_rate > 0;
+      reduction += stack->improving_rate < 0;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
