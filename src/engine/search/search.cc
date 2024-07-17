@@ -351,6 +351,7 @@ Score Search::PVSearch(int depth,
   // improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   stack->improving_rate = 0.0;
+  bool improving = false;
 
   if (!state.InCheck() && !stack->excluded_tt_move) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
@@ -371,6 +372,7 @@ Score Search::PVSearch(int depth,
     }
 
     if (past_stack) {
+      improving = stack->static_eval > past_stack->static_eval;
       // Smoothen the improving rate from the static eval of our position in
       // previous turns
       const Score diff = stack->static_eval - past_stack->static_eval;
@@ -584,7 +586,7 @@ Score Search::PVSearch(int depth,
       reduction -= is_quiet * history_.GetQuietMoveScore(move, stack) /
                    static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
-      reduction += stack->improving_rate < 0.0;
+      reduction += !improving;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
