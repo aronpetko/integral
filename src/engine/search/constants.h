@@ -15,7 +15,7 @@ Tunable asp_window_growth("asp_window_growth", 1.55, 0.1, 2.0, 0.05);
 Tunable qs_fut_margin("qs_fut_margin", 101, 50, 200, 10);
 
 Tunable rev_fut_depth("rev_fut_depth", 6, 4, 10, 1, true);
-Tunable rev_fut_margin("rev_fut_margin", 74, 50, 150, 8);
+Tunable rev_fut_margin("rev_fut_margin", 90, 50, 150, 8);
 
 Tunable null_move_rb("null_move_rb", 3, 1, 5, 0.5);
 Tunable null_move_rf("null_move_rf", 4, 2, 8, 1, true);
