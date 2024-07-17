@@ -347,13 +347,11 @@ Score Search::PVSearch(int depth,
 
   // An approximation of the current evaluation at this node
   Score eval;
-  // This condition is dependent on if the side to move's static evaluation has
-  // improved in the past two or four plies. It also used as a metric for
-  // adjusting pruning thresholds
-  stack->improving_rate = 0.0;
-  bool improving = false;
-
-  if (!state.InCheck() && !stack->excluded_tt_move) {
+  if (state.InCheck()) {
+    stack->static_eval = eval = kScoreNone;
+  } else if (stack->excluded_tt_move) {
+    eval = stack->static_eval;
+  } else if (!state.InCheck()) {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
@@ -363,26 +361,28 @@ Score Search::PVSearch(int depth,
     } else {
       eval = stack->static_eval;
     }
+  }
 
-    SearchStackEntry *past_stack = nullptr;
-    if ((stack - 2)->static_eval != kScoreNone) {
-      past_stack = stack - 2;
-    } else if ((stack - 4)->static_eval != kScoreNone) {
-      past_stack = stack - 4;
-    }
+  // This condition is dependent on if the side to move's static evaluation has
+  // improved in the past two or four plies. It also used as a metric for
+  // adjusting pruning thresholds
+  stack->improving_rate = 0.0;
+  bool improving = false;
 
-    if (past_stack) {
-      improving = stack->static_eval > past_stack->static_eval;
-      // Smoothen the improving rate from the static eval of our position in
-      // previous turns
-      const Score diff = stack->static_eval - past_stack->static_eval;
-      stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / improving_rate_divisor,
-                     -1.0,
-                     1.0);
-    }
-  } else {
-    stack->static_eval = eval = kScoreNone;
+  SearchStackEntry *past_stack = nullptr;
+  if ((stack - 2)->static_eval != kScoreNone) {
+    past_stack = stack - 2;
+  } else if ((stack - 4)->static_eval != kScoreNone) {
+    past_stack = stack - 4;
+  }
+
+  if (past_stack) {
+    improving = stack->static_eval > past_stack->static_eval;
+    // Smoothen the improving rate from the static eval of our position in
+    // previous turns
+    const Score diff = stack->static_eval - past_stack->static_eval;
+    stack->improving_rate = std::clamp(
+        past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
   }
 
   stack->double_extensions = (stack - 1)->double_extensions;
@@ -392,7 +392,7 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = depth * (improving ? 40 : (int)rev_fut_margin);
+      const int futility_margin = (depth - improving) * rev_fut_margin;
       if (eval - futility_margin >= beta) {
         return eval;
       }
@@ -500,7 +500,6 @@ Score Search::PVSearch(int depth,
         const int history_score = history_.GetQuietMoveScore(move, stack);
         if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
-          move_picker.SkipQuiets();
           continue;
         }
       }
@@ -587,6 +586,7 @@ Score Search::PVSearch(int depth,
       reduction -= is_quiet * history_.GetQuietMoveScore(move, stack) /
                    static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
+      reduction += !improving;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
