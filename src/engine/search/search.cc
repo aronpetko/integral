@@ -351,7 +351,7 @@ Score Search::PVSearch(int depth,
     stack->static_eval = eval = kScoreNone;
   } else if (stack->excluded_tt_move) {
     eval = stack->static_eval;
-  } else if (!state.InCheck()) {
+  } else {
     stack->static_eval = history_.correction_history->CorrectedStaticEval();
 
     // Adjust eval depending on if we can use the score stored in the TT
@@ -376,13 +376,15 @@ Score Search::PVSearch(int depth,
     past_stack = stack - 4;
   }
 
-  if (past_stack) {
+  if (past_stack && !state.InCheck()) {
     improving = stack->static_eval > past_stack->static_eval;
     // Smoothen the improving rate from the static eval of our position in
     // previous turns
     const Score diff = stack->static_eval - past_stack->static_eval;
-    stack->improving_rate = std::clamp(
-        past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
+    stack->improving_rate =
+        std::clamp(past_stack->improving_rate + diff / improving_rate_divisor,
+                   -1.0,
+                   1.0);
   }
 
   stack->double_extensions = (stack - 1)->double_extensions;
