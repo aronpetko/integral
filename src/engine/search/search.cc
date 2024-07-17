@@ -586,7 +586,6 @@ Score Search::PVSearch(int depth,
       reduction -= is_quiet * history_.GetQuietMoveScore(move, stack) /
                    static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
-      reduction += !improving;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
