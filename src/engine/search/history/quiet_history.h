@@ -21,13 +21,16 @@ class QuietHistory {
     int &score = table_[turn][move.GetFrom()][move.GetTo()];
     score += ScaleBonus(score, bonus);
 
+    const int penalty = -HistoryBonus(depth, hist_malus_scale, hist_max_malus);
+
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
     for (int i = 0; i < quiets.Size(); i++) {
       const Move bad_quiet = quiets[i];
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_quiet_score =
           table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()];
-      bad_quiet_score += ScaleBonus(bad_quiet_score, -bonus);
+      bad_quiet_score +=
+          ScaleBonus(bad_quiet_score, penalty, hist_malus_gravity);
     }
   }
 
