@@ -367,22 +367,24 @@ Score Search::PVSearch(int depth,
   // improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   stack->improving_rate = 0.0;
-  bool improving = false;
 
-  SearchStackEntry *past_stack = nullptr;
-  if ((stack - 2)->static_eval != kScoreNone) {
-    past_stack = stack - 2;
-  } else if ((stack - 4)->static_eval != kScoreNone) {
-    past_stack = stack - 4;
-  }
+  if (!state.InCheck()) {
+    SearchStackEntry *past_stack = nullptr;
+    if ((stack - 2)->static_eval != kScoreNone) {
+      past_stack = stack - 2;
+    } else if ((stack - 4)->static_eval != kScoreNone) {
+      past_stack = stack - 4;
+    }
 
-  if (past_stack && !state.InCheck()) {
-    improving = stack->static_eval > past_stack->static_eval;
-    // Smoothen the improving rate from the static eval of our position in
-    // previous turns
-    const Score diff = stack->static_eval - past_stack->static_eval;
-    stack->improving_rate = std::clamp(
-        past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
+    if (past_stack) {
+      // Smoothen the improving rate from the static eval of our position in
+      // previous turns
+      const Score diff = stack->static_eval - past_stack->static_eval;
+      stack->improving_rate =
+          std::clamp(past_stack->improving_rate + diff / improving_rate_divisor,
+                     -1.0,
+                     1.0);
+    }
   }
 
   stack->double_extensions = (stack - 1)->double_extensions;
@@ -392,7 +394,8 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = depth * (improving ? 40 : 74);
+      const int futility_margin = static_cast<int>(
+          depth * rev_fut_margin / (2 - std::max(0.0, stack->improving_rate)));
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
       }
