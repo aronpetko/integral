@@ -18,26 +18,32 @@ class QuietHistory {
     const int bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
-    int &score = table_[turn][move.GetFrom()][move.GetTo()];
+    int &score = table_[turn][move.GetFrom()][move.GetTo()][ThreatIndex(move)];
     score += ScaleBonus(score, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
     for (int i = 0; i < quiets.Size(); i++) {
       const Move bad_quiet = quiets[i];
       // Apply a linear dampening to the penalty as the depth increases
-      int &bad_quiet_score =
-          table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()];
+      int &bad_quiet_score = table_[turn][bad_quiet.GetFrom()]
+                                   [bad_quiet.GetTo()][ThreatIndex(bad_quiet)];
       bad_quiet_score += ScaleBonus(bad_quiet_score, -bonus);
     }
   }
 
   [[nodiscard]] int GetScore(Move move) const {
-    return table_[state_.turn][move.GetFrom()][move.GetTo()];
+    return table_[state_.turn][move.GetFrom()][move.GetTo()][ThreatIndex(move)];
+  }
+
+ private:
+  [[nodiscard]] int ThreatIndex(Move move) const {
+    return 2 * state_.threats.IsSet(move.GetFrom()) +
+           state_.threats.IsSet(move.GetTo());
   }
 
  private:
   const BoardState &state_;
-  MultiArray<int, kNumColors, kSquareCount, kSquareCount> table_;
+  MultiArray<int, kNumColors, kSquareCount, kSquareCount, 4> table_;
 };
 
 }  // namespace history

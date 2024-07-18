@@ -238,6 +238,7 @@ struct BoardState {
   U64 zobrist_key;
   U64 pawn_key;
   BitBoard checkers;
+  BitBoard threats;
   BitBoard pinned;
   SideTable<ScorePair> piece_scores;
   int phase;
@@ -281,6 +282,8 @@ class Board {
   void HandlePromotions(Move move);
 
   void CalculateKingThreats();
+
+  void CalculateThreats();
 
  private:
   BoardState state_;

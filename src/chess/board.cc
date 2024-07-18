@@ -12,7 +12,7 @@ void Board::SetFromFen(std::string_view fen_str) {
   history_.Clear();
   state_ = fen::StringToBoard(fen_str);
 
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 bool Board::IsMovePseudoLegal(Move move) {
@@ -241,7 +241,7 @@ void Board::MakeMove(Move move) {
 
   state_.fifty_moves_clock = new_fifty_move_clock;
 
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 void Board::UndoMove() {
@@ -465,6 +465,28 @@ void Board::HandlePromotions(Move move) {
         break;
     }
   }
+}
+
+void Board::CalculateThreats() {
+  state_.threats = 0;
+  const Color them = FlipColor(state_.turn);
+
+  for (Square square : state_.Knights(them)) {
+    state_.threats |= move_gen::KnightMoves(square);
+  }
+
+  const BitBoard queens = state_.Queens();
+  const BitBoard occupied = state_.Occupied();
+
+  for (Square square : state_.Bishops(them) | queens) {
+    state_.threats |= move_gen::BishopMoves(square, occupied);
+  }
+
+  for (Square square : state_.Rooks(them) | queens) {
+    state_.threats |= move_gen::RookMoves(square, occupied);
+  }
+
+  CalculateKingThreats();
 }
 
 void Board::CalculateKingThreats() {
