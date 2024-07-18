@@ -553,6 +553,9 @@ Score Search::PVSearch(int depth,
         else if (tt_entry.score >= beta) {
           extensions = -1;
         }
+        else if (cut_node) {
+          extensions = -2;
+        }
       }
     }
 
