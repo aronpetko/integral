@@ -344,7 +344,7 @@ ScorePair Evaluation::EvaluateBishops() {
   ScorePair score;
 
   const BitBoard our_bishops = state_.Bishops(us);
-  const BitBoard occupied = state_.Occupied();
+  const BitBoard occupied = state_.Occupied() ^ state_.Queens(us) ^ state_.Bishops(us);
 
   if (our_bishops.MoreThanOne()) {
     score += kBishopPairBonus;
@@ -389,7 +389,7 @@ ScorePair Evaluation::EvaluateRooks() {
   const BitBoard our_rooks = state_.Rooks(us);
   const BitBoard our_pawns = state_.Pawns(us);
   const BitBoard their_pawns = state_.Pawns(FlipColor(us));
-  const BitBoard occupied = state_.Occupied();
+  const BitBoard occupied = state_.Occupied() ^ state_.Queens(us) ^ state_.Rooks(us);
 
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[kRook], us);
@@ -428,7 +428,7 @@ ScorePair Evaluation::EvaluateQueens() {
   ScorePair score;
 
   const BitBoard our_queens = state_.Queens(us);
-  const BitBoard occupied = state_.Occupied();
+  const BitBoard occupied = state_.Occupied() ^ state_.Bishops(us) ^ state_.Rooks(us);
 
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
