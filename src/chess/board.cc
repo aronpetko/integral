@@ -476,7 +476,7 @@ void Board::CalculateThreats() {
     state_.threats |= move_gen::KnightMoves(square);
   }
 
-  const BitBoard queens = state_.Queens();
+  const BitBoard queens = state_.Queens(them);
   const BitBoard occupied = state_.Occupied();
 
   for (Square square : state_.Bishops(them) | queens) {
