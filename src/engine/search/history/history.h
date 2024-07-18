@@ -28,11 +28,17 @@ class SearchHistory {
     return quiet_history->GetScore(move) +
            continuation_history->GetScore(move, stack - 1) +
            continuation_history->GetScore(move, stack - 2) +
-	   continuation_history->GetScore(move, stack - 4);
+           continuation_history->GetScore(move, stack - 4);
   }
 
   [[nodiscard]] int GetCaptureMoveScore(Move move) const {
     return capture_history->GetScore(move);
+  }
+
+  [[nodiscard]] int GetMoveScore(Move move, SearchStackEntry *stack) const {
+    return !move                  ? 0
+         : move.IsCapture(state_) ? GetCaptureMoveScore(move)
+                                  : GetQuietMoveScore(move, stack);
   }
 
  public:

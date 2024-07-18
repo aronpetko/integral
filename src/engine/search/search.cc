@@ -392,7 +392,10 @@ Score Search::PVSearch(int depth,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = depth * (improving ? 40 : 74);
+      const int history_margin = history_.GetMoveScore((stack - 1)->move, stack - 1) / 450;
+      const int futility_margin =
+          depth * (improving ? improving_rev_fut_margin : rev_fut_margin) +
+          history_margin;
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
       }
