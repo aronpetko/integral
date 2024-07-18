@@ -266,7 +266,7 @@ void Board::MakeNullMove() {
 
   state_.fifty_moves_clock++;
 
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 U64 Board::PredictKeyAfter(Move move) {
