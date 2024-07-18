@@ -186,7 +186,8 @@ Score Search::QuiescentSearch(Score alpha,
         tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
       best_score = tt_entry.score;
     } else {
-      best_score = history_.correction_history->CorrectedStaticEval();
+      best_score =
+          history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
     }
 
     // Early beta cutoff
@@ -345,42 +346,43 @@ Score Search::PVSearch(int depth,
     }
   }
 
-  // An approximation of the current evaluation at this node
-  Score eval;
-  // This condition is dependent on if the side to move's static evaluation has
-  // improved in the past two or four plies. It also used as a metric for
-  // adjusting pruning thresholds
-  stack->improving_rate = 0.0;
-
-  if (!state.InCheck() && !stack->excluded_tt_move) {
-    stack->static_eval = history_.correction_history->CorrectedStaticEval();
+  // Approximate the current evaluation at this node
+  if (state.InCheck()) {
+    stack->static_eval = stack->eval = kScoreNone;
+  } else if (!stack->excluded_tt_move) {
+    stack->static_eval = eval::Evaluate(state);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
         tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
-      eval = TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+      stack->eval =
+          TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
     } else {
-      eval = stack->static_eval;
+      stack->eval =
+          history_.correction_history->CorrectStaticEval(stack->static_eval);
     }
+  }
 
-    SearchStackEntry *past_stack = nullptr;
-    if ((stack - 2)->static_eval != kScoreNone) {
-      past_stack = stack - 2;
-    } else if ((stack - 4)->static_eval != kScoreNone) {
-      past_stack = stack - 4;
-    }
+  // This condition is dependent on if the side to move's static evaluation has
+  // improved in the past two or four plies. It also used as a metric for
+  // adjusting pruning thresholds
+  stack->improving_rate = 0.0;
+  bool improving = false;
 
-    if (past_stack) {
-      // Smoothen the improving rate from the static eval of our position in
-      // previous turns
-      const Score diff = stack->static_eval - past_stack->static_eval;
-      stack->improving_rate =
-          std::clamp(past_stack->improving_rate + diff / improving_rate_divisor,
-                     -1.0,
-                     1.0);
-    }
-  } else {
-    stack->static_eval = eval = kScoreNone;
+  SearchStackEntry *past_stack = nullptr;
+  if ((stack - 2)->static_eval != kScoreNone) {
+    past_stack = stack - 2;
+  } else if ((stack - 4)->static_eval != kScoreNone) {
+    past_stack = stack - 4;
+  }
+
+  if (past_stack && !state.InCheck()) {
+    improving = stack->static_eval > past_stack->static_eval;
+    // Smoothen the improving rate from the static eval of our position in
+    // previous turns
+    const Score diff = stack->static_eval - past_stack->static_eval;
+    stack->improving_rate = std::clamp(
+        past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
   }
 
   stack->double_extensions = (stack - 1)->double_extensions;
@@ -389,16 +391,16 @@ Score Search::PVSearch(int depth,
   if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= rev_fut_depth && eval < kMateScore - kMaxPlyFromRoot) {
-      const int futility_margin = depth * rev_fut_margin;
-      if (eval - futility_margin >= beta) {
-        return eval;
+    if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot) {
+      const int futility_margin = depth * (improving ? 40 : 74);
+      if (stack->eval - futility_margin >= beta) {
+        return stack->eval;
       }
     }
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() && eval >= beta) {
+    if (!(stack - 1)->move.IsNull() && stack->eval >= beta) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -410,7 +412,7 @@ Score Search::PVSearch(int depth,
         // Ensure the reduction doesn't give us a depth below 0
 
         const int eval_reduction =
-            std::min<int>(2, (eval - beta) / null_move_re);
+            std::min<int>(2, (stack->eval - beta) / null_move_re);
         const int reduction = std::clamp<int>(
             depth / null_move_rf + null_move_rb + eval_reduction, 0, depth);
 
@@ -478,7 +480,7 @@ Score Search::PVSearch(int depth,
       // there's a low chance to raise alpha
       const int futility_margin = fut_margin_base + fut_margin_mult * depth;
       if (depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
-          eval + futility_margin < alpha) {
+          stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
       }
