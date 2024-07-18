@@ -468,8 +468,9 @@ void Board::HandlePromotions(Move move) {
 }
 
 void Board::CalculateThreats() {
-  state_.threats = 0;
   const Color them = FlipColor(state_.turn);
+
+  state_.threats = move_gen::PawnAttacks(state_.Pawns(them), them);
 
   for (Square square : state_.Knights(them)) {
     state_.threats |= move_gen::KnightMoves(square);
