@@ -487,6 +487,8 @@ void Board::CalculateThreats() {
     state_.threats |= move_gen::RookMoves(square, occupied);
   }
 
+  state_.threats |= move_gen::KingAttacks(state_.King(them).GetLsb());
+
   CalculateKingThreats();
 }
 
