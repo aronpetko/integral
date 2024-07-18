@@ -53,7 +53,7 @@ struct SearchStackEntry {
   // Number of ply from root
   U16 ply;
   // Evaluation of the position at this ply
-  Score static_eval;
+  Score static_eval, eval;
   // Best moves following down this ply
   PVLine pv;
   // The move with the best score
@@ -86,6 +86,7 @@ struct SearchStackEntry {
   explicit SearchStackEntry(U16 ply)
       : ply(ply),
         static_eval(kScoreNone),
+        eval(kScoreNone),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
