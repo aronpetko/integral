@@ -35,8 +35,7 @@ class CorrectionHistory {
     score += ScaleBonus(score, bonus, corr_history_gravity);
   }
 
-  [[nodiscard]] Score CorrectedStaticEval() const {
-    const Score static_eval = eval::Evaluate(state_);
+  [[nodiscard]] Score CorrectStaticEval(Score static_eval) const {
     const Score correction = table_[state_.turn][GetTableIndex()];
     const Score adjusted_score =
         static_eval + (correction * std::abs(correction)) /
