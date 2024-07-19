@@ -581,7 +581,7 @@ Score Search::PVSearch(int depth,
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction += !in_pv_node;
+      reduction -= in_pv_node;
       reduction += cut_node;
       reduction -= is_quiet * history_.GetQuietMoveScore(move, stack) /
                    static_cast<int>(lmr_hist_div);
