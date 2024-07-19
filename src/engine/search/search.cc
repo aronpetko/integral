@@ -500,6 +500,7 @@ Score Search::PVSearch(int depth,
         const int history_score = history_.GetQuietMoveScore(move, stack);
         if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
+          move_picker.SkipQuiets();
           continue;
         }
       }
