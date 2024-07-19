@@ -475,14 +475,10 @@ Score Search::PVSearch(int depth,
         move_picker.SkipQuiets();
         continue;
       }
-
-      const int lmr_depth = std::max(
-          0, depth - tables::kLateMoveReduction[is_quiet][depth][moves_seen]);
-
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin = fut_margin_base + fut_margin_mult * depth;
-      if (lmr_depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
+      if (depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
@@ -492,7 +488,7 @@ Score Search::PVSearch(int depth,
       // material
       const int see_threshold =
           is_quiet ? see_quiet_thresh * depth : see_noisy_thresh * depth;
-      if (lmr_depth <= see_prune_depth && moves_seen >= 1 &&
+      if (depth <= see_prune_depth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
@@ -501,7 +497,7 @@ Score Search::PVSearch(int depth,
       // near-leaf nodes
       if (is_quiet) {
         const int history_score = history_.GetQuietMoveScore(move, stack);
-        if (lmr_depth <= hist_prune_depth &&
+        if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
           move_picker.SkipQuiets();
           continue;
