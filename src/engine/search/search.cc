@@ -476,8 +476,8 @@ Score Search::PVSearch(int depth,
         continue;
       }
 
-      const int lmr_depth =
-          tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      const int lmr_depth = std::max(
+          0, depth - tables::kLateMoveReduction[is_quiet][depth][moves_seen]);
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
