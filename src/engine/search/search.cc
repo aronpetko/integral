@@ -580,7 +580,7 @@ Score Search::PVSearch(int depth,
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
     const int lmr_move_threshold = 1 + in_root * 2;
-    if (depth > 2 && moves_seen >= lmr_move_threshold) {
+    if (depth >= 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node;
       reduction += cut_node;
