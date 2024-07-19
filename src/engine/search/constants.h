@@ -28,15 +28,15 @@ Tunable improving_rate_divisor("improving_rate_divisor", 30.0, 5.0, 100.0, 15.0)
 Tunable lmp_base("lmp_base", 5.0, 1.5, 5.0, 0.5);
 Tunable lmp_mult("lmp_mult", 3, 1.0, 4.0, 0.25);
 
-Tunable fut_prune_depth("fut_prune_depth", 8, 6, 12, 1, true);
+Tunable fut_prune_depth("fut_prune_depth", 7, 6, 12, 1, true);
 Tunable fut_margin_base("fut_margin_base", 196, 100, 250, 20);
 Tunable fut_margin_mult("fut_margin_mult", 96, 50, 200, 15);
 
-Tunable see_prune_depth("see_prune_depth", 8, 6, 12, 1, true);
+Tunable see_prune_depth("see_prune_depth", 6, 6, 12, 1, true);
 Tunable see_quiet_thresh("see_quiet_thresh", -64, -100, -20, 6);
 Tunable see_noisy_thresh("see_noisy_thresh", -119, -200, -50, 8);
 
-Tunable hist_prune_depth("hist_prune_depth", 5, 3, 8, 1, true);
+Tunable hist_prune_depth("hist_prune_depth", 3, 3, 8, 1, true);
 Tunable hist_thresh_base("hist_thresh_base", -480, -1000, 500, 100);
 Tunable hist_thresh_mult("hist_thresh_mult", -1695, -3000, -250, 300);
 
