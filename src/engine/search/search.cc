@@ -462,7 +462,6 @@ Score Search::PVSearch(int depth,
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
     const bool is_quiet = !move.IsTactical(state);
-    const bool is_capture = move.IsCapture(state);
 
     // Pruning guards
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
@@ -644,7 +643,7 @@ Score Search::PVSearch(int depth,
             stack->AddKillerMove(move);
             history_.quiet_history->UpdateScore(stack, depth, quiets);
             history_.continuation_history->UpdateScore(stack, depth, quiets);
-          } else if (is_capture) {
+          } else {
             history_.capture_history->UpdateScore(stack, depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
@@ -657,7 +656,7 @@ Score Search::PVSearch(int depth,
     if (move != best_move) {
       if (is_quiet)
         quiets.Push(move);
-      else if (is_capture)
+      else
         captures.Push(move);
 
       // Since "good" captures are expected to be the best moves, we apply a
