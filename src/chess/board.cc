@@ -45,14 +45,22 @@ bool Board::IsMovePseudoLegal(Move move) {
   if (piece_type == PieceType::kKing) {
     constexpr int kKingsideCastleDist = -2;
     constexpr int kQueensideCastleDist = 2;
+    constexpr BitBoard kWhiteKingsideOccupancy = 0x60;
+    constexpr BitBoard kWhiteQueensideOccupancy = 0xe;
+    constexpr BitBoard kBlackKingsideOccupancy = 0x6000000000000000;
+    constexpr BitBoard kBlackQueensideOccupancy = 0xe00000000000000;
 
     // Note: the only way move_dist is ever 2 or -2 is from
     // move_gen::CastlingMoves allowing it
     const int move_dist = static_cast<int>(from) - static_cast<int>(to);
     if (move_dist == kKingsideCastleDist) {
-      return !state_.checkers && state_.castle_rights.CanKingsideCastle(us);
+      return !state_.checkers && state_.castle_rights.CanKingsideCastle(us) &&
+             !(occupied & (us == Color::kWhite ? kWhiteKingsideOccupancy
+                                               : kBlackKingsideOccupancy));
     } else if (move_dist == kQueensideCastleDist) {
-      return !state_.checkers && state_.castle_rights.CanQueensideCastle(us);
+      return !state_.checkers && state_.castle_rights.CanQueensideCastle(us) &&
+             !(occupied & (us == Color::kWhite ? kWhiteQueensideOccupancy
+                                               : kBlackQueensideOccupancy));
     }
   }
 
