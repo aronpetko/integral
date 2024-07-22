@@ -182,12 +182,14 @@ Score Search::QuiescentSearch(Score alpha,
   Score best_score = kScoreNone;
 
   if (!state.InCheck()) {
+    stack->static_eval = eval::Evaluate(state);
+
     if (tt_hit &&
         tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
       best_score = tt_entry.score;
     } else {
       best_score =
-          history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
+          history_.correction_history->CorrectStaticEval(stack->static_eval);
     }
 
     // Early beta cutoff
@@ -473,7 +475,6 @@ Score Search::PVSearch(int depth,
         move_picker.SkipQuiets();
         continue;
       }
-
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin = fut_margin_base + fut_margin_mult * depth;
