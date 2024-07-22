@@ -77,10 +77,6 @@ BoardState StringToBoard(std::string_view fen_str) {
   }
 
   stream >> state.fifty_moves_clock;
-
-  if (state.zobrist_key != zobrist::GenKey(state)) {
-    fmt::println("{} | {}", state.zobrist_key, zobrist::GenKey(state));
-  }
   return state;
 }
 
