@@ -172,8 +172,6 @@ void Board::MakeMove(Move move) {
   // Create new board state
   history_.Push(state_);
 
-  const U64 predicted = PredictKeyAfter(move);
-
   const Color us = state_.turn, them = FlipColor(us);
 
   const auto from = move.GetFrom(), to = move.GetTo();
@@ -223,11 +221,6 @@ void Board::MakeMove(Move move) {
 
   state_.turn = FlipColor(state_.turn);
   state_.zobrist_key ^= zobrist::turn;
-
-  if (false) {
-    fmt::println("{} {} {}", state_.zobrist_key, predicted, move.ToString());
-    PrintPieces();
-  }
 
   state_.fifty_moves_clock = new_fifty_move_clock;
 
