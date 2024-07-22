@@ -27,8 +27,17 @@ elseif(BUILD_NATIVE)
 endif()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -funroll-loops -flto -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -funroll-loops -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -O2 -DNDEBUG")
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT LTO_SUPPORTED)
+
+if(LTO_SUPPORTED)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
+endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
