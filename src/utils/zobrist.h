@@ -7,7 +7,6 @@
 #include "types.h"
 
 class BoardState;
-class CastleRights;
 
 namespace zobrist {
 
@@ -42,7 +41,7 @@ static EnPassantTable GenerateEnPassantTable() {
 
 const auto en_passant = GenerateEnPassantTable();
 
-U64 GenKey(const BoardState &state);
+U64 GenKey(const BoardState& state);
 
 }  // namespace zobrist
 

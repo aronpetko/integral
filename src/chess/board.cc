@@ -20,10 +20,7 @@ constexpr std::array<U8, 64> kCastlingRights = {
 Board::Board() : history_({}) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
-  // Reset history everytime we parse from fen, since they will be re-applied
-  // when the moves are made
   state_ = fen::StringToBoard(fen_str);
-
   CalculateKingThreats();
 }
 
@@ -294,6 +291,17 @@ U64 Board::PredictKeyAfter(Move move) {
 }
 
 bool Board::HasRepeated(U16 ply) {
+  const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
+
+  bool hit_before_root = false;
+  for (int i = 4; i <= max_dist; i += 2) {
+    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
+      if (ply >= i) return true;
+      if (hit_before_root) return true;
+      hit_before_root = true;
+    }
+  }
+
   return false;
 }
 
