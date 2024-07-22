@@ -7560,7 +7560,7 @@ class GTEST_API_ KilledBySignal {
 //                compile.
 //
 //  The branch that has an always false condition is used to ensure that
-//  statement and regex are compiled (and thus syntactically correct) but
+//  statement and regex are compiled (and thus synnoisyly correct) but
 //  never executed. The unreachable code macro protects the terminator
 //  statement from generating an 'unreachable code' warning in case
 //  statement unconditionally returns or throws. The Message constructor at

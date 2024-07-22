@@ -162,12 +162,30 @@ bool IsSquareAttacked(Square square, Color attacker, const BoardState &state) {
          IsSquareAttackedSlidingPieces(square, attacker, state);
 }
 
-BitBoard PawnPushes(BitBoard pawns, Color side) {
-  if (side == Color::kWhite) {
-    return Shift<Direction::kNorth>(pawns);
+BitBoard PawnPushMoves(Square square, const BoardState &state) {
+  BitBoard moves, bb_pos = BitBoard::FromSquare(square),
+                  occupied = state.Occupied();
+
+  const auto color = state.GetPieceColor(square);
+  if (color == Color::kWhite) {
+    BitBoard up = Shift<Direction::kNorth>(bb_pos) & ~occupied;
+    moves |= up;
+
+    if (up && (bb_pos & kRankMasks[kRank2])) {
+      BitBoard up_up = Shift<Direction::kNorth>(up) & ~occupied;
+      moves |= up_up;
+    }
   } else {
-    return Shift<Direction::kSouth>(pawns);
+    BitBoard down = Shift<Direction::kSouth>(bb_pos) & ~occupied;
+    moves |= down;
+
+    if (down && (bb_pos & kRankMasks[kRank7])) {
+      BitBoard down_down = Shift<Direction::kSouth>(down) & ~occupied;
+      moves |= down_down;
+    }
   }
+
+  return moves;
 }
 
 BitBoard PawnAttacks(BitBoard pawns, Color side) {
@@ -203,46 +221,6 @@ BitBoard AllRightPawnAttacks(Color side, const BoardState &state) {
     moves |= Shift<Direction::kNorthEast>(pawns);
   } else {
     moves |= Shift<Direction::kSouthWest>(pawns);
-  }
-
-  return moves;
-}
-
-BitBoard PawnMoves(Square square, const BoardState &state) {
-  BitBoard moves, bb_pos = BitBoard::FromSquare(square),
-                  occupied = state.Occupied();
-
-  const auto color = state.GetPieceColor(square);
-  if (color == Color::kWhite) {
-    BitBoard up = Shift<Direction::kNorth>(bb_pos) & ~occupied;
-    moves |= up;
-
-    if (up && (bb_pos & kRankMasks[kRank2])) {
-      BitBoard up_up = Shift<Direction::kNorth>(up) & ~occupied;
-      moves |= up_up;
-    }
-  } else {
-    BitBoard down = Shift<Direction::kSouth>(bb_pos) & ~occupied;
-    moves |= down;
-
-    if (down && (bb_pos & kRankMasks[kRank7])) {
-      BitBoard down_down = Shift<Direction::kSouth>(down) & ~occupied;
-      moves |= down_down;
-    }
-  }
-
-  return moves;
-}
-
-BitBoard PawnPushes(Color side, const BoardState &state) {
-  BitBoard moves, pawns = state.Pawns(side), occupied = state.Occupied();
-
-  if (side == Color::kWhite) {
-    BitBoard up = Shift<Direction::kNorth>(pawns) & ~occupied;
-    moves |= up;
-  } else {
-    BitBoard down = Shift<Direction::kSouth>(pawns) & ~occupied;
-    moves |= down;
   }
 
   return moves;
@@ -285,27 +263,26 @@ BitBoard KingAttacks(Square square) {
 BitBoard CastlingMoves(Color side, const BoardState &state) {
   BitBoard moves, occupied = state.Occupied();
 
+  constexpr BitBoard kWhiteKingsideOccupancy = 0x60;
+  constexpr BitBoard kWhiteQueensideOccupancy = 0xe;
+  constexpr BitBoard kBlackKingsideOccupancy = 0x6000000000000000;
+  constexpr BitBoard kBlackQueensideOccupancy = 0xe00000000000000;
+
   if (side == Color::kWhite) {
     if (state.castle_rights.CanKingsideCastle(Color::kWhite)) {
-      if (!occupied.IsSet(Squares::kF1) && !occupied.IsSet(Squares::kG1))
-        moves.SetBit(Squares::kG1);
+      if (!(occupied & kWhiteKingsideOccupancy)) moves.SetBit(Squares::kG1);
     }
 
     if (state.castle_rights.CanQueensideCastle(Color::kWhite)) {
-      if (!occupied.IsSet(Squares::kD1) && !occupied.IsSet(Squares::kC1) &&
-          !occupied.IsSet(Squares::kB1))
-        moves.SetBit(Squares::kC1);
+      if (!(occupied & kWhiteQueensideOccupancy)) moves.SetBit(Squares::kC1);
     }
   } else {
     if (state.castle_rights.CanKingsideCastle(Color::kBlack)) {
-      if (!occupied.IsSet(Squares::kF8) && !occupied.IsSet(Squares::kG8))
-        moves.SetBit(Squares::kG8);
+      if (!(occupied & kBlackKingsideOccupancy)) moves.SetBit(Squares::kG8);
     }
 
     if (state.castle_rights.CanQueensideCastle(Color::kBlack)) {
-      if (!occupied.IsSet(Squares::kD8) && !occupied.IsSet(Squares::kC8) &&
-          !occupied.IsSet(Squares::kB8))
-        moves.SetBit(Squares::kC8);
+      if (!(occupied & kBlackQueensideOccupancy)) moves.SetBit(Squares::kC8);
     }
   }
 
@@ -397,169 +374,228 @@ BitBoard RayIntersecting(Square first, Square second) {
   return kRayIntersectingMasks[first][second];
 }
 
-MoveList GenerateMoves(MoveType move_type, Board &board) {
-  MoveList move_list;
+template <Color side>
+BitBoard PawnPushes(BitBoard pawns) {
+  if constexpr (side == Color::kWhite) {
+    return Shift<Direction::kNorth>(pawns);
+  } else {
+    return Shift<Direction::kSouth>(pawns);
+  }
+}
 
+void AddPromotions(Square from, Square to, MoveList &move_list) {
+  move_list.Push(Move(from, to, PromotionType::kQueen));
+  move_list.Push(Move(from, to, PromotionType::kKnight));
+  move_list.Push(Move(from, to, PromotionType::kRook));
+  move_list.Push(Move(from, to, PromotionType::kBishop));
+}
+
+void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
+  auto &state = board.GetState();
+
+  const BitBoard occupied = state.Occupied();
+  const BitBoard their_pieces = state.Occupied(FlipColor(state.turn));
+
+  BitBoard quiet_targets = 0;
+  BitBoard capture_targets = 0;
+  if (move_type & MoveGenType::kQuiet) quiet_targets = ~occupied;
+  if (move_type & MoveGenType::kCaptures) capture_targets = their_pieces;
+
+  const BitBoard en_passant = state.en_passant != Squares::kNoSquare
+                                ? BitBoard::FromSquare(state.en_passant)
+                                : 0;
+
+  const BitBoard pawns = state.Pawns(state.turn);
+
+  if (state.turn == Color::kWhite) {
+    const BitBoard promoting_pawns = pawns & kRankMasks[kRank7];
+    const BitBoard non_promoting_pawns = ~promoting_pawns & pawns;
+
+    if (move_type & MoveGenType::kQuiet) {
+      // Single pushes
+      const BitBoard pushed_pawns =
+          Shift<Direction::kNorth>(non_promoting_pawns) & quiet_targets;
+      for (Square to : pushed_pawns) {
+        const Square from = to - 8;
+        move_list.Push(Move(from, to));
+      }
+      // Double pushes
+      for (Square to :
+           Shift<Direction::kNorth>(pushed_pawns & kRankMasks[kRank3]) &
+               quiet_targets) {
+        const Square from = to - 16;
+        move_list.Push(Move(from, to));
+      }
+      // Push promotions
+      for (Square to :
+           Shift<Direction::kNorth>(promoting_pawns) & quiet_targets) {
+        const Square from = to - 8;
+        AddPromotions(from, to, move_list);
+      }
+    }
+
+    if (move_type & MoveGenType::kCaptures) {
+      // Left captures
+      for (Square to : Shift<Direction::kNorthWest>(non_promoting_pawns) &
+                           capture_targets) {
+        const Square from = to - 7;
+        move_list.Push(Move(from, to));
+      }
+      // Left capture promotions
+      for (Square to :
+           Shift<Direction::kNorthWest>(promoting_pawns) & capture_targets) {
+        const Square from = to - 7;
+        AddPromotions(from, to, move_list);
+      }
+      // Right captures
+      for (Square to : Shift<Direction::kNorthEast>(non_promoting_pawns) &
+                           capture_targets) {
+        const Square from = to - 9;
+        move_list.Push(Move(from, to));
+      }
+      // Right capture promotions
+      for (Square to :
+           Shift<Direction::kNorthEast>(promoting_pawns) & capture_targets) {
+        const Square from = to - 9;
+        AddPromotions(from, to, move_list);
+      }
+      // En passant captures
+      if (en_passant) {
+        // Left en passant
+        for (Square to : Shift<Direction::kNorthWest>(pawns) & en_passant) {
+          const Square from = to - 7;
+          move_list.Push(Move(from, to, MoveType::kEnPassant));
+        }
+        // Right en passant
+        for (Square to : Shift<Direction::kNorthEast>(pawns) & en_passant) {
+          const Square from = to - 9;
+          move_list.Push(Move(from, to, MoveType::kEnPassant));
+        }
+      }
+    }
+  } else {
+    const BitBoard promoting_pawns = pawns & kRankMasks[kRank2];
+    const BitBoard non_promoting_pawns = ~promoting_pawns & pawns;
+
+    if (move_type & MoveGenType::kQuiet) {
+      // Single pushes
+      const BitBoard pushed_pawns =
+          Shift<Direction::kSouth>(non_promoting_pawns) & quiet_targets;
+      for (Square to : pushed_pawns) {
+        const Square from = to + 8;
+        move_list.Push(Move(from, to));
+      }
+      // Double pushes
+      for (Square to :
+           Shift<Direction::kSouth>(pushed_pawns & kRankMasks[kRank6]) &
+               quiet_targets) {
+        const Square from = to + 16;
+        move_list.Push(Move(from, to));
+      }
+      // Push promotions
+      for (Square to :
+           Shift<Direction::kSouth>(promoting_pawns) & quiet_targets) {
+        const Square from = to + 8;
+        AddPromotions(from, to, move_list);
+      }
+    }
+
+    if (move_type & MoveGenType::kCaptures) {
+      // Left captures
+      for (Square to : Shift<Direction::kSouthEast>(non_promoting_pawns) &
+                           capture_targets) {
+        const Square from = to + 7;
+        move_list.Push(Move(from, to));
+      }
+      // Left capture promotions
+      for (Square to :
+           Shift<Direction::kSouthEast>(promoting_pawns) & capture_targets) {
+        const Square from = to + 7;
+        AddPromotions(from, to, move_list);
+      }
+      // Right captures
+      for (Square to : Shift<Direction::kSouthWest>(non_promoting_pawns) &
+                           capture_targets) {
+        const Square from = to + 9;
+        move_list.Push(Move(from, to));
+      }
+      // Right capture promotions
+      for (Square to :
+           Shift<Direction::kSouthWest>(promoting_pawns) & capture_targets) {
+        const Square from = to + 9;
+        AddPromotions(from, to, move_list);
+      }
+      // En passant captures
+      if (en_passant) {
+        // Left en passant
+        for (Square to : Shift<Direction::kSouthWest>(pawns) & en_passant) {
+          const Square from = to + 9;
+          move_list.Push(Move(from, to, MoveType::kEnPassant));
+        }
+        // Right en passant
+        for (Square to : Shift<Direction::kSouthEast>(pawns) & en_passant) {
+          const Square from = to + 7;
+          move_list.Push(Move(from, to, MoveType::kEnPassant));
+        }
+      }
+    }
+  }
+}
+
+MoveList GenerateMoves(MoveGenType move_type, Board &board) {
+  MoveList move_list;
   auto &state = board.GetState();
 
   const BitBoard occupied = state.Occupied();
   const BitBoard &their_pieces = state.Occupied(FlipColor(state.turn));
 
   BitBoard targets = 0;
-  if (move_type & MoveType::kQuiet) targets |= ~occupied;
-  if (move_type & MoveType::kCaptures) targets |= their_pieces;
+  if (move_type & MoveGenType::kQuiet) targets |= ~occupied;
+  if (move_type & MoveGenType::kCaptures) targets |= their_pieces;
 
-  if (state.checkers) {
+  if (state.checkers.MoreThanOne()) {
     // Only king moves are legal if there's multiple pieces checking the king
-    if (state.checkers.MoreThanOne()) {
-      const auto king_square = state.King(state.turn).GetLsb();
-
-      auto possible_moves = KingMoves(king_square, state) & targets;
-      while (possible_moves) {
-        const Square to = possible_moves.PopLsb();
-        move_list.Push(Move(king_square, to));
-      }
-
-      return move_list;
+    const Square king_square = state.King(state.turn).GetLsb();
+    for (Square to : KingMoves(king_square, state) & targets) {
+      const bool is_castle = std::abs(to.File() - king_square.File()) == 2;
+      move_list.Push(Move(
+          king_square, to, is_castle ? MoveType::kCastle : MoveType::kNormal));
     }
+    return move_list;
   }
 
-  const BitBoard en_passant_mask =
-      state.en_passant.has_value()
-          ? BitBoard::FromSquare(state.en_passant.value())
-          : 0;
+  AddPawnMoves(board, move_type, move_list);
 
-  BitBoard pawn_targets = targets;
-  if (move_type & MoveType::kTactical) {  // Promotions are tactical
-    pawn_targets |= kRankMasks[kRank1] | kRankMasks[kRank8];
-  } else {
-    pawn_targets &= ~(kRankMasks[kRank1] | kRankMasks[kRank8]);
-  }
-
-  const int pushed_pawn_distance = state.turn == Color::kWhite ? 8 : -8;
-
-  BitBoard single_pawn_moves = PawnPushes(state.turn, state) & pawn_targets;
-  BitBoard single_pawn_moves_copy = single_pawn_moves;
-
-  while (single_pawn_moves_copy) {
-    const Square to = single_pawn_moves_copy.PopLsb(), to_rank = to.Rank();
-    const Square from = to - pushed_pawn_distance;
-
-    if (to_rank == kNumRanks - 1 || to_rank == 0) {
-      move_list.Push(Move(from, to, PromotionType::kQueen));
-      move_list.Push(Move(from, to, PromotionType::kRook));
-      move_list.Push(Move(from, to, PromotionType::kKnight));
-      move_list.Push(Move(from, to, PromotionType::kBishop));
-      continue;
-    } else {
+  // Other piece moves
+  for (Square from : state.Knights(state.turn) & ~state.pinned) {
+    for (Square to : KnightMoves(from) & targets) {
       move_list.Push(Move(from, to));
     }
   }
 
-  BitBoard double_pawn_moves =
-      state.turn == Color::kWhite
-          ? Shift<Direction::kNorth>(single_pawn_moves & kRankMasks[kRank3])
-          : Shift<Direction::kSouth>(single_pawn_moves & kRankMasks[kRank6]);
-  double_pawn_moves &= targets & ~occupied;
-
-  while (double_pawn_moves) {
-    const Square to = double_pawn_moves.PopLsb();
-    const Square from = to - pushed_pawn_distance * 2;
-    move_list.Push(Move(from, to));
-  }
-
-  if (move_type & MoveType::kCaptures) {
-    const BitBoard pawn_capture_targets = their_pieces | en_passant_mask;
-
-    const int left_pawn_capture_dist = state.turn == Color::kWhite ? 7 : -7;
-    const int right_pawn_capture_dist = state.turn == Color::kWhite ? 9 : -9;
-
-    BitBoard left_pawn_captures =
-        AllLeftPawnAttacks(state.turn, state) & pawn_capture_targets;
-    while (left_pawn_captures) {
-      const Square to = left_pawn_captures.PopLsb(), to_rank = to.Rank();
-      const Square from = to - left_pawn_capture_dist;
-
-      if (to_rank == kNumRanks - 1 || to_rank == 0) {
-        move_list.Push(Move(from, to, PromotionType::kQueen));
-        move_list.Push(Move(from, to, PromotionType::kRook));
-        move_list.Push(Move(from, to, PromotionType::kKnight));
-        move_list.Push(Move(from, to, PromotionType::kBishop));
-        continue;
-      } else {
-        move_list.Push(Move(from, to));
-      }
-    }
-
-    BitBoard right_pawn_captures =
-        AllRightPawnAttacks(state.turn, state) & pawn_capture_targets;
-    while (right_pawn_captures) {
-      const Square to = right_pawn_captures.PopLsb(), to_rank = to.Rank();
-      const Square from = to - right_pawn_capture_dist;
-
-      if (to_rank == kNumRanks - 1 || to_rank == 0) {
-        move_list.Push(Move(from, to, PromotionType::kQueen));
-        move_list.Push(Move(from, to, PromotionType::kRook));
-        move_list.Push(Move(from, to, PromotionType::kKnight));
-        move_list.Push(Move(from, to, PromotionType::kBishop));
-        continue;
-      } else {
-        move_list.Push(Move(from, to));
-      }
-    }
-  }
-
-  BitBoard knights = state.Knights(state.turn) & ~state.pinned;
-  while (knights) {
-    const auto from = knights.PopLsb();
-
-    auto possible_moves = KnightMoves(from) & targets;
-    while (possible_moves) {
-      const Square to = possible_moves.PopLsb();
+  for (Square from : state.Bishops(state.turn)) {
+    for (Square to : BishopMoves(from, occupied) & targets) {
       move_list.Push(Move(from, to));
     }
   }
 
-  BitBoard bishops = state.Bishops(state.turn);
-  while (bishops) {
-    const auto from = bishops.PopLsb();
-
-    auto possible_moves = BishopMoves(from, occupied) & targets;
-    while (possible_moves) {
-      const Square to = possible_moves.PopLsb();
+  for (Square from : state.Rooks(state.turn)) {
+    for (Square to : RookMoves(from, occupied) & targets) {
       move_list.Push(Move(from, to));
     }
   }
 
-  BitBoard rooks = state.Rooks(state.turn);
-  while (rooks) {
-    const auto from = rooks.PopLsb();
-
-    auto possible_moves = RookMoves(from, occupied) & targets;
-    while (possible_moves) {
-      const Square to = possible_moves.PopLsb();
+  for (Square from : state.Queens(state.turn)) {
+    for (Square to : QueenMoves(from, occupied) & targets) {
       move_list.Push(Move(from, to));
     }
   }
 
-  BitBoard queens = state.Queens(state.turn);
-  while (queens) {
-    const auto from = queens.PopLsb();
-
-    auto possible_moves = QueenMoves(from, occupied) & targets;
-    while (possible_moves) {
-      const Square to = possible_moves.PopLsb();
-      move_list.Push(Move(from, to));
-    }
-  }
-
-  BitBoard king = state.King(state.turn);
-  const auto king_square = king.GetLsb();
-
-  auto possible_moves = KingMoves(king_square, state) & targets;
-  while (possible_moves) {
-    const Square to = possible_moves.PopLsb();
-    move_list.Push(Move(king_square, to));
+  const Square king_square = state.King(state.turn).GetLsb();
+  for (Square to : KingMoves(king_square, state) & targets) {
+    const bool is_castle = std::abs(to.File() - king_square.File()) == 2;
+    move_list.Push(Move(
+        king_square, to, is_castle ? MoveType::kCastle : MoveType::kNormal));
   }
 
   return move_list;

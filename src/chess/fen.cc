@@ -48,6 +48,10 @@ BoardState StringToBoard(std::string_view fen_str) {
   stream >> turn;
   state.turn = (turn == 'w' ? Color::kWhite : Color::kBlack);
 
+  if (state.turn == Color::kBlack) {
+    state.zobrist_key ^= zobrist::turn;
+  }
+
   std::string castle_rights;
   stream >> castle_rights;
   for (const char &ch : castle_rights) {
@@ -61,16 +65,22 @@ BoardState StringToBoard(std::string_view fen_str) {
       state.castle_rights.SetCanQueensideCastle(Color::kBlack, true);
   }
 
+  state.zobrist_key ^= zobrist::castle_rights[state.castle_rights.AsU8()];
+
   std::string en_passant;
   stream >> en_passant;
 
   if (en_passant != "-") {
     state.en_passant =
         Square(Square::FromRankFile(en_passant[1] - '1', en_passant[0] - 'a'));
+    state.zobrist_key ^= zobrist::en_passant[state.en_passant.File()];
   }
 
   stream >> state.fifty_moves_clock;
 
+  if (state.zobrist_key != zobrist::GenKey(state)) {
+    fmt::println("{} | {}", state.zobrist_key, zobrist::GenKey(state));
+  }
   return state;
 }
 

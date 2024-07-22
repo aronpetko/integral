@@ -57,7 +57,7 @@ class List {
 
  private:
   std::array<T, length> container_;
-  int count_ = 0;
+  std::uint8_t count_ = 0;
 };
 
 #endif  // INTEGRAL_LIST_H

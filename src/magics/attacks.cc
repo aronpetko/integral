@@ -1,9 +1,10 @@
 #include "attacks.h"
+
 #include "precomputed.h"
 
 namespace magics::attacks {
 
-template<Direction Dir>
+template <Direction Dir>
 constexpr int DistanceToEdge(Square square) {
   if constexpr (Dir == Direction::kEast) {
     return 7 - square.File();
@@ -22,15 +23,16 @@ constexpr int DistanceToEdge(Square square) {
   } else if constexpr (Dir == Direction::kSouthWest) {
     return std::min(square.Rank(), square.File());
   } else {
-    return 0; // This line will never be reached, it's just to satisfy the compiler
+    return 0;  // This line will never be reached, it's just to satisfy the
+               // compiler
   }
 }
 
 // Helper type trait for the static_assert
-template<Direction>
+template <Direction>
 bool always_false = false;
 
-template<Direction dir>
+template <Direction dir>
 constexpr BitBoard SlidingAttacks(U8 from, const BitBoard &occupied) {
   BitBoard attacks;
   BitBoard current = BitBoard::FromSquare(from);
@@ -39,14 +41,13 @@ constexpr BitBoard SlidingAttacks(U8 from, const BitBoard &occupied) {
     current = Shift<dir>(current);
     attacks |= current;
 
-    if (occupied & current)
-      break;
+    if (occupied & current) break;
   }
 
   return attacks;
 }
 
-template<Direction dir>
+template <Direction dir>
 constexpr BitBoard SlidingOccupancies(U8 from) {
   BitBoard attacks;
   BitBoard current = BitBoard::FromSquare(from);
@@ -93,23 +94,31 @@ std::vector<BitBoard> CreateBlockers(BitBoard moves) {
 }
 
 BitBoard GenerateBishopMask(Square square) {
-  return SlidingOccupancies<Direction::kNorthWest>(square) | SlidingOccupancies<Direction::kNorthEast>(square)
-      | SlidingOccupancies<Direction::kSouthWest>(square) | SlidingOccupancies<Direction::kSouthEast>(square);
+  return SlidingOccupancies<Direction::kNorthWest>(square) |
+         SlidingOccupancies<Direction::kNorthEast>(square) |
+         SlidingOccupancies<Direction::kSouthWest>(square) |
+         SlidingOccupancies<Direction::kSouthEast>(square);
 }
 
 BitBoard GenerateRookMask(Square square) {
-  return SlidingOccupancies<Direction::kNorth>(square) | SlidingOccupancies<Direction::kEast>(square)
-      | SlidingOccupancies<Direction::kSouth>(square) | SlidingOccupancies<Direction::kWest>(square);
+  return SlidingOccupancies<Direction::kNorth>(square) |
+         SlidingOccupancies<Direction::kEast>(square) |
+         SlidingOccupancies<Direction::kSouth>(square) |
+         SlidingOccupancies<Direction::kWest>(square);
 }
 
 BitBoard GenerateBishopMoves(Square square, const BitBoard &occupied) {
-  return SlidingAttacks<Direction::kNorthWest>(square, occupied) | SlidingAttacks<Direction::kNorthEast>(square, occupied)
-      | SlidingAttacks<Direction::kSouthWest>(square, occupied) | SlidingAttacks<Direction::kSouthEast>(square, occupied);
+  return SlidingAttacks<Direction::kNorthWest>(square, occupied) |
+         SlidingAttacks<Direction::kNorthEast>(square, occupied) |
+         SlidingAttacks<Direction::kSouthWest>(square, occupied) |
+         SlidingAttacks<Direction::kSouthEast>(square, occupied);
 }
 
 BitBoard GenerateRookMoves(Square square, const BitBoard &occupied) {
-  return SlidingAttacks<Direction::kNorth>(square, occupied) | SlidingAttacks<Direction::kEast>(square, occupied)
-      | SlidingAttacks<Direction::kSouth>(square, occupied) | SlidingAttacks<Direction::kWest>(square, occupied);
+  return SlidingAttacks<Direction::kNorth>(square, occupied) |
+         SlidingAttacks<Direction::kEast>(square, occupied) |
+         SlidingAttacks<Direction::kSouth>(square, occupied) |
+         SlidingAttacks<Direction::kWest>(square, occupied);
 }
 
 BishopAttacksTable GenerateBishopAttacks() {
@@ -123,8 +132,10 @@ BishopAttacksTable GenerateBishopAttacks() {
     std::array<BitBoard, kBishopBlockerCombinations> square_bishop_attacks{};
 
     for (const auto &occupied : blockers) {
-      const U64 magic_index = ((entry.mask & occupied.AsU64()) * entry.magic) >> entry.shift;
-      square_bishop_attacks[magic_index] = attacks::GenerateBishopMoves(Square(square), occupied);
+      const U64 magic_index =
+          ((entry.mask & occupied.AsU64()) * entry.magic) >> entry.shift;
+      square_bishop_attacks[magic_index] =
+          attacks::GenerateBishopMoves(Square(square), occupied);
     }
 
     bishop_attacks[square] = square_bishop_attacks;
@@ -144,8 +155,10 @@ RookAttacksTable GenerateRookAttacks() {
     std::array<BitBoard, kRookBlockerCombinations> square_rook_attacks{};
 
     for (const auto &occupied : blockers) {
-      const U64 magic_index = ((entry.mask & occupied.AsU64()) * entry.magic) >> entry.shift;
-      square_rook_attacks[magic_index] = attacks::GenerateRookMoves(Square(square), occupied);
+      const U64 magic_index =
+          ((entry.mask & occupied.AsU64()) * entry.magic) >> entry.shift;
+      square_rook_attacks[magic_index] =
+          attacks::GenerateRookMoves(Square(square), occupied);
     }
 
     rook_attacks[square] = square_rook_attacks;
@@ -157,4 +170,4 @@ RookAttacksTable GenerateRookAttacks() {
 BishopAttacksTable kBishopAttacks = GenerateBishopAttacks();
 RookAttacksTable kRookAttacks = GenerateRookAttacks();
 
-} // namespace magic::attacks
+}  // namespace magics::attacks

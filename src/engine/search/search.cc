@@ -204,9 +204,9 @@ Score Search::QuiescentSearch(Score alpha,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board_, tt_move, history_, stack);
   while (const auto move = move_picker.Next()) {
-    // Stop searching since all the good tactical moves have been searched,
+    // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodTacticals &&
+    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
         moves_seen > 0) {
       break;
     }
@@ -409,8 +409,6 @@ Score Search::PVSearch(int depth,
         stack->move = Move::NullMove();
         stack->continuation_entry = nullptr;
 
-        // Ensure the reduction doesn't give us a depth below 0
-
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / null_move_re);
         const int reduction = std::clamp<int>(
@@ -461,7 +459,7 @@ Score Search::PVSearch(int depth,
     // Prefetch the TT entry for the next move as early as possible
     transposition_table.Prefetch(board_.PredictKeyAfter(move));
 
-    const bool is_quiet = !move.IsTactical(state);
+    const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
     // Pruning guards
@@ -687,7 +685,7 @@ Score Search::PVSearch(int depth,
         state.zobrist_key, depth, tt_flag, best_score, best_move);
     transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
-    if (!state.InCheck() && (!best_move || !best_move.IsTactical(state))) {
+    if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
       history_.correction_history->UpdateScore(
           stack, best_score, tt_flag, depth);
     }

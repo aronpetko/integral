@@ -15,7 +15,7 @@ class HashTable {
   void Resize(std::size_t mb_size) {
     assert(mb_size > 0);
 
-    const std::size_t kBytesInMegabyte = 1024 * 1024;
+    constexpr std::size_t kBytesInMegabyte = 1024 * 1024;
     mb_size *= kBytesInMegabyte;
 
     table_.resize(mb_size / sizeof(T));

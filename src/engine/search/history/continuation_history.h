@@ -7,7 +7,8 @@
 
 namespace history {
 
-using ContinuationEntry = MultiArray<I32, kNumColors, kNumPieceTypes, kSquareCount>;
+using ContinuationEntry =
+    MultiArray<I32, kNumColors, kNumPieceTypes, kSquareCount>;
 
 class ContinuationHistory {
  public:
@@ -67,7 +68,8 @@ class ContinuationHistory {
 
  private:
   const BoardState &state_;
-  MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount> table_;
+  MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount>
+      table_;
 };
 
 }  // namespace history
