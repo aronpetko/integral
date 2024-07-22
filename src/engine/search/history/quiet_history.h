@@ -43,7 +43,7 @@ class QuietHistory {
 
  private:
   [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
-    return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());
+    return threats.IsSet(move.GetFrom());
   }
 
  private:
