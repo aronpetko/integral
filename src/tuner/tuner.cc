@@ -128,6 +128,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
   AddArrayParameter(kQueenMobility);
+  AddArrayParameter(kKingVirtualMobility);
   AddArrayParameter(kPassedPawnBonus);
   AddArrayParameter(kPawnPhalanxBonus);
   AddArrayParameter(kDefendedPawnBonus);
@@ -170,6 +171,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
+  GET_ARRAY_COEFFICIENTS(kKingVirtualMobility);
   GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
   GET_ARRAY_COEFFICIENTS(kDefendedPawnBonus);
@@ -389,6 +391,9 @@ void Tuner::PrintParameters() {
 
   fmt::print("constexpr QueenMobilityTable<ScorePair> kQueenMobility = ");
   PrintArray(index, kQueenMobility.size(), parameters_);
+
+  fmt::print("constexpr QueenMobilityTable<ScorePair> kKingVirtualMobility = ");
+  PrintArray(index, kKingVirtualMobility.size(), parameters_);
 
   fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
   PrintArray(index, kNumRanks, parameters_);

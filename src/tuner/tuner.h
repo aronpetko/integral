@@ -49,6 +49,7 @@ struct EvalTrace {
   eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
   eval::RookMobilityTable<TraceTerm> kRookMobility{};
   eval::QueenMobilityTable<TraceTerm> kQueenMobility{};
+  eval::QueenMobilityTable<TraceTerm> kKingVirtualMobility{};
   eval::RankTable<TraceTerm> kPassedPawnBonus{};
   eval::RankTable<TraceTerm> kPawnPhalanxBonus{};
   eval::RankTable<TraceTerm> kDefendedPawnBonus{};

@@ -344,7 +344,8 @@ ScorePair Evaluation::EvaluateBishops() {
   ScorePair score;
 
   const BitBoard our_bishops = state_.Bishops(us);
-  const BitBoard occupied = state_.Occupied() ^ state_.Queens(us) ^ state_.Bishops(us);
+  const BitBoard occupied =
+      state_.Occupied() ^ state_.Queens(us) ^ state_.Bishops(us);
 
   if (our_bishops.MoreThanOne()) {
     score += kBishopPairBonus;
@@ -389,7 +390,8 @@ ScorePair Evaluation::EvaluateRooks() {
   const BitBoard our_rooks = state_.Rooks(us);
   const BitBoard our_pawns = state_.Pawns(us);
   const BitBoard their_pawns = state_.Pawns(FlipColor(us));
-  const BitBoard occupied = state_.Occupied() ^ state_.Queens(us) ^ state_.Rooks(us);
+  const BitBoard occupied =
+      state_.Occupied() ^ state_.Queens(us) ^ state_.Rooks(us);
 
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[kRook], us);
@@ -428,7 +430,8 @@ ScorePair Evaluation::EvaluateQueens() {
   ScorePair score;
 
   const BitBoard our_queens = state_.Queens(us);
-  const BitBoard occupied = state_.Occupied() ^ state_.Bishops(us) ^ state_.Rooks(us);
+  const BitBoard occupied =
+      state_.Occupied() ^ state_.Bishops(us) ^ state_.Rooks(us);
 
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
@@ -519,6 +522,13 @@ ScorePair Evaluation::EvaluateKing() {
 
   // King danger
   score -= attack_power_[them];
+
+  const BitBoard virtual_mobility = move_gen::QueenMoves(square, state_.Occupied(us) | state_.Pawns());
+  const BitBoard safe_rank = kRankMasks[us == Color::kWhite ? kRank1 : kRank8];
+  const int dangerous_squares = (virtual_mobility & ~safe_rank).PopCount();
+
+  score += kKingVirtualMobility[dangerous_squares];
+  TRACE_INCREMENT(kKingVirtualMobility[dangerous_squares], us);
 
   return score;
 }
