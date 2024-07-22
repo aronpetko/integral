@@ -523,7 +523,7 @@ ScorePair Evaluation::EvaluateKing() {
   // King danger
   score -= attack_power_[them];
 
-  const BitBoard virtual_mobility = move_gen::QueenMoves(square, pawn_attacks_[them]);
+  const BitBoard virtual_mobility = move_gen::QueenMoves(square, state_.Occupied(us) | state_.Pawns());
   score += kKingVirtualMobility[virtual_mobility.PopCount()];
   TRACE_INCREMENT(kKingVirtualMobility[virtual_mobility.PopCount()], us);
 
