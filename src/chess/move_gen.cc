@@ -396,11 +396,10 @@ void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
   const BitBoard occupied = state.Occupied();
   const BitBoard their_pieces = state.Occupied(FlipColor(state.turn));
 
-  BitBoard quiet_targets = 0;
-  BitBoard capture_targets = 0;
-  if (move_type & MoveGenType::kQuiet) quiet_targets = ~occupied;
-  if (move_type == MoveGenType::kNoisy) quiet_targets &= kRankMasks[kRank8] | kRankMasks[kRank1];
-  if (move_type & MoveGenType::kCaptures) capture_targets = their_pieces;
+  BitBoard targets = 0;
+  if (move_type & MoveGenType::kQuiet) targets = ~occupied;
+  if (move_type & MoveGenType::kNoisy)
+    targets |= kRankMasks[kRank8] | kRankMasks[kRank1];
 
   const BitBoard en_passant = state.en_passant != Squares::kNoSquare
                                 ? BitBoard::FromSquare(state.en_passant)
@@ -415,7 +414,7 @@ void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
     if (move_type & MoveGenType::kQuiet) {
       // Single pushes
       const BitBoard pushed_pawns =
-          Shift<Direction::kNorth>(non_promoting_pawns) & quiet_targets;
+          Shift<Direction::kNorth>(non_promoting_pawns) & ~occupied;
       for (Square to : pushed_pawns) {
         const Square from = to - 8;
         move_list.Push(Move(from, to));
@@ -423,42 +422,41 @@ void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
       // Double pushes
       for (Square to :
            Shift<Direction::kNorth>(pushed_pawns & kRankMasks[kRank3]) &
-               quiet_targets) {
+               ~occupied) {
         const Square from = to - 16;
         move_list.Push(Move(from, to));
       }
     }
 
-    if (move_type & MoveGenType::kCaptures) {
+    if (move_type & MoveGenType::kNoisy) {
       // Push promotions
-      for (Square to :
-           Shift<Direction::kNorth>(promoting_pawns) & quiet_targets) {
+      for (Square to : Shift<Direction::kNorth>(promoting_pawns) & ~occupied) {
         const Square from = to - 8;
         AddPromotions(from, to, move_list);
       }
-      // Left captures
-      for (Square to : Shift<Direction::kNorthWest>(non_promoting_pawns) &
-                           capture_targets) {
-        const Square from = to - 7;
-        move_list.Push(Move(from, to));
-      }
       // Left capture promotions
       for (Square to :
-           Shift<Direction::kNorthWest>(promoting_pawns) & capture_targets) {
+           Shift<Direction::kNorthWest>(promoting_pawns) & their_pieces) {
         const Square from = to - 7;
         AddPromotions(from, to, move_list);
-      }
-      // Right captures
-      for (Square to : Shift<Direction::kNorthEast>(non_promoting_pawns) &
-                           capture_targets) {
-        const Square from = to - 9;
-        move_list.Push(Move(from, to));
       }
       // Right capture promotions
       for (Square to :
-           Shift<Direction::kNorthEast>(promoting_pawns) & capture_targets) {
+           Shift<Direction::kNorthEast>(promoting_pawns) & their_pieces) {
         const Square from = to - 9;
         AddPromotions(from, to, move_list);
+      }
+      // Left captures
+      for (Square to :
+           Shift<Direction::kNorthWest>(non_promoting_pawns) & their_pieces) {
+        const Square from = to - 7;
+        move_list.Push(Move(from, to));
+      }
+      // Right captures
+      for (Square to :
+           Shift<Direction::kNorthEast>(non_promoting_pawns) & their_pieces) {
+        const Square from = to - 9;
+        move_list.Push(Move(from, to));
       }
       // En passant captures
       if (en_passant) {
@@ -481,7 +479,7 @@ void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
     if (move_type & MoveGenType::kQuiet) {
       // Single pushes
       const BitBoard pushed_pawns =
-          Shift<Direction::kSouth>(non_promoting_pawns) & quiet_targets;
+          Shift<Direction::kSouth>(non_promoting_pawns) & ~occupied;
       for (Square to : pushed_pawns) {
         const Square from = to + 8;
         move_list.Push(Move(from, to));
@@ -489,42 +487,41 @@ void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
       // Double pushes
       for (Square to :
            Shift<Direction::kSouth>(pushed_pawns & kRankMasks[kRank6]) &
-               quiet_targets) {
+               ~occupied) {
         const Square from = to + 16;
         move_list.Push(Move(from, to));
       }
     }
 
-    if (move_type & MoveGenType::kCaptures) {
+    if (move_type & MoveGenType::kNoisy) {
       // Push promotions
-      for (Square to :
-           Shift<Direction::kSouth>(promoting_pawns) & quiet_targets) {
+      for (Square to : Shift<Direction::kSouth>(promoting_pawns) & ~occupied) {
         const Square from = to + 8;
         AddPromotions(from, to, move_list);
       }
-      // Left captures
-      for (Square to : Shift<Direction::kSouthEast>(non_promoting_pawns) &
-                           capture_targets) {
-        const Square from = to + 7;
-        move_list.Push(Move(from, to));
-      }
       // Left capture promotions
       for (Square to :
-           Shift<Direction::kSouthEast>(promoting_pawns) & capture_targets) {
+           Shift<Direction::kSouthEast>(promoting_pawns) & their_pieces) {
         const Square from = to + 7;
         AddPromotions(from, to, move_list);
-      }
-      // Right captures
-      for (Square to : Shift<Direction::kSouthWest>(non_promoting_pawns) &
-                           capture_targets) {
-        const Square from = to + 9;
-        move_list.Push(Move(from, to));
       }
       // Right capture promotions
       for (Square to :
-           Shift<Direction::kSouthWest>(promoting_pawns) & capture_targets) {
+           Shift<Direction::kSouthWest>(promoting_pawns) & their_pieces) {
         const Square from = to + 9;
         AddPromotions(from, to, move_list);
+      }
+      // Left captures
+      for (Square to :
+           Shift<Direction::kSouthEast>(non_promoting_pawns) & their_pieces) {
+        const Square from = to + 7;
+        move_list.Push(Move(from, to));
+      }
+      // Right captures
+      for (Square to :
+           Shift<Direction::kSouthWest>(non_promoting_pawns) & their_pieces) {
+        const Square from = to + 9;
+        move_list.Push(Move(from, to));
       }
       // En passant captures
       if (en_passant) {
@@ -552,7 +549,7 @@ MoveList GenerateMoves(MoveGenType move_type, Board &board) {
 
   BitBoard targets = 0;
   if (move_type & MoveGenType::kQuiet) targets |= ~occupied;
-  if (move_type & MoveGenType::kCaptures) targets |= their_pieces;
+  if (move_type & MoveGenType::kNoisy) targets |= their_pieces;
 
   if (state.checkers.MoreThanOne()) {
     // Only king moves are legal if there's multiple pieces checking the king

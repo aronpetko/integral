@@ -40,10 +40,9 @@ enum class PromotionType : U8 {
 };
 
 enum MoveGenType : U8 {
-  kCaptures = 0b1,
-  kQuiet = 0b10,
-  kNoisy = 0b100 | kCaptures,
-  kAll = kCaptures | kQuiet | kNoisy,
+  kQuiet = 0b01,
+  kNoisy = 0b10,
+  kAll = kQuiet | kNoisy,
 };
 
 enum Color : U8 {
