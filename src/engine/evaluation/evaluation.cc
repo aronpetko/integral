@@ -523,12 +523,9 @@ ScorePair Evaluation::EvaluateKing() {
   // King danger
   score -= attack_power_[them];
 
-  const BitBoard virtual_mobility = move_gen::QueenMoves(square, state_.Occupied(us) | state_.Pawns());
-  const BitBoard safe_rank = kRankMasks[us == Color::kWhite ? kRank1 : kRank8];
-  const int dangerous_squares = (virtual_mobility & ~safe_rank).PopCount();
-
-  score += kKingVirtualMobility[dangerous_squares];
-  TRACE_INCREMENT(kKingVirtualMobility[dangerous_squares], us);
+  const BitBoard virtual_mobility = move_gen::QueenMoves(square, pawn_attacks_[them]);
+  score += kKingVirtualMobility[virtual_mobility.PopCount()];
+  TRACE_INCREMENT(kKingVirtualMobility[virtual_mobility.PopCount()], us);
 
   return score;
 }
