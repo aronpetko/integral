@@ -38,7 +38,7 @@ class QuietHistory {
 
  private:
   [[nodiscard]] bool IsThreatened(Move move) const {
-    return state_.threats.IsSet(move.GetFrom());
+    return state_.threats.IsSet(move.GetTo());
   }
 
  private:
