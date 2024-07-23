@@ -7,7 +7,6 @@
 
 namespace history {
 
-inline Tunable corr_history_size("corr_history_size", 15221, 8192, 32768, 1024);
 inline Tunable corr_history_divisor(
     "corr_history_divisor", 14457, 8192, 32768, 1024);
 inline Tunable corr_history_gravity("corr_history_gravity", 582, 256, 1024, 32);
@@ -59,7 +58,7 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] int GetTableIndex() const {
-    return state_.pawn_key & (static_cast<int>(corr_history_size) - 1);
+    return state_.pawn_key & (table_.size() - 1);
   }
 
  private:
