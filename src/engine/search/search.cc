@@ -163,7 +163,14 @@ Score Search::QuiescentSearch(Score alpha,
   const int tt_depth = state.InCheck();
   const auto &tt_entry = transposition_table[state.zobrist_key];
   const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
-  const Move tt_move = tt_hit ? tt_entry.move : Move::NullMove();
+
+  auto tt_move = Move::NullMove();
+  bool tt_was_in_pv = in_pv_node;
+
+  if (tt_hit) {
+    tt_was_in_pv |= tt_entry.was_in_pv;
+    tt_move = tt_entry.move;
+  }
 
   // Use the TT entry's evaluation if possible
   const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
@@ -272,8 +279,12 @@ Score Search::QuiescentSearch(Score alpha,
 
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
-  const TranspositionTableEntry new_tt_entry(
-      state.zobrist_key, tt_depth, tt_flag, best_score, Move::NullMove());
+  const TranspositionTableEntry new_tt_entry(state.zobrist_key,
+                                             tt_depth,
+                                             tt_flag,
+                                             best_score,
+                                             Move::NullMove(),
+                                             tt_was_in_pv);
   transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
   return best_score;
@@ -329,17 +340,19 @@ Score Search::PVSearch(int depth,
   // Probe the transposition table to see if we have already evaluated this
   // position
   TranspositionTableEntry tt_entry;
-  Move tt_move = Move::NullMove();
-  bool tt_hit = false;
-  bool can_use_tt_eval = false;
+  auto tt_move = Move::NullMove();
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
 
   if (!stack->excluded_tt_move) {
     tt_entry = transposition_table[state.zobrist_key];
     tt_hit = tt_entry.CompareKey(state.zobrist_key);
-    tt_move = tt_hit ? tt_entry.move : Move::NullMove();
 
     // Use the TT entry's evaluation if possible
-    can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
+    if (tt_hit) {
+      can_use_tt_eval = tt_entry.CanUseScore(alpha, beta);
+      tt_was_in_pv |= tt_entry.was_in_pv;
+      tt_move = tt_entry.move;
+    }
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
@@ -584,7 +597,7 @@ Score Search::PVSearch(int depth,
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction += !in_pv_node;
+      reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
       reduction -= is_quiet * history_.GetQuietMoveScore(move, threats, stack) /
                    static_cast<int>(lmr_hist_div);
@@ -686,7 +699,7 @@ Score Search::PVSearch(int depth,
     // Attempt to update the transposition table with the evaluation of this
     // position
     const TranspositionTableEntry new_tt_entry(
-        state.zobrist_key, depth, tt_flag, best_score, best_move);
+        state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
     transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
