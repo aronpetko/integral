@@ -63,7 +63,7 @@ class PawnHistory {
 
  private:
   const BoardState &state_;
-  MultiArray<Score, kPawnHistorySize, kNumColors, 64, kNumPieceTypes, 4> table_;
+  MultiArray<Score, kPawnHistorySize, kNumColors, 64, kNumPieceTypes + 1, 4> table_;
 };
 
 }  // namespace history
