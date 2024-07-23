@@ -146,7 +146,7 @@ template <PerftType type>
 U64 PertInternal(Board &board, int depth, int start_depth) {
   U64 total_nodes = 0;
 
-  auto moves = move_gen::GenerateMoves(MoveType::kAll, board);
+  auto moves = move_gen::GenerateMoves(MoveGenType::kAll, board);
   for (int i = 0; i < moves.Size(); i++) {
     const auto move = moves[i];
     if (!board.IsMoveLegal(move)) continue;
@@ -205,7 +205,6 @@ void PerftSuite() {
         passed = false;
       }
     }
-
 
     fmt::println("{}\033[0m {}",
                  passed ? "\033[32mpassed" : "\033[31mfailed",

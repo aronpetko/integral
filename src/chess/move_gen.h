@@ -10,13 +10,15 @@ using MoveList = List<Move, kMaxMoves>;
 
 namespace move_gen {
 
+bool IsSquareAttacked(Square square, Color attacker, const BoardState &state);
+
 BitBoard PawnAttacks(BitBoard pawns, Color side);
 
 BitBoard PawnAttacks(Square square, Color side);
 
 BitBoard PawnPushes(BitBoard pawns, Color side);
 
-BitBoard PawnMoves(Square square, const BoardState &state);
+BitBoard PawnPushMoves(Square square, const BoardState &state);
 
 BitBoard KnightMoves(Square square);
 
@@ -54,7 +56,7 @@ BitBoard RayBetween(Square first, Square second);
 // on
 BitBoard RayIntersecting(Square first, Square second);
 
-MoveList GenerateMoves(MoveType move_type, Board &board);
+MoveList GenerateMoves(MoveGenType move_type, Board &board);
 
 }  // namespace move_gen
 

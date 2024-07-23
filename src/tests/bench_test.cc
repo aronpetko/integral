@@ -66,6 +66,7 @@ void BenchSuite(Board &board, Search &search, int depth) {
 
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
+    fmt::println("{}", position);
 
     search.NewGame();
     search.Bench(depth);

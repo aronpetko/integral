@@ -17,25 +17,25 @@ Move MovePicker::Next() {
   const auto &state = board_.GetState();
 
   if (stage_ == Stage::kTTMove) {
-    stage_ = Stage::kGenerateTacticals;
+    stage_ = Stage::kGenerateNoisys;
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
-          tt_move_.IsTactical(state)) {
+          tt_move_.IsNoisy(state)) {
         return tt_move_;
       }
     }
   }
 
-  if (stage_ == Stage::kGenerateTacticals) {
-    stage_ = Stage::kGoodTacticals;
-    GenerateAndScoreMoves<MoveType::kTactical>(tacticals_);
+  if (stage_ == Stage::kGenerateNoisys) {
+    stage_ = Stage::kGoodNoisys;
+    GenerateAndScoreMoves<MoveGenType::kNoisy>(noisys_);
   }
 
-  if (stage_ == Stage::kGoodTacticals) {
-    while (moves_idx_ < tacticals_.Size()) {
-      const auto move = SelectionSort(tacticals_, moves_idx_);
-      const int score = tacticals_[moves_idx_].score;
+  if (stage_ == Stage::kGoodNoisys) {
+    while (moves_idx_ < noisys_.Size()) {
+      const auto move = SelectionSort(noisys_, moves_idx_);
+      const int score = noisys_[moves_idx_].score;
 
       moves_idx_++;
 
@@ -44,7 +44,7 @@ Move MovePicker::Next() {
         return move;
       }
 
-      bad_tacticals_.Push({move, score});
+      bad_noisys_.Push({move, score});
     }
 
     if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
@@ -81,7 +81,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
     moves_idx_ = 0;
-    GenerateAndScoreMoves<MoveType::kQuiet>(quiets_);
+    GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
   }
 
   if (stage_ == Stage::kQuiets) {
@@ -89,15 +89,15 @@ Move MovePicker::Next() {
       return SelectionSort(quiets_, moves_idx_++);
     }
 
-    stage_ = Stage::kBadTacticals;
+    stage_ = Stage::kBadNoisys;
     moves_idx_ = 0;
   }
 
-  if (stage_ == Stage::kBadTacticals) {
-    if (moves_idx_ < bad_tacticals_.Size()) {
-      // The bad tacticals are already sorted when we split them off in the good
-      // tacticals stage
-      return bad_tacticals_[moves_idx_++].move;
+  if (stage_ == Stage::kBadNoisys) {
+    if (moves_idx_ < bad_noisys_.Size()) {
+      // The bad noisys are already sorted when we split them off in the good
+      // noisys stage
+      return bad_noisys_[moves_idx_++].move;
     }
   }
 
@@ -106,7 +106,7 @@ Move MovePicker::Next() {
 
 void MovePicker::SkipQuiets() {
   if (stage_ == Stage::kQuiets) {
-    stage_ = Stage::kBadTacticals;
+    stage_ = Stage::kBadNoisys;
     moves_idx_ = 0;
   }
 }
@@ -129,7 +129,7 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
   return move_list[index].move;
 }
 
-template <MoveType move_type>
+template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = stack_->killer_moves;
   auto moves = move_gen::GenerateMoves(move_type, board_);
@@ -146,15 +146,15 @@ int MovePicker::ScoreMove(Move &move) {
   const auto to = move.GetTo();
 
   // Queen and knight promotions get priority
-  switch (move.GetPromotionType()) {
-    case PromotionType::kNone:
-      break;
-    case PromotionType::kQueen:
-      return 1e9 - 1;
-    case PromotionType::kKnight:
-      return 1e9 - 2;
-    default:
-      return -1e9;
+  if (move.GetType() == MoveType::kPromotion) {
+    switch (move.GetPromotionType()) {
+      case PromotionType::kQueen:
+        return 1e9 - 1;
+      case PromotionType::kKnight:
+        return 1e9 - 2;
+      default:
+        return -1e9;
+    }
   }
 
   auto &state = board_.GetState();

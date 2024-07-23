@@ -1,8 +1,9 @@
 #ifndef INTEGRAL_TESTS_H
 #define INTEGRAL_TESTS_H
 
-#include <chrono>
 #include <fmt/format.h>
+
+#include <chrono>
 #include <ranges>
 #include <sstream>
 #include <vector>

@@ -16,8 +16,7 @@ class Tunable {
                    bool disabled = false,
                    double learning_rate = 0.002)
       : value_(value) {
-    if (disabled)
-      return;
+    if (disabled) return;
 
     const int exponent = std::max({GetScalingExponent(value),
                                    GetScalingExponent(min),

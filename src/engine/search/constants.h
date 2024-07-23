@@ -23,7 +23,8 @@ Tunable null_move_re("null_move_re", 202, 100, 400, 20);
 
 Tunable iir_depth("iir_depth", 4, 2, 8, 1);
 
-Tunable improving_rate_divisor("improving_rate_divisor", 30.0, 5.0, 100.0, 15.0);
+Tunable improving_rate_divisor(
+    "improving_rate_divisor", 30.0, 5.0, 100.0, 15.0);
 
 Tunable lmp_base("lmp_base", 5.0, 1.5, 5.0, 0.5);
 Tunable lmp_mult("lmp_mult", 3, 1.0, 4.0, 0.25);
@@ -45,5 +46,5 @@ Tunable lmr_hist_div("lmr_hist_div", 11432, 5000, 20000, 750);
 Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
 Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
 Tunable sing_double_margin("sing_double_margin", 28, 10, 40, 5);
- 
+
 #endif  // SPRT_SH_CONSTANTS_H
