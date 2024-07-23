@@ -165,10 +165,10 @@ Score Search::QuiescentSearch(Score alpha,
   const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
 
   auto tt_move = Move::NullMove();
-  bool tt_was_in_pv = false;
+  bool tt_was_in_pv = in_pv_node;
 
   if (tt_hit) {
-    tt_was_in_pv = in_pv_node || tt_entry.was_in_pv;
+    tt_was_in_pv |= tt_entry.was_in_pv;
     tt_move = tt_entry.move;
   }
 
@@ -341,7 +341,7 @@ Score Search::PVSearch(int depth,
   // position
   TranspositionTableEntry tt_entry;
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = false;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
 
   if (!stack->excluded_tt_move) {
     tt_entry = transposition_table[state.zobrist_key];
@@ -350,7 +350,7 @@ Score Search::PVSearch(int depth,
     // Use the TT entry's evaluation if possible
     if (tt_hit) {
       can_use_tt_eval = tt_entry.CanUseScore(alpha, beta);
-      tt_was_in_pv = in_pv_node || tt_entry.was_in_pv;
+      tt_was_in_pv |= tt_entry.was_in_pv;
       tt_move = tt_entry.move;
     }
 
