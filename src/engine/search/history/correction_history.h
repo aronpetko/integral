@@ -30,7 +30,8 @@ class CorrectionHistory {
     const int weight = std::min(1 + depth, 16);
 
     auto &score = table_[state_.turn][GetTableIndex()];
-    score = (score * (256 - weight) + scaled_bonus * weight) / 256;
+    score = (score * (corr_history_scale - weight) + scaled_bonus * weight) /
+            corr_history_scale;
     score = std::clamp<Score>(score,
                               corr_history_scale * -max_corr_hist,
                               corr_history_scale * max_corr_hist);
