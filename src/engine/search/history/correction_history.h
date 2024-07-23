@@ -7,10 +7,9 @@
 
 namespace history {
 
-inline Tunable corr_history_size("corr_history_size", 15221, 8192, 32768, 1024);
-inline Tunable corr_history_divisor(
-    "corr_history_divisor", 14457, 8192, 32768, 1024);
-inline Tunable corr_history_gravity("corr_history_gravity", 582, 256, 1024, 32);
+inline Tunable corr_history_size("corr_history_size", 16384, 8192, 32768, 1024);
+inline Tunable corr_history_scale("corr_history_scale", 256, 100, 500, 15);
+inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
 
 class CorrectionHistory {
  public:
@@ -26,21 +25,22 @@ class CorrectionHistory {
     }
 
     const Score static_eval_error = search_score - stack->static_eval;
-    const int bonus = std::clamp(static_eval_error * depth / 8,
-                                 -static_cast<int>(corr_history_gravity) / 4,
-                                 static_cast<int>(corr_history_gravity) / 4);
+    const int scaled_bonus =
+        static_eval_error * static_cast<int>(corr_history_scale);
+    const int weight = std::min(1 + depth, 16);
 
-    // Apply a linear dampening to the bonus as the depth increases
-    Score &score = table_[state_.turn][GetTableIndex()];
-    score += ScaleBonus(score, bonus, corr_history_gravity);
+    auto &score = table_[state_.turn][GetTableIndex()];
+    score = (score * (corr_history_scale - weight) + scaled_bonus * weight) /
+            corr_history_scale;
+    score = std::clamp<Score>(score,
+                              corr_history_scale * -max_corr_hist,
+                              corr_history_scale * max_corr_hist);
   }
 
   [[nodiscard]] Score CorrectStaticEval(Score static_eval) const {
     const Score correction = table_[state_.turn][GetTableIndex()];
     const Score adjusted_score =
-        static_eval + (correction * std::abs(correction)) /
-                          static_cast<int>(corr_history_divisor);
-
+        static_eval + correction / static_cast<int>(corr_history_scale);
     // Ensure no static evaluations are mate scores
     return std::clamp(adjusted_score,
                       -kMateScore + kMaxPlyFromRoot + 1,
