@@ -58,7 +58,7 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] int GetTableIndex() const {
-    return state_.pawn_key & (table_.size() - 1);
+    return state_.pawn_key & 16383;
   }
 
  private:
