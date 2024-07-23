@@ -17,15 +17,21 @@ struct TranspositionTableEntry {
   };
 
   TranspositionTableEntry()
-      : key(0), depth(0), flag(kNone), score(0), move(Move::NullMove()) {}
+      : key(0),
+        depth(0),
+        flag(kNone),
+        score(0),
+        move(Move::NullMove()),
+        was_in_pv(false) {}
 
   explicit TranspositionTableEntry(
-      U64 key, U8 depth, Flag flag, Score score, Move move)
+      U64 key, U8 depth, Flag flag, Score score, Move move, bool was_in_pv)
       : key(static_cast<U16>(key)),
         depth(depth),
         flag(flag),
         score(score),
-        move(move) {}
+        move(move),
+        was_in_pv(was_in_pv) {}
 
   // Keys are packed to maximize the number of entries the table can hold
   // Therefore, we must down-cast when checking for key equality
@@ -56,6 +62,7 @@ struct TranspositionTableEntry {
   Flag flag;
   Score score;
   Move move;
+  bool was_in_pv;
 };
 
 class TranspositionTable : public HashTable<TranspositionTableEntry> {
