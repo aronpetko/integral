@@ -27,29 +27,28 @@ class PawnHistory {
     const Color turn = state_.turn;
     const Move move = stack->move;
 
-    const int bonus = HistoryBonus(depth);
+    const int bonus =
+        HistoryBonus(depth, pawn_history_scale, pawn_history_max_bonus);
 
     // Apply a linear dampening to the bonus as the depth increases
-    int &score =
-        table_[GetTableIndex()][turn][move.GetFrom()]
-              [state_.GetPieceType(move.GetTo())][ThreatIndex(move, threats)];
-    score += ScaleBonus(score, bonus);
+    int &score = table_[GetTableIndex()][turn][move.GetFrom()]
+                       [state_.GetPieceType(move.GetTo())];
+    score += ScaleBonus(score, bonus, pawn_history_gravity);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
     for (int i = 0; i < quiets.Size(); i++) {
       const Move bad_quiet = quiets[i];
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_quiet_score = table_[GetTableIndex()][turn][bad_quiet.GetFrom()]
-                                   [state_.GetPieceType(bad_quiet.GetTo())]
-                                   [ThreatIndex(bad_quiet, threats)];
-      bad_quiet_score += ScaleBonus(bad_quiet_score, -bonus);
+                                   [state_.GetPieceType(bad_quiet.GetTo())];
+      bad_quiet_score +=
+          ScaleBonus(bad_quiet_score, -bonus, pawn_history_gravity);
     }
   }
 
   [[nodiscard]] int GetScore(Move move, BitBoard threats) const {
     return table_[GetTableIndex()][state_.turn][move.GetFrom()]
-                 [state_.GetPieceType(move.GetTo())]
-                 [ThreatIndex(move, threats)];
+                 [state_.GetPieceType(move.GetTo())];
   }
 
  private:
@@ -63,7 +62,8 @@ class PawnHistory {
 
  private:
   const BoardState &state_;
-  MultiArray<Score, kPawnHistorySize, kNumColors, 64, kNumPieceTypes + 1, 4> table_;
+  MultiArray<Score, kPawnHistorySize, kNumColors, 64, kNumPieceTypes + 1>
+      table_;
 };
 
 }  // namespace history
