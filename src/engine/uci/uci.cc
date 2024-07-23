@@ -36,10 +36,12 @@ void Initialize(Board &board, Search &search) {
   listener.RegisterCommand("position", CommandType::kOrdered, {
     CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
     CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("kiwipete", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("moves", ArgumentType::kOptional, UnlimitedInputProcessor())
   }, [&board](Command *cmd) {
     std::string board_fen;
     if (cmd->ArgumentExists("startpos")) board_fen = fen::kStartFen;
+    else if (cmd->ArgumentExists("kiwipete")) board_fen = fen::kKiwipeteFen;
     else if (cmd->ArgumentExists("fen")) board_fen = *cmd->ParseArgument<std::string>("fen");
     board.SetFromFen(board_fen);
 
@@ -48,7 +50,7 @@ void Initialize(Board &board, Search &search) {
       std::stringstream stream(*moves);
       std::string move_str;
       while (stream >> move_str) {
-        const auto move = Move::FromStr(move_str);
+        const auto move = Move::FromStr(move_str, board.GetState());
         if (move) board.MakeMove(move);
         else fmt::println("error: invalid move '{}'", move_str);
       }
@@ -152,7 +154,7 @@ void Initialize(Board &board, Search &search) {
   });
 
   listener.RegisterCommand("bench", CommandType::kUnordered, {
-    CreateArgument("depth", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("depth", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [&board, &search](Command *cmd) {
     const auto bench_depth = cmd->ParseArgument<int>("depth");
     if (bench_depth) tests::BenchSuite(board, search, *bench_depth);

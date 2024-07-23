@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-[[maybe_unused]] static std::vector<std::string> SplitString(std::string_view input,
-                                            char delimiter) {
+[[maybe_unused]] static std::vector<std::string> SplitString(
+    std::string_view input, char delimiter) {
   std::vector<std::string> result;
   std::string token;
   std::istringstream token_stream((std::string(input)));

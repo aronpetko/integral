@@ -10,8 +10,10 @@
 
 namespace fen {
 
-const std::string kStartFen =
+constexpr std::string_view kStartFen =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+constexpr std::string_view kKiwipeteFen =
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
 
 const std::unordered_map<char, PieceType> kCharToPieceType = {
     {'p', PieceType::kPawn},

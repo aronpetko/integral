@@ -21,13 +21,13 @@ class MovePicker {
  public:
   enum class Stage {
     kTTMove,
-    kGenerateTacticals,
-    kGoodTacticals,
+    kGenerateNoisys,
+    kGoodNoisys,
     kFirstKiller,
     kSecondKiller,
     kGenerateQuiets,
     kQuiets,
-    kBadTacticals,
+    kBadNoisys,
   };
 
   MovePicker(MovePickerType type,
@@ -47,7 +47,7 @@ class MovePicker {
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
 
-  template <MoveType move_type>
+  template <MoveGenType move_type>
   void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
 
   int ScoreMove(Move &move);
@@ -59,7 +59,7 @@ class MovePicker {
   history::SearchHistory &history_;
   SearchStackEntry *stack_;
   Stage stage_;
-  List<ScoredMove, kMaxMoves> tacticals_, bad_tacticals_;
+  List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
 };
