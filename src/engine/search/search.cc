@@ -447,6 +447,8 @@ Score Search::PVSearch(int depth,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
+  const BitBoard threats = state.threats;
+
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
@@ -496,7 +498,8 @@ Score Search::PVSearch(int depth,
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
       if (is_quiet) {
-        const int history_score = history_.GetQuietMoveScore(move, stack);
+        const int history_score =
+            history_.GetQuietMoveScore(move, threats, stack);
         if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
           move_picker.SkipQuiets();
@@ -510,7 +513,7 @@ Score Search::PVSearch(int depth,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= 8 && move == tt_move && !stack->excluded_tt_move) {
+    if (!in_root && depth >= 8 && move == tt_move) {
       const bool is_accurate_tt_score =
           tt_entry.depth + 4 >= depth &&
           tt_entry.flag != TranspositionTableEntry::kUpperBound &&
@@ -583,7 +586,7 @@ Score Search::PVSearch(int depth,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node;
       reduction += cut_node;
-      reduction -= is_quiet * history_.GetQuietMoveScore(move, stack) /
+      reduction -= is_quiet * history_.GetQuietMoveScore(move, threats, stack) /
                    static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
 
@@ -641,7 +644,7 @@ Score Search::PVSearch(int depth,
         if (alpha >= beta) {
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history_.quiet_history->UpdateScore(stack, depth, quiets);
+            history_.quiet_history->UpdateScore(stack, depth, threats, quiets);
             history_.continuation_history->UpdateScore(stack, depth, quiets);
           } else if (is_capture) {
             history_.capture_history->UpdateScore(stack, depth);

@@ -24,8 +24,9 @@ class SearchHistory {
   }
 
   [[nodiscard]] int GetQuietMoveScore(Move move,
+                                      BitBoard threats,
                                       SearchStackEntry *stack) const {
-    return quiet_history->GetScore(move) +
+    return quiet_history->GetScore(move, threats) +
            continuation_history->GetScore(move, stack - 1) +
            continuation_history->GetScore(move, stack - 2) +
            continuation_history->GetScore(move, stack - 4);

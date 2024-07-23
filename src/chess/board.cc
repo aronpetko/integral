@@ -21,7 +21,7 @@ Board::Board() : history_({}) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 bool Board::IsMovePseudoLegal(Move move) {
@@ -229,7 +229,7 @@ void Board::MakeMove(Move move) {
 
   state_.fifty_moves_clock = new_fifty_move_clock;
 
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 void Board::UndoMove() {
@@ -250,7 +250,7 @@ void Board::MakeNullMove() {
 
   state_.fifty_moves_clock++;
 
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 U64 Board::PredictKeyAfter(Move move) {
@@ -376,6 +376,31 @@ void Board::HandleCastling(Move move) {
     move_rook_for_castling(is_white ? Squares::kA1 : Squares::kA8,
                            is_white ? Squares::kD1 : Squares::kD8);
   }
+}
+
+void Board::CalculateThreats() {
+  const Color them = FlipColor(state_.turn);
+
+  state_.threats = move_gen::PawnAttacks(state_.Pawns(them), them);
+
+  for (Square square : state_.Knights(them)) {
+    state_.threats |= move_gen::KnightMoves(square);
+  }
+
+  const BitBoard queens = state_.Queens(them);
+  const BitBoard occupied = state_.Occupied();
+
+  for (Square square : state_.Bishops(them) | queens) {
+    state_.threats |= move_gen::BishopMoves(square, occupied);
+  }
+
+  for (Square square : state_.Rooks(them) | queens) {
+    state_.threats |= move_gen::RookMoves(square, occupied);
+  }
+
+  state_.threats |= move_gen::KingAttacks(state_.King(them).GetLsb());
+
+  CalculateKingThreats();
 }
 
 void Board::CalculateKingThreats() {
