@@ -5,6 +5,7 @@
 #include "capture_history.h"
 #include "continuation_history.h"
 #include "correction_history.h"
+#include "pawn_history.h"
 #include "quiet_history.h"
 
 namespace history {
@@ -18,9 +19,10 @@ class SearchHistory {
   void Clear() {
     // Reinitialize the history objects for quicker clearing
     quiet_history = std::make_unique<QuietHistory>(state_);
+    capture_history = std::make_unique<CaptureHistory>(state_);
     continuation_history = std::make_unique<ContinuationHistory>(state_);
     correction_history = std::make_unique<CorrectionHistory>(state_);
-    capture_history = std::make_unique<CaptureHistory>(state_);
+    pawn_history = std::make_unique<PawnHistory>(state_);
   }
 
   [[nodiscard]] int GetQuietMoveScore(Move move,
@@ -29,7 +31,8 @@ class SearchHistory {
     return quiet_history->GetScore(move, threats) +
            continuation_history->GetScore(move, stack - 1) +
            continuation_history->GetScore(move, stack - 2) +
-           continuation_history->GetScore(move, stack - 4);
+           continuation_history->GetScore(move, stack - 4) +
+           pawn_history->GetScore(move, threats);
   }
 
   [[nodiscard]] int GetCaptureMoveScore(Move move) const {
@@ -41,6 +44,7 @@ class SearchHistory {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
+  std::unique_ptr<PawnHistory> pawn_history;
 
  private:
   const BoardState &state_;

@@ -658,6 +658,7 @@ Score Search::PVSearch(int depth,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history_.quiet_history->UpdateScore(stack, depth, threats, quiets);
+            history_.pawn_history->UpdateScore(stack, depth, threats, quiets);
             history_.continuation_history->UpdateScore(stack, depth, quiets);
           } else if (is_capture) {
             history_.capture_history->UpdateScore(stack, depth);
