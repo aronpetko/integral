@@ -31,9 +31,7 @@ class CorrectionHistory {
 
     Score &score = table_[state_.turn][GetTableIndex()];
     score = (score * (256 - weight) + scaled_bonus * weight) / 256;
-    score = std::clamp(score,
-                       -kMateScore + kMaxPlyFromRoot + 1,
-                       kMateScore - kMaxPlyFromRoot - 1);
+    score = std::clamp<Score>(score, -max_corr_hist, max_corr_hist);
   }
 
   [[nodiscard]] Score CorrectStaticEval(Score static_eval) const {
