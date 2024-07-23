@@ -29,9 +29,11 @@ class CorrectionHistory {
         static_eval_error * static_cast<int>(corr_history_scale);
     const int weight = std::min(1 + depth, 16);
 
-    Score &score = table_[state_.turn][GetTableIndex()];
+    auto &score = table_[state_.turn][GetTableIndex()];
     score = (score * (256 - weight) + scaled_bonus * weight) / 256;
-    score = std::clamp<Score>(score, -max_corr_hist, max_corr_hist);
+    score = std::clamp<Score>(score,
+                              corr_history_scale * -max_corr_hist,
+                              corr_history_scale * max_corr_hist);
   }
 
   [[nodiscard]] Score CorrectStaticEval(Score static_eval) const {
