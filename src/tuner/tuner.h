@@ -64,6 +64,7 @@ struct EvalTrace {
   eval::PieceTable<std::array<TraceTerm, 8>> kAttackPower{};
   eval::PieceTable<TraceTerm> kSafeCheckBonus{};
   eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByPawnPenalty{};
+  eval::PieceTable<TraceTerm> kPawnPushThreat{};
   eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByKnightPenalty{};
   eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByBishopPenalty{};
   eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByRookPenalty{};
