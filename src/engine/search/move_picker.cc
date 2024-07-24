@@ -173,5 +173,5 @@ int MovePicker::ScoreMove(Move &move) {
   // be ordered first
   return history_.GetQuietMoveScore(
              move, state.GetPieceType(from), state.threats, stack_) +
-         history_.pawn_history->GetScore(move, state.GetPieceType(from));
+         history_.pawn_history->GetScore(move, state.GetPieceType(from)) / 3;
 }
