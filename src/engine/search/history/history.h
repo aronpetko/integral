@@ -32,8 +32,7 @@ class SearchHistory {
     return quiet_history->GetScore(move, threats) +
            continuation_history->GetScore(move, stack - 1) +
            continuation_history->GetScore(move, stack - 2) +
-           continuation_history->GetScore(move, stack - 4) +
-           pawn_history->GetScore(move, piece) / 3;
+           continuation_history->GetScore(move, stack - 4);
   }
 
   [[nodiscard]] int GetCaptureMoveScore(Move move) const {

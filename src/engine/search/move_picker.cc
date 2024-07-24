@@ -172,5 +172,6 @@ int MovePicker::ScoreMove(Move &move) {
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
   return history_.GetQuietMoveScore(
-      move, state.GetPieceType(from), state.threats, stack_);
+             move, state.GetPieceType(from), state.threats, stack_) +
+         history_.pawn_history->GetScore(move, state.GetPieceType(from));
 }
