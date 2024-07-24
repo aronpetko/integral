@@ -106,10 +106,10 @@ class Evaluation {
   template <Color us>
   ScorePair EvaluateThreats();
 
-  [[nodiscard]] BitBoard GetPieceMobility(PieceType piece,
-                                          Square square,
-                                          BitBoard moves,
-                                          Color us) const;
+  [[nodiscard]] BitBoard LegalizeMoves(PieceType piece,
+                                       Square square,
+                                       BitBoard moves,
+                                       Color us) const;
 
   [[nodiscard]] Score InterpolateScore(ScorePair score_pair) const;
 
@@ -312,13 +312,14 @@ ScorePair Evaluation::EvaluateKnights() {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
     TRACE_INCREMENT(kPieceSquareTable[kKnight][square.RelativeTo(us)], us);
 
-    const BitBoard moves = move_gen::KnightMoves(square);
-    const BitBoard mobility = GetPieceMobility(kKnight, square, moves, us);
+    const BitBoard legal_moves =
+        LegalizeMoves(kKnight, square, move_gen::KnightMoves(square), us);
+    const BitBoard mobility = legal_moves & mobility_zone_[us];
 
     score += kKnightMobility[mobility.PopCount()];
     TRACE_INCREMENT(kKnightMobility[mobility.PopCount()], us);
 
-    knight_attacks_[us] |= mobility;
+    knight_attacks_[us] |= legal_moves;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -356,13 +357,14 @@ ScorePair Evaluation::EvaluateBishops() {
     TRACE_INCREMENT(kPieceValues[kBishop], us);
     TRACE_INCREMENT(kPieceSquareTable[kBishop][square.RelativeTo(us)], us);
 
-    const BitBoard moves = move_gen::BishopMoves(square, occupied);
-    const BitBoard mobility = GetPieceMobility(kBishop, square, moves, us);
+    const BitBoard legal_moves =
+        LegalizeMoves(kBishop, square, move_gen::BishopMoves(square, occupied), us);
+    const BitBoard mobility = legal_moves & mobility_zone_[us];
 
     score += kBishopMobility[mobility.PopCount()];
     TRACE_INCREMENT(kBishopMobility[mobility.PopCount()], us);
 
-    bishop_attacks_[us] |= mobility;
+    bishop_attacks_[us] |= legal_moves;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -397,13 +399,14 @@ ScorePair Evaluation::EvaluateRooks() {
     TRACE_INCREMENT(kPieceValues[kRook], us);
     TRACE_INCREMENT(kPieceSquareTable[kRook][square.RelativeTo(us)], us);
 
-    const BitBoard moves = move_gen::RookMoves(square, occupied);
-    const BitBoard mobility = GetPieceMobility(kRook, square, moves, us);
+    const BitBoard legal_moves =
+        LegalizeMoves(kRook, square, move_gen::RookMoves(square, occupied), us);
+    const BitBoard mobility = legal_moves & mobility_zone_[us];
 
     score += kRookMobility[mobility.PopCount()];
     TRACE_INCREMENT(kRookMobility[mobility.PopCount()], us);
 
-    rook_attacks_[us] |= mobility;
+    rook_attacks_[us] |= legal_moves;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -437,13 +440,14 @@ ScorePair Evaluation::EvaluateQueens() {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
     TRACE_INCREMENT(kPieceSquareTable[kQueen][square.RelativeTo(us)], us);
 
-    const BitBoard moves = move_gen::QueenMoves(square, occupied);
-    const BitBoard mobility = GetPieceMobility(kQueen, square, moves, us);
+    const BitBoard legal_moves =
+        LegalizeMoves(kQueen, square, move_gen::QueenMoves(square, occupied), us);
+    const BitBoard mobility = legal_moves & mobility_zone_[us];
 
     score += kQueenMobility[mobility.PopCount()];
     TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
 
-    queen_attacks_[us] |= mobility;
+    queen_attacks_[us] |= legal_moves;
 
     const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
     if (enemy_king_attacks) {
@@ -532,29 +536,36 @@ ScorePair Evaluation::EvaluateThreats() {
 
   const Color them = FlipColor(us);
   const BitBoard our_pieces = state_.Occupied(us);
+  const BitBoard our_attacks = pawn_attacks_[us] | knight_attacks_[us] |
+                               bishop_attacks_[us] | rook_attacks_[us] |
+                               queen_attacks_[us];
 
   for (Square square : knight_attacks_[them] & our_pieces) {
     const auto threatened_piece = state_.GetPieceType(square);
-    score += kThreatenedByKnightPenalty[threatened_piece];
-    TRACE_INCREMENT(kThreatenedByKnightPenalty[threatened_piece], us);
+    const bool defended = our_attacks.IsSet(square);
+    score += kThreatenedByKnightPenalty[threatened_piece][defended];
+    TRACE_INCREMENT(kThreatenedByKnightPenalty[threatened_piece][defended], us);
   }
 
   for (Square square : bishop_attacks_[them] & our_pieces) {
     const auto threatened_piece = state_.GetPieceType(square);
-    score += kThreatenedByBishopPenalty[threatened_piece];
-    TRACE_INCREMENT(kThreatenedByBishopPenalty[threatened_piece], us);
+    const bool defended = our_attacks.IsSet(square);
+    score += kThreatenedByBishopPenalty[threatened_piece][defended];
+    TRACE_INCREMENT(kThreatenedByBishopPenalty[threatened_piece][defended], us);
   }
 
   for (Square square : rook_attacks_[them] & our_pieces) {
     const auto threatened_piece = state_.GetPieceType(square);
-    score += kThreatenedByRookPenalty[threatened_piece];
-    TRACE_INCREMENT(kThreatenedByRookPenalty[threatened_piece], us);
+    const bool defended = our_attacks.IsSet(square);
+    score += kThreatenedByRookPenalty[threatened_piece][defended];
+    TRACE_INCREMENT(kThreatenedByRookPenalty[threatened_piece][defended], us);
   }
 
   for (Square square : pawn_attacks_[them] & our_pieces) {
     const auto threatened_piece = state_.GetPieceType(square);
-    score += kThreatenedByPawnPenalty[threatened_piece];
-    TRACE_INCREMENT(kThreatenedByPawnPenalty[threatened_piece], us);
+    const bool defended = our_attacks.IsSet(square);
+    score += kThreatenedByPawnPenalty[threatened_piece][defended];
+    TRACE_INCREMENT(kThreatenedByPawnPenalty[threatened_piece][defended], us);
   }
 
   // Count the number of squares that our pieces can make to place the enemy
@@ -590,12 +601,10 @@ ScorePair Evaluation::EvaluateThreats() {
   return score;
 }
 
-BitBoard Evaluation::GetPieceMobility(PieceType piece,
-                                      Square square,
-                                      BitBoard moves,
-                                      Color us) const {
-  moves &= mobility_zone_[us];
-
+BitBoard Evaluation::LegalizeMoves(PieceType piece,
+                                   Square square,
+                                   BitBoard moves,
+                                   Color us) const {
   if (state_.pinned.IsSet(square)) {
     if (piece == kKnight) {
       moves = 0;
