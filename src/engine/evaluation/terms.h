@@ -216,6 +216,8 @@ constexpr PieceTable<ScorePair> kThreatenedByPawnPenalty = {
   Pair(-13, 16), Pair(-62, -22), Pair(-63, -52), Pair(-84, -5), Pair(-76, 31), Pair(0, 0)
 };
 
+constexpr PieceTable<ScorePair> kPawnPushThreat = {};
+
 constexpr PieceTable<ScorePair> kThreatenedByKnightPenalty = {
   Pair(11, -15), Pair(14, -1), Pair(-29, -37), Pair(-67, -14), Pair(-51, 27), Pair(0, 0)
 };

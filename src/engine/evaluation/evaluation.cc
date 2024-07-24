@@ -557,6 +557,26 @@ ScorePair Evaluation::EvaluateThreats() {
     TRACE_INCREMENT(kThreatenedByPawnPenalty[threatened_piece], us);
   }
 
+  // Calculate all squares defended by the enemy, excluding squares that are
+  // defended by our pawn(s) and not attacked by their pawn(s)
+  const BitBoard enemy_defended_squares =
+      pawn_attacks_[them] | ((knight_attacks_[them] | bishop_attacks_[them] |
+                              rook_attacks_[them] | queen_attacks_[them]) &
+                             ~pawn_attacks_[us]);
+  const BitBoard safe_pawn_pushes = move_gen::PawnPushes(state_.Pawns(us), us) &
+                                    ~state_.Occupied() &
+                                    ~enemy_defended_squares;
+
+  // Calculate which piece would be threatened if we pushed our pawn's here
+  const BitBoard pawn_push_threats =
+      move_gen::PawnAttacks(safe_pawn_pushes, us) & state_.Occupied(them) &
+      ~state_.Pawns(them);
+  for (Square square : pawn_push_threats) {
+    const auto threatened = state_.GetPieceType(square);
+    score += kPawnPushThreat[threatened];
+    TRACE_INCREMENT(kPawnPushThreat[threatened], us);
+  }
+
   // Count the number of squares that our pieces can make to place the enemy
   // king in check
   const BitBoard occupied = state_.Occupied();

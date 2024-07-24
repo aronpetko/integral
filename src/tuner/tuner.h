@@ -6,7 +6,7 @@
 #include "../utils/string.h"
 #include "../utils/types.h"
 
-// #define TUNE
+#define TUNE
 
 struct CoefficientEntry {
   std::size_t index;
@@ -64,6 +64,7 @@ struct EvalTrace {
   eval::PieceTable<std::array<TraceTerm, 8>> kAttackPower{};
   eval::PieceTable<TraceTerm> kSafeCheckBonus{};
   eval::PieceTable<TraceTerm> kThreatenedByPawnPenalty{};
+  eval::PieceTable<TraceTerm> kPawnPushThreat{};
   eval::PieceTable<TraceTerm> kThreatenedByKnightPenalty{};
   eval::PieceTable<TraceTerm> kThreatenedByBishopPenalty{};
   eval::PieceTable<TraceTerm> kThreatenedByRookPenalty{};

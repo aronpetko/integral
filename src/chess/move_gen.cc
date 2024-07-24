@@ -374,9 +374,8 @@ BitBoard RayIntersecting(Square first, Square second) {
   return kRayIntersectingMasks[first][second];
 }
 
-template <Color side>
-BitBoard PawnPushes(BitBoard pawns) {
-  if constexpr (side == Color::kWhite) {
+BitBoard PawnPushes(BitBoard pawns, Color side) {
+  if (side == Color::kWhite) {
     return Shift<Direction::kNorth>(pawns);
   } else {
     return Shift<Direction::kSouth>(pawns);
