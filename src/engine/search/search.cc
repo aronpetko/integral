@@ -478,6 +478,7 @@ Score Search::PVSearch(int depth,
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
+    const auto piece = state.GetPieceType(move.GetFrom());
 
     // Pruning guards
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
@@ -512,7 +513,7 @@ Score Search::PVSearch(int depth,
       // near-leaf nodes
       if (is_quiet) {
         const int history_score =
-            history_.GetQuietMoveScore(move, threats, stack);
+            history_.GetQuietMoveScore(move, piece, threats, stack);
         if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
           move_picker.SkipQuiets();
@@ -599,7 +600,8 @@ Score Search::PVSearch(int depth,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
-      reduction -= is_quiet * history_.GetQuietMoveScore(move, threats, stack) /
+      reduction -= is_quiet *
+                   history_.GetQuietMoveScore(move, piece, threats, stack) /
                    static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
 
@@ -658,8 +660,8 @@ Score Search::PVSearch(int depth,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history_.quiet_history->UpdateScore(stack, depth, threats, quiets);
-            history_.pawn_history->UpdateScore(stack, depth, threats, quiets);
             history_.continuation_history->UpdateScore(stack, depth, quiets);
+            history_.pawn_history->UpdateScore(stack, depth, quiets);
           } else if (is_capture) {
             history_.capture_history->UpdateScore(stack, depth);
           }
