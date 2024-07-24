@@ -568,6 +568,8 @@ Score Search::PVSearch(int depth,
         // and it might cause a beta cutoff again.
         else if (tt_entry.score >= beta) {
           extensions = -1;
+        } else if (cut_node) {
+          extensions = -2;
         }
       }
     }
