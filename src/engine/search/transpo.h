@@ -19,7 +19,7 @@ struct TranspositionTableEntry {
       : key(0),
         depth(0),
         score(0),
-        flag(kExact),
+        flag(kLowerBound),
         age(0),
         move(Move::NullMove()),
         was_in_pv(false) {}
