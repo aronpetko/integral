@@ -68,6 +68,16 @@ void TranspositionTable::Age() {
   age_ = (age_ + 1) % kMaxTTAge;
 }
 
+int TranspositionTable::HashFull() const {
+  int count = 0;
+  for (int i = 0; i < 1000; i++) {
+    for (const auto &entry : table_[i].entries) {
+      count += entry.age == age_ && entry.score != kScoreNone;
+    }
+  }
+  return count / kTTClusterSize;
+}
+
 void TranspositionTable::Clear() {
   AlignedHashTable::Clear();
   age_ = 0;

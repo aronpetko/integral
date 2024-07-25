@@ -135,7 +135,7 @@ void Search::IterativeDeepening() {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
-          "{} pv {}",
+          "{} hashfull {} pv {}",
           depth,
           sel_depth_,
           is_mate ? "mate" : "cp",
@@ -143,6 +143,7 @@ void Search::IterativeDeepening() {
           nodes_searched_.load(),
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
+          transposition_table.HashFull(),
           root_stack->pv.UCIFormat());
     }
   }

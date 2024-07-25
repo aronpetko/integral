@@ -93,7 +93,7 @@ class AlignedHashTable {
     return (static_cast<U128>(key) * static_cast<U128>(table_size_)) >> 64;
   }
 
- private:
+ protected:
   T* table_ = nullptr;
   std::size_t table_size_ = 0;
 };

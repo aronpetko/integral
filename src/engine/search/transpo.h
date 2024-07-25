@@ -8,7 +8,7 @@
 #include "../../chess/move.h"
 #include "../../utils/hash_table.h"
 
-struct TranspositionTableEntry {
+struct __attribute((packed)) TranspositionTableEntry {
   enum Flag : U8 {
     kExact,
     kLowerBound,
@@ -69,15 +69,16 @@ struct TranspositionTableEntry {
   bool was_in_pv;
 };
 
+static_assert(sizeof(TranspositionTableEntry) == 10);
+
 constexpr int kTTClusterSize = 3;
 
-struct TranspositionTableCluster {
+struct alignas(32) TranspositionTableCluster {
   std::array<TranspositionTableEntry, kTTClusterSize> entries;
   char padding[2];
 };
 
-static_assert(sizeof(TranspositionTableCluster) == 32,
-              "TT cluster size not correct not aligned to 32 bytes");
+static_assert(sizeof(TranspositionTableCluster) == 32);
 
 constexpr int kMaxTTAge = 64;
 
@@ -96,6 +97,8 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
             U16 ply);
 
   void Age();
+
+  [[nodiscard]] int HashFull() const;
 
   virtual void Clear();
 
