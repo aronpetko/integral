@@ -32,3 +32,8 @@ void TranspositionTable::Save(const U64 &key,
 void TranspositionTable::Age() {
   age_ = (age_ + 1) % 64;
 }
+
+void TranspositionTable::Clear() {
+  HashTable::Clear();
+  age_ = 0;
+}

@@ -128,9 +128,6 @@ void Search::IterativeDeepening() {
       break;
     }
 
-    // Age the transposition table to recognize TT entries from past searches
-    transposition_table.Age();
-
     if (searching_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
@@ -146,6 +143,9 @@ void Search::IterativeDeepening() {
           root_stack->pv.UCIFormat());
     }
   }
+
+  // Age the transposition table to recognize TT entries from past searches
+  transposition_table.Age();
 
   Stop();
 

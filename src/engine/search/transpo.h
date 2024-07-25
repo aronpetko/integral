@@ -83,6 +83,8 @@ class TranspositionTable : public HashTable<TranspositionTableEntry> {
 
   void Age();
 
+  virtual void Clear();
+
  private:
   int age_;
 };
