@@ -13,8 +13,7 @@ void TranspositionTable::Save(const U64 &key,
   const bool tt_hit = tt_entry.CompareKey(key);
 
   if (!tt_hit || entry.depth + kDepthLenience >= tt_entry.depth ||
-      entry.flag == TranspositionTableEntry::kExact ||
-      tt_entry.age < entry.age) {
+      entry.flag == TranspositionTableEntry::kExact || tt_entry.age < age_) {
     const auto old_move = tt_entry.move;
     tt_entry = entry;
     tt_entry.age = age_;
