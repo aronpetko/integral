@@ -26,11 +26,13 @@ class Search {
  public:
   explicit Search(Board &board);
 
+  ~Search();
+
   void Start(TimeConfig &time_config);
 
   void Stop();
 
-  void WaitUntilFinished() const;
+  void Wait();
 
   void Bench(int depth);
 
@@ -41,6 +43,8 @@ class Search {
   [[nodiscard]] U64 GetNodesSearched() const;
 
  private:
+  void Run();
+
   template <SearchType type>
   void IterativeDeepening();
 
@@ -63,8 +67,15 @@ class Search {
   SearchStack search_stack_;
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
-  std::atomic_uint64_t nodes_searched_;
-  std::atomic_bool searching_;
+  std::atomic<U64> nodes_searched_;
+  std::atomic<bool> start_search_;
+  std::atomic<bool> searching_;
+  std::atomic<bool> stopped_;
+  std::atomic<bool> benching_;
+  std::atomic<bool> quit_;
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
+  std::vector<std::thread> threads_;
 };
 
 #endif  // INTEGRAL_SEARCH_H_

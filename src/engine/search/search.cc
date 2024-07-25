@@ -44,8 +44,22 @@ Search::Search(Board &board)
       history_(board_.GetState()),
       sel_depth_(0),
       nodes_searched_(0),
-      searching_(false) {
+      start_search_(false),
+      searching_(false),
+      stopped_(true),
+      benching_(false),
+      quit_(false) {
   search_stack_.Reset();
+  threads_.emplace_back([this]() { Run(); });
+}
+
+Search::~Search() {
+  quit_.store(true, std::memory_order_release);
+  for (auto &thread : threads_) {
+    if (thread.joinable()) {
+      thread.join();
+    }
+  }
 }
 
 template <SearchType type>
@@ -490,6 +504,7 @@ Score Search::PVSearch(int depth,
         move_picker.SkipQuiets();
         continue;
       }
+
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin = fut_margin_base + fut_margin_mult * depth;
@@ -711,57 +726,87 @@ Score Search::PVSearch(int depth,
   return best_score;
 }
 
-bool Search::ShouldQuit() {
-  return search_stack_.Front().best_move &&
-         (!searching_ || time_mgmt_.TimesUp(nodes_searched_));
-}
-
-void Search::Start(TimeConfig &time_config) {
-  if (searching_) return;
-  searching_ = true;
-
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  nodes_searched_ = 0;
-
-  std::thread([this] { IterativeDeepening<SearchType::kRegular>(); }).detach();
-}
-
 void Search::Bench(int depth) {
-  if (searching_) return;
-  searching_ = true;
+  {
+    std::unique_lock lock(mutex_);
+    if (searching_.load(std::memory_order_relaxed)) return;
 
-  TimeConfig time_config;
-  time_config.depth = depth;
+    TimeConfig time_config{.depth = depth};
+    time_mgmt_.SetConfig(time_config);
+    time_mgmt_.Start();
+  }
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  benching_.store(true, std::memory_order_seq_cst);
+  stopped_.store(false, std::memory_order_seq_cst);
+  start_search_.store(true, std::memory_order_seq_cst);
 
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  nodes_searched_ = 0;
-
-  // Bench is intended to block the UCI loop thread
-  IterativeDeepening<SearchType::kBench>();
-}
-
-void Search::Stop() {
-  time_mgmt_.Stop();
-  searching_ = false;
-}
-
-void Search::WaitUntilFinished() const {
-  while (searching_) std::this_thread::yield();
+  while (!stopped_.load(std::memory_order_relaxed)) {
+    std::this_thread::yield();
+  };
 }
 
 TimeManagement &Search::GetTimeManagement() {
   return time_mgmt_;
 }
 
+void Search::Run() {
+  while (!quit_.load(std::memory_order_acquire)) {
+    if (start_search_.load(std::memory_order_relaxed)) {
+      start_search_.store(false, std::memory_order_seq_cst);
+      searching_.store(true, std::memory_order_seq_cst);
+
+      if (benching_.load(std::memory_order_relaxed)) {
+        IterativeDeepening<SearchType::kBench>();
+      } else {
+        IterativeDeepening<SearchType::kRegular>();
+      }
+    }
+  }
+}
+
+bool Search::ShouldQuit() {
+  return stopped_.load(std::memory_order_relaxed) ||
+         (search_stack_.Front().best_move &&
+          time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
+}
+
+void Search::Start(TimeConfig &time_config) {
+  {
+    if (searching_.load(std::memory_order_acquire)) return;
+
+    std::unique_lock lock(mutex_);
+    time_mgmt_.SetConfig(time_config);
+    time_mgmt_.Start();
+  }
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  start_search_.store(true, std::memory_order_seq_cst);
+  stopped_.store(false, std::memory_order_seq_cst);
+}
+
+void Search::Stop() {
+  if (!searching_.load(std::memory_order_acquire)) return;
+
+  stopped_.store(true, std::memory_order_seq_cst);
+  searching_.store(false, std::memory_order_seq_cst);
+  benching_.store(false, std::memory_order_seq_cst);
+
+  std::unique_lock lock(mutex_);
+  time_mgmt_.Stop();
+}
+
+void Search::Wait() {
+  while (searching_.load(std::memory_order_relaxed)) {
+    std::this_thread::yield();
+  }
+}
+
 void Search::NewGame() {
-  transposition_table.Clear();
-  eval::pawn_cache.Clear();
-  history_.Clear();
-  search_stack_.Reset();
+  if (stopped_.load(std::memory_order_relaxed)) {
+    transposition_table.Clear();
+    eval::pawn_cache.Clear();
+    history_.Clear();
+    search_stack_.Reset();
+  }
 }
 
 U64 Search::GetNodesSearched() const {
