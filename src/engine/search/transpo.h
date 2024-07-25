@@ -73,7 +73,11 @@ constexpr int kTTClusterSize = 3;
 
 struct TranspositionTableCluster {
   std::array<TranspositionTableEntry, kTTClusterSize> entries;
+  char padding[2];
 };
+
+static_assert(sizeof(TranspositionTableCluster) == 32,
+              "TT cluster size not correct not aligned to 32 bytes");
 
 constexpr int kMaxTTAge = 64;
 
