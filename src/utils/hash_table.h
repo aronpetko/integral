@@ -7,6 +7,10 @@
 
 #include "types.h"
 
+#if defined(__linux__)
+#include <sys/mman.h>
+#endif
+
 inline void* aligned_alloc(std::size_t alignment, std::size_t bytes) {
   void* ptr = nullptr;
 #if defined(__MINGW32__)
