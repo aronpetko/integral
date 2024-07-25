@@ -13,14 +13,13 @@
       const auto entry = &cluster.entries[i];
       // If this entry is available, we can attempt to write to it
       if (entry->key == 0 || entry->CompareKey(key)) {
-        entry->age = age_;
         return entry;
       }
       // Always prefer the lowest quality entry
       const int lowest_quality =
           replace_entry->depth - GetAgeDelta(replace_entry);
-      const int current_quality = entry->depth - GetAgeDelta(entry);
-      if (lowest_quality > current_quality) {
+      const int entry_quality = entry->depth - GetAgeDelta(entry);
+      if (entry_quality < lowest_quality) {
         replace_entry = entry;
       }
     }
@@ -35,7 +34,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               U16 ply) {
   const bool tt_hit = old_entry->CompareKey(key);
   if (!tt_hit || new_entry.flag == TranspositionTableEntry::kExact ||
-      new_entry.depth + 2 * new_entry.was_in_pv + 2 > old_entry->depth) {
+      new_entry.depth + 4 >= old_entry->depth) {
     const auto old_move = old_entry->move;
     *old_entry = new_entry;
     old_entry->age = age_;
