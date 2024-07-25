@@ -57,7 +57,7 @@ void TranspositionTable::Save(const U64 &key,
 
     // Keep the old move if there is no best move being saved and if the key
     // matches
-    if (!replace_entry->move && tt_hit) {
+    if (!new_entry.move && tt_hit) {
       replace_entry->move = old_move;
     }
 
