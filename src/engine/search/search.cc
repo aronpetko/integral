@@ -178,24 +178,24 @@ Score Search::QuiescentSearch(Score alpha,
   // Probe the transposition table to see if we have already evaluated this
   // position
   const int tt_depth = state.InCheck();
-  const auto &tt_entry = transposition_table[state.zobrist_key];
-  const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
+  const auto tt_entry = transposition_table.Probe(state.zobrist_key);
+  const bool tt_hit = tt_entry.has_value();
 
   auto tt_move = Move::NullMove();
   bool tt_was_in_pv = in_pv_node;
 
   if (tt_hit) {
-    tt_was_in_pv |= tt_entry.was_in_pv;
-    tt_move = tt_entry.move;
+    tt_was_in_pv |= tt_entry->was_in_pv;
+    tt_move = tt_entry->move;
   }
 
   // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
+  const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && tt_entry.depth >= tt_depth && can_use_tt_eval) {
-    return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+  if (!in_pv_node && tt_entry->depth >= tt_depth && can_use_tt_eval) {
+    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
   // Keep track of the original alpha for bound determination when updating the
@@ -210,8 +210,8 @@ Score Search::QuiescentSearch(Score alpha,
         history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
 
     if (tt_hit &&
-        tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
-      best_score = tt_entry.score;
+        tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
+      best_score = tt_entry->score;
     } else {
       best_score = stack->static_eval;
     }
@@ -356,25 +356,25 @@ Score Search::PVSearch(int depth,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  TranspositionTableEntry tt_entry;
+  std::optional<TranspositionTableEntry> tt_entry = std::nullopt;
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
 
   if (!stack->excluded_tt_move) {
-    tt_entry = transposition_table[state.zobrist_key];
-    tt_hit = tt_entry.CompareKey(state.zobrist_key);
+    tt_entry = transposition_table.Probe(state.zobrist_key);
+    tt_hit = tt_entry.has_value();
 
     // Use the TT entry's evaluation if possible
     if (tt_hit) {
-      can_use_tt_eval = tt_entry.CanUseScore(alpha, beta);
-      tt_was_in_pv |= tt_entry.was_in_pv;
-      tt_move = tt_entry.move;
+      can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+      tt_was_in_pv |= tt_entry->was_in_pv;
+      tt_move = tt_entry->move;
     }
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
-    if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
-      return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+    if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= depth) {
+      return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     }
   }
 
@@ -387,9 +387,9 @@ Score Search::PVSearch(int depth,
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
-        tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
+        tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
-          TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+          TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
       stack->eval = stack->static_eval;
     }
@@ -546,13 +546,13 @@ Score Search::PVSearch(int depth,
     // move excluded to see if any other moves can beat it.
     if (!in_root && depth >= 8 && move == tt_move) {
       const bool is_accurate_tt_score =
-          tt_entry.depth + 4 >= depth &&
-          tt_entry.flag != TranspositionTableEntry::kUpperBound &&
-          std::abs(tt_entry.score) < kMateScore - kMaxPlyFromRoot;
+          tt_entry->depth + 4 >= depth &&
+          tt_entry->flag != TranspositionTableEntry::kUpperBound &&
+          std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry.score - depth * sing_ext_margin;
+        const Score new_beta = tt_entry->score - depth * sing_ext_margin;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
@@ -584,7 +584,7 @@ Score Search::PVSearch(int depth,
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry.score >= beta) {
+        else if (tt_entry->score >= beta) {
           extensions = -1;
         }
       }

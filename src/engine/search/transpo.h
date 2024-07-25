@@ -18,18 +18,14 @@ struct TranspositionTableEntry {
   TranspositionTableEntry()
       : key(0),
         depth(0),
-        score(0),
-        flag(kLowerBound),
+        score(kScoreNone),
+        flag(kExact),
         age(0),
         move(Move::NullMove()),
         was_in_pv(false) {}
 
-  explicit TranspositionTableEntry(U64 key,
-                                   U8 depth,
-                                   Flag flag,
-                                   Score score,
-                                   Move move,
-                                   bool was_in_pv)
+  explicit TranspositionTableEntry(
+      U64 key, U8 depth, Flag flag, Score score, Move move, bool was_in_pv)
       : key(static_cast<U16>(key)),
         depth(depth),
         flag(flag),
@@ -73,17 +69,31 @@ struct TranspositionTableEntry {
   bool was_in_pv;
 };
 
-class TranspositionTable : public HashTable<TranspositionTableEntry> {
+constexpr int kTTClusterSize = 3;
+
+struct TranspositionTableCluster {
+  std::array<TranspositionTableEntry, kTTClusterSize> entries;
+};
+
+constexpr int kMaxTTAge = 64;
+
+class TranspositionTable : public HashTable<TranspositionTableCluster> {
  public:
-  explicit TranspositionTable(std::size_t mb_size) : HashTable(mb_size), age_(0) {}
+  explicit TranspositionTable(std::size_t mb_size)
+      : HashTable(mb_size), age_(0) {}
 
   TranspositionTable() : age_(0) {}
+
+  [[nodiscard]] std::optional<TranspositionTableEntry> Probe(const U64 &key);
 
   void Save(const U64 &key, U16 ply, const TranspositionTableEntry &entry);
 
   void Age();
 
   virtual void Clear();
+
+ private:
+  [[nodiscard]] int GetAgeDelta(const TranspositionTableEntry *entry) const;
 
  private:
   int age_;

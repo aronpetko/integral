@@ -6,31 +6,74 @@
 // they've been searched deeper. This lenience allows a maximum of four
 constexpr int kDepthLenience = 4;
 
+[[nodiscard]] std::optional<TranspositionTableEntry> TranspositionTable::Probe(
+    const U64 &key) {
+  auto &cluster = (*this)[key];
+  for (const auto &entry : cluster.entries) {
+    if (entry.CompareKey(key)) {
+      return entry;
+    }
+  }
+
+  return std::nullopt;
+}
+
 void TranspositionTable::Save(const U64 &key,
                               U16 ply,
-                              const TranspositionTableEntry &entry) {
-  auto &tt_entry = (*this)[key];
-  const bool tt_hit = tt_entry.CompareKey(key);
+                              const TranspositionTableEntry &new_entry) {
+  auto &cluster = (*this)[key];
+  // Default to replacing the first entry (if it's available)
+  auto replace_entry = &cluster.entries[0];
+  // Find another entry if the first one is already taken
+  if (replace_entry->key != 0 && !replace_entry->CompareKey(key)) {
+    for (int i = 1; i < kTTClusterSize; i++) {
+      const auto entry = &cluster.entries[i];
+      // If this entry is available, we can attempt to write to it
+      if (entry->key == 0 || entry->CompareKey(key)) {
+        replace_entry = entry;
+        break;
+      }
+      // Always prefer the lowest quality entry
+      const int lowest_quality =
+          replace_entry->depth - GetAgeDelta(replace_entry) * 4;
+      const int current_quality = entry->depth - GetAgeDelta(entry) * 4;
+      if (current_quality <= lowest_quality) {
+        replace_entry = entry;
+      }
+    }
+  }
 
-  if (!tt_hit || entry.depth + kDepthLenience >= tt_entry.depth ||
-      entry.flag == TranspositionTableEntry::kExact || tt_entry.age < age_) {
-    const auto old_move = tt_entry.move;
-    tt_entry = entry;
-    tt_entry.age = age_;
+  // Prefer to replace entries that are very old even if they're far greater
+  // than the current depth
+  const int new_quality =
+      new_entry.depth + std::pow(GetAgeDelta(&new_entry), 2) / 4 * 1.5;
+  const int old_quality = replace_entry->depth;
+
+  const bool tt_hit = replace_entry->CompareKey(key);
+  if (!tt_hit || new_entry.flag == TranspositionTableEntry::kExact ||
+      new_quality >= old_quality) {
+    const auto old_move = replace_entry->move;
+    *replace_entry = new_entry;
 
     // Keep the old move if there is no best move being saved and if the key
     // matches
-    if (!entry.move && tt_hit) {
-      tt_entry.move = old_move;
+    if (!replace_entry->move && tt_hit) {
+      replace_entry->move = old_move;
     }
 
     // The ply is negated here since we're saving this entry
-    tt_entry.score = TranspositionTableEntry::CorrectScore(entry.score, -ply);
+    replace_entry->score =
+        TranspositionTableEntry::CorrectScore(new_entry.score, -ply);
   }
 }
 
+int TranspositionTable::GetAgeDelta(
+    const TranspositionTableEntry *entry) const {
+  return (kMaxTTAge + age_ - entry->age) % kMaxTTAge;
+}
+
 void TranspositionTable::Age() {
-  age_ = (age_ + 1) % 64;
+  age_ = (age_ + 1) % kMaxTTAge;
 }
 
 void TranspositionTable::Clear() {
