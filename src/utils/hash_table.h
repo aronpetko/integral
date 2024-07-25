@@ -17,6 +17,13 @@
 
 inline void* alignedAlloc(std::size_t alignment, std::size_t requiredBytes) {
   void* ptr = nullptr;
+
+  // Check that alignment is a power of two and at least the size of a pointer
+  if (alignment < sizeof(void*) || (alignment & (alignment - 1)) != 0) {
+    std::cerr << "Invalid alignment: " << alignment << std::endl;
+    throw std::invalid_argument("Alignment must be a power of two and at least the size of a pointer");
+  }
+
 #if defined(__GNUC__)
   int result = posix_memalign(&ptr, alignment, requiredBytes);
   if (result != 0) {
