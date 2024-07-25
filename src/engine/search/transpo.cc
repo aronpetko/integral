@@ -37,9 +37,8 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
   // Prefer to replace entries that are very old even if they're far greater
   // than the current depth
   const int new_quality =
-      new_entry.depth + std::pow(GetAgeDelta(&new_entry), 2) / 4;
+      new_entry.depth + GetAgeDelta(&new_entry) * GetAgeDelta(&new_entry) / 4;
   const int old_quality = old_entry->depth;
-
   const bool tt_hit = old_entry->CompareKey(key);
   if (!tt_hit ||
       (new_entry.flag == TranspositionTableEntry::kExact &&
@@ -62,7 +61,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
 
 int TranspositionTable::GetAgeDelta(
     const TranspositionTableEntry *entry) const {
-  return (kMaxTTAge + age_ - entry->age) % kMaxTTAge;
+  return (kMaxTTAge + age_ - entry->age) & (kMaxTTAge - 1);
 }
 
 void TranspositionTable::Age() {

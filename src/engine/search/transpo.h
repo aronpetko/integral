@@ -64,7 +64,7 @@ struct TranspositionTableEntry {
     U8 age : 6;
     Flag flag : 2;
   };
-  Score score;
+  I16 score;
   Move move;
   bool was_in_pv;
 };
