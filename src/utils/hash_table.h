@@ -56,7 +56,7 @@ class AlignedHashTable {
     mb_size *= kBytesInMegabyte;
 
     std::size_t num_elements = mb_size / sizeof(T);
-    std::size_t alignment = alignof(T);
+    std::size_t alignment = sizeof(T);
 
     // Log the alignment and size information
     std::cout << "Resizing AlignedHashTable with alignment: " << alignment
