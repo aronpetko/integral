@@ -33,6 +33,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
                               U16 ply) {
+  new_entry.age = age_;
   // Prefer to replace entries that are very old even if they're far greater
   // than the current depth
   const int new_quality =
@@ -44,8 +45,6 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
       (new_entry.flag == TranspositionTableEntry::kExact &&
        old_entry->flag != TranspositionTableEntry::kExact) ||
       new_quality * 3 >= old_quality * 2) {
-    new_entry.age = age_;
-
     const auto old_move = old_entry->move;
     *old_entry = new_entry;
 
