@@ -4,24 +4,28 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-
+#include <memory>
+#include <stdexcept>
+#include <new>
 #include "types.h"
 
 #if defined(__linux__)
 #include <sys/mman.h>
 #endif
 
-inline void* aligned_alloc(std::size_t alignment, std::size_t bytes) {
+inline void* alignedAlloc(std::size_t alignment, std::size_t requiredBytes) {
   void* ptr = nullptr;
 #if defined(__MINGW32__)
   int offset = alignment - 1;
-  void* p = std::malloc(bytes + offset);
+  void* p = std::malloc(requiredBytes + offset);
   if (p) {
-    ptr = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(p) + offset) &
-                                  ~(alignment - 1));
+    ptr = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(p) + offset) & ~(alignment - 1));
   }
 #elif defined(__GNUC__)
-  ptr = std::aligned_alloc(alignment, bytes);
+  int result = posix_memalign(&ptr, alignment, requiredBytes);
+  if (result != 0) {
+    ptr = nullptr;
+  }
 #else
   throw std::runtime_error("Compiler not supported");
 #endif
@@ -31,7 +35,7 @@ inline void* aligned_alloc(std::size_t alignment, std::size_t bytes) {
   }
 
 #if defined(__linux__)
-  madvise(ptr, bytes, MADV_HUGEPAGE);
+  madvise(ptr, requiredBytes, MADV_HUGEPAGE);
 #endif
 
   return ptr;
@@ -40,16 +44,14 @@ inline void* aligned_alloc(std::size_t alignment, std::size_t bytes) {
 template <typename T>
 class HashTable {
  public:
-  explicit HashTable(std::size_t mb_size) : table_(nullptr), table_size_(0) {
+  explicit HashTable(std::size_t mb_size) {
     Resize(mb_size);
   }
 
-  HashTable() : table_(nullptr), table_size_(0) {}
+  HashTable() = default;
 
   ~HashTable() {
-    if (table_) {
-      std::free(table_);
-    }
+    std::free(table_);
   }
 
   void Resize(std::size_t mb_size) {
@@ -58,22 +60,16 @@ class HashTable {
     constexpr std::size_t kBytesInMegabyte = 1024 * 1024;
     mb_size *= kBytesInMegabyte;
 
-    // Calculate the number of elements and the alignment requirement
-    size_t num_elements = mb_size / sizeof(T);
-    size_t alignment = alignof(T);
+    std::size_t num_elements = mb_size / sizeof(T);
+    std::size_t alignment = alignof(T);
 
-    // Free the old memory if allocated
+    T* new_table = static_cast<T*>(alignedAlloc(alignment, num_elements * sizeof(T)));
+
     if (table_) {
       std::free(table_);
     }
 
-    // Allocate aligned memory
-    table_ =
-        static_cast<T*>(aligned_alloc(alignment, num_elements * sizeof(T)));
-    if (!table_) {
-      throw std::bad_alloc();
-    }
-
+    table_ = new_table;
     table_size_ = num_elements;
 
     Clear();
@@ -98,8 +94,8 @@ class HashTable {
   }
 
  private:
-  T* table_;
-  std::size_t table_size_;
+  T* table_ = nullptr;
+  std::size_t table_size_ = 0;
 };
 
 #endif  // INTEGRAL_CACHE_H
