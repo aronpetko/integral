@@ -12,7 +12,7 @@ void TranspositionTable::Save(const U64 &key,
   auto &tt_entry = (*this)[key];
   const bool tt_hit = tt_entry.CompareKey(key);
 
-  if (!tt_hit || entry.depth + kDepthLenience >= tt_entry.depth ||
+  if (!tt_hit || entry.depth + 2 * entry.was_in_pv + 2 >= tt_entry.depth ||
       entry.flag == TranspositionTableEntry::kExact) {
     const auto old_move = tt_entry.move;
     tt_entry = entry;
