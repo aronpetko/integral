@@ -46,12 +46,12 @@ void TranspositionTable::Save(const U64 &key,
   // Prefer to replace entries that are very old even if they're far greater
   // than the current depth
   const int new_quality =
-      new_entry.depth + std::pow(GetAgeDelta(&new_entry), 2) / 4 * 1.5;
+      new_entry.depth + std::pow(GetAgeDelta(&new_entry), 2) / 4;
   const int old_quality = replace_entry->depth;
 
   const bool tt_hit = replace_entry->CompareKey(key);
   if (!tt_hit || new_entry.flag == TranspositionTableEntry::kExact ||
-      new_quality >= old_quality) {
+      new_quality  * 3 >= old_quality * 2) {
     const auto old_move = replace_entry->move;
     *replace_entry = new_entry;
 

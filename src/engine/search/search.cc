@@ -194,7 +194,7 @@ Score Search::QuiescentSearch(Score alpha,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && tt_entry->depth >= tt_depth && can_use_tt_eval) {
+  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= tt_depth) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
