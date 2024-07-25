@@ -60,14 +60,14 @@ constexpr std::array kBenchFens = {
 };
 // clang-format on
 
-void BenchSuite(Board &board, Search &search, int depth) {
-  Board old_board = board;
+void BenchSuite(int depth) {
+  Board board;
+  Search search(board);
+
   U64 nodes = 0, elapsed = 0;
 
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
-    fmt::println("{}", position);
-
     search.NewGame();
     search.Bench(depth);
 
@@ -79,9 +79,6 @@ void BenchSuite(Board &board, Search &search, int depth) {
   fmt::println("{} nodes {} nps",
                nodes,
                static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));
-
-  board = old_board;
-  search.NewGame();
 }
 
 }  // namespace tests
