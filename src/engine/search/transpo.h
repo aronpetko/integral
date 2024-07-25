@@ -80,7 +80,7 @@ struct alignas(32) TranspositionTableCluster {
 
 static_assert(sizeof(TranspositionTableCluster) == 32);
 
-constexpr int kMaxTTAge = 64;
+constexpr int kMaxTTAge = 8;
 
 class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  public:
@@ -104,7 +104,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
 
   virtual void Prefetch(const U64 &key) {
     auto &entry = (*this)[key];
-    __builtin_prefetch(&entry.entries[0]);
+    __builtin_prefetch(&entry);
   }
 
  private:

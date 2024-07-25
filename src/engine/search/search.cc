@@ -66,9 +66,6 @@ template <SearchType type>
 void Search::IterativeDeepening() {
   constexpr bool print_info = type == SearchType::kRegular;
 
-  // Age the transposition table to recognize TT entries from past searches
-  transposition_table.Age();
-
   const auto root_stack = &search_stack_.Front();
   root_stack->best_move = Move::NullMove();
 
@@ -147,6 +144,9 @@ void Search::IterativeDeepening() {
           root_stack->pv.UCIFormat());
     }
   }
+
+  // Age the transposition table to recognize TT entries from past searches
+  transposition_table.Age();
 
   Stop();
 

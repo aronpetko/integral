@@ -13,8 +13,8 @@
       const auto entry = &cluster.entries[i];
       // If this entry is available, we can attempt to write to it
       if (entry->key == 0 || entry->CompareKey(key)) {
-        replace_entry->age = age_;
-        return replace_entry;
+        entry->age = age_;
+        return entry;
       }
       // Always prefer the lowest quality entry
       const int lowest_quality =
@@ -58,7 +58,7 @@ int TranspositionTable::GetAgeDelta(
 }
 
 void TranspositionTable::Age() {
-  age_ = (age_ + 1) % kMaxTTAge;
+  age_ = (age_ + 1) & (kMaxTTAge - 1);
 }
 
 int TranspositionTable::HashFull() const {
