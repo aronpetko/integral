@@ -84,9 +84,12 @@ class TranspositionTable : public HashTable<TranspositionTableCluster> {
 
   TranspositionTable() : age_(0) {}
 
-  [[nodiscard]] std::optional<TranspositionTableEntry> Probe(const U64 &key);
+  [[nodiscard]] TranspositionTableEntry *Probe(const U64 &key);
 
-  void Save(const U64 &key, U16 ply, const TranspositionTableEntry &entry);
+  void Save(TranspositionTableEntry *old_entry,
+            TranspositionTableEntry new_entry,
+            const U64 &key,
+            U16 ply);
 
   void Age();
 

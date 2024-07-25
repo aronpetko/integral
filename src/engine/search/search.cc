@@ -179,7 +179,7 @@ Score Search::QuiescentSearch(Score alpha,
   // position
   const int tt_depth = state.InCheck();
   const auto tt_entry = transposition_table.Probe(state.zobrist_key);
-  const bool tt_hit = tt_entry.has_value();
+  const bool tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
   auto tt_move = Move::NullMove();
   bool tt_was_in_pv = in_pv_node;
@@ -302,7 +302,7 @@ Score Search::QuiescentSearch(Score alpha,
                                              best_score,
                                              Move::NullMove(),
                                              tt_was_in_pv);
-  transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+  transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
   return best_score;
 }
@@ -356,13 +356,13 @@ Score Search::PVSearch(int depth,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  std::optional<TranspositionTableEntry> tt_entry = std::nullopt;
+  TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
 
   if (!stack->excluded_tt_move) {
     tt_entry = transposition_table.Probe(state.zobrist_key);
-    tt_hit = tt_entry.has_value();
+    tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
     // Use the TT entry's evaluation if possible
     if (tt_hit) {
@@ -718,7 +718,7 @@ Score Search::PVSearch(int depth,
     // position
     const TranspositionTableEntry new_tt_entry(
         state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
-    transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+    transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
       history_.correction_history->UpdateScore(
