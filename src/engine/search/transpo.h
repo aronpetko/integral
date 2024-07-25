@@ -59,13 +59,13 @@ struct __attribute((packed)) TranspositionTableEntry {
   }
 
   U16 key;
+  Move move;
+  I16 score;
   U8 depth;
   struct {
     U8 age : 6;
     Flag flag : 2;
   };
-  I16 score;
-  Move move;
   bool was_in_pv;
 };
 

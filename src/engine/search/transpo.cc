@@ -35,9 +35,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               const U64 &key,
                               U16 ply) {
   const bool tt_hit = old_entry->CompareKey(key);
-  if (!tt_hit ||
-      (new_entry.flag == TranspositionTableEntry::kExact &&
-       old_entry->flag != TranspositionTableEntry::kExact) ||
+  if (!tt_hit || new_entry.flag == TranspositionTableEntry::kExact ||
       new_entry.depth + 2 * new_entry.was_in_pv + 2 > old_entry->depth) {
     const auto old_move = old_entry->move;
     *old_entry = new_entry;
