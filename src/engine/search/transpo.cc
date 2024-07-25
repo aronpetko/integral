@@ -2,10 +2,6 @@
 
 #include "../evaluation/evaluation.h"
 
-// When saving a TT entry, we usually want to prefer newer entries only if
-// they've been searched deeper. This lenience allows a maximum of four
-constexpr int kDepthLenience = 4;
-
 [[nodiscard]] std::optional<TranspositionTableEntry> TranspositionTable::Probe(
     const U64 &key) {
   auto &cluster = (*this)[key];
@@ -50,8 +46,10 @@ void TranspositionTable::Save(const U64 &key,
   const int old_quality = replace_entry->depth;
 
   const bool tt_hit = replace_entry->CompareKey(key);
-  if (!tt_hit || new_entry.flag == TranspositionTableEntry::kExact ||
-      new_quality  * 3 >= old_quality * 2) {
+  if (!tt_hit ||
+      (new_entry.flag == TranspositionTableEntry::kExact &&
+       replace_entry->flag != TranspositionTableEntry::kExact) ||
+      new_quality * 3 >= old_quality * 2) {
     const auto old_move = replace_entry->move;
     *replace_entry = new_entry;
 

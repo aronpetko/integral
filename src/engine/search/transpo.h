@@ -92,6 +92,11 @@ class TranspositionTable : public HashTable<TranspositionTableCluster> {
 
   virtual void Clear();
 
+  virtual void Prefetch(const U64 &key) {
+    auto &entry = (*this)[key];
+    __builtin_prefetch(&entry.entries[0]);
+  }
+
  private:
   [[nodiscard]] int GetAgeDelta(const TranspositionTableEntry *entry) const;
 
