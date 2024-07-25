@@ -296,6 +296,7 @@ Score Search::QuiescentSearch(Score alpha,
   const TranspositionTableEntry new_tt_entry(state.zobrist_key,
                                              tt_depth,
                                              tt_flag,
+                                             tt_entry.age + 1,
                                              best_score,
                                              Move::NullMove(),
                                              tt_was_in_pv);
@@ -713,8 +714,13 @@ Score Search::PVSearch(int depth,
 
     // Attempt to update the transposition table with the evaluation of this
     // position
-    const TranspositionTableEntry new_tt_entry(
-        state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
+    const TranspositionTableEntry new_tt_entry(state.zobrist_key,
+                                               depth,
+                                               tt_flag,
+                                               tt_entry.age + 1,
+                                               best_score,
+                                               best_move,
+                                               tt_was_in_pv);
     transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {

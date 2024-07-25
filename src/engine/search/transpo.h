@@ -10,7 +10,6 @@
 
 struct TranspositionTableEntry {
   enum Flag : U8 {
-    kNone,
     kExact,
     kLowerBound,
     kUpperBound
@@ -19,16 +18,23 @@ struct TranspositionTableEntry {
   TranspositionTableEntry()
       : key(0),
         depth(0),
-        flag(kNone),
         score(0),
+        flag(kExact),
+        age(0),
         move(Move::NullMove()),
         was_in_pv(false) {}
 
-  explicit TranspositionTableEntry(
-      U64 key, U8 depth, Flag flag, Score score, Move move, bool was_in_pv)
+  explicit TranspositionTableEntry(U64 key,
+                                   U8 depth,
+                                   Flag flag,
+                                   U8 age,
+                                   Score score,
+                                   Move move,
+                                   bool was_in_pv)
       : key(static_cast<U16>(key)),
         depth(depth),
         flag(flag),
+        age(age % 64),
         score(score),
         move(move),
         was_in_pv(was_in_pv) {}
@@ -59,7 +65,10 @@ struct TranspositionTableEntry {
 
   U16 key;
   U8 depth;
-  Flag flag;
+  struct {
+    U8 age : 6;
+    Flag flag : 2;
+  };
   Score score;
   Move move;
   bool was_in_pv;
