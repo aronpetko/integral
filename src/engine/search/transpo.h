@@ -80,7 +80,7 @@ struct alignas(32) TranspositionTableCluster {
 
 static_assert(sizeof(TranspositionTableCluster) == 32);
 
-constexpr int kMaxTTAge = 8;
+constexpr int kMaxTTAge = 64;
 
 class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  public:
@@ -101,11 +101,6 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
   [[nodiscard]] int HashFull() const;
 
   virtual void Clear();
-
-  virtual void Prefetch(const U64 &key) {
-    auto &entry = (*this)[key];
-    __builtin_prefetch(&entry);
-  }
 
  private:
   [[nodiscard]] int GetAgeDelta(const TranspositionTableEntry *entry) const;
