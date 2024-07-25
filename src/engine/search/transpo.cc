@@ -69,6 +69,6 @@ void TranspositionTable::Age() {
 }
 
 void TranspositionTable::Clear() {
-  HashTable::Clear();
+  AlignedHashTable::Clear();
   age_ = 0;
 }

@@ -12,7 +12,7 @@ struct PawnStructureEntry {
   SideTable<BitBoard> passed_pawns{};
 };
 
-inline HashTable<PawnStructureEntry> pawn_cache;
+inline UnalignedHashTable<PawnStructureEntry> pawn_cache;
 
 }  // namespace eval
 

@@ -81,10 +81,10 @@ static_assert(sizeof(TranspositionTableCluster) == 32,
 
 constexpr int kMaxTTAge = 64;
 
-class TranspositionTable : public HashTable<TranspositionTableCluster> {
+class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  public:
   explicit TranspositionTable(std::size_t mb_size)
-      : HashTable(mb_size), age_(0) {}
+      : AlignedHashTable(mb_size), age_(0) {}
 
   TranspositionTable() : age_(0) {}
 
