@@ -13,17 +13,14 @@
 #include <sys/mman.h>
 #endif
 
+#include <iostream>
+
 inline void* alignedAlloc(std::size_t alignment, std::size_t requiredBytes) {
   void* ptr = nullptr;
-#if defined(__MINGW32__)
-  int offset = alignment - 1;
-  void* p = std::malloc(requiredBytes + offset);
-  if (p) {
-    ptr = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(p) + offset) & ~(alignment - 1));
-  }
-#elif defined(__GNUC__)
+#if defined(__GNUC__)
   int result = posix_memalign(&ptr, alignment, requiredBytes);
   if (result != 0) {
+    std::cerr << "posix_memalign failed with error code: " << result << std::endl;
     ptr = nullptr;
   }
 #else
@@ -31,15 +28,19 @@ inline void* alignedAlloc(std::size_t alignment, std::size_t requiredBytes) {
 #endif
 
   if (!ptr) {
+    std::cerr << "Memory allocation failed!" << std::endl;
     throw std::bad_alloc();
   }
 
 #if defined(__linux__)
-  madvise(ptr, requiredBytes, MADV_HUGEPAGE);
+  if (madvise(ptr, requiredBytes, MADV_HUGEPAGE) != 0) {
+    std::cerr << "madvise failed!" << std::endl;
+  }
 #endif
 
   return ptr;
 }
+
 
 template <typename T>
 class HashTable {
