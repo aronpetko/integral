@@ -284,6 +284,7 @@ constexpr ScorePair Pair(Score middle_game, Score end_game) {
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<I16>::max() - 1;
 const Score kInfiniteScore = std::numeric_limits<I16>::max();
+const Score kTBWinScore = kMateScore - kMaxPlyFromRoot - 1;
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_

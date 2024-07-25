@@ -1,5 +1,5 @@
-#ifndef SPRT_SH_CONSTANTS_H
-#define SPRT_SH_CONSTANTS_H
+#ifndef INTEGRAL_CONSTANTS_H
+#define INTEGRAL_CONSTANTS_H
 
 #include "../../tuner/spsa.h"
 
@@ -47,4 +47,4 @@ Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
 Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
 Tunable sing_double_margin("sing_double_margin", 28, 10, 40, 5);
 
-#endif  // SPRT_SH_CONSTANTS_H
+#endif  // INTEGRAL_CONSTANTS_H

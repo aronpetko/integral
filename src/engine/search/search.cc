@@ -5,6 +5,7 @@
 #include "constants.h"
 #include "fmt/format.h"
 #include "move_picker.h"
+#include "syzygy/syzygy.h"
 #include "time_mgmt.h"
 #include "transpo.h"
 
@@ -358,6 +359,42 @@ Score Search::PVSearch(int depth,
     // window to allow early cutoff
     if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
       return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+    }
+  }
+
+  // Probe the Syzygy table bases
+  constexpr int kSyzygyPieceLimit = 7;
+  if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
+      state.Occupied().PopCount() <= kSyzygyPieceLimit) {
+    const auto tb_result = syzygy::ProbePosition(state);
+    if (tb_result != syzygy::ProbeResult::kFailed) {
+      Score score;
+      TranspositionTableEntry::Flag tt_flag;
+
+      if (tb_result == syzygy::ProbeResult::kWin) {
+        score = kTBWinScore - stack->ply;
+        tt_flag = TranspositionTableEntry::kLowerBound;
+      } else if (tb_result == syzygy::ProbeResult::kLoss) {
+        score = -kTBWinScore + stack->ply;
+        tt_flag = TranspositionTableEntry::kUpperBound;
+      } else {
+        score = kDrawScore;
+        tt_flag = TranspositionTableEntry::kExact;
+      }
+
+      if (tt_flag == TranspositionTableEntry::kExact || (tt_flag == TranspositionTableEntry::kLowerBound ? score >= beta : score <= alpha)) {
+        // Save the table base score to the transposition table
+        const TranspositionTableEntry new_tt_entry(
+            state.zobrist_key, depth, tt_flag, score, Move::NullMove(), tt_was_in_pv);
+        transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+        return score;
+      }
+
+      if constexpr (in_pv_node) {
+        if (tt_flag == TranspositionTableEntry::kUpperBound) {
+          
+        }
+      }
     }
   }
 
