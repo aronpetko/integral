@@ -18,8 +18,8 @@
       }
       // Always prefer the lowest quality entry
       const int lowest_quality =
-          replace_entry->depth - GetAgeDelta(replace_entry) * 4;
-      const int current_quality = entry->depth - GetAgeDelta(entry) * 4;
+          replace_entry->depth - GetAgeDelta(replace_entry);
+      const int current_quality = entry->depth - GetAgeDelta(entry);
       if (current_quality <= lowest_quality) {
         replace_entry = entry;
       }
@@ -33,17 +33,9 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
                               U16 ply) {
-  // Prefer to replace entries that are very old even if they're far greater
-  // than the current depth
-  const int new_quality =
-      new_entry.depth + std::pow(GetAgeDelta(&new_entry), 2) / 4;
-  const int old_quality = old_entry->depth;
-
   const bool tt_hit = old_entry->CompareKey(key);
-  if (!tt_hit ||
-      (new_entry.flag == TranspositionTableEntry::kExact &&
-       old_entry->flag != TranspositionTableEntry::kExact) ||
-      new_quality * 3 >= old_quality * 2) {
+  if (!tt_hit || new_entry.flag == TranspositionTableEntry::kExact ||
+      new_entry.depth + 4 >= old_entry->depth) {
     const auto old_move = old_entry->move;
     *old_entry = new_entry;
 
