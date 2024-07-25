@@ -17,6 +17,7 @@ void TranspositionTable::Save(const U64 &key,
       tt_entry.age < entry.age) {
     const auto old_move = tt_entry.move;
     tt_entry = entry;
+    tt_entry.age = age_;
 
     // Keep the old move if there is no best move being saved and if the key
     // matches
@@ -27,4 +28,8 @@ void TranspositionTable::Save(const U64 &key,
     // The ply is negated here since we're saving this entry
     tt_entry.score = TranspositionTableEntry::CorrectScore(entry.score, -ply);
   }
+}
+
+void TranspositionTable::Age() {
+  age_ = (age_ + 1) % 64;
 }

@@ -27,14 +27,13 @@ struct TranspositionTableEntry {
   explicit TranspositionTableEntry(U64 key,
                                    U8 depth,
                                    Flag flag,
-                                   U8 age,
                                    Score score,
                                    Move move,
                                    bool was_in_pv)
       : key(static_cast<U16>(key)),
         depth(depth),
         flag(flag),
-        age(age % 64),
+        age(0),
         score(score),
         move(move),
         was_in_pv(was_in_pv) {}
@@ -76,11 +75,16 @@ struct TranspositionTableEntry {
 
 class TranspositionTable : public HashTable<TranspositionTableEntry> {
  public:
-  explicit TranspositionTable(std::size_t mb_size) : HashTable(mb_size) {}
+  explicit TranspositionTable(std::size_t mb_size) : HashTable(mb_size), age_(0) {}
 
-  TranspositionTable() = default;
+  TranspositionTable() : age_(0) {}
 
   void Save(const U64 &key, U16 ply, const TranspositionTableEntry &entry);
+
+  void Age();
+
+ private:
+  int age_;
 };
 
 inline TranspositionTable transposition_table;
