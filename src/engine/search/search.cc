@@ -389,8 +389,7 @@ Score Search::PVSearch(int depth,
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
-      state.Occupied().PopCount() <= kSyzygyPieceLimit &&
-      state.fifty_moves_clock == 0) {
+      state.Occupied().PopCount() <= kSyzygyPieceLimit) {
     const auto tb_result = syzygy::ProbePosition(state);
     if (tb_result != syzygy::ProbeResult::kFailed) {
       Score score;
