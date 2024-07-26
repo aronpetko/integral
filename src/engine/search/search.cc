@@ -173,7 +173,7 @@ Score Search::QuiescentSearch(Score alpha,
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
   if (board_.IsDraw(stack->ply)) {
-    return kDrawScore;
+    return 2 - static_cast<Score>(nodes_searched_ % 4);;
   }
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
@@ -342,7 +342,7 @@ Score Search::PVSearch(int depth,
 
   if (!in_root) {
     if (board_.IsDraw(stack->ply)) {
-      return kDrawScore;
+      return 2 - static_cast<Score>(nodes_searched_ % 4);;
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
@@ -389,7 +389,8 @@ Score Search::PVSearch(int depth,
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
-      state.Occupied().PopCount() <= kSyzygyPieceLimit) {
+      state.Occupied().PopCount() <= kSyzygyPieceLimit &&
+      state.fifty_moves_clock == 0) {
     const auto tb_result = syzygy::ProbePosition(state);
     if (tb_result != syzygy::ProbeResult::kFailed) {
       Score score;
@@ -402,7 +403,7 @@ Score Search::PVSearch(int depth,
         score = -kTBWinScore + stack->ply;
         tt_flag = TranspositionTableEntry::kUpperBound;
       } else {
-        score = kDrawScore;
+        score = 2 - static_cast<Score>(nodes_searched_ % 4);
         tt_flag = TranspositionTableEntry::kExact;
       }
 
