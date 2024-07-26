@@ -24,6 +24,7 @@ constexpr std::string_view kEngineAuthor = "Aron Petkovski";
 class Listener {
  public:
   Listener() = default;
+  ~Listener();
 
   void Listen() {
     std::string line;

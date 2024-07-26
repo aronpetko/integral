@@ -45,6 +45,7 @@ Search::Search(Board &board)
       history_(board_.GetState()),
       sel_depth_(0),
       nodes_searched_(0),
+      tb_hits(0),
       start_search_(false),
       searching_(false),
       stopped_(true),
@@ -304,7 +305,8 @@ Score Search::QuiescentSearch(Score alpha,
                                              best_score,
                                              Move::NullMove(),
                                              tt_was_in_pv);
-  transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+  transposition_table.Save(
+      tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
   return best_score;
 }
@@ -380,8 +382,10 @@ Score Search::PVSearch(int depth,
     }
   }
 
-  // Probe the Syzygy table bases
   constexpr int kSyzygyPieceLimit = 7;
+
+  // Probe the Syzygy table bases
+  int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
       state.Occupied().PopCount() <= kSyzygyPieceLimit) {
     const auto tb_result = syzygy::ProbePosition(state);
@@ -400,17 +404,30 @@ Score Search::PVSearch(int depth,
         tt_flag = TranspositionTableEntry::kExact;
       }
 
-      if (tt_flag == TranspositionTableEntry::kExact || (tt_flag == TranspositionTableEntry::kLowerBound ? score >= beta : score <= alpha)) {
+      ++tb_hits;
+
+      if (tt_flag == TranspositionTableEntry::kExact ||
+          (tt_flag == TranspositionTableEntry::kLowerBound ? score >= beta
+                                                           : score <= alpha)) {
         // Save the table base score to the transposition table
-        const TranspositionTableEntry new_tt_entry(
-            state.zobrist_key, depth, tt_flag, score, Move::NullMove(), tt_was_in_pv);
-        transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+        const TranspositionTableEntry new_tt_entry(state.zobrist_key,
+                                                   depth,
+                                                   tt_flag,
+                                                   score,
+                                                   Move::NullMove(),
+                                                   tt_was_in_pv);
+        transposition_table.Save(
+            tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
         return score;
       }
 
       if constexpr (in_pv_node) {
         if (tt_flag == TranspositionTableEntry::kUpperBound) {
-          
+          syzygy_max_score = score;
+        } else if (tt_flag == TranspositionTableEntry::kLowerBound) {
+          syzygy_min_score = score;
+          // We can safely try to raise alpha if we have a lower bound score
+          alpha = std::max(alpha, syzygy_min_score);
         }
       }
     }
@@ -742,6 +759,10 @@ Score Search::PVSearch(int depth,
     return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
+  if (syzygy::enabled) {
+    best_score = std::clamp(best_score, syzygy_min_score, syzygy_max_score);
+  }
+
   if (!stack->excluded_tt_move) {
     auto tt_flag = TranspositionTableEntry::kExact;
     if (alpha >= beta) {
@@ -756,7 +777,8 @@ Score Search::PVSearch(int depth,
     // position
     const TranspositionTableEntry new_tt_entry(
         state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
-    transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+    transposition_table.Save(
+        tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
       history_.correction_history->UpdateScore(
@@ -777,6 +799,7 @@ void Search::Bench(int depth) {
     time_mgmt_.Start();
   }
   nodes_searched_.store(0, std::memory_order_seq_cst);
+  tb_hits.store(0, std::memory_order_seq_cst);
   benching_.store(true, std::memory_order_seq_cst);
   stopped_.store(false, std::memory_order_seq_cst);
   start_search_.store(true, std::memory_order_seq_cst);
@@ -820,6 +843,7 @@ void Search::Start(TimeConfig &time_config) {
     time_mgmt_.Start();
   }
   nodes_searched_.store(0, std::memory_order_seq_cst);
+  tb_hits.store(0, std::memory_order_seq_cst);
   start_search_.store(true, std::memory_order_seq_cst);
   stopped_.store(false, std::memory_order_seq_cst);
 }

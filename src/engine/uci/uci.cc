@@ -189,6 +189,12 @@ void Initialize(Board &board, Search &search) {
 
 }  // namespace commands
 
+Listener::~Listener() {
+  if (syzygy::enabled) {
+    tb_free();
+  }
+}
+
 void AcceptCommands(int arg_count, char **args) {
   Board board;
   board.SetFromFen(fen::kStartFen);
