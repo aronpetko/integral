@@ -186,7 +186,7 @@ Score Search::QuiescentSearch(Score alpha,
   bool tt_was_in_pv = in_pv_node;
 
   if (tt_hit) {
-    tt_was_in_pv |= tt_entry->was_in_pv;
+    tt_was_in_pv |= tt_entry->GetWasPV();
     tt_move = tt_entry->move;
   }
 
@@ -368,7 +368,7 @@ Score Search::PVSearch(int depth,
     // Use the TT entry's evaluation if possible
     if (tt_hit) {
       can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-      tt_was_in_pv |= tt_entry->was_in_pv;
+      tt_was_in_pv |= tt_entry->GetWasPV();
       tt_move = tt_entry->move;
     }
 
@@ -548,7 +548,7 @@ Score Search::PVSearch(int depth,
     if (!in_root && depth >= 8 && move == tt_move) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 4 >= depth &&
-          tt_entry->flag != TranspositionTableEntry::kUpperBound &&
+          tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
 
       if (is_accurate_tt_score) {

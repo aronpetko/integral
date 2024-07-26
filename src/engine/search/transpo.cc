@@ -13,7 +13,7 @@
       const auto entry = &cluster.entries[i];
       // If this entry is available, we can attempt to write to it
       if (entry->key == 0 || entry->CompareKey(key)) {
-        entry->age = age_;
+        entry->SetAge(age_);
         return entry;
       }
       // Always prefer the lowest quality entry
@@ -33,42 +33,34 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
                               U16 ply) {
-  const bool tt_hit = old_entry->CompareKey(key);
-  if (!tt_hit || new_entry.flag == TranspositionTableEntry::kExact ||
-      new_entry.depth + 2 * new_entry.was_in_pv + 2 > old_entry->depth) {
-    const auto old_move = old_entry->move;
-    *old_entry = new_entry;
-    old_entry->age = age_;
+  if (new_entry.move || !old_entry->CompareKey(key)) {
+    old_entry->move = new_entry.move;
+  }
 
-    // Keep the old move if there is no best move being saved and if the key
-    // matches
-    if (!new_entry.move && tt_hit) {
-      old_entry->move = old_move;
-    }
+  if (!old_entry->CompareKey(key) ||
+      new_entry.GetFlag() == TranspositionTableEntry::kExact ||
+      new_entry.depth + 2 * new_entry.GetWasPV() + 2 > old_entry->depth) {
+    new_entry.SetAge(age_);
 
-    // The ply is negated here since we're saving this entry
+    old_entry->key = static_cast<U16>(key);
     old_entry->score =
         TranspositionTableEntry::CorrectScore(new_entry.score, -ply);
+    old_entry->depth = new_entry.depth;
+    old_entry->bits = new_entry.bits;
   }
 }
 
-int TranspositionTable::GetAgeDelta(
+U32 TranspositionTable::GetAgeDelta(
     const TranspositionTableEntry *entry) const {
-  return (kMaxTTAge + age_ - static_cast<int>(entry->age)) & (kMaxTTAge - 1);
+  return (kMaxTTAge + age_ - entry->GetAge()) % kMaxTTAge;
 }
 
 void TranspositionTable::Age() {
-  age_ = (age_ + 1) & (kMaxTTAge - 1);
+  age_ = (age_ + 1) % kMaxTTAge;
 }
 
 int TranspositionTable::HashFull() const {
-  int count = 0;
-  for (int i = 0; i < 1000; i++) {
-    for (const auto &entry : table_[i].entries) {
-      count += entry.age == age_ && entry.score != kScoreNone;
-    }
-  }
-  return count / kTTClusterSize;
+  return 0;
 }
 
 void TranspositionTable::Clear() {

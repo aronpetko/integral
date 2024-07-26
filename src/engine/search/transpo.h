@@ -8,7 +8,7 @@
 #include "../../chess/move.h"
 #include "../../utils/hash_table.h"
 
-struct __attribute((packed)) TranspositionTableEntry {
+struct TranspositionTableEntry {
   enum Flag : U8 {
     kExact,
     kLowerBound,
@@ -19,20 +19,19 @@ struct __attribute((packed)) TranspositionTableEntry {
       : key(0),
         depth(0),
         score(kScoreNone),
-        flag(kExact),
-        age(0),
         move(Move::NullMove()),
-        was_in_pv(false) {}
+        bits(0) {}
 
   explicit TranspositionTableEntry(
       U64 key, U8 depth, Flag flag, Score score, Move move, bool was_in_pv)
       : key(static_cast<U16>(key)),
         depth(depth),
-        flag(flag),
-        age(0),
         score(score),
         move(move),
-        was_in_pv(was_in_pv) {}
+        bits(0) {
+    SetWasPV(was_in_pv);
+    SetFlag(flag);
+  }
 
   // Keys are packed to maximize the number of entries the table can hold
   // Therefore, we must down-cast when checking for key equality
@@ -42,6 +41,7 @@ struct __attribute((packed)) TranspositionTableEntry {
 
   // Check if the entry's score falls within the search window
   [[nodiscard]] bool CanUseScore(Score alpha, Score beta) const {
+    const auto flag = GetFlag();
     return score != kScoreNone &&
            ((flag == kUpperBound && score <= alpha) ||
             (flag == kLowerBound && score >= beta) || flag == kExact);
@@ -59,26 +59,49 @@ struct __attribute((packed)) TranspositionTableEntry {
   }
 
   U16 key;
-  Move move;
   I16 score;
+  Move move;
   U8 depth;
-  struct {
-    U8 age : 6;
-    Flag flag : 2;
+  union {
+    struct {
+      U8 age : 5;
+      U8 was_pv : 1;
+      U8 flag : 2;
+    } bits;
   };
-  bool was_in_pv;
+
+  [[nodiscard]] U32 GetAge() const {
+    return bits.age;
+  }
+
+  void SetAge(U32 age) {
+    bits.age = age;
+  }
+
+  [[nodiscard]] bool GetWasPV() const {
+    return bits.was_pv;
+  }
+
+  void SetWasPV(bool was_pv) {
+    bits.was_pv = was_pv;
+  }
+
+  [[nodiscard]] Flag GetFlag() const {
+    return static_cast<Flag>(bits.flag);
+  }
+
+  void SetFlag(Flag flag) {
+    bits.flag = static_cast<U8>(flag);
+  }
 };
 
-static_assert(sizeof(TranspositionTableEntry) == 10);
+static_assert(sizeof(TranspositionTableEntry) == 8);
 
-constexpr int kTTClusterSize = 3;
+constexpr int kTTClusterSize = 4;
 
-struct alignas(32) TranspositionTableCluster {
+struct TranspositionTableCluster {
   std::array<TranspositionTableEntry, kTTClusterSize> entries;
-  char padding[2];
 };
-
-static_assert(sizeof(TranspositionTableCluster) == 32);
 
 constexpr int kMaxTTAge = 64;
 
@@ -103,7 +126,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
   virtual void Clear();
 
  private:
-  [[nodiscard]] int GetAgeDelta(const TranspositionTableEntry *entry) const;
+  [[nodiscard]] U32 GetAgeDelta(const TranspositionTableEntry *entry) const;
 
  private:
   int age_;
