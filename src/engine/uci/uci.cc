@@ -30,6 +30,7 @@ void Initialize() {
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", "<empty>", [](const Option &option) {
     const auto path = option.GetValue<std::string>();
     if (path != "<empty>") {
+      fmt::println("{}", path);
       syzygy::enabled = true;
       tb_init(path.c_str());
     }

@@ -7,7 +7,7 @@
 
 namespace syzygy {
 
-static std::atomic<bool> enabled = false;
+inline std::atomic<bool> enabled = false;
 
 enum class ProbeResult {
   kFailed,

@@ -134,7 +134,7 @@ void Search::IterativeDeepening() {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
-          "{} hashfull {} {} {} pv {}",
+          "{} hashfull {}{} {} pv {}",
           depth,
           sel_depth_,
           is_mate ? "mate" : "cp",
@@ -143,7 +143,7 @@ void Search::IterativeDeepening() {
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
           transposition_table.HashFull(),
-          syzygy::enabled ? "tbhits" : "",
+          syzygy::enabled ? " tbhits" : "",
           syzygy::enabled ? std::to_string(tb_hits) : "",
           root_stack->pv.UCIFormat());
     }
