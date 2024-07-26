@@ -45,8 +45,22 @@ Search::Search(Board &board)
       history_(board_.GetState()),
       sel_depth_(0),
       nodes_searched_(0),
-      searching_(false) {
+      start_search_(false),
+      searching_(false),
+      stopped_(true),
+      benching_(false),
+      quit_(false) {
   search_stack_.Reset();
+  threads_.emplace_back([this]() { Run(); });
+}
+
+Search::~Search() {
+  quit_.store(true, std::memory_order_release);
+  for (auto &thread : threads_) {
+    if (thread.joinable()) {
+      thread.join();
+    }
+  }
 }
 
 template <SearchType type>
@@ -119,7 +133,7 @@ void Search::IterativeDeepening() {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
-          "{} pv {}",
+          "{} hashfull {} pv {}",
           depth,
           sel_depth_,
           is_mate ? "mate" : "cp",
@@ -127,9 +141,13 @@ void Search::IterativeDeepening() {
           nodes_searched_.load(),
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
+          transposition_table.HashFull(),
           root_stack->pv.UCIFormat());
     }
   }
+
+  // Age the transposition table to recognize TT entries from past searches
+  transposition_table.Age();
 
   Stop();
 
@@ -162,24 +180,24 @@ Score Search::QuiescentSearch(Score alpha,
   // Probe the transposition table to see if we have already evaluated this
   // position
   const int tt_depth = state.InCheck();
-  const auto &tt_entry = transposition_table[state.zobrist_key];
-  const bool tt_hit = tt_entry.CompareKey(state.zobrist_key);
+  const auto tt_entry = transposition_table.Probe(state.zobrist_key);
+  const bool tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
   auto tt_move = Move::NullMove();
   bool tt_was_in_pv = in_pv_node;
 
   if (tt_hit) {
-    tt_was_in_pv |= tt_entry.was_in_pv;
-    tt_move = tt_entry.move;
+    tt_was_in_pv |= tt_entry->GetWasPV();
+    tt_move = tt_entry->move;
   }
 
   // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry.CanUseScore(alpha, beta);
+  const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && tt_entry.depth >= tt_depth && can_use_tt_eval) {
-    return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= tt_depth) {
+    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
   // Keep track of the original alpha for bound determination when updating the
@@ -194,8 +212,8 @@ Score Search::QuiescentSearch(Score alpha,
         history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
 
     if (tt_hit &&
-        tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
-      best_score = tt_entry.score;
+        tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
+      best_score = tt_entry->score;
     } else {
       best_score = stack->static_eval;
     }
@@ -286,7 +304,7 @@ Score Search::QuiescentSearch(Score alpha,
                                              best_score,
                                              Move::NullMove(),
                                              tt_was_in_pv);
-  transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+  transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
   return best_score;
 }
@@ -340,25 +358,25 @@ Score Search::PVSearch(int depth,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  TranspositionTableEntry tt_entry;
+  TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
 
   if (!stack->excluded_tt_move) {
-    tt_entry = transposition_table[state.zobrist_key];
-    tt_hit = tt_entry.CompareKey(state.zobrist_key);
+    tt_entry = transposition_table.Probe(state.zobrist_key);
+    tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
     // Use the TT entry's evaluation if possible
     if (tt_hit) {
-      can_use_tt_eval = tt_entry.CanUseScore(alpha, beta);
-      tt_was_in_pv |= tt_entry.was_in_pv;
-      tt_move = tt_entry.move;
+      can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+      tt_was_in_pv |= tt_entry->GetWasPV();
+      tt_move = tt_entry->move;
     }
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
-    if (!in_pv_node && can_use_tt_eval && tt_entry.depth >= depth) {
-      return TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+    if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= depth) {
+      return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     }
   }
 
@@ -407,9 +425,9 @@ Score Search::PVSearch(int depth,
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
-        tt_entry.CanUseScore(stack->static_eval, stack->static_eval)) {
+        tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
-          TranspositionTableEntry::CorrectScore(tt_entry.score, stack->ply);
+          TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
       stack->eval = stack->static_eval;
     }
@@ -527,6 +545,7 @@ Score Search::PVSearch(int depth,
         move_picker.SkipQuiets();
         continue;
       }
+
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin = fut_margin_base + fut_margin_mult * depth;
@@ -565,13 +584,13 @@ Score Search::PVSearch(int depth,
     // move excluded to see if any other moves can beat it.
     if (!in_root && depth >= 8 && move == tt_move) {
       const bool is_accurate_tt_score =
-          tt_entry.depth + 4 >= depth &&
-          tt_entry.flag != TranspositionTableEntry::kUpperBound &&
-          std::abs(tt_entry.score) < kMateScore - kMaxPlyFromRoot;
+          tt_entry->depth + 4 >= depth &&
+          tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
+          std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry.score - depth * sing_ext_margin;
+        const Score new_beta = tt_entry->score - depth * sing_ext_margin;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
@@ -603,7 +622,7 @@ Score Search::PVSearch(int depth,
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry.score >= beta) {
+        else if (tt_entry->score >= beta) {
           extensions = -1;
         }
       }
@@ -737,7 +756,7 @@ Score Search::PVSearch(int depth,
     // position
     const TranspositionTableEntry new_tt_entry(
         state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
-    transposition_table.Save(state.zobrist_key, stack->ply, new_tt_entry);
+    transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
       history_.correction_history->UpdateScore(
@@ -748,57 +767,87 @@ Score Search::PVSearch(int depth,
   return best_score;
 }
 
-bool Search::ShouldQuit() {
-  return search_stack_.Front().best_move &&
-         (!searching_ || time_mgmt_.TimesUp(nodes_searched_));
-}
-
-void Search::Start(TimeConfig &time_config) {
-  if (searching_) return;
-  searching_ = true;
-
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  nodes_searched_ = 0;
-
-  std::thread([this] { IterativeDeepening<SearchType::kRegular>(); }).detach();
-}
-
 void Search::Bench(int depth) {
-  if (searching_) return;
-  searching_ = true;
+  {
+    std::unique_lock lock(mutex_);
+    if (searching_.load(std::memory_order_relaxed)) return;
 
-  TimeConfig time_config;
-  time_config.depth = depth;
+    TimeConfig time_config{.depth = depth};
+    time_mgmt_.SetConfig(time_config);
+    time_mgmt_.Start();
+  }
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  benching_.store(true, std::memory_order_seq_cst);
+  stopped_.store(false, std::memory_order_seq_cst);
+  start_search_.store(true, std::memory_order_seq_cst);
 
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  nodes_searched_ = 0;
-
-  // Bench is intended to block the UCI loop thread
-  IterativeDeepening<SearchType::kBench>();
-}
-
-void Search::Stop() {
-  time_mgmt_.Stop();
-  searching_ = false;
-}
-
-void Search::WaitUntilFinished() const {
-  while (searching_) std::this_thread::yield();
+  while (!stopped_.load(std::memory_order_relaxed)) {
+    std::this_thread::yield();
+  };
 }
 
 TimeManagement &Search::GetTimeManagement() {
   return time_mgmt_;
 }
 
+void Search::Run() {
+  while (!quit_.load(std::memory_order_acquire)) {
+    if (start_search_.load(std::memory_order_relaxed)) {
+      start_search_.store(false, std::memory_order_seq_cst);
+      searching_.store(true, std::memory_order_seq_cst);
+
+      if (benching_.load(std::memory_order_relaxed)) {
+        IterativeDeepening<SearchType::kBench>();
+      } else {
+        IterativeDeepening<SearchType::kRegular>();
+      }
+    }
+  }
+}
+
+bool Search::ShouldQuit() {
+  return stopped_.load(std::memory_order_relaxed) ||
+         (search_stack_.Front().best_move &&
+          time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
+}
+
+void Search::Start(TimeConfig &time_config) {
+  {
+    if (searching_.load(std::memory_order_acquire)) return;
+
+    std::unique_lock lock(mutex_);
+    time_mgmt_.SetConfig(time_config);
+    time_mgmt_.Start();
+  }
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  start_search_.store(true, std::memory_order_seq_cst);
+  stopped_.store(false, std::memory_order_seq_cst);
+}
+
+void Search::Stop() {
+  if (!searching_.load(std::memory_order_acquire)) return;
+
+  stopped_.store(true, std::memory_order_seq_cst);
+  searching_.store(false, std::memory_order_seq_cst);
+  benching_.store(false, std::memory_order_seq_cst);
+
+  std::unique_lock lock(mutex_);
+  time_mgmt_.Stop();
+}
+
+void Search::Wait() {
+  while (searching_.load(std::memory_order_relaxed)) {
+    std::this_thread::yield();
+  }
+}
+
 void Search::NewGame() {
-  transposition_table.Clear();
-  eval::pawn_cache.Clear();
-  history_.Clear();
-  search_stack_.Reset();
+  if (stopped_.load(std::memory_order_relaxed)) {
+    transposition_table.Clear();
+    eval::pawn_cache.Clear();
+    history_.Clear();
+    search_stack_.Reset();
+  }
 }
 
 U64 Search::GetNodesSearched() const {

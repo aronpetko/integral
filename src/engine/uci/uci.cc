@@ -47,7 +47,6 @@ void Initialize(Board &board, Search &search) {
   listener.RegisterCommand("position", CommandType::kOrdered, {
     CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
     CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
-    CreateArgument("kiwipete", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("moves", ArgumentType::kOptional, UnlimitedInputProcessor())
   }, [&board](Command *cmd) {
     std::string board_fen;
@@ -79,8 +78,6 @@ void Initialize(Board &board, Search &search) {
     CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("binc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [&board, &search](Command *cmd) {
-    search.WaitUntilFinished();
-
     const auto perft_depth = cmd->ParseArgument<int>("perft");
     if (perft_depth) {
       tests::Perft(board, *perft_depth);
@@ -125,17 +122,14 @@ void Initialize(Board &board, Search &search) {
 
   listener.RegisterCommand("stop", CommandType::kUnordered, {}, [&search](Command *cmd) {
     search.Stop();
-    search.WaitUntilFinished();
   });
 
   listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {
-    search.Stop();
-    search.WaitUntilFinished();
     search.NewGame();
   });
 
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
-    fmt::println("info string cp {}", eval::Evaluate(board.GetState()));
+    fmt::println("info cp {}", eval::Evaluate(board.GetState()));
   });
 
   listener.RegisterCommand("print", CommandType::kUnordered, {}, [&board](Command *cmd) {
@@ -157,7 +151,7 @@ void Initialize(Board &board, Search &search) {
     CreateArgument("perft", ArgumentType::kOptional, NoInputProcessor()),
   }, [](Command *cmd) {
     if (cmd->ArgumentExists("see")) tests::SEESuite();
-    if (cmd->ArgumentExists("perft")) tests::PerftSuite();
+    else if (cmd->ArgumentExists("perft")) tests::PerftSuite();
     else {
       tests::SEESuite();
       tests::PerftSuite();
@@ -165,11 +159,11 @@ void Initialize(Board &board, Search &search) {
   });
 
   listener.RegisterCommand("bench", CommandType::kUnordered, {
-    CreateArgument("depth", ArgumentType::kOptional, LimitedInputProcessor<1>()),
-  }, [&board, &search](Command *cmd) {
+    CreateArgument("depth", ArgumentType::kOptional, NoInputProcessor()),
+  }, [](Command *cmd) {
     const auto bench_depth = cmd->ParseArgument<int>("depth");
-    if (bench_depth) tests::BenchSuite(board, search, *bench_depth);
-    else tests::BenchSuite(board, search, tests::kDefaultBenchDepth);
+    if (bench_depth) tests::BenchSuite(*bench_depth);
+    else tests::BenchSuite(tests::kDefaultBenchDepth);
   });
 
   listener.RegisterCommand("uci", CommandType::kUnordered, {}, [](Command *cmd) {
@@ -208,7 +202,7 @@ void AcceptCommands(int arg_count, char **args) {
   if (args[1] && std::string(args[1]) == "bench") {
     const int depth =
         arg_count == 3 ? std::stoi(args[2]) : tests::kDefaultBenchDepth;
-    tests::BenchSuite(board, search, depth);
+    tests::BenchSuite(depth);
     return;
   }
 

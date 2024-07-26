@@ -17,7 +17,7 @@ namespace tests {
 
 constexpr int kDefaultBenchDepth = 12;
 
-void BenchSuite(Board &board, Search &search, int depth);
+void BenchSuite(int depth);
 
 void SEESuite();
 
