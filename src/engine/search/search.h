@@ -1,18 +1,21 @@
 #ifndef INTEGRAL_SEARCH_H_
 #define INTEGRAL_SEARCH_H_
 
+#include <barrier>
 #include <thread>
 
 #include "../../chess/move_gen.h"
+#include "../../utils/barrier.h"
 #include "../evaluation/evaluation.h"
 #include "history/history.h"
 #include "stack.h"
 #include "time_mgmt.h"
 
+namespace search {
+
 constexpr int kMaxSearchDepth = 100;
 
 enum class NodeType {
-  kRoot,
   kPV,
   kNonPV
 };
@@ -20,6 +23,38 @@ enum class NodeType {
 enum class SearchType {
   kRegular,
   kBench
+};
+
+struct Thread {
+  explicit Thread(U32 id, Board &board)
+      : id(id),
+        history(board.GetState()),
+        board(board),
+        nodes_searched(0),
+        sel_depth(0),
+        tb_hits(0) {}
+
+  void SetBoard(const Board &new_board) {
+    board = new_board;
+  }
+
+  void NewGame() {
+    history.Clear();
+    stack.Reset();
+  }
+
+  [[nodiscard]] bool IsMainThread() const {
+    return id == 0;
+  }
+
+  std::thread raw_thread;
+  U32 id;
+  Board board;
+  history::History history;
+  SearchStack stack;
+  U64 nodes_searched;
+  U16 sel_depth;
+  U64 tb_hits;
 };
 
 class Search {
@@ -32,9 +67,9 @@ class Search {
 
   void Stop();
 
-  void Wait();
+  void SetThreadCount(U16 count);
 
-  void Bench(int depth);
+  U64 Bench(int depth);
 
   TimeManagement &GetTimeManagement();
 
@@ -43,16 +78,22 @@ class Search {
   [[nodiscard]] U64 GetNodesSearched() const;
 
  private:
-  void Run();
+  void Run(Thread &thread);
+
+  void QuitThreads();
 
   template <SearchType type>
-  void IterativeDeepening();
+  void IterativeDeepening(Thread &thread);
 
   template <NodeType node_type>
-  Score QuiescentSearch(Score alpha, Score beta, SearchStackEntry *stack);
+  Score QuiescentSearch(Thread &thread,
+                        Score alpha,
+                        Score beta,
+                        SearchStackEntry *stack);
 
   template <NodeType node_type>
-  Score PVSearch(int depth,
+  Score PVSearch(Thread &thread,
+                 int depth,
                  Score alpha,
                  Score beta,
                  SearchStackEntry *stack,
@@ -63,20 +104,12 @@ class Search {
  private:
   Board &board_;
   TimeManagement time_mgmt_;
-  history::SearchHistory history_;
-  SearchStack search_stack_;
-  std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
-  U16 sel_depth_;
-  std::atomic<U64> nodes_searched_;
-  std::atomic<U64> tb_hits;
-  std::atomic<bool> start_search_;
-  std::atomic<bool> searching_;
-  std::atomic<bool> stopped_;
-  std::atomic<bool> benching_;
-  std::atomic<bool> quit_;
-  mutable std::mutex mutex_;
-  std::condition_variable cv_;
-  std::vector<std::thread> threads_;
+  std::atomic_bool searching_, stopped_, quit_;
+  int next_thread_id_;
+  std::vector<Thread> threads_;
+  Barrier start_barrier_, stop_barrier_, search_end_barrier_;
 };
+
+}  // namespace search
 
 #endif  // INTEGRAL_SEARCH_H_

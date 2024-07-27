@@ -5,7 +5,7 @@
 #include "../stack.h"
 #include "bonus.h"
 
-namespace history {
+namespace search::history {
 
 class QuietHistory {
  public:
@@ -51,6 +51,6 @@ class QuietHistory {
   MultiArray<int, kNumColors, kSquareCount, kSquareCount, 4> table_;
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_QUIET_HISTORY_H

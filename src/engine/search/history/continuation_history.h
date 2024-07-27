@@ -5,7 +5,7 @@
 #include "../stack.h"
 #include "bonus.h"
 
-namespace history {
+namespace search::history {
 
 using ContinuationEntry =
     MultiArray<I32, kNumColors, kNumPieceTypes, kSquareCount>;
@@ -72,6 +72,6 @@ class ContinuationHistory {
       table_;
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_CONTINUATION_HISTORY_H

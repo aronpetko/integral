@@ -7,11 +7,11 @@
 #include "correction_history.h"
 #include "quiet_history.h"
 
-namespace history {
+namespace search::history {
 
-class SearchHistory {
+class History {
  public:
-  explicit SearchHistory(const BoardState &state) : state_(state) {
+  explicit History(const BoardState &state) : state_(state) {
     Clear();
   }
 
@@ -46,6 +46,6 @@ class SearchHistory {
   const BoardState &state_;
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_HISTORY_H

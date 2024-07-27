@@ -10,6 +10,8 @@ using std::chrono::duration_cast;
 #include "../../chess/board.h"
 #include "../../utils/types.h"
 
+namespace search {
+
 struct TimeConfig {
   bool infinite = false;
   int depth = 0;
@@ -85,5 +87,7 @@ class TimeManagement {
   Move previous_best_move_;
   int best_move_stability_;
 };
+
+}
 
 #endif  // INTEGRAL_TIME_MGMT_H_

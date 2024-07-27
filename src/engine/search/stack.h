@@ -4,6 +4,8 @@
 #include "../../chess/move_gen.h"
 #include "../../utils/types.h"
 
+namespace search {
+
 struct PVLine {
  public:
   PVLine() : moves_({}) {
@@ -125,5 +127,7 @@ class SearchStack {
  private:
   std::array<SearchStackEntry, kMaxPlyFromRoot + kPadding> stack_;
 };
+
+}  // namespace search
 
 #endif  // INTEGRAL_STACK_H

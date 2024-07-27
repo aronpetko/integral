@@ -7,6 +7,8 @@
 #include "../evaluation/evaluation.h"
 #include "history/history.h"
 
+namespace search {
+
 struct ScoredMove {
   Move move;
   int score;
@@ -33,7 +35,7 @@ class MovePicker {
   MovePicker(MovePickerType type,
              Board &board,
              Move tt_move,
-             history::SearchHistory &history,
+             history::History &history,
              SearchStackEntry *stack);
 
   Move Next();
@@ -56,12 +58,14 @@ class MovePicker {
   Board &board_;
   Move tt_move_;
   MovePickerType type_;
-  history::SearchHistory &history_;
+  history::History &history_;
   SearchStackEntry *stack_;
   Stage stage_;
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
 };
+
+}  // namespace search
 
 #endif  // INTEGRAL_MOVE_PICKER_H_

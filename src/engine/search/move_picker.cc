@@ -1,9 +1,11 @@
 #include "move_picker.h"
 
+namespace search {
+
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
-                       history::SearchHistory &history,
+                       history::History &history,
                        SearchStackEntry *stack)
     : board_(board),
       tt_move_(tt_move),
@@ -173,3 +175,5 @@ int MovePicker::ScoreMove(Move &move) {
   // be ordered first
   return history_.GetQuietMoveScore(move, state.threats, stack_);
 }
+
+}  // namespace search

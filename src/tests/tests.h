@@ -11,7 +11,6 @@
 #include "../utils/string.h"
 
 class Board;
-class Search;
 
 namespace tests {
 

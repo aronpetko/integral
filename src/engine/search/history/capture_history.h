@@ -5,7 +5,7 @@
 #include "../stack.h"
 #include "bonus.h"
 
-namespace history {
+namespace search::history {
 
 class CaptureHistory {
  public:
@@ -41,6 +41,6 @@ class CaptureHistory {
   MultiArray<int, kNumColors, kSquareCount, kSquareCount> table_;
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_CAPTURE_HISTORY_H

@@ -5,7 +5,7 @@
 #include "../../../utils/multi_array.h"
 #include "../stack.h"
 
-namespace history {
+namespace search::history {
 
 inline Tunable corr_history_scale("corr_history_scale", 256, 100, 500, 15);
 inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
@@ -67,6 +67,6 @@ class CorrectionHistory {
       table_;  // Keep the size fixed for the MultiArray
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_CORRECTION_HISTORY_H
