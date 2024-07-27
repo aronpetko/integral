@@ -29,7 +29,7 @@ inline void* alligned_alloc(size_t alignment, size_t bytes) {
 #endif
 
 #if defined(__linux__)
-  madvise(ptr, requiredBytes, MADV_HUGEPAGE);
+  madvise(ptr, bytes, MADV_HUGEPAGE);
 #endif
 
   return ptr;
