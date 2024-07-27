@@ -440,19 +440,27 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr PieceTable<ScorePair> kSafeCheckBonus = ");
   PrintArray(index, kNumPieceTypes, parameters_);
 
-  fmt::print("constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty = ");
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty "
+      "= ");
   Print2DArray(index, kNumPieceTypes, 2, parameters_);
 
   fmt::print("constexpr PieceTable<ScorePair> kPawnPushThreat = ");
   PrintArray(index, kNumPieceTypes, parameters_);
 
-  fmt::print("constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty = ");
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> "
+      "kThreatenedByKnightPenalty = ");
   Print2DArray(index, kNumPieceTypes, 2, parameters_);
 
-  fmt::print("constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty = ");
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> "
+      "kThreatenedByBishopPenalty = ");
   Print2DArray(index, kNumPieceTypes, 2, parameters_);
 
-  fmt::print("constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty = ");
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty "
+      "= ");
   Print2DArray(index, kNumPieceTypes, 2, parameters_);
 
   fmt::print("constexpr OutpostTable<ScorePair> kKnightOutpostTable = ");

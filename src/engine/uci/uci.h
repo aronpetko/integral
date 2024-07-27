@@ -24,6 +24,7 @@ constexpr std::string_view kEngineAuthor = "Aron Petkovski";
 class Listener {
  public:
   Listener() = default;
+  ~Listener();
 
   void Listen() {
     std::string line;
@@ -51,19 +52,9 @@ class Listener {
         std::make_shared<Command>(name, type, arguments, std::move(handler));
   }
 
-  // Primary template
-  template <typename T, OptionVisibility visibility = OptionVisibility::kPublic>
-  [[maybe_unused]] void AddOption(
-      std::string_view name,
-      T value,
-      std::function<void(Option &)> callback = [](Option &) {}) {
-    static_assert(std::is_same<T, void>::value,
-                  "unsupported type for AddOption");
-  }
-
   // Specialization for int
   template <OptionVisibility visibility>
-  [[maybe_unused]] std::enable_if_t<std::is_same_v<I64, I64>, void> AddOption(
+  [[maybe_unused]] void AddOption(
       std::string_view name,
       I64 value,
       I64 min,
@@ -75,7 +66,7 @@ class Listener {
 
   // Specialization for bool
   template <OptionVisibility visibility>
-  [[maybe_unused]] std::enable_if_t<std::is_same_v<bool, bool>, void> AddOption(
+  [[maybe_unused]] void AddOption(
       std::string_view name,
       bool value,
       std::function<void(Option &)> callback = [](Option &) {}) {
@@ -84,12 +75,10 @@ class Listener {
 
   // Specialization for std::string_view
   template <OptionVisibility visibility>
-  [[maybe_unused]] std::
-      enable_if_t<std::is_same_v<std::string_view, std::string_view>, void>
-      AddOption(
-          std::string_view name,
-          std::string_view value,
-          std::function<void(Option &)> callback = [](Option &) {}) {
+  [[maybe_unused]] void AddOption(
+      std::string_view name,
+      std::string_view value,
+      std::function<void(Option &)> callback = [](Option &) {}) {
     options_[name] = Option(name, value, visibility, std::move(callback));
   }
 

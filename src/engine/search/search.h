@@ -68,6 +68,7 @@ class Search {
   std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
   std::atomic<U64> nodes_searched_;
+  std::atomic<U64> tb_hits;
   std::atomic<bool> start_search_;
   std::atomic<bool> searching_;
   std::atomic<bool> stopped_;

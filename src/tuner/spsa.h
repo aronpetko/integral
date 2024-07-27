@@ -16,6 +16,7 @@ class Tunable {
                    bool disabled = false,
                    double learning_rate = 0.002)
       : value_(value) {
+#ifdef SPSA_TUNE
     if (disabled) return;
 
     const int exponent = std::max({GetScalingExponent(value),
@@ -33,7 +34,6 @@ class Tunable {
               option.GetValue<I64>() / static_cast<double>(scaling_constant_);
         });
 
-#ifdef SPSA_TUNE
     const int int_step = static_cast<I64>(step * scaling_constant_);
     fmt::println("{}, int, {}, {}, {}, {}, {}",
                  name,

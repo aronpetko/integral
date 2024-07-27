@@ -1,5 +1,7 @@
 #include "uci.h"
 
+#include <tbprobe.h>
+
 #include <string>
 
 #include "../../ascii_logo.h"
@@ -8,6 +10,7 @@
 #include "../../tests/tests.h"
 #include "../../tuner/tuner.h"
 #include "../search/search.h"
+#include "../search/syzygy/syzygy.h"
 #include "fmt/format.h"
 
 namespace uci {
@@ -24,6 +27,12 @@ void Initialize() {
   });
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
   listener.AddOption<OptionVisibility::kPublic>("Move Overhead", 10, 0, 10000);
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
+    syzygy::SetPath(option.GetValue<std::string>());
+  });
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeDepth", 0, 0, 100, [](const Option &option) {
+    syzygy::probe_depth = option.GetValue<int>();
+  });
   // clang-format on
 }
 
@@ -177,6 +186,12 @@ void Initialize(Board &board, Search &search) {
 }
 
 }  // namespace commands
+
+Listener::~Listener() {
+  if (syzygy::enabled) {
+    syzygy::Free();
+  }
+}
 
 void AcceptCommands(int arg_count, char **args) {
   Board board;

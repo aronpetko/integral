@@ -5,6 +5,7 @@
 #include "constants.h"
 #include "fmt/format.h"
 #include "move_picker.h"
+#include "syzygy/syzygy.h"
 #include "time_mgmt.h"
 #include "transpo.h"
 
@@ -44,6 +45,7 @@ Search::Search(Board &board)
       history_(board_.GetState()),
       sel_depth_(0),
       nodes_searched_(0),
+      tb_hits(0),
       start_search_(false),
       searching_(false),
       stopped_(true),
@@ -132,7 +134,7 @@ void Search::IterativeDeepening() {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
-          "{} hashfull {} pv {}",
+          "{} hashfull {}{}{} pv {}",
           depth,
           sel_depth_,
           is_mate ? "mate" : "cp",
@@ -141,6 +143,8 @@ void Search::IterativeDeepening() {
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
           transposition_table.HashFull(),
+          syzygy::enabled ? " tbhits " : "",
+          syzygy::enabled ? std::to_string(tb_hits) + " " : "",
           root_stack->pv.UCIFormat());
     }
   }
@@ -170,6 +174,7 @@ Score Search::QuiescentSearch(Score alpha,
 
   if (board_.IsDraw(stack->ply)) {
     return kDrawScore;
+    ;
   }
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
@@ -303,7 +308,8 @@ Score Search::QuiescentSearch(Score alpha,
                                              best_score,
                                              Move::NullMove(),
                                              tt_was_in_pv);
-  transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+  transposition_table.Save(
+      tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
   return best_score;
 }
@@ -338,6 +344,7 @@ Score Search::PVSearch(int depth,
   if (!in_root) {
     if (board_.IsDraw(stack->ply)) {
       return kDrawScore;
+      ;
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
@@ -376,6 +383,58 @@ Score Search::PVSearch(int depth,
     // window to allow early cutoff
     if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= depth) {
       return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+    }
+  }
+
+  // Probe the Syzygy table bases
+  int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
+  if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
+      state.Occupied().PopCount() <= 7 && depth <= syzygy::probe_depth &&
+      state.fifty_moves_clock == 0 &&
+      !state.castle_rights.CanCastle(state.turn) &&
+      !state.castle_rights.CanCastle(FlipColor(state.turn))) {
+    const auto tb_result = syzygy::ProbePosition(state);
+    if (tb_result != syzygy::ProbeResult::kFailed) {
+      Score score;
+      TranspositionTableEntry::Flag tt_flag;
+
+      if (tb_result == syzygy::ProbeResult::kWin) {
+        score = kTBWinScore - stack->ply;
+        tt_flag = TranspositionTableEntry::kLowerBound;
+      } else if (tb_result == syzygy::ProbeResult::kLoss) {
+        score = -kTBWinScore + stack->ply;
+        tt_flag = TranspositionTableEntry::kUpperBound;
+      } else {
+        score = kDrawScore;
+        tt_flag = TranspositionTableEntry::kExact;
+      }
+
+      ++tb_hits;
+
+      if (tt_flag == TranspositionTableEntry::kExact ||
+          (tt_flag == TranspositionTableEntry::kLowerBound ? score >= beta
+                                                           : score <= alpha)) {
+        // Save the table base score to the transposition table
+        const TranspositionTableEntry new_tt_entry(state.zobrist_key,
+                                                   depth,
+                                                   tt_flag,
+                                                   score,
+                                                   Move::NullMove(),
+                                                   tt_was_in_pv);
+        transposition_table.Save(
+            tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+        return score;
+      }
+
+      if constexpr (in_pv_node) {
+        if (tt_flag == TranspositionTableEntry::kUpperBound) {
+          syzygy_max_score = score;
+        } else if (tt_flag == TranspositionTableEntry::kLowerBound) {
+          syzygy_min_score = score;
+          // We can safely try to raise alpha if we have a lower bound score
+          alpha = std::max(alpha, syzygy_min_score);
+        }
+      }
     }
   }
 
@@ -705,6 +764,10 @@ Score Search::PVSearch(int depth,
     return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
   }
 
+  if (syzygy::enabled) {
+    best_score = std::clamp(best_score, syzygy_min_score, syzygy_max_score);
+  }
+
   if (!stack->excluded_tt_move) {
     auto tt_flag = TranspositionTableEntry::kExact;
     if (alpha >= beta) {
@@ -719,7 +782,8 @@ Score Search::PVSearch(int depth,
     // position
     const TranspositionTableEntry new_tt_entry(
         state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
-    transposition_table.Save(tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+    transposition_table.Save(
+        tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
       history_.correction_history->UpdateScore(
@@ -740,6 +804,7 @@ void Search::Bench(int depth) {
     time_mgmt_.Start();
   }
   nodes_searched_.store(0, std::memory_order_seq_cst);
+  tb_hits.store(0, std::memory_order_seq_cst);
   benching_.store(true, std::memory_order_seq_cst);
   stopped_.store(false, std::memory_order_seq_cst);
   start_search_.store(true, std::memory_order_seq_cst);
@@ -783,6 +848,7 @@ void Search::Start(TimeConfig &time_config) {
     time_mgmt_.Start();
   }
   nodes_searched_.store(0, std::memory_order_seq_cst);
+  tb_hits.store(0, std::memory_order_seq_cst);
   start_search_.store(true, std::memory_order_seq_cst);
   stopped_.store(false, std::memory_order_seq_cst);
 }

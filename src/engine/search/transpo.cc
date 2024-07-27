@@ -60,7 +60,15 @@ void TranspositionTable::Age() {
 }
 
 int TranspositionTable::HashFull() const {
-  return 0;
+  int count = 0;
+  for (int i = 0; i < 1000; i++) {
+    count +=
+        std::ranges::count_if(table_[i].entries, [this](const auto &entry) {
+          return entry.bits.age == age_ && entry.key != 0 &&
+                 entry.score != kScoreNone;
+        });
+  }
+  return count / kTTClusterSize;
 }
 
 void TranspositionTable::Clear() {

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include "types.h"
 
@@ -14,12 +15,13 @@
 #include <sys/mman.h>
 #endif
 
-inline void* alignedAlloc(size_t alignment, size_t requiredBytes) {
+inline void* alligned_alloc(size_t alignment, size_t bytes) {
   void* ptr;
 #if defined(__MINGW32__)
   int offset = alignment - 1;
-  void* p = (void*)malloc(requiredBytes + offset);
-  ptr = (void*)(((size_t)(p) + offset) & ~(alignment - 1));
+  void* p = reinterpret_cast<void*>(malloc(bytes + offset));
+  ptr = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(p) + offset) &
+                                ~(alignment - 1));
 #elif defined(__GNUC__)
   ptr = std::aligned_alloc(alignment, requiredBytes);
 #else
@@ -33,7 +35,6 @@ inline void* alignedAlloc(size_t alignment, size_t requiredBytes) {
   return ptr;
 }
 
-// AlignedHashTable class
 template <typename T>
 class AlignedHashTable {
  public:
@@ -58,12 +59,8 @@ class AlignedHashTable {
     std::size_t num_elements = mb_size / sizeof(T);
     std::size_t alignment = sizeof(T);
 
-    // Log the alignment and size information
-    std::cout << "Resizing AlignedHashTable with alignment: " << alignment
-              << ", num_elements: " << num_elements << std::endl;
-
-    T* new_table =
-        static_cast<T*>(alignedAlloc(alignment, num_elements * sizeof(T)));
+    const auto new_table =
+        static_cast<T*>(alligned_alloc(alignment, num_elements * sizeof(T)));
 
     if (table_) {
       std::free(table_);
@@ -98,7 +95,6 @@ class AlignedHashTable {
   std::size_t table_size_ = 0;
 };
 
-// UnalignedHashTable class
 template <typename T>
 class UnalignedHashTable {
  public:
@@ -106,11 +102,7 @@ class UnalignedHashTable {
     Resize(mb_size);
   }
 
-  UnalignedHashTable() : table_(nullptr), table_size_(0) {}
-
-  ~UnalignedHashTable() {
-    delete[] table_;
-  }
+  UnalignedHashTable() : table_size_(0) {}
 
   void Resize(std::size_t mb_size) {
     assert(mb_size > 0);
@@ -120,24 +112,14 @@ class UnalignedHashTable {
 
     std::size_t num_elements = mb_size / sizeof(T);
 
-    // Log the size information
-    std::cout << "Resizing UnalignedHashTable with num_elements: "
-              << num_elements << std::endl;
-
-    T* new_table = new T[num_elements];
-
-    if (table_) {
-      delete[] table_;
-    }
-
-    table_ = new_table;
+    table_.resize(num_elements);
     table_size_ = num_elements;
 
     Clear();
   }
 
   void Clear() {
-    std::fill_n(table_, table_size_, T{});
+    std::fill(table_.begin(), table_.end(), T{});
   }
 
   T& operator[](const U64& key) {
@@ -155,7 +137,7 @@ class UnalignedHashTable {
   }
 
  private:
-  T* table_ = nullptr;
+  std::vector<T> table_;
   std::size_t table_size_ = 0;
 };
 

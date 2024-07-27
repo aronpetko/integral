@@ -357,8 +357,8 @@ ScorePair Evaluation::EvaluateBishops() {
     TRACE_INCREMENT(kPieceValues[kBishop], us);
     TRACE_INCREMENT(kPieceSquareTable[kBishop][square.RelativeTo(us)], us);
 
-    const BitBoard legal_moves =
-        LegalizeMoves(kBishop, square, move_gen::BishopMoves(square, occupied), us);
+    const BitBoard legal_moves = LegalizeMoves(
+        kBishop, square, move_gen::BishopMoves(square, occupied), us);
     const BitBoard mobility = legal_moves & mobility_zone_[us];
 
     score += kBishopMobility[mobility.PopCount()];
@@ -440,8 +440,8 @@ ScorePair Evaluation::EvaluateQueens() {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
     TRACE_INCREMENT(kPieceSquareTable[kQueen][square.RelativeTo(us)], us);
 
-    const BitBoard legal_moves =
-        LegalizeMoves(kQueen, square, move_gen::QueenMoves(square, occupied), us);
+    const BitBoard legal_moves = LegalizeMoves(
+        kQueen, square, move_gen::QueenMoves(square, occupied), us);
     const BitBoard mobility = legal_moves & mobility_zone_[us];
 
     score += kQueenMobility[mobility.PopCount()];

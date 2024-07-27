@@ -41,8 +41,6 @@ static EnPassantTable GenerateEnPassantTable() {
 
 const auto en_passant = GenerateEnPassantTable();
 
-U64 GenKey(const BoardState& state);
-
 }  // namespace zobrist
 
 #endif  // INTEGRAL_ZOBRIST_H_
