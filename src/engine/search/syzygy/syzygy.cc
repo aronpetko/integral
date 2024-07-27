@@ -4,6 +4,15 @@
 
 namespace syzygy {
 
+void SetPath(std::string_view path) {
+  syzygy::enabled = path != "<empty>";
+  tb_init(path.data());
+}
+
+void Free() {
+  tb_free();
+}
+
 ProbeResult ProbePosition(const BoardState &state) {
   const Square en_passant =
       state.en_passant != Squares::kNoSquare ? state.en_passant : Square(0);

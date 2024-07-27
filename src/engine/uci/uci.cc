@@ -27,15 +27,12 @@ void Initialize() {
   });
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
   listener.AddOption<OptionVisibility::kPublic>("Move Overhead", 10, 0, 10000);
-  listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", "<empty>", [](const Option &option) {
-    const auto path = option.GetValue<std::string>();
-    if (path != "<empty>") {
-      fmt::println("{}", path);
-      syzygy::enabled = true;
-      tb_init(path.c_str());
-    }
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
+    syzygy::SetPath(option.GetValue<std::string>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeLimit", 6, 0, 7);
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeDepth", 0, 0, 100, [](const Option &option) {
+    syzygy::probe_depth = option.GetValue<int>();
+  });
   // clang-format on
 }
 
@@ -192,7 +189,7 @@ void Initialize(Board &board, Search &search) {
 
 Listener::~Listener() {
   if (syzygy::enabled) {
-    tb_free();
+    syzygy::Free();
   }
 }
 

@@ -8,6 +8,7 @@
 namespace syzygy {
 
 inline std::atomic<bool> enabled = false;
+inline std::atomic<int> probe_depth = 0;
 
 enum class ProbeResult {
   kFailed,
@@ -15,6 +16,10 @@ enum class ProbeResult {
   kDraw,
   kLoss
 };
+
+void SetPath(std::string_view path);
+
+void Free();
 
 ProbeResult ProbePosition(const BoardState &state);
 

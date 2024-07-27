@@ -134,7 +134,7 @@ void Search::IterativeDeepening() {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
-          "{} hashfull {}{} {} pv {}",
+          "{} hashfull {}{}{} pv {}",
           depth,
           sel_depth_,
           is_mate ? "mate" : "cp",
@@ -143,8 +143,8 @@ void Search::IterativeDeepening() {
           time_mgmt_.TimeElapsed(),
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
           transposition_table.HashFull(),
-          syzygy::enabled ? " tbhits" : "",
-          syzygy::enabled ? std::to_string(tb_hits) : "",
+          syzygy::enabled ? " tbhits " : "",
+          syzygy::enabled ? std::to_string(tb_hits) + " " : "",
           root_stack->pv.UCIFormat());
     }
   }
@@ -173,7 +173,7 @@ Score Search::QuiescentSearch(Score alpha,
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
   if (board_.IsDraw(stack->ply)) {
-    return 2 - static_cast<Score>(nodes_searched_ % 4);
+    return kDrawScore;
     ;
   }
 
@@ -343,7 +343,7 @@ Score Search::PVSearch(int depth,
 
   if (!in_root) {
     if (board_.IsDraw(stack->ply)) {
-      return 2 - static_cast<Score>(nodes_searched_ % 4);
+      return kDrawScore;
       ;
     }
 
@@ -386,12 +386,10 @@ Score Search::PVSearch(int depth,
     }
   }
 
-  constexpr int kSyzygyPieceLimit = 7;
-
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
-      state.Occupied().PopCount() <= kSyzygyPieceLimit &&
+      state.Occupied().PopCount() <= 7 && depth <= syzygy::probe_depth &&
       state.fifty_moves_clock == 0 &&
       !state.castle_rights.CanCastle(state.turn) &&
       !state.castle_rights.CanCastle(FlipColor(state.turn))) {
@@ -407,7 +405,7 @@ Score Search::PVSearch(int depth,
         score = -kTBWinScore + stack->ply;
         tt_flag = TranspositionTableEntry::kUpperBound;
       } else {
-        score = 2 - static_cast<Score>(nodes_searched_ % 4);
+        score = kDrawScore;
         tt_flag = TranspositionTableEntry::kExact;
       }
 

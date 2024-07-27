@@ -142,6 +142,8 @@ class Command {
     // Check if all required arguments have been provided
     for (const auto &arg : args_) {
       if (arg.GetType() == ArgumentType::kRequired && arg.GetInput().empty()) {
+        fmt::println("error: missing argument '{}'", arg.GetName());
+        return;
       }
     }
     // Call the command handler
@@ -160,8 +162,11 @@ class Command {
       std::stringstream stream(argument->GetInput());
       T value;
       if (!(stream >> value)) {
+        fmt::println("error: invalid argument passed for '{}'",
+                     argument->GetName());
+      } else {
+        return value;
       }
-      return value;
     }
     return std::nullopt;
   }
