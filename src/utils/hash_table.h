@@ -23,7 +23,7 @@ inline void* alligned_alloc(size_t alignment, size_t bytes) {
   ptr = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(p) + offset) &
                                 ~(alignment - 1));
 #elif defined(__GNUC__)
-  ptr = std::aligned_alloc(alignment, requiredBytes);
+  ptr = std::aligned_alloc(alignment, bytes);
 #else
 #error "Compiler not supported"
 #endif
