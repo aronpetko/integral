@@ -20,6 +20,7 @@ constexpr std::array<U8, 64> kCastlingRights = {
 Board::Board() : history_({}) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
+  key_history_.Clear();
   state_ = fen::StringToBoard(fen_str);
   CalculateThreats();
 }
