@@ -109,7 +109,7 @@ class Search {
  private:
   Board &board_;
   TimeManagement time_mgmt_;
-  std::atomic_bool searching_, stopped_, quit_;
+  std::atomic_bool searching_, benching_, stopped_, quit_;
   int next_thread_id_;
   std::vector<Thread> threads_;
   Barrier start_barrier_, stop_barrier_, search_end_barrier_;

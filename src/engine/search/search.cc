@@ -819,7 +819,11 @@ void Search::Run(Thread &thread) {
       return;
     }
 
-    IterativeDeepening<SearchType::kRegular>(thread);
+    if (benching_.load(std::memory_order_relaxed)) {
+      IterativeDeepening<SearchType::kBench>(thread);
+    } else {
+      IterativeDeepening<SearchType::kRegular>(thread);
+    }
   }
 }
 
@@ -867,23 +871,14 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 U64 Search::Bench(int depth) {
-  if (searching_.load(std::memory_order_relaxed)) {
-    return 0;
-  }
+  auto thing = TimeConfig{.depth = depth};
+  benching_.store(true);
 
-  time_mgmt_.SetConfig(TimeConfig{.depth = depth});
-  time_mgmt_.Start();
+  Start(thing);
+  Wait();
 
-  searching_.store(true, std::memory_order_release);
-  stopped_.store(false, std::memory_order_release);
-
-  // Create a fake thread for benching
-  auto &thread = threads_.emplace_back(0, board_);
-  IterativeDeepening<SearchType::kBench>(thread);
-  const U64 nodes = thread.nodes_searched;
-  threads_.pop_back();
-
-  return nodes;
+  benching_.store(false);
+  return GetNodesSearched();
 }
 
 void Search::Stop() {
