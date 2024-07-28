@@ -10,13 +10,11 @@
 #include "command.h"
 #include "option.h"
 
-class Search;
-
 namespace uci {
 
 namespace constants {
 
-constexpr std::string_view kEngineName = "Integral v2";
+constexpr std::string_view kEngineName = "Integral v3";
 constexpr std::string_view kEngineAuthor = "Aron Petkovski";
 
 }  // namespace constants

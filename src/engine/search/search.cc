@@ -147,6 +147,11 @@ void Search::IterativeDeepening(Thread &thread) {
 
   time_mgmt_.Stop();
 
+  // Don't report the best move until manually stopped with go infinite
+  if (time_mgmt_.GetType() == TimeType::kInfinite) {
+    while (!stopped_.load(std::memory_order_relaxed)) std::this_thread::yield();
+  }
+
   searching_.store(false, std::memory_order_relaxed);
   stopped_.store(true, std::memory_order_relaxed);
 

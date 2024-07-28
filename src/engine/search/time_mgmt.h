@@ -63,6 +63,8 @@ class TimeManagement {
 
   void SetConfig(const TimeConfig &config);
 
+  [[nodiscard]] TimeType GetType() const;
+
   // Determines if the search should end if we are confident that this move
   // shouldn't be searched further (soft limit)
   [[nodiscard]] bool ShouldStop(Move best_move, int depth, U32 nodes_searched);

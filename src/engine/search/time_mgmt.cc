@@ -69,10 +69,14 @@ void TimeManagement::SetConfig(const TimeConfig &config) {
   }
 }
 
+TimeType TimeManagement::GetType() const {
+  return type_;
+}
+
 int TimeManagement::GetSearchDepth() const {
   switch (type_) {
     case TimeType::kInfinite:
-      return std::numeric_limits<int>::max();
+      return kMaxSearchDepth;
     case TimeType::kDepth:
       return config_.depth;
     case TimeType::kNodes:
