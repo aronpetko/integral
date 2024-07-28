@@ -90,6 +90,6 @@ class TimeManagement {
   int best_move_stability_;
 };
 
-}
+}  // namespace search
 
 #endif  // INTEGRAL_TIME_MGMT_H_

@@ -2,8 +2,8 @@
 #define INTEGRAL_BARRIER_H
 
 #include <condition_variable>
-#include <mutex>
 #include <iostream>
+#include <mutex>
 
 #include "types.h"
 

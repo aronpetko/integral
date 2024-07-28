@@ -126,7 +126,6 @@ void Search::IterativeDeepening(Thread &thread) {
 
     if (thread.IsMainThread() && !stopped_ && print_info) {
       const U64 total_nodes = GetNodesSearched();
-
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
@@ -174,7 +173,8 @@ Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
                               SearchStackEntry *stack) {
-  const auto &state = thread.board.GetState();
+  auto &board = thread.board;
+  const auto &state = board.GetState();
   stack->pv.Clear();
 
   if (stack->ply >= kMaxPlyFromRoot) {
@@ -183,7 +183,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
-  if (thread.board.IsDraw(stack->ply)) {
+  if (board.IsDraw(stack->ply)) {
     return kDrawScore;
   }
 
@@ -243,11 +243,8 @@ Score Search::QuiescentSearch(Thread &thread,
 
   const Score futility_score = best_score + qs_fut_margin;
 
-  MovePicker move_picker(MovePickerType::kQuiescence,
-                         thread.board,
-                         tt_move,
-                         thread.history,
-                         stack);
+  MovePicker move_picker(
+      MovePickerType::kQuiescence, board, tt_move, thread.history, stack);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
@@ -256,7 +253,7 @@ Score Search::QuiescentSearch(Thread &thread,
       break;
     }
 
-    if (!thread.board.IsMoveLegal(move)) {
+    if (!board.IsMoveLegal(move)) {
       continue;
     }
 
@@ -269,14 +266,14 @@ Score Search::QuiescentSearch(Thread &thread,
     }
 
     // Prefetch the TT entry for the next move as early as possible
-    transposition_table.Prefetch(thread.board.PredictKeyAfter(move));
+    transposition_table.Prefetch(board.PredictKeyAfter(move));
 
     ++thread.nodes_searched;
 
-    thread.board.MakeMove(move);
+    board.MakeMove(move);
     const Score score =
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
-    thread.board.UndoMove();
+    board.UndoMove();
 
     if (ShouldQuit()) {
       return 0;
@@ -335,7 +332,8 @@ Score Search::PVSearch(Thread &thread,
                        Score beta,
                        SearchStackEntry *stack,
                        bool cut_node) {
-  const auto &state = thread.board.GetState();
+  auto &board = thread.board;
+  const auto &state = board.GetState();
   stack->pv.Clear();
 
   if (stack->ply >= kMaxPlyFromRoot) {
@@ -357,7 +355,7 @@ Score Search::PVSearch(Thread &thread,
   const bool in_root = stack->ply == 0;
 
   if (!in_root) {
-    if (thread.board.IsDraw(stack->ply)) {
+    if (board.IsDraw(stack->ply)) {
       return kDrawScore;
     }
 
@@ -520,10 +518,10 @@ Score Search::PVSearch(Thread &thread,
         const int reduction = std::clamp<int>(
             depth / null_move_rf + null_move_rb + eval_reduction, 0, depth);
 
-        thread.board.MakeNullMove();
+        board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
             thread, depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
-        thread.board.UndoMove();
+        board.UndoMove();
 
         if (ShouldQuit()) {
           return 0;
@@ -558,14 +556,14 @@ Score Search::PVSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kSearch, thread.board, tt_move, thread.history, stack);
+      MovePickerType::kSearch, board, tt_move, thread.history, stack);
   while (const auto move = move_picker.Next()) {
-    if (move == stack->excluded_tt_move || !thread.board.IsMoveLegal(move)) {
+    if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
       continue;
     }
 
     // Prefetch the TT entry for the next move as early as possible
-    transposition_table.Prefetch(thread.board.PredictKeyAfter(move));
+    transposition_table.Prefetch(board.PredictKeyAfter(move));
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
@@ -674,7 +672,7 @@ Score Search::PVSearch(Thread &thread,
     stack->continuation_entry =
         thread.history.continuation_history->GetEntry(move);
 
-    thread.board.MakeMove(move);
+    board.MakeMove(move);
 
     const U32 prev_nodes_searched = ++thread.nodes_searched;
     const int new_depth = depth + extensions - 1;
@@ -722,7 +720,7 @@ Score Search::PVSearch(Thread &thread,
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
 
-    thread.board.UndoMove();
+    board.UndoMove();
 
     if (in_root && thread.IsMainThread()) {
       U32 &nodes_spent = time_mgmt_.NodesSpent(move);
