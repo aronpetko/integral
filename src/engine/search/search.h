@@ -35,10 +35,6 @@ struct Thread {
     NewGame();
   }
 
-  void SetBoard(const Board &new_board) {
-    board = new_board;
-  }
-
   void NewGame() {
     history.Clear();
     stack.Reset();
