@@ -130,9 +130,7 @@ U32 &TimeManagement::NodesSpent(Move move) {
 }
 
 U64 TimeManagement::TimeElapsed() {
-  return std::max<U64>(1,
-                       (end_time_ == 0 ? GetCurrentTime() : end_time_.load()) -
-                           start_time_.load());
+  return std::max<U64>(1, GetCurrentTime() - start_time_.load());
 }
 
 }  // namespace search
