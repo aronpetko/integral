@@ -248,6 +248,12 @@ class Board {
     return state_;
   }
 
+  void CopyFrom(Board &other) {
+    state_ = other.state_;
+    key_history_ = other.key_history_;
+    history_.clear();
+  }
+
   void SetFromFen(std::string_view fen_str);
 
   template <bool keep_history = true>
