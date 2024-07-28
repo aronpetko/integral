@@ -91,9 +91,6 @@ bool TimeManagement::TimesUp(U32 nodes_searched) {
   } else if (type_ != TimeType::kTimed) {
     return false;
   }
-  if (config_.move_time != 0 && TimeElapsed() >= config_.move_time) {
-    fmt::println("{}", config_.move_time);
-  }
   return nodes_searched & 4096 && TimeElapsed() >= hard_limit_;
 }
 

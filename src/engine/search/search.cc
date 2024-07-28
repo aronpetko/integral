@@ -273,7 +273,7 @@ Score Search::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     thread.board.UndoMove();
 
-    if (!searching_ || ShouldQuit()) {
+    if (ShouldQuit()) {
       return 0;
     }
 
@@ -719,12 +719,12 @@ Score Search::PVSearch(Thread &thread,
 
     thread.board.UndoMove();
 
-    if (in_root) {
+    if (in_root && thread.IsMainThread()) {
       U32 &nodes_spent = time_mgmt_.NodesSpent(move);
       nodes_spent += thread.nodes_searched - prev_nodes_searched;
     }
 
-    if (!searching_ || ShouldQuit()) {
+    if (ShouldQuit()) {
       return 0;
     }
 
