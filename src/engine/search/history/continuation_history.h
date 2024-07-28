@@ -12,7 +12,7 @@ using ContinuationEntry =
 
 class ContinuationHistory {
  public:
-  explicit ContinuationHistory(const BoardState &state)
+  explicit ContinuationHistory(const BoardState *state)
       : state_(state), table_({}) {}
 
   void UpdateScore(SearchStackEntry *stack, int depth, MoveList &quiets) {
@@ -34,7 +34,7 @@ class ContinuationHistory {
 
   [[nodiscard]] ContinuationEntry *GetEntry(Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &table_[state_.turn][state_.GetPieceType(from)][to];
+    return &table_[state_->turn][state_->GetPieceType(from)][to];
   }
 
   [[nodiscard]] int GetScore(Move move, SearchStackEntry *stack) {
@@ -42,12 +42,12 @@ class ContinuationHistory {
       return 0;
     }
 
-    const int piece = state_.GetPieceType(move.GetFrom());
+    const int piece = state_->GetPieceType(move.GetFrom());
     const int to = move.GetTo();
 
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
-    return entry[state_.turn][piece][to];
+    return entry[state_->turn][piece][to];
   }
 
  private:
@@ -56,18 +56,18 @@ class ContinuationHistory {
       return;
     }
 
-    const int piece = state_.GetPieceType(move.GetFrom());
+    const int piece = state_->GetPieceType(move.GetFrom());
     const int to = move.GetTo();
 
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
 
-    int &score = entry[state_.turn][piece][to];
+    int &score = entry[state_->turn][piece][to];
     score += ScaleBonus(score, bonus);
   }
 
  private:
-  const BoardState &state_;
+  const BoardState *state_;
   MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount>
       table_;
 };

@@ -11,16 +11,24 @@ namespace search::history {
 
 class History {
  public:
-  explicit History(const BoardState &state) : state_(state) {
+  explicit History(const BoardState *state) : state_(state) {
     Clear();
   }
 
+  void Initialize(const BoardState *state) {
+    quiet_history = std::make_unique<QuietHistory>(state);
+    continuation_history = std::make_unique<ContinuationHistory>(state);
+    correction_history = std::make_unique<CorrectionHistory>(state);
+    capture_history = std::make_unique<CaptureHistory>(state);
+  }
+
+  // Reinitialize the history objects for quicker clearing
   void Clear() {
-    // Reinitialize the history objects for quicker clearing
-    quiet_history = std::make_unique<QuietHistory>(state_);
-    continuation_history = std::make_unique<ContinuationHistory>(state_);
-    correction_history = std::make_unique<CorrectionHistory>(state_);
-    capture_history = std::make_unique<CaptureHistory>(state_);
+    Initialize(state_);
+  }
+
+  void SetState(const BoardState *state) {
+    state_ = state;
   }
 
   [[nodiscard]] int GetQuietMoveScore(Move move,
@@ -43,7 +51,7 @@ class History {
   std::unique_ptr<CorrectionHistory> correction_history;
 
  private:
-  const BoardState &state_;
+  const BoardState *state_;
 };
 
 }  // namespace search::history

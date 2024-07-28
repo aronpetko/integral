@@ -1,7 +1,6 @@
 #ifndef INTEGRAL_SEARCH_H_
 #define INTEGRAL_SEARCH_H_
 
-#include <barrier>
 #include <thread>
 
 #include "../../chess/move_gen.h"
@@ -28,14 +27,17 @@ enum class SearchType {
 struct Thread {
   explicit Thread(U32 id, Board &board)
       : id(id),
-        history(board.GetState()),
+        history(&board.GetState()),
         board(board),
         nodes_searched(0),
         sel_depth(0),
-        tb_hits(0) {}
+        tb_hits(0) {
+    NewGame();
+  }
 
   void SetBoard(const Board &new_board) {
     board = new_board;
+    history.SetState(&board.GetState());
   }
 
   void NewGame() {

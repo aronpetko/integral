@@ -12,7 +12,7 @@ inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
 
 class CorrectionHistory {
  public:
-  explicit CorrectionHistory(const BoardState &state)
+  explicit CorrectionHistory(const BoardState *state)
       : state_(state), table_({}) {}
 
   void UpdateScore(SearchStackEntry *stack,
@@ -28,7 +28,7 @@ class CorrectionHistory {
         static_eval_error * static_cast<int>(corr_history_scale);
     const int weight = std::min(1 + depth, 16);
 
-    auto &score = table_[state_.turn][GetTableIndex()];
+    auto &score = table_[state_->turn][GetTableIndex()];
     score = (score * (corr_history_scale - weight) + scaled_bonus * weight) /
             corr_history_scale;
     score = std::clamp<Score>(score,
@@ -37,7 +37,7 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] Score CorrectStaticEval(Score static_eval) const {
-    const Score correction = table_[state_.turn][GetTableIndex()];
+    const Score correction = table_[state_->turn][GetTableIndex()];
     const Score adjusted_score =
         static_eval + correction / static_cast<int>(corr_history_scale);
     // Ensure no static evaluations are mate scores
@@ -58,11 +58,11 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] int GetTableIndex() const {
-    return state_.pawn_key & 16383;
+    return state_->pawn_key & 16383;
   }
 
  private:
-  const BoardState &state_;
+  const BoardState *state_;
   MultiArray<Score, kNumColors, 16384>
       table_;  // Keep the size fixed for the MultiArray
 };

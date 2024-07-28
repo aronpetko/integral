@@ -9,13 +9,13 @@ namespace search::history {
 
 class QuietHistory {
  public:
-  explicit QuietHistory(const BoardState &state) : state_(state), table_({}) {}
+  explicit QuietHistory(const BoardState *state) : state_(state), table_({}) {}
 
   void UpdateScore(SearchStackEntry *stack,
                    int depth,
                    BitBoard threats,
                    MoveList &quiets) {
-    const Color turn = state_.turn;
+    const Color turn = state_->turn;
     const Move move = stack->move;
 
     const int bonus = HistoryBonus(depth);
@@ -37,7 +37,7 @@ class QuietHistory {
   }
 
   [[nodiscard]] int GetScore(Move move, BitBoard threats) const {
-    return table_[state_.turn][move.GetFrom()][move.GetTo()]
+    return table_[state_->turn][move.GetFrom()][move.GetTo()]
                  [ThreatIndex(move, threats)];
   }
 
@@ -47,7 +47,7 @@ class QuietHistory {
   }
 
  private:
-  const BoardState &state_;
+  const BoardState *state_;
   MultiArray<int, kNumColors, kSquareCount, kSquareCount, 4> table_;
 };
 
