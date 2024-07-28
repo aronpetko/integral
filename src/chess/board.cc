@@ -21,6 +21,7 @@ Board::Board() : history_({}) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
   key_history_.Clear();
+  history_.Clear();
   state_ = fen::StringToBoard(fen_str);
   CalculateThreats();
 }
@@ -313,7 +314,7 @@ bool Board::HasRepeated(U16 ply) {
 
   bool hit_before_root = false;
   for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == key_history_[history_.Size() - i]) {
+    if (state_.zobrist_key == key_history_[key_history_.Size() - i]) {
       if (ply >= i) return true;
       if (hit_before_root) return true;
       hit_before_root = true;
