@@ -250,6 +250,7 @@ class Board {
 
   void SetFromFen(std::string_view fen_str);
 
+  template <bool keep_history = true>
   void MakeMove(Move move);
 
   void MakeNullMove();
@@ -277,7 +278,8 @@ class Board {
 
  private:
   BoardState state_;
-  List<BoardState, kMaxGamePly> history_;
+  List<BoardState, kMaxPlyFromRoot> history_;
+  List<U64, kMaxGamePly> key_history_;
 };
 
 #endif  // INTEGRAL_BOARD_H_

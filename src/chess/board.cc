@@ -173,9 +173,16 @@ bool Board::IsMoveLegal(Move move) {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
+template void Board::MakeMove<false>(Move move);
+template void Board::MakeMove<true>(Move move);
+
+template <bool keep_history>
 void Board::MakeMove(Move move) {
-  // Create new board state
-  history_.Push(state_);
+  if constexpr (keep_history) {
+    history_.Push(state_);
+  }
+
+  key_history_.Push(state_.zobrist_key);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -234,10 +241,12 @@ void Board::MakeMove(Move move) {
 
 void Board::UndoMove() {
   state_ = history_.PopBack();
+  key_history_.PopBack();
 }
 
 void Board::MakeNullMove() {
   history_.Push(state_);
+  key_history_.Push(state_.zobrist_key);
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {
@@ -299,11 +308,11 @@ U64 Board::PredictKeyAfter(Move move) {
 }
 
 bool Board::HasRepeated(U16 ply) {
-  const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
+  const int max_dist = std::min<int>(state_.fifty_moves_clock, key_history_.Size());
 
   bool hit_before_root = false;
   for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
+    if (state_.zobrist_key == key_history_[history_.Size() - i]) {
       if (ply >= i) return true;
       if (hit_before_root) return true;
       hit_before_root = true;
