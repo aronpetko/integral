@@ -12,19 +12,19 @@ namespace search::history {
 class History {
  public:
   explicit History(const BoardState *state) : state_(state) {
-    Clear();
+    Initialize();
   }
 
-  void Initialize(const BoardState *state) {
-    quiet_history = std::make_unique<QuietHistory>(state);
-    continuation_history = std::make_unique<ContinuationHistory>(state);
-    correction_history = std::make_unique<CorrectionHistory>(state);
-    capture_history = std::make_unique<CaptureHistory>(state);
+  void Initialize() {
+    quiet_history = std::make_unique<QuietHistory>(state_);
+    continuation_history = std::make_unique<ContinuationHistory>(state_);
+    correction_history = std::make_unique<CorrectionHistory>(state_);
+    capture_history = std::make_unique<CaptureHistory>(state_);
   }
 
   // Reinitialize the history objects for quicker clearing
   void Clear() {
-    Initialize(state_);
+    Initialize();
   }
 
   void SetState(const BoardState *state) {

@@ -12,7 +12,7 @@ inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
 
 class CorrectionHistory {
  public:
-  explicit CorrectionHistory(const BoardState *state)
+  explicit CorrectionHistory(const BoardState *&state)
       : state_(state), table_({}) {}
 
   void UpdateScore(SearchStackEntry *stack,
@@ -62,7 +62,7 @@ class CorrectionHistory {
   }
 
  private:
-  const BoardState *state_;
+  const BoardState *&state_;
   MultiArray<Score, kNumColors, 16384>
       table_;  // Keep the size fixed for the MultiArray
 };

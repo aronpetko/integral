@@ -9,7 +9,7 @@ namespace search::history {
 
 class CaptureHistory {
  public:
-  explicit CaptureHistory(const BoardState *state)
+  explicit CaptureHistory(const BoardState *&state)
       : state_(state), table_({}) {}
 
   void UpdateScore(SearchStackEntry *stack, int depth) {
@@ -37,7 +37,7 @@ class CaptureHistory {
   }
 
  private:
-  const BoardState *state_;
+  const BoardState *&state_;
   MultiArray<int, kNumColors, kSquareCount, kSquareCount> table_;
 };
 

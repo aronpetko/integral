@@ -878,18 +878,18 @@ U64 Search::Bench(int depth) {
   stopped_.store(false, std::memory_order_release);
 
   // Create a fake thread for benching
-  Thread thread(0, board_);
+  auto &thread = threads_.emplace_back(0, board_);
   IterativeDeepening<SearchType::kBench>(thread);
+  const U64 nodes = thread.nodes_searched;
+  threads_.pop_back();
 
-  return thread.nodes_searched;
+  return nodes;
 }
 
 void Search::Stop() {
-  if (!searching_.load(std::memory_order_relaxed)) {
-    return;
+  if (searching_.load(std::memory_order_relaxed)) {
+    stopped_.store(true, std::memory_order_release);
   }
-
-  stopped_.store(true, std::memory_order_release);
 }
 
 void Search::SetThreadCount(U16 count) {
@@ -910,6 +910,10 @@ void Search::SetThreadCount(U16 count) {
     auto &thread = threads_.emplace_back(next_thread_id_++, board_);
     thread.raw_thread = std::thread([this, &thread]() { Run(thread); });
   }
+}
+
+void Search::Wait() {
+  while (!stopped_.load(std::memory_order_relaxed)) std::this_thread::yield();
 }
 
 void Search::NewGame() {

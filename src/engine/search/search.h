@@ -29,6 +29,7 @@ struct Thread {
       : id(id),
         history(&board.GetState()),
         board(board),
+        stack({}),
         nodes_searched(0),
         sel_depth(0),
         tb_hits(0) {
@@ -70,6 +71,8 @@ class Search {
   void Stop();
 
   void SetThreadCount(U16 count);
+
+  void Wait();
 
   U64 Bench(int depth);
 

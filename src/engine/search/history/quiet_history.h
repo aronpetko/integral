@@ -9,7 +9,7 @@ namespace search::history {
 
 class QuietHistory {
  public:
-  explicit QuietHistory(const BoardState *state) : state_(state), table_({}) {}
+  explicit QuietHistory(const BoardState *&state) : state_(state), table_({}) {}
 
   void UpdateScore(SearchStackEntry *stack,
                    int depth,
@@ -47,7 +47,7 @@ class QuietHistory {
   }
 
  private:
-  const BoardState *state_;
+  const BoardState *&state_;
   MultiArray<int, kNumColors, kSquareCount, kSquareCount, 4> table_;
 };
 

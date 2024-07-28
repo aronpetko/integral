@@ -12,7 +12,7 @@ using ContinuationEntry =
 
 class ContinuationHistory {
  public:
-  explicit ContinuationHistory(const BoardState *state)
+  explicit ContinuationHistory(const BoardState *&state)
       : state_(state), table_({}) {}
 
   void UpdateScore(SearchStackEntry *stack, int depth, MoveList &quiets) {
@@ -67,7 +67,7 @@ class ContinuationHistory {
   }
 
  private:
-  const BoardState *state_;
+  const BoardState *&state_;
   MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount>
       table_;
 };
