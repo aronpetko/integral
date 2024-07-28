@@ -251,7 +251,7 @@ class Board {
   void CopyFrom(Board &other) {
     state_ = other.state_;
     key_history_ = other.key_history_;
-    history_.clear();
+    history_.Clear();
   }
 
   void SetFromFen(std::string_view fen_str);
@@ -284,8 +284,8 @@ class Board {
 
  private:
   BoardState state_;
-  std::vector<BoardState> history_;
-  std::vector<U64> key_history_;
+  List<BoardState, kMaxPlyFromRoot> history_;
+  List<U64, 512> key_history_;
 };
 
 #endif  // INTEGRAL_BOARD_H_
