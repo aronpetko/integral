@@ -72,7 +72,7 @@ class AlignedHashTable {
     Clear();
   }
 
-  void Clear() {
+  virtual void Clear() {
     std::fill_n(table_, table_size_, T{});
   }
 

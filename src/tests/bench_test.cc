@@ -60,7 +60,7 @@ constexpr std::array kBenchFens = {
 };
 // clang-format on
 
-void BenchSuite(int depth) {
+void BenchSuite(search::Search &other, int depth) {
   Board board;
 
   search::Search search(board);
@@ -77,11 +77,12 @@ void BenchSuite(int depth) {
     elapsed += time_mgmt.TimeElapsed();
   }
 
-  search.NewGame();
+  other.NewGame();
 
   fmt::println("{} nodes {} nps",
                nodes,
                static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));
+
 }
 
 }  // namespace tests

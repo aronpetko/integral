@@ -12,11 +12,13 @@
 
 class Board;
 
+namespace search { class Search; }
+
 namespace tests {
 
 constexpr int kDefaultBenchDepth = 12;
 
-void BenchSuite(int depth);
+void BenchSuite(search::Search &other, int depth);
 
 void SEESuite();
 
