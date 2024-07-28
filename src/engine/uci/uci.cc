@@ -25,7 +25,7 @@ void Initialize(search::Search &search) {
   listener.AddOption<OptionVisibility::kPublic>("Pawn Cache", 1, 1, 1048576, [](const Option &option) {
     eval::pawn_cache.Resize(option.GetValue<int>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 256, 1, [&search](const Option &option) {
+  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
     search.SetThreadCount(option.GetValue<U16>());
   });
   listener.AddOption<OptionVisibility::kPublic>("Move Overhead", 10, 0, 10000);

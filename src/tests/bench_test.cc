@@ -71,8 +71,8 @@ void BenchSuite(int depth) {
     search.NewGame();
 
     auto &time_mgmt = search.GetTimeManagement();
-    elapsed += time_mgmt.TimeElapsed();
     nodes += search.Bench(depth);
+    elapsed += time_mgmt.TimeElapsed();
   }
 
   fmt::println("{} nodes {} nps",
