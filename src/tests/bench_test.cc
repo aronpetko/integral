@@ -77,6 +77,8 @@ void BenchSuite(int depth) {
     elapsed += time_mgmt.TimeElapsed();
   }
 
+  search.NewGame();
+
   fmt::println("{} nodes {} nps",
                nodes,
                static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));

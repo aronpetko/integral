@@ -47,6 +47,7 @@ void Initialize(Board &board, search::Search &search) {
   listener.RegisterCommand("position", CommandType::kOrdered, {
     CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
     CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("kiwipete", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("moves", ArgumentType::kOptional, UnlimitedInputProcessor())
   }, [&board](Command *cmd) {
     std::string board_fen;
