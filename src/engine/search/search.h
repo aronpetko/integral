@@ -27,7 +27,6 @@ enum class SearchType {
 struct Thread {
   explicit Thread(U32 id, Board &board)
       : id(id),
-        history(&board.GetState()),
         board(board),
         stack({}),
         nodes_searched(0),
@@ -38,7 +37,6 @@ struct Thread {
 
   void SetBoard(const Board &new_board) {
     board = new_board;
-    history.SetState(&board.GetState());
   }
 
   void NewGame() {

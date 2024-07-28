@@ -60,7 +60,7 @@ constexpr std::array kBenchFens = {
 };
 // clang-format on
 
-void BenchSuite(search::Search &other, int depth) {
+void BenchSuite(int depth) {
   Board board;
 
   search::Search search(board);
@@ -70,14 +70,14 @@ void BenchSuite(search::Search &other, int depth) {
 
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
-    search.NewGame();
+    // search.NewGame();
 
     auto &time_mgmt = search.GetTimeManagement();
     nodes += search.Bench(depth);
     elapsed += time_mgmt.TimeElapsed();
   }
 
-  other.NewGame();
+  search.NewGame();
 
   fmt::println("{} nodes {} nps",
                nodes,

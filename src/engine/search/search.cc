@@ -223,7 +223,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
   if (!state.InCheck()) {
     stack->static_eval = thread.history.correction_history->CorrectStaticEval(
-        eval::Evaluate(state));
+        state, eval::Evaluate(state));
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -455,7 +455,7 @@ Score Search::PVSearch(Thread &thread,
     stack->static_eval = stack->eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
     stack->static_eval = thread.history.correction_history->CorrectStaticEval(
-        eval::Evaluate(state));
+        state, eval::Evaluate(state));
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
@@ -567,6 +567,10 @@ Score Search::PVSearch(Thread &thread,
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
+    const int history_score =
+        is_capture
+            ? thread.history.GetCaptureMoveScore(state, move)
+            : thread.history.GetQuietMoveScore(state, move, threats, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
@@ -601,8 +605,6 @@ Score Search::PVSearch(Thread &thread,
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
       if (is_quiet) {
-        const int history_score =
-            thread.history.GetQuietMoveScore(move, threats, stack);
         if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
           move_picker.SkipQuiets();
@@ -670,7 +672,7 @@ Score Search::PVSearch(Thread &thread,
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
     stack->continuation_entry =
-        thread.history.continuation_history->GetEntry(move);
+        thread.history.continuation_history->GetEntry(state, move);
 
     board.MakeMove(move);
 
@@ -688,9 +690,7 @@ Score Search::PVSearch(Thread &thread,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
-      reduction -= is_quiet *
-                   thread.history.GetQuietMoveScore(move, threats, stack) /
-                   static_cast<int>(lmr_hist_div);
+      reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
 
       // Ensure the reduction doesn't give us a depth below 0
@@ -748,11 +748,11 @@ Score Search::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             thread.history.quiet_history->UpdateScore(
-                stack, depth, threats, quiets);
+                state, stack, depth, threats, quiets);
             thread.history.continuation_history->UpdateScore(
-                stack, depth, quiets);
+                state, stack, depth, quiets);
           } else if (is_capture) {
-            thread.history.capture_history->UpdateScore(stack, depth);
+            thread.history.capture_history->UpdateScore(state, stack, depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
@@ -769,7 +769,7 @@ Score Search::PVSearch(Thread &thread,
 
       // Since "good" captures are expected to be the best moves, we apply a
       // penalty to all captures even in the case where the best move was quiet
-      thread.history.capture_history->Penalize(depth, captures);
+      thread.history.capture_history->Penalize(state, depth, captures);
     }
   }
 
@@ -801,7 +801,7 @@ Score Search::PVSearch(Thread &thread,
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
       thread.history.correction_history->UpdateScore(
-          stack, best_score, tt_flag, depth);
+          state, stack, best_score, tt_flag, depth);
     }
   }
 

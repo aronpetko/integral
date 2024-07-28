@@ -11,15 +11,15 @@ namespace search::history {
 
 class History {
  public:
-  explicit History(const BoardState *state) : state_(state) {
+  History() {
     Initialize();
   }
 
   void Initialize() {
-    quiet_history = std::make_unique<QuietHistory>(state_);
-    continuation_history = std::make_unique<ContinuationHistory>(state_);
-    correction_history = std::make_unique<CorrectionHistory>(state_);
-    capture_history = std::make_unique<CaptureHistory>(state_);
+    quiet_history = std::make_unique<QuietHistory>();
+    continuation_history = std::make_unique<ContinuationHistory>();
+    correction_history = std::make_unique<CorrectionHistory>();
+    capture_history = std::make_unique<CaptureHistory>();
   }
 
   // Reinitialize the history objects for quicker clearing
@@ -27,21 +27,18 @@ class History {
     Initialize();
   }
 
-  void SetState(const BoardState *state) {
-    state_ = state;
-  }
-
-  [[nodiscard]] int GetQuietMoveScore(Move move,
+  [[nodiscard]] int GetQuietMoveScore(const BoardState &state,
+                                      Move move,
                                       BitBoard threats,
                                       SearchStackEntry *stack) const {
-    return quiet_history->GetScore(move, threats) +
-           continuation_history->GetScore(move, stack - 1) +
-           continuation_history->GetScore(move, stack - 2) +
-           continuation_history->GetScore(move, stack - 4);
+    return quiet_history->GetScore(state, move, threats) +
+           continuation_history->GetScore(state, move, stack - 1) +
+           continuation_history->GetScore(state, move, stack - 2) +
+           continuation_history->GetScore(state, move, stack - 4);
   }
 
-  [[nodiscard]] int GetCaptureMoveScore(Move move) const {
-    return capture_history->GetScore(move);
+  [[nodiscard]] int GetCaptureMoveScore(const BoardState &state, Move move) const {
+    return capture_history->GetScore(state, move);
   }
 
  public:
@@ -49,9 +46,6 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
-
- private:
-  const BoardState *state_;
 };
 
 }  // namespace search::history
