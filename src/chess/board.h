@@ -278,8 +278,8 @@ class Board {
 
  private:
   BoardState state_;
-  List<BoardState, kMaxPlyFromRoot> history_;
-  List<U64, 512> key_history_;
+  std::vector<BoardState> history_;
+  std::vector<U64> key_history_;
 };
 
 #endif  // INTEGRAL_BOARD_H_
