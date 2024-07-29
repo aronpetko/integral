@@ -906,7 +906,8 @@ void Search::Stop() {
 void Search::SetThreadCount(U16 count) {
   if (running_threads_ != count) {
     QuitThreads();
-
+    quit_.store(false, std::memory_order_seq_cst);
+    
     threads_.clear();
     threads_.shrink_to_fit();
     threads_.reserve(count);
