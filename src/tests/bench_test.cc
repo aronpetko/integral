@@ -82,7 +82,6 @@ void BenchSuite(int depth) {
   fmt::println("{} nodes {} nps",
                nodes,
                static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));
-  fmt::println("done");
 }
 
 }  // namespace tests

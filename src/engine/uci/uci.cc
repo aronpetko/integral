@@ -165,7 +165,6 @@ void Initialize(Board &board, search::Search &search) {
     const auto bench_depth = cmd->ParseArgument<int>("depth");
     if (bench_depth) tests::BenchSuite(*bench_depth);
     else tests::BenchSuite(tests::kDefaultBenchDepth);
-
   });
 
   listener.RegisterCommand("uci", CommandType::kUnordered, {}, [](Command *cmd) {

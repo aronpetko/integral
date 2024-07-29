@@ -186,7 +186,7 @@ void Perft(Board &board, int depth) {
 }
 
 void PerftSuite() {
-  fmt::println("starting perft test");
+  fmt::println("Starting perft test");
   const auto start_time = std::chrono::steady_clock::now();
 
   Board board;
@@ -213,7 +213,7 @@ void PerftSuite() {
 
   const auto elapsed = duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_time);
-  fmt::println("test finished in {}ms", elapsed.count());
+  fmt::println("Test finished in {}ms", elapsed.count());
 }
 
 }  // namespace tests

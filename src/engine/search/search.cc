@@ -49,7 +49,9 @@ Search::Search(Board &board)
       search_end_barrier_(2),
       next_thread_id_(0),
       searching_(false),
-      stopped_(true) {}
+      stopped_(true) {
+  SetThreadCount(1);
+}
 
 Search::~Search() {
   QuitThreads();
@@ -154,7 +156,6 @@ void Search::IterativeDeepening(Thread &thread) {
 
     stopped_.store(true, std::memory_order_seq_cst);
     if constexpr (type == SearchType::kRegular) {
-
     }
 
     // Age the transposition table to recognize TT entries from past searches
@@ -876,7 +877,6 @@ void Search::Start(TimeConfig &time_config) {
     if (benching_) {
       thread->StartBenching();
     } else {
-      fmt::println("wtf");
       thread->StartSearching();
     }
   }
@@ -903,17 +903,22 @@ void Search::Stop() {
 }
 
 void Search::SetThreadCount(U16 count) {
-  QuitThreads();
+  if (running_threads_ != count) {
+    QuitThreads();
 
-  threads_.clear();
-  threads_.shrink_to_fit();
-  threads_.reserve(count);
 
-  next_thread_id_ = 0;
-  for (U16 i = 0; i < count; i++) {
-    auto &thread = threads_.emplace_back(std::make_unique<Thread>(next_thread_id_++, board_));
-    thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
-    thread->Wait();
+    threads_.clear();
+    threads_.shrink_to_fit();
+    threads_.reserve(count);
+    running_threads_ = count;
+
+    next_thread_id_ = 0;
+    for (U16 i = 0; i < count; i++) {
+      auto &thread = threads_.emplace_back(
+          std::make_unique<Thread>(next_thread_id_++, board_));
+      thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
+      thread->Wait();
+    }
   }
 }
 

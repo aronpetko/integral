@@ -81,7 +81,7 @@ constexpr std::array kSEESuite = {
 // clang-format on
 
 void SEESuite() {
-  fmt::println("starting see test");
+  fmt::println("Starting SEE test");
   const auto start_time = std::chrono::steady_clock::now();
 
   Board board;
@@ -104,7 +104,7 @@ void SEESuite() {
                            std::chrono::steady_clock::now() - start_time)
                            .count() /
                        1000.0;
-  fmt::println("test finished in {}ms", static_cast<U64>(elapsed * 1000.0));
+  fmt::println("Test finished in {}ms", static_cast<U64>(elapsed * 1000.0));
 }
 
 }  // namespace tests
