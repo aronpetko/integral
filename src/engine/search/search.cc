@@ -692,7 +692,10 @@ Score Search::PVSearch(Thread &thread,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
-      reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
+      reduction -=
+          is_quiet *
+          thread.history.GetQuietMoveScore(state, move, threats, stack) /
+          static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
 
       // Ensure the reduction doesn't give us a depth below 0
