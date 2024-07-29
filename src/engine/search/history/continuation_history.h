@@ -5,73 +5,80 @@
 #include "../stack.h"
 #include "bonus.h"
 
-namespace history {
+namespace search::history {
 
 using ContinuationEntry =
     MultiArray<I32, kNumColors, kNumPieceTypes, kSquareCount>;
 
 class ContinuationHistory {
  public:
-  explicit ContinuationHistory(const BoardState &state)
-      : state_(state), table_({}) {}
+  ContinuationHistory() : table_({}) {}
 
-  void UpdateScore(SearchStackEntry *stack, int depth, MoveList &quiets) {
+  void UpdateScore(const BoardState &state,
+                   StackEntry *stack,
+                   int depth,
+                   MoveList &quiets) {
     const Move move = stack->move;
 
     const int bonus = HistoryBonus(depth);
-    UpdateIndividualScore(move, bonus, stack - 1);
-    UpdateIndividualScore(move, bonus, stack - 2);
-    UpdateIndividualScore(move, bonus, stack - 4);
+    UpdateIndividualScore(state, move, bonus, stack - 1);
+    UpdateIndividualScore(state, move, bonus, stack - 2);
+    UpdateIndividualScore(state, move, bonus, stack - 4);
 
     // Lower the score of the quiet moves that failed to raise alpha
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      UpdateIndividualScore(quiets[i], -bonus, stack - 1);
-      UpdateIndividualScore(quiets[i], -bonus, stack - 2);
-      UpdateIndividualScore(quiets[i], -bonus, stack - 4);
+      UpdateIndividualScore(state, quiets[i], -bonus, stack - 1);
+      UpdateIndividualScore(state, quiets[i], -bonus, stack - 2);
+      UpdateIndividualScore(state, quiets[i], -bonus, stack - 4);
     }
   }
 
-  [[nodiscard]] ContinuationEntry *GetEntry(Move move) {
+  [[nodiscard]] ContinuationEntry *GetEntry(const BoardState &state,
+                                            Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &table_[state_.turn][state_.GetPieceType(from)][to];
+    return &table_[state.turn][state.GetPieceType(from)][to];
   }
 
-  [[nodiscard]] int GetScore(Move move, SearchStackEntry *stack) {
+  [[nodiscard]] int GetScore(const BoardState &state,
+                             Move move,
+                             StackEntry *stack) {
     if (!stack->continuation_entry) {
       return 0;
     }
 
-    const int piece = state_.GetPieceType(move.GetFrom());
+    const int piece = state.GetPieceType(move.GetFrom());
     const int to = move.GetTo();
 
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
-    return entry[state_.turn][piece][to];
+    return entry[state.turn][piece][to];
   }
 
  private:
-  void UpdateIndividualScore(Move move, int bonus, SearchStackEntry *stack) {
+  void UpdateIndividualScore(const BoardState &state,
+                             Move move,
+                             int bonus,
+                             StackEntry *stack) {
     if (!stack->continuation_entry) {
       return;
     }
 
-    const int piece = state_.GetPieceType(move.GetFrom());
+    const int piece = state.GetPieceType(move.GetFrom());
     const int to = move.GetTo();
 
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
 
-    int &score = entry[state_.turn][piece][to];
+    int &score = entry[state.turn][piece][to];
     score += ScaleBonus(score, bonus);
   }
 
  private:
-  const BoardState &state_;
   MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount>
       table_;
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_CONTINUATION_HISTORY_H

@@ -3,6 +3,8 @@
 #include "../../tuner/spsa.h"
 #include "search.h"
 
+namespace search {
+
 Tunable base_time_scale("base_time_scale", 0.055, 0, 0.10, 0.003);
 Tunable increment_scale("increment_scale", 0.91, 0, 1.00, 0.04);
 Tunable percent_limit("percent_limit", 0.77, 0, 1.00, 0.03);
@@ -127,6 +129,12 @@ U32 &TimeManagement::NodesSpent(Move move) {
   return nodes_spent_[move.GetData() & 4095];
 }
 
-U64 TimeManagement::TimeElapsed() {
+U64 TimeManagement::TimeElapsed() const {
   return std::max<U64>(1, GetCurrentTime() - start_time_.load());
 }
+
+TimeType TimeManagement::GetType() const {
+  return type_;
+}
+
+}  // namespace search

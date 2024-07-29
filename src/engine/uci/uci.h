@@ -10,8 +10,6 @@
 #include "command.h"
 #include "option.h"
 
-class Search;
-
 namespace uci {
 
 namespace constants {

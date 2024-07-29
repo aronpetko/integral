@@ -62,19 +62,15 @@ constexpr std::array kBenchFens = {
 
 void BenchSuite(int depth) {
   Board board;
-  Search search(board);
+  search::Search search(board);
 
   U64 nodes = 0, elapsed = 0;
-
-  search.QuitThreads();
-
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
     search.NewGame();
-    search.Bench(depth);
 
     auto &time_mgmt = search.GetTimeManagement();
-    nodes += search.GetNodesSearched();
+    nodes += search.Bench(depth);
     elapsed += time_mgmt.TimeElapsed();
   }
 

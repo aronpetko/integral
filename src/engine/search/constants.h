@@ -3,6 +3,8 @@
 
 #include "../../tuner/spsa.h"
 
+namespace search {
+
 Tunable lmr_quiet_base("lmr_quiet_base", 0.80, 0.5, 1.2, 0.05);
 Tunable lmr_quiet_div("lmr_quiet_div", 2.04, 1.5, 3.0, 0.1);
 Tunable lmr_tact_base("lmr_tact_base", -0.24, -0.5, 0.2, 0.05);
@@ -46,5 +48,7 @@ Tunable lmr_hist_div("lmr_hist_div", 11432, 5000, 20000, 750);
 Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
 Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
 Tunable sing_double_margin("sing_double_margin", 28, 10, 40, 5);
+
+}  // namespace search
 
 #endif  // INTEGRAL_CONSTANTS_H

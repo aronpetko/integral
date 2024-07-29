@@ -1,10 +1,12 @@
 #include "move_picker.h"
 
+namespace search {
+
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
-                       history::SearchHistory &history,
-                       SearchStackEntry *stack)
+                       history::History &history,
+                       StackEntry *stack)
     : board_(board),
       tt_move_(tt_move),
       type_(type),
@@ -165,11 +167,13 @@ int MovePicker::ScoreMove(Move &move) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
     const int victim_value = eval::kSEEPieceScores[victim] * 100;
-    return victim_value + history_.GetCaptureMoveScore(move);
+    return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return history_.GetQuietMoveScore(move, state.threats, stack_);
+  return history_.GetQuietMoveScore(state, move, state.threats, stack_);
 }
+
+}  // namespace search

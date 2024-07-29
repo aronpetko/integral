@@ -8,6 +8,8 @@
 #include "../../chess/move.h"
 #include "../../utils/hash_table.h"
 
+namespace search {
+
 struct TranspositionTableEntry {
   enum Flag : U8 {
     kExact,
@@ -129,5 +131,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
 };
 
 inline TranspositionTable transposition_table;
+
+}  // namespace search
 
 #endif  // INTEGRAL_TRANSPO_H_

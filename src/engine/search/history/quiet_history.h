@@ -5,17 +5,18 @@
 #include "../stack.h"
 #include "bonus.h"
 
-namespace history {
+namespace search::history {
 
 class QuietHistory {
  public:
-  explicit QuietHistory(const BoardState &state) : state_(state), table_({}) {}
+  QuietHistory() : table_({}) {}
 
-  void UpdateScore(SearchStackEntry *stack,
+  void UpdateScore(const BoardState &state,
+                   StackEntry *stack,
                    int depth,
                    BitBoard threats,
                    MoveList &quiets) {
-    const Color turn = state_.turn;
+    const Color turn = state.turn;
     const Move move = stack->move;
 
     const int bonus = HistoryBonus(depth);
@@ -36,8 +37,10 @@ class QuietHistory {
     }
   }
 
-  [[nodiscard]] int GetScore(Move move, BitBoard threats) const {
-    return table_[state_.turn][move.GetFrom()][move.GetTo()]
+  [[nodiscard]] int GetScore(const BoardState &state,
+                             Move move,
+                             BitBoard threats) const {
+    return table_[state.turn][move.GetFrom()][move.GetTo()]
                  [ThreatIndex(move, threats)];
   }
 
@@ -47,10 +50,9 @@ class QuietHistory {
   }
 
  private:
-  const BoardState &state_;
   MultiArray<int, kNumColors, kSquareCount, kSquareCount, 4> table_;
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_QUIET_HISTORY_H

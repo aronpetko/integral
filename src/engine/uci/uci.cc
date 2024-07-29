@@ -17,15 +17,17 @@ namespace uci {
 
 namespace options {
 
-void Initialize() {
+void Initialize(search::Search &search) {
   // clang-format off
   listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [](const Option &option) {
-    transposition_table.Resize(option.GetValue<int>());
+    search::transposition_table.Resize(option.GetValue<int>());
   });
   listener.AddOption<OptionVisibility::kPublic>("Pawn Cache", 1, 1, 1048576, [](const Option &option) {
     eval::pawn_cache.Resize(option.GetValue<int>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
+  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
+    search.SetThreadCount(option.GetValue<U16>());
+  });
   listener.AddOption<OptionVisibility::kPublic>("Move Overhead", 10, 0, 10000);
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
     syzygy::SetPath(option.GetValue<std::string>());
@@ -40,11 +42,12 @@ void Initialize() {
 
 namespace commands {
 
-void Initialize(Board &board, Search &search) {
+void Initialize(Board &board, search::Search &search) {
   // clang-format off
   listener.RegisterCommand("position", CommandType::kOrdered, {
     CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
     CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("kiwipete", ArgumentType::kOptional, NoInputProcessor()),
     CreateArgument("moves", ArgumentType::kOptional, UnlimitedInputProcessor())
   }, [&board](Command *cmd) {
     std::string board_fen;
@@ -82,7 +85,7 @@ void Initialize(Board &board, Search &search) {
       return;
     }
 
-    TimeConfig time_config;
+    search::TimeConfig time_config;
     std::array<int, 2> time_left = {};
     std::array<int, 2> increment = {};
 
@@ -197,9 +200,9 @@ void AcceptCommands(int arg_count, char **args) {
   Board board;
   board.SetFromFen(fen::kStartFen);
 
-  Search search(board);
+  search::Search search(board);
 
-  options::Initialize();
+  options::Initialize(search);
   commands::Initialize(board, search);
 
   // OpenBench requires the bench command to be parsed from the command line
