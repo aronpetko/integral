@@ -868,7 +868,7 @@ void Search::Start(TimeConfig &time_config) {
   searching_.store(true, std::memory_order_seq_cst);
 
   // Wait until all threads receive the start signal
-  start_barrier_.ArriveAndWait();
+  // start_barrier_.ArriveAndWait();
 }
 
 U64 Search::Bench(int depth) {
