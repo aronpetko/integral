@@ -850,11 +850,11 @@ void Search::Start(TimeConfig &time_config) {
     return;
   }
 
-  // Wait until all threads have been stopped
-  stop_barrier_.ArriveAndWait();
-
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
+
+  // Wait until all threads have been stopped
+  stop_barrier_.ArriveAndWait();
 
   for (auto &thread : threads_) {
     thread.board.CopyFrom(board_);
@@ -871,13 +871,13 @@ void Search::Start(TimeConfig &time_config) {
 }
 
 U64 Search::Bench(int depth) {
-  auto thing = TimeConfig{.depth = depth};
-  benching_.store(true);
+  auto config = TimeConfig{.depth = depth};
+  benching_.store(true, std::memory_order_seq_cst);
 
-  Start(thing);
+  Start(config);
   Wait();
 
-  benching_.store(false);
+  benching_.store(false, std::memory_order_seq_cst);
   return GetNodesSearched();
 }
 
