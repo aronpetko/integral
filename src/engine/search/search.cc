@@ -732,7 +732,7 @@ Score Search::PVSearch(Thread &thread,
 
     board.UndoMove();
 
-    if (in_root) {
+    if (in_root && thread.IsMainThread()) {
       U32 &nodes_spent = time_mgmt_.NodesSpent(move);
       nodes_spent += thread.nodes_searched - prev_nodes_searched;
     }
