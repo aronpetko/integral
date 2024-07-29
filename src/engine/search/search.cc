@@ -152,11 +152,8 @@ void Search::IterativeDeepening(Thread &thread) {
         std::this_thread::yield();
     }
 
-    const std::unique_lock lock{search_mutex_};
-
     stopped_.store(true, std::memory_order_seq_cst);
-    if constexpr (type == SearchType::kRegular) {
-    }
+    searching_.store(false, std::memory_order_seq_cst);
 
     // Age the transposition table to recognize TT entries from past searches
     transposition_table.Age();
@@ -164,8 +161,6 @@ void Search::IterativeDeepening(Thread &thread) {
     if (print_info) {
       fmt::println("bestmove {}", best_move.ToString());
     }
-
-    searching_.store(false, std::memory_order_seq_cst);
   }
 }
 
@@ -813,16 +808,15 @@ Score Search::PVSearch(Thread &thread,
 
 void Search::Run(Thread &thread) {
   while (true) {
-    std::unique_lock<std::mutex> uniqueLock(thread.mutex);
-    // notify after acquiring wakeMutex
+    std::unique_lock lock(thread.mutex);
     thread.cv.notify_one();
 
     thread.signal = ThreadSignal::kNone;
-    thread.cv.wait(uniqueLock,
+    thread.cv.wait(lock,
                    [&thread] { return thread.signal != ThreadSignal::kNone; });
 
     const auto signal = thread.signal;
-    uniqueLock.unlock();
+    lock.unlock();
 
     switch (signal) {
       case ThreadSignal::kQuit:
@@ -834,7 +828,7 @@ void Search::Run(Thread &thread) {
         IterativeDeepening<SearchType::kBench>(thread);
         break;
       case ThreadSignal::kNone:
-        // unreachable;
+        // Silece compiler warnings
         break;
     }
   }
@@ -853,10 +847,6 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  if (searching_.load(std::memory_order_relaxed)) {
-    return;
-  }
-
   // Wait until all threads have been stopped
   for (auto &thread : threads_) {
     thread->Wait();
@@ -873,6 +863,7 @@ void Search::Start(TimeConfig &time_config) {
     thread->nodes_searched = 0;
     thread->sel_depth = 0;
     thread->tb_hits = 0;
+    thread->stack.Reset();
 
     if (benching_) {
       thread->StartBenching();
@@ -905,7 +896,6 @@ void Search::Stop() {
 void Search::SetThreadCount(U16 count) {
   if (running_threads_ != count) {
     QuitThreads();
-
 
     threads_.clear();
     threads_.shrink_to_fit();
