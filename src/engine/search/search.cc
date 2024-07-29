@@ -118,7 +118,8 @@ void Search::IterativeDeepening(Thread &thread) {
     }
 
     if (ShouldQuit(thread) ||
-        time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched)) {
+        (thread.IsMainThread() &&
+         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
       break;
     }
 
