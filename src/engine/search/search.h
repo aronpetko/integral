@@ -24,6 +24,13 @@ enum class SearchType {
   kBench
 };
 
+enum class ThreadSignal {
+  kNone,
+  kQuit,
+  kSearch,
+  kBench,
+};
+
 struct Thread {
   explicit Thread(U32 id, Board &board)
       : id(id),
@@ -31,7 +38,8 @@ struct Thread {
         stack({}),
         nodes_searched(0),
         sel_depth(0),
-        tb_hits(0) {
+        tb_hits(0),
+        signal(ThreadSignal::kSearch) {
     NewGame();
   }
 
@@ -44,7 +52,36 @@ struct Thread {
     return id == 0;
   }
 
+  void StartSearching() {
+    SetSignal(ThreadSignal::kSearch);
+    cv.notify_one();
+  }
+
+  void StartBenching() {
+    SetSignal(ThreadSignal::kBench);
+    cv.notify_one();
+  }
+
+  void Quit() {
+    SetSignal(ThreadSignal::kQuit);
+    cv.notify_one();
+    raw_thread.join();
+  }
+
+  void Wait() {
+    std::unique_lock lock(mutex);
+    cv.wait(lock, [&] { return signal == ThreadSignal::kNone; });
+  }
+
+  void SetSignal(ThreadSignal new_signal) {
+    std::unique_lock lock(mutex);
+    signal = new_signal;
+  }
+
   std::thread raw_thread;
+  std::mutex mutex;
+  std::condition_variable cv;
+  ThreadSignal signal;
   U32 id;
   Board board;
   history::History history;
@@ -105,7 +142,7 @@ class Search {
   TimeManagement time_mgmt_;
   std::atomic_bool searching_, benching_, stopped_, quit_;
   int next_thread_id_;
-  std::vector<Thread> threads_;
+  std::vector<std::unique_ptr<Thread>> threads_;
   std::mutex search_mutex_{}, stop_mutex_{};
   std::condition_variable stop_signal_{};
   std::atomic_int running_threads_;
