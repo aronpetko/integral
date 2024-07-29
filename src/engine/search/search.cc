@@ -845,7 +845,7 @@ bool Search::ShouldQuit() {
 void Search::Start(TimeConfig &time_config) {
   // Wait until all threads have been stopped
   for (auto &thread : threads_) {
-    thread->Wait();
+    //thread->Wait();
   }
 
   time_mgmt_.SetConfig(time_config);
