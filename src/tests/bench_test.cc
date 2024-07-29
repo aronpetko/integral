@@ -66,6 +66,8 @@ void BenchSuite(int depth) {
 
   U64 nodes = 0, elapsed = 0;
 
+  search.QuitThreads();
+
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
     search.NewGame();
