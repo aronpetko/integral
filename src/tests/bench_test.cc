@@ -70,7 +70,7 @@ void BenchSuite(int depth) {
 
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
-    // search.NewGame();
+    search.NewGame();
 
     auto &time_mgmt = search.GetTimeManagement();
     nodes += search.Bench(depth);

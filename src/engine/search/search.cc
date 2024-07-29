@@ -692,10 +692,7 @@ Score Search::PVSearch(Thread &thread,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
-      reduction -=
-          is_quiet *
-          thread.history.GetQuietMoveScore(state, move, threats, stack) /
-          static_cast<int>(lmr_hist_div);
+      reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
       reduction -= state.InCheck();
 
       // Ensure the reduction doesn't give us a depth below 0
@@ -831,7 +828,7 @@ void Search::Run(Thread &thread) {
 }
 
 void Search::QuitThreads() {
-  quit_.store(true, std::memory_order_release);
+  quit_.store(true, std::memory_order_seq_cst);
   stop_barrier_.ArriveAndWait();
   start_barrier_.ArriveAndWait();
 
@@ -866,8 +863,8 @@ void Search::Start(TimeConfig &time_config) {
     thread.tb_hits = 0;
   }
 
-  stopped_.store(false, std::memory_order_release);
-  searching_.store(true, std::memory_order_release);
+  stopped_.store(false, std::memory_order_seq_cst);
+  searching_.store(true, std::memory_order_seq_cst);
 
   // Wait until all threads receive the start signal
   start_barrier_.ArriveAndWait();
@@ -886,13 +883,13 @@ U64 Search::Bench(int depth) {
 
 void Search::Stop() {
   if (searching_.load(std::memory_order_relaxed)) {
-    stopped_.store(true, std::memory_order_release);
+    stopped_.store(true, std::memory_order_seq_cst);
   }
 }
 
 void Search::SetThreadCount(U16 count) {
   QuitThreads();
-  quit_.store(false, std::memory_order_release);
+  quit_.store(false, std::memory_order_seq_cst);
 
   search_end_barrier_.Reset(count);
   // Count + 1 so that we can arrive/wait in the UCI thread as well
