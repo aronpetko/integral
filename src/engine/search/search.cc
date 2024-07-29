@@ -152,7 +152,7 @@ void Search::IterativeDeepening(Thread &thread) {
   stopped_.store(true, std::memory_order_seq_cst);
 
   if constexpr (type == SearchType::kRegular) {
-    search_end_barrier_.ArriveAndWait();
+    // search_end_barrier_.ArriveAndWait();
   }
 
   if (thread.IsMainThread()) {
@@ -809,8 +809,12 @@ Score Search::PVSearch(Thread &thread,
 
 void Search::Run(Thread &thread) {
   while (true) {
-    stop_barrier_.ArriveAndWait();
-    start_barrier_.ArriveAndWait();
+    //stop_barrier_.ArriveAndWait();
+    //start_barrier_.ArriveAndWait();
+
+    while (!searching_.load(std::memory_order_relaxed)) {
+      std::this_thread::yield();
+    }
 
     if (quit_.load(std::memory_order_acquire)) {
       return;
@@ -830,8 +834,8 @@ void Search::QuitThreads() {
   }
 
   quit_.store(true, std::memory_order_seq_cst);
-  stop_barrier_.ArriveAndWait();
-  start_barrier_.ArriveAndWait();
+  // stop_barrier_.ArriveAndWait();
+  // start_barrier_.ArriveAndWait();
 
   for (auto &thread : threads_) {
     if (thread.raw_thread.joinable()) {
@@ -855,7 +859,10 @@ void Search::Start(TimeConfig &time_config) {
   time_mgmt_.Start();
 
   // Wait until all threads have been stopped
-  stop_barrier_.ArriveAndWait();
+  // stop_barrier_.ArriveAndWait();
+  while (!stopped_.load(std::memory_order_relaxed)) {
+    std::this_thread::yield();
+  }
 
   for (auto &thread : threads_) {
     // thread.board.CopyFrom(board_);
@@ -868,7 +875,7 @@ void Search::Start(TimeConfig &time_config) {
   searching_.store(true, std::memory_order_seq_cst);
 
   // Wait until all threads receive the start signal
-  start_barrier_.ArriveAndWait();
+  // start_barrier_.ArriveAndWait();
 }
 
 U64 Search::Bench(int depth) {
