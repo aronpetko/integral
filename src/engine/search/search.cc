@@ -858,7 +858,7 @@ void Search::Start(TimeConfig &time_config) {
   stop_barrier_.ArriveAndWait();
 
   for (auto &thread : threads_) {
-    //thread.board.CopyFrom(board_);
+    // thread.board.CopyFrom(board_);
     thread.nodes_searched = 0;
     thread.sel_depth = 0;
     thread.tb_hits = 0;
