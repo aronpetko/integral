@@ -873,7 +873,8 @@ U64 Search::Bench(int depth) {
   benching_.store(true, std::memory_order_seq_cst);
 
   Start(config);
-  Wait();
+
+  while (threads_[0]->signal != ThreadSignal::kNone) std::this_thread::yield();
 
   benching_.store(false, std::memory_order_seq_cst);
   return GetNodesSearched();
