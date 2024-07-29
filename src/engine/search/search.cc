@@ -46,7 +46,7 @@ Search::Search(Board &board)
     : board_(board),
       start_barrier_(2),
       stop_barrier_(2),
-      search_end_barrier_(2),
+      search_end_barrier_(1),
       next_thread_id_(0),
       searching_(false),
       stopped_(true) {}
@@ -152,7 +152,7 @@ void Search::IterativeDeepening(Thread &thread) {
   stopped_.store(true, std::memory_order_seq_cst);
 
   if constexpr (type == SearchType::kRegular) {
-    search_end_barrier_.ArriveAndWait();
+    // search_end_barrier_.ArriveAndWait();
   }
 
   if (thread.IsMainThread()) {
