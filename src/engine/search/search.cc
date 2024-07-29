@@ -855,13 +855,14 @@ bool Search::ShouldQuit() {
 
 void Search::Start(TimeConfig &time_config) {
   // Wait until all threads have been stopped
-  if (Searching()) {
+  if (searching_.load(std::memory_order_acquire)) {
     return;
   }
 
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
+  Wait();
   stopped_.store(false, std::memory_order_seq_cst);
 
   for (auto &thread : threads_) {
@@ -907,7 +908,7 @@ void Search::SetThreadCount(U16 count) {
   if (running_threads_ != count) {
     QuitThreads();
     quit_.store(false, std::memory_order_seq_cst);
-    
+
     threads_.clear();
     threads_.shrink_to_fit();
     threads_.reserve(count);
