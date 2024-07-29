@@ -150,6 +150,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   searching_.store(false, std::memory_order_seq_cst);
   stopped_.store(true, std::memory_order_seq_cst);
+  fmt::println("stopped");
 
   if constexpr (type == SearchType::kRegular) {
     // search_end_barrier_.ArriveAndWait();
@@ -813,6 +814,10 @@ void Search::Run(Thread &thread) {
     //start_barrier_.ArriveAndWait();
 
     while (!searching_.load(std::memory_order_relaxed)) {
+      if (quit_.load(std::memory_order_acquire)) {
+        return;
+      }
+
       std::this_thread::yield();
     }
 

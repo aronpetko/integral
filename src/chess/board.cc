@@ -309,14 +309,14 @@ U64 Board::PredictKeyAfter(Move move) {
 }
 
 bool Board::HasRepeated(U16 ply) {
-  const int max_dist = std::min<int>(state_.fifty_moves_clock, key_history_.Size());
+  const int max_dist =
+      std::min<int>(state_.fifty_moves_clock, key_history_.Size());
+  int allowed_repetitions = 1;
 
-  bool hit_before_root = false;
   for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == key_history_[key_history_.Size() - i]) {
-      if (ply >= i) return true;
-      if (hit_before_root) return true;
-      hit_before_root = true;
+    if (state_.zobrist_key == key_history_[key_history_.Size() - i] &&
+        --allowed_repetitions == 0) {
+      return true;
     }
   }
 
