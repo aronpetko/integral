@@ -48,7 +48,6 @@ Search::Search(Board &board)
       stop_barrier_(2),
       search_end_barrier_(2),
       next_thread_id_(0),
-      searching_(false),
       stopped_(true) {
   SetThreadCount(1);
 }
@@ -151,9 +150,6 @@ void Search::IterativeDeepening(Thread &thread) {
       while (!stopped_.load(std::memory_order_relaxed))
         std::this_thread::yield();
     }
-
-    stopped_.store(true, std::memory_order_seq_cst);
-    searching_.store(false, std::memory_order_seq_cst);
 
     // Age the transposition table to recognize TT entries from past searches
     transposition_table.Age();
@@ -855,7 +851,6 @@ void Search::Start(TimeConfig &time_config) {
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
-  searching_.store(true, std::memory_order_relaxed);
   stopped_.store(false, std::memory_order_seq_cst);
 
   for (auto &thread : threads_) {
