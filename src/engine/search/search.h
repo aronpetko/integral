@@ -65,7 +65,6 @@ class Search {
   TimeManagement time_mgmt_;
   history::SearchHistory history_;
   SearchStack search_stack_;
-  std::array<std::array<int, kMaxMoves>, kMaxSearchDepth + 1> lmr_table_;
   U16 sel_depth_;
   std::atomic<U64> nodes_searched_;
   std::atomic<U64> tb_hits;

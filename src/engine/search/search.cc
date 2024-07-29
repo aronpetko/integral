@@ -172,9 +172,8 @@ Score Search::QuiescentSearch(Score alpha,
 
   sel_depth_ = std::max(sel_depth_, stack->ply);
 
-  if (board_.IsDraw(stack->ply)) {
+  if (board_.IsDraw()) {
     return kDrawScore;
-    ;
   }
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
@@ -342,9 +341,8 @@ Score Search::PVSearch(int depth,
   const bool in_root = stack->ply == 0;
 
   if (!in_root) {
-    if (board_.IsDraw(stack->ply)) {
+    if (board_.IsDraw()) {
       return kDrawScore;
-      ;
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
