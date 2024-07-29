@@ -38,8 +38,7 @@ struct Thread {
         stack({}),
         nodes_searched(0),
         sel_depth(0),
-        tb_hits(0),
-        signal(ThreadSignal::kSearch) {
+        tb_hits(0) {
     NewGame();
   }
 
@@ -48,40 +47,20 @@ struct Thread {
     stack.Reset();
   }
 
+  void StartSearching(Board &new_board) {
+    board.CopyFrom(new_board);
+    nodes_searched = 0;
+    sel_depth = 0;
+    tb_hits = 0;
+    searching.store(true, std::memory_order_seq_cst);
+  }
+
   [[nodiscard]] bool IsMainThread() const {
     return id == 0;
   }
 
-  void StartSearching() {
-    SetSignal(ThreadSignal::kSearch);
-    //cv.notify_one();
-  }
-
-  void StartBenching() {
-    SetSignal(ThreadSignal::kBench);
-    //cv.notify_one();
-  }
-
-  void Quit() {
-    SetSignal(ThreadSignal::kQuit);
-   // cv.notify_one();
-    raw_thread.join();
-  }
-
-  void Wait() {
-    std::unique_lock lock(mutex);
-    cv.wait(lock, [&] { return signal == ThreadSignal::kNone; });
-  }
-
-  void SetSignal(ThreadSignal new_signal) {
-    std::unique_lock lock(mutex);
-    signal = new_signal;
-  }
-
   std::thread raw_thread;
-  std::mutex mutex;
-  std::condition_variable cv;
-  ThreadSignal signal;
+  std::atomic_bool searching;
   U32 id;
   Board board;
   history::History history;

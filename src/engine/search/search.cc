@@ -48,9 +48,8 @@ Search::Search(Board &board)
       stop_barrier_(2),
       search_end_barrier_(2),
       next_thread_id_(0),
-      stopped_(true) {
-  SetThreadCount(1);
-}
+      searching_(false),
+      stopped_(true) {}
 
 Search::~Search() {
   QuitThreads();
@@ -144,16 +143,19 @@ void Search::IterativeDeepening(Thread &thread) {
 
   time_mgmt_.Stop();
 
+  // Don't report the best move until manually stopped with go infinite
+  if (time_mgmt_.GetType() == TimeType::kInfinite) {
+    while (!stopped_.load(std::memory_order_relaxed)) std::this_thread::yield();
+  }
+
+  searching_.store(false, std::memory_order_seq_cst);
+  stopped_.store(true, std::memory_order_seq_cst);
+
+  if constexpr (type == SearchType::kRegular) {
+    // search_end_barrier_.ArriveAndWait();
+  }
+
   if (thread.IsMainThread()) {
-    stopped_.store(true, std::memory_order_seq_cst);
-    searching_.store(false, std::memory_order_seq_cst);
-
-    // Don't report the best move until manually stopped with go infinite
-    if (time_mgmt_.GetType() == TimeType::kInfinite) {
-      while (!stopped_.load(std::memory_order_relaxed))
-        std::this_thread::yield();
-    }
-
     // Age the transposition table to recognize TT entries from past searches
     transposition_table.Age();
 
@@ -169,6 +171,7 @@ Score Search::QuiescentSearch(Thread &thread,
                               Score beta,
                               SearchStackEntry *stack) {
   auto &board = thread.board;
+  ;
   const auto &state = board.GetState();
 
   stack->pv.Clear();
@@ -329,6 +332,7 @@ Score Search::PVSearch(Thread &thread,
                        SearchStackEntry *stack,
                        bool cut_node) {
   auto &board = thread.board;
+  ;
   const auto &state = board.GetState();
 
   stack->pv.Clear();
@@ -807,43 +811,45 @@ Score Search::PVSearch(Thread &thread,
 
 void Search::Run(Thread &thread) {
   while (true) {
-    {
-      std::unique_lock lock(thread.mutex);
-      thread.signal = ThreadSignal::kNone;
-    }
+    // stop_barrier_.ArriveAndWait();
+    // start_barrier_.ArriveAndWait();
 
-    while (!Searching() && !quit_.load(std::memory_order_relaxed)) {
+    while (!Searching()) {
+      if (quit_.load(std::memory_order_acquire)) {
+        return;
+      }
+
       std::this_thread::yield();
     }
 
-    if (quit_.load(std::memory_order_relaxed)) {
+    if (quit_.load(std::memory_order_acquire)) {
       return;
     }
 
-    std::unique_lock lock(thread.mutex);
-    const auto signal = thread.signal;
-    lock.unlock();
-
-    switch (signal) {
-      case ThreadSignal::kQuit:
-        return;
-      case ThreadSignal::kSearch:
-        IterativeDeepening<SearchType::kRegular>(thread);
-        break;
-      case ThreadSignal::kBench:
-        IterativeDeepening<SearchType::kBench>(thread);
-        break;
-      case ThreadSignal::kNone:
-        // Silece compiler warnings
-        break;
+    if (benching_.load(std::memory_order_acquire)) {
+      IterativeDeepening<SearchType::kBench>(thread);
+    } else {
+      IterativeDeepening<SearchType::kRegular>(thread);
     }
+
+    thread.searching = false;
+    searching_.store(false, std::memory_order_seq_cst);
   }
 }
 
 void Search::QuitThreads() {
+  if (threads_.empty()) {
+    return;
+  }
+
   quit_.store(true, std::memory_order_seq_cst);
+  // stop_barrier_.ArriveAndWait();
+  // start_barrier_.ArriveAndWait();
+
   for (auto &thread : threads_) {
-    thread->Quit();
+    if (thread->raw_thread.joinable()) {
+      thread->raw_thread.join();
+    }
   }
 }
 
@@ -854,91 +860,80 @@ bool Search::ShouldQuit() {
 }
 
 void Search::Start(TimeConfig &time_config) {
-  // Wait until all threads have been stopped
-  if (searching_.load(std::memory_order_acquire)) {
+  if (searching_.load(std::memory_order_relaxed)) {
     return;
   }
 
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
-  Wait();
-  stopped_.store(false, std::memory_order_seq_cst);
+  // Wait until all threads have been stopped
+  // stop_barrier_.ArriveAndWait();
+  while (Searching()) {
+    std::this_thread::yield();
+  }
 
   for (auto &thread : threads_) {
-    thread->board.CopyFrom(board_);
-    thread->nodes_searched = 0;
-    thread->sel_depth = 0;
-    thread->tb_hits = 0;
-    thread->stack.Reset();
-
-    if (benching_) {
-      thread->StartBenching();
-    } else {
-      thread->StartSearching();
-    }
+    thread->StartSearching(board_);
   }
+
+  stopped_.store(false, std::memory_order_seq_cst);
+  searching_.store(true, std::memory_order_seq_cst);
+
+  // Wait until all threads receive the start signal
+  // start_barrier_.ArriveAndWait();
 }
 
 U64 Search::Bench(int depth) {
   auto config = TimeConfig{.depth = depth};
-  time_mgmt_.SetConfig(config);
-  time_mgmt_.Start();
+  benching_.store(true, std::memory_order_seq_cst);
 
-  stopped_.store(false, std::memory_order_seq_cst);
+  Start(config);
+  Wait();
 
-  const auto thread = std::make_unique<Thread>(0, board_);
-  IterativeDeepening<SearchType::kBench>(*thread);
-
-  Stop();
-
-  return thread->nodes_searched;
+  benching_.store(false, std::memory_order_seq_cst);
+  return GetNodesSearched();
 }
 
 void Search::Stop() {
-  stopped_.store(true, std::memory_order_seq_cst);
-
-  // Wait until all threads have been stopped
-  while (Searching()) {
-    std::this_thread::yield();
+  if (searching_.load(std::memory_order_relaxed)) {
+    stopped_.store(true, std::memory_order_seq_cst);
   }
 }
 
 void Search::SetThreadCount(U16 count) {
-  if (running_threads_ != count) {
-    QuitThreads();
-    quit_.store(false, std::memory_order_seq_cst);
+  QuitThreads();
+  quit_.store(false, std::memory_order_seq_cst);
 
-    threads_.clear();
-    threads_.shrink_to_fit();
-    threads_.reserve(count);
-    running_threads_ = count;
+  search_end_barrier_.Reset(count);
+  // Count + 1 so that we can arrive/wait in the UCI thread as well
+  stop_barrier_.Reset(count + 1);
+  start_barrier_.Reset(count + 1);
 
-    next_thread_id_ = 0;
-    for (U16 i = 0; i < count; i++) {
-      auto &thread = threads_.emplace_back(
-          std::make_unique<Thread>(next_thread_id_++, board_));
-      thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
-    }
+  threads_.clear();
+  threads_.shrink_to_fit();
+  threads_.reserve(count);
+
+  next_thread_id_ = 0;
+  for (U16 i = 0; i < count; i++) {
+    auto &thread = threads_.emplace_back(
+        std::make_unique<Thread>(next_thread_id_++, board_));
+    thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
   }
 }
 
 bool Search::Searching() const {
-  for (auto &thread : threads_) {
-    std::unique_lock lock(thread->mutex);
-    if (thread->signal == ThreadSignal::kSearch) {
-      return true;
-    }
-  }
-  return false;
+  return std::ranges::any_of(threads_, [](const auto &thread) {
+    return thread->searching.load(std::memory_order_relaxed);
+  });
 }
 
 void Search::Wait() {
-  while (Searching()) std::this_thread::yield();
+  while (!stopped_.load(std::memory_order_relaxed)) std::this_thread::yield();
 }
 
 void Search::NewGame() {
-  if (!Searching()) {
+  if (stopped_.load(std::memory_order_relaxed)) {
     transposition_table.Clear();
     eval::pawn_cache.Clear();
 
