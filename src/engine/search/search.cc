@@ -870,14 +870,15 @@ void Search::Start(TimeConfig &time_config) {
 
 U64 Search::Bench(int depth) {
   auto config = TimeConfig{.depth = depth};
-  benching_.store(true, std::memory_order_seq_cst);
+  time_mgmt_.SetConfig(config);
+  time_mgmt_.Start();
 
-  Start(config);
+  stopped_.store(false, std::memory_order_seq_cst);
 
-  while (threads_[0]->signal != ThreadSignal::kNone) std::this_thread::yield();
+  const auto thread = std::make_unique<Thread>(0, board_);
+  IterativeDeepening<SearchType::kBench>(*thread);
 
-  benching_.store(false, std::memory_order_seq_cst);
-  return GetNodesSearched();
+  return thread->nodes_searched;
 }
 
 void Search::Stop() {
@@ -908,12 +909,22 @@ void Search::SetThreadCount(U16 count) {
   }
 }
 
+bool Search::Searching() const {
+  for (auto &thread : threads_) {
+    std::unique_lock lock(thread->mutex);
+    if (thread->signal == ThreadSignal::kSearch) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Search::Wait() {
-  while (!stopped_.load(std::memory_order_relaxed)) std::this_thread::yield();
+  while (Searching()) std::this_thread::yield();
 }
 
 void Search::NewGame() {
-  if (stopped_.load(std::memory_order_relaxed)) {
+  if (!Searching()) {
     transposition_table.Clear();
     eval::pawn_cache.Clear();
 

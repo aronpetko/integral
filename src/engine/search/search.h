@@ -99,13 +99,15 @@ class Search {
 
   void Start(TimeConfig &time_config);
 
+  U64 Bench(int depth);
+
   void Stop();
 
   void SetThreadCount(U16 count);
 
-  void Wait();
+  [[nodiscard]] bool Searching() const;
 
-  U64 Bench(int depth);
+  void Wait();
 
   TimeManagement &GetTimeManagement();
 
