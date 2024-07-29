@@ -142,6 +142,15 @@ void Search::IterativeDeepening(Thread &thread) {
     }
   }
 
+  const auto SendStoppedSignal = [this]() {
+    if constexpr (type == SearchType::kRegular) {
+      // Wait on the other threads to finish before reporting the best move
+      --searching_threads_;
+      thread_stopped_signal_.notify_all();
+      search_end_barrier_.ArriveAndWait();
+    }
+  };
+
   if (thread.IsMainThread()) {
     // Don't report the best move until manually stopped with go infinite
     if (time_mgmt_.GetType() == TimeType::kInfinite) {
@@ -150,14 +159,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
     std::unique_lock lock(stop_mutex_);
     stop_.store(true, std::memory_order_seq_cst);
-
-    if constexpr (type == SearchType::kRegular) {
-      std::unique_lock lock(thread_stopped_mutex_);
-      // Wait on the other threads to finish before reporting the best move
-      --searching_threads_;
-      thread_stopped_signal_.notify_all();
-      search_end_barrier_.ArriveAndWait();
-    }
+    SendStoppedSignal();
 
     // Age the transposition table to recognize TT entries from past searches
     transposition_table.Age();
@@ -166,7 +168,7 @@ void Search::IterativeDeepening(Thread &thread) {
       fmt::println("bestmove {}", best_move.ToString());
     }
   } else if constexpr (type == SearchType::kRegular) {
-    search_end_barrier_.ArriveAndWait();
+    SendStoppedSignal();
   }
 }
 
