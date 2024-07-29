@@ -106,6 +106,9 @@ class Search {
   std::atomic_bool searching_, benching_, stopped_, quit_;
   int next_thread_id_;
   std::vector<Thread> threads_;
+  std::mutex search_mutex_{}, stop_mutex_{};
+  std::condition_variable stop_signal_{};
+  std::atomic_int running_threads_;
   Barrier start_barrier_, stop_barrier_, search_end_barrier_;
 };
 

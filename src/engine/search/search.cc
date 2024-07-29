@@ -46,7 +46,7 @@ Search::Search(Board &board)
     : board_(board),
       start_barrier_(2),
       stop_barrier_(2),
-      search_end_barrier_(1),
+      search_end_barrier_(2),
       next_thread_id_(0),
       searching_(false),
       stopped_(true) {}
@@ -143,25 +143,36 @@ void Search::IterativeDeepening(Thread &thread) {
 
   time_mgmt_.Stop();
 
-  // Don't report the best move until manually stopped with go infinite
-  if (time_mgmt_.GetType() == TimeType::kInfinite) {
-    while (!stopped_.load(std::memory_order_relaxed)) std::this_thread::yield();
-  }
-
-  searching_.store(false, std::memory_order_seq_cst);
-  stopped_.store(true, std::memory_order_seq_cst);
-
-  if constexpr (type == SearchType::kRegular) {
-    // search_end_barrier_.ArriveAndWait();
-  }
+  const auto WaitForThreads = [&]
+  {
+    --running_threads_;
+    stop_signal_.notify_all();
+    search_end_barrier_.ArriveAndWait();
+  };
 
   if (thread.IsMainThread()) {
+    // Don't report the best move until manually stopped with go infinite
+    if (time_mgmt_.GetType() == TimeType::kInfinite) {
+      while (!stopped_.load(std::memory_order_relaxed)) std::this_thread::yield();
+    }
+
+    const std::unique_lock lock{search_mutex_};
+
+    stopped_.store(true, std::memory_order_seq_cst);
+    if constexpr (type == SearchType::kRegular) {
+      WaitForThreads();
+    }
+
     // Age the transposition table to recognize TT entries from past searches
     transposition_table.Age();
 
     if (print_info) {
       fmt::println("bestmove {}", best_move.ToString());
     }
+
+    searching_.store(false, std::memory_order_seq_cst);
+  } else if constexpr (type == SearchType::kRegular) {
+    WaitForThreads();
   }
 }
 
@@ -866,9 +877,10 @@ void Search::Start(TimeConfig &time_config) {
 
   stopped_.store(false, std::memory_order_seq_cst);
   searching_.store(true, std::memory_order_seq_cst);
+  running_threads_.store((int)threads_.size(), std::memory_order_seq_cst);
 
   // Wait until all threads receive the start signal
-  // start_barrier_.ArriveAndWait();
+  start_barrier_.ArriveAndWait();
 }
 
 U64 Search::Bench(int depth) {
@@ -883,8 +895,13 @@ U64 Search::Bench(int depth) {
 }
 
 void Search::Stop() {
-  if (searching_.load(std::memory_order_relaxed)) {
-    stopped_.store(true, std::memory_order_seq_cst);
+  stopped_.store(true, std::memory_order_seq_cst);
+  // safe, always runs from uci thread
+  if (running_threads_.load() > 0) {
+    std::unique_lock lock{stop_mutex_};
+    stop_signal_.wait(lock, [this] {
+      return running_threads_.load(std::memory_order::seq_cst) == 0;
+    });
   }
 }
 
