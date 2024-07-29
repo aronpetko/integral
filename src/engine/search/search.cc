@@ -145,6 +145,9 @@ void Search::IterativeDeepening(Thread &thread) {
   time_mgmt_.Stop();
 
   if (thread.IsMainThread()) {
+    stopped_.store(true, std::memory_order_seq_cst);
+    searching_.store(false, std::memory_order_seq_cst);
+
     // Don't report the best move until manually stopped with go infinite
     if (time_mgmt_.GetType() == TimeType::kInfinite) {
       while (!stopped_.load(std::memory_order_relaxed))
@@ -804,13 +807,20 @@ Score Search::PVSearch(Thread &thread,
 
 void Search::Run(Thread &thread) {
   while (true) {
+    {
+      std::unique_lock lock(thread.mutex);
+      thread.signal = ThreadSignal::kNone;
+    }
+
+    while (!Searching() && !quit_.load(std::memory_order_relaxed)) {
+      std::this_thread::yield();
+    }
+
+    if (quit_.load(std::memory_order_relaxed)) {
+      return;
+    }
+
     std::unique_lock lock(thread.mutex);
-    thread.cv.notify_one();
-
-    thread.signal = ThreadSignal::kNone;
-    thread.cv.wait(lock,
-                   [&thread] { return thread.signal != ThreadSignal::kNone; });
-
     const auto signal = thread.signal;
     lock.unlock();
 
@@ -831,6 +841,7 @@ void Search::Run(Thread &thread) {
 }
 
 void Search::QuitThreads() {
+  quit_.store(true, std::memory_order_seq_cst);
   for (auto &thread : threads_) {
     thread->Quit();
   }
@@ -844,8 +855,8 @@ bool Search::ShouldQuit() {
 
 void Search::Start(TimeConfig &time_config) {
   // Wait until all threads have been stopped
-  for (auto &thread : threads_) {
-    //thread->Wait();
+  if (Searching()) {
+    return;
   }
 
   time_mgmt_.SetConfig(time_config);
@@ -878,6 +889,8 @@ U64 Search::Bench(int depth) {
   const auto thread = std::make_unique<Thread>(0, board_);
   IterativeDeepening<SearchType::kBench>(*thread);
 
+  Stop();
+
   return thread->nodes_searched;
 }
 
@@ -885,8 +898,8 @@ void Search::Stop() {
   stopped_.store(true, std::memory_order_seq_cst);
 
   // Wait until all threads have been stopped
-  for (auto &thread : threads_) {
-    thread->Wait();
+  while (Searching()) {
+    std::this_thread::yield();
   }
 }
 
@@ -904,7 +917,6 @@ void Search::SetThreadCount(U16 count) {
       auto &thread = threads_.emplace_back(
           std::make_unique<Thread>(next_thread_id_++, board_));
       thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
-      thread->Wait();
     }
   }
 }

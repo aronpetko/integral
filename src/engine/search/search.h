@@ -54,17 +54,17 @@ struct Thread {
 
   void StartSearching() {
     SetSignal(ThreadSignal::kSearch);
-    cv.notify_one();
+    //cv.notify_one();
   }
 
   void StartBenching() {
     SetSignal(ThreadSignal::kBench);
-    cv.notify_one();
+    //cv.notify_one();
   }
 
   void Quit() {
     SetSignal(ThreadSignal::kQuit);
-    cv.notify_one();
+   // cv.notify_one();
     raw_thread.join();
   }
 
