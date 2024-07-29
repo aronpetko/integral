@@ -170,7 +170,7 @@ Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
                               SearchStackEntry *stack) {
-  auto &board = thread.board;
+  auto &board = board_;
   const auto &state = board.GetState();
 
   stack->pv.Clear();
@@ -330,7 +330,7 @@ Score Search::PVSearch(Thread &thread,
                        Score beta,
                        SearchStackEntry *stack,
                        bool cut_node) {
-  auto &board = thread.board;
+  auto &board = board_;
   const auto &state = board.GetState();
 
   stack->pv.Clear();
@@ -816,7 +816,7 @@ void Search::Run(Thread &thread) {
       return;
     }
 
-    if (benching_.load(std::memory_order_relaxed)) {
+    if (benching_.load(std::memory_order_acquire)) {
       IterativeDeepening<SearchType::kBench>(thread);
     } else {
       IterativeDeepening<SearchType::kRegular>(thread);
@@ -858,7 +858,7 @@ void Search::Start(TimeConfig &time_config) {
   stop_barrier_.ArriveAndWait();
 
   for (auto &thread : threads_) {
-    thread.board.CopyFrom(board_);
+    //thread.board.CopyFrom(board_);
     thread.nodes_searched = 0;
     thread.sel_depth = 0;
     thread.tb_hits = 0;
