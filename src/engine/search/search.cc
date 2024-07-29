@@ -862,11 +862,11 @@ void Search::Start(TimeConfig &time_config) {
     return;
   }
 
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
   // Wait until all threads have been stopped
   stop_barrier_.ArriveAndWait();
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
 
   for (auto &thread : threads_) {
     thread.board.CopyFrom(board_);
