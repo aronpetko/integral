@@ -45,22 +45,18 @@ Search::Search(Board &board)
       history_(board_.GetState()),
       sel_depth_(0),
       nodes_searched_(0),
-      tb_hits(0),
-      start_search_(false),
-      searching_(false),
-      stopped_(true),
-      benching_(false),
-      quit_(false) {
+      tb_hits_(0),
+      stop_barrier_(2),
+      start_barrier_(2),
+      search_end_barrier_(1),
+      searching_threads_(0) {
   search_stack_.Reset();
   threads_.emplace_back([this]() { Run(); });
 }
 
 Search::~Search() {
-  quit_.store(true, std::memory_order_release);
-  for (auto &thread : threads_) {
-    if (thread.joinable()) {
-      thread.join();
-    }
+  if (!quit_.load(std::memory_order_acquire)) {
+    QuitThreads();
   }
 }
 
@@ -125,12 +121,12 @@ void Search::IterativeDeepening() {
       window *= asp_window_growth;
     }
 
-    if (!searching_ ||
+    if (ShouldQuit() ||
         time_mgmt_.ShouldStop(best_move, depth, nodes_searched_)) {
       break;
     }
 
-    if (searching_ && print_info) {
+    if (!stop_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
@@ -144,7 +140,7 @@ void Search::IterativeDeepening() {
           nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
           transposition_table.HashFull(),
           syzygy::enabled ? " tbhits " : "",
-          syzygy::enabled ? std::to_string(tb_hits) + " " : "",
+          syzygy::enabled ? std::to_string(tb_hits_) + " " : "",
           root_stack->pv.UCIFormat());
     }
   }
@@ -152,7 +148,13 @@ void Search::IterativeDeepening() {
   // Age the transposition table to recognize TT entries from past searches
   transposition_table.Age();
 
-  Stop();
+  if constexpr (type == SearchType::kRegular) {
+    std::unique_lock lock(thread_stopped_mutex_);
+    // Wait on the other threads to finish before reporting the best move
+    --searching_threads_;
+    thread_stopped_signal_.notify_all();
+    search_end_barrier_.ArriveAndWait();
+  }
 
   if (print_info) {
     fmt::println("bestmove {}", best_move.ToString());
@@ -264,7 +266,7 @@ Score Search::QuiescentSearch(Score alpha,
     const Score score = -QuiescentSearch<node_type>(-beta, -alpha, stack + 1);
     board_.UndoMove();
 
-    if (!searching_ || ShouldQuit()) {
+    if (ShouldQuit()) {
       return 0;
     }
 
@@ -357,7 +359,7 @@ Score Search::PVSearch(int depth,
       return alpha;
     }
 
-    if (!searching_ || ShouldQuit()) {
+    if (ShouldQuit()) {
       return 0;
     }
   }
@@ -409,7 +411,7 @@ Score Search::PVSearch(int depth,
         tt_flag = TranspositionTableEntry::kExact;
       }
 
-      ++tb_hits;
+      ++tb_hits_;
 
       if (tt_flag == TranspositionTableEntry::kExact ||
           (tt_flag == TranspositionTableEntry::kLowerBound ? score >= beta
@@ -715,7 +717,7 @@ Score Search::PVSearch(int depth,
       nodes_spent += nodes_searched_ - prev_nodes_searched;
     }
 
-    if (!searching_ || ShouldQuit()) {
+    if (ShouldQuit()) {
       return 0;
     }
 
@@ -794,89 +796,88 @@ Score Search::PVSearch(int depth,
   return best_score;
 }
 
-void Search::Bench(int depth) {
-  {
-    std::unique_lock lock(mutex_);
-    if (searching_.load(std::memory_order_relaxed)) return;
-
-    TimeConfig time_config{.depth = depth};
-    time_mgmt_.SetConfig(time_config);
-    time_mgmt_.Start();
-  }
-  nodes_searched_.store(0, std::memory_order_seq_cst);
-  tb_hits.store(0, std::memory_order_seq_cst);
-  benching_.store(true, std::memory_order_seq_cst);
-  stopped_.store(false, std::memory_order_seq_cst);
-  start_search_.store(true, std::memory_order_seq_cst);
-
-  while (!stopped_.load(std::memory_order_relaxed)) {
-    std::this_thread::yield();
-  };
-}
-
 TimeManagement &Search::GetTimeManagement() {
   return time_mgmt_;
 }
 
 void Search::Run() {
-  while (!quit_.load(std::memory_order_acquire)) {
-    if (start_search_.load(std::memory_order_relaxed)) {
-      start_search_.store(false, std::memory_order_seq_cst);
-      searching_.store(true, std::memory_order_seq_cst);
+  while (true) {
+    // Indicate that we have stopped searching
+    stop_barrier_.ArriveAndWait();
+    // Indicate that we are waiting for the search signal
+    start_barrier_.ArriveAndWait();
 
-      if (benching_.load(std::memory_order_relaxed)) {
-        IterativeDeepening<SearchType::kBench>();
-      } else {
-        IterativeDeepening<SearchType::kRegular>();
-      }
+    if (quit_.load(std::memory_order_acquire)) {
+      return;
+    }
+
+    IterativeDeepening<SearchType::kRegular>();
+  }
+}
+
+void Search::QuitThreads() {
+  quit_.store(true, std::memory_order_release);
+  stop_barrier_.ArriveAndWait();
+  start_barrier_.ArriveAndWait();
+
+  for (auto &thread : threads_) {
+    if (thread.joinable()) {
+      thread.join();
     }
   }
 }
 
 bool Search::ShouldQuit() {
-  return stopped_.load(std::memory_order_relaxed) ||
+  return stop_.load(std::memory_order_relaxed) ||
          (search_stack_.Front().best_move &&
           time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
 }
 
 void Search::Start(TimeConfig &time_config) {
-  {
-    if (searching_.load(std::memory_order_acquire)) return;
+  // Wait untl all search threads have stopped
+  stop_barrier_.ArriveAndWait();
 
-    std::unique_lock lock(mutex_);
-    time_mgmt_.SetConfig(time_config);
-    time_mgmt_.Start();
-  }
   nodes_searched_.store(0, std::memory_order_seq_cst);
-  tb_hits.store(0, std::memory_order_seq_cst);
-  start_search_.store(true, std::memory_order_seq_cst);
-  stopped_.store(false, std::memory_order_seq_cst);
+  tb_hits_.store(0, std::memory_order_seq_cst);
+  stop_.store(false, std::memory_order_seq_cst);
+  searching_threads_.store(1, std::memory_order_seq_cst);
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
+
+  // Wait until all search threads have received the signal
+  start_barrier_.ArriveAndWait();
+}
+
+void Search::Bench(int depth) {
+  nodes_searched_.store(0, std::memory_order_seq_cst);
+  tb_hits_.store(0, std::memory_order_seq_cst);
+  stop_.store(false, std::memory_order_seq_cst);
+
+  TimeConfig config{.depth = depth};
+  time_mgmt_.SetConfig(config);
+  time_mgmt_.Start();
+
+  IterativeDeepening<SearchType::kBench>();
 }
 
 void Search::Stop() {
-  if (!searching_.load(std::memory_order_acquire)) return;
+  stop_.store(true, std::memory_order_relaxed);
 
-  stopped_.store(true, std::memory_order_seq_cst);
-  searching_.store(false, std::memory_order_seq_cst);
-  benching_.store(false, std::memory_order_seq_cst);
-
-  std::unique_lock lock(mutex_);
-  time_mgmt_.Stop();
-}
-
-void Search::Wait() {
-  while (searching_.load(std::memory_order_relaxed)) {
-    std::this_thread::yield();
+  // Wait for the threads to finish searching
+  if (searching_threads_.load() > 0) {
+    std::unique_lock lock(thread_stopped_mutex_);
+    thread_stopped_signal_.wait(lock, [this] {
+      return searching_threads_.load(std::memory_order_seq_cst) == 0;
+    });
   }
 }
 
 void Search::NewGame() {
-  if (stopped_.load(std::memory_order_relaxed)) {
-    transposition_table.Clear();
-    eval::pawn_cache.Clear();
-    history_.Clear();
-    search_stack_.Reset();
-  }
+  transposition_table.Clear();
+  eval::pawn_cache.Clear();
+  history_.Clear();
+  search_stack_.Reset();
 }
 
 U64 Search::GetNodesSearched() const {
