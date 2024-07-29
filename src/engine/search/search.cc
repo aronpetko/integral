@@ -49,10 +49,7 @@ Search::Search(Board &board)
       search_end_barrier_(2),
       next_thread_id_(0),
       searching_(false),
-      stopped_(true) {
-  auto &thread = threads_.emplace_back(next_thread_id_++, board_);
-  thread.raw_thread = std::thread([this, &thread]() { Run(thread); });
-}
+      stopped_(true) {}
 
 Search::~Search() {
   QuitThreads();
@@ -828,6 +825,10 @@ void Search::Run(Thread &thread) {
 }
 
 void Search::QuitThreads() {
+  if (threads_.empty()) {
+    return;
+  }
+
   quit_.store(true, std::memory_order_seq_cst);
   stop_barrier_.ArriveAndWait();
   start_barrier_.ArriveAndWait();
