@@ -171,7 +171,7 @@ Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
                               SearchStackEntry *stack) {
-  auto &board = board_;
+  auto &board = thread.board;;
   const auto &state = board.GetState();
 
   stack->pv.Clear();
@@ -331,7 +331,7 @@ Score Search::PVSearch(Thread &thread,
                        Score beta,
                        SearchStackEntry *stack,
                        bool cut_node) {
-  auto &board = board_;
+  auto &board = thread.board;;
   const auto &state = board.GetState();
 
   stack->pv.Clear();
@@ -870,7 +870,7 @@ void Search::Start(TimeConfig &time_config) {
   }
 
   for (auto &thread : threads_) {
-    // thread.board.CopyFrom(board_);
+    thread.board.CopyFrom(board_);
     thread.nodes_searched = 0;
     thread.sel_depth = 0;
     thread.tb_hits = 0;
