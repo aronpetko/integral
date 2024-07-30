@@ -14,7 +14,8 @@ using namespace eval;
 constexpr int kMaxEpochs = 10000;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kLearningRate = 0.1;
+constexpr double kStartLearningRate = 5;
+constexpr double kEndLearningRate = 0.05;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
@@ -83,11 +84,14 @@ void Tuner::Tune() {
 
   const std::size_t num_entries = entries_.size();
 
-  const double K = 2.4; // ComputeOptimalK();
+  const double K = 2.4;  // ComputeOptimalK();
   fmt::println("Optimal K: {}", K);
 
-  double rate = kLearningRate;
+  double rate = kStartLearningRate;
   double error;
+
+  double decay = pow(kEndLearningRate / kStartLearningRate,
+                     1.0 / float(kMaxEpochs));
 
   for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
     auto epoch_gradient = ComputeGradient(K);
@@ -117,7 +121,7 @@ void Tuner::Tune() {
     fmt::println("Epoch [{}] Error = [{}], Rate = [{}]", epoch, error, rate);
 
     // Pre-scheduled Learning Rate drops
-    if (epoch % kLearningStepRate == 0) rate = rate / kLearningDropRate;
+    rate *= decay;
     if (epoch % 50 == 0) PrintParameters();
   }
 }
@@ -399,11 +403,11 @@ void Print3DArray(std::size_t& index,
         if ((s + 1) % 8 == 0 && s < squares - 1) std::cout << "\n      ";
       }
 
-      std::cout << "\n    }}";
+      std::cout << "\n    }";
       if (p < pieces - 1) std::cout << ",";
       std::cout << "\n";
     }
-    std::cout << "  }";
+    std::cout << "  }}";
     if (b < buckets - 1) std::cout << ",";
     std::cout << "\n";
   }
@@ -436,38 +440,45 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr KingBuckets<RankTable<ScorePair>> kPassedPawnBonus = ");
   Print2DArray(index, kNumKingBuckets, kNumRanks, parameters_);
 
-  fmt::print("constexpr KingBuckets<RankTable<ScorePair>> kPawnPhalanxBonus = ");
+  fmt::print(
+      "constexpr KingBuckets<RankTable<ScorePair>> kPawnPhalanxBonus = ");
   Print2DArray(index, kNumKingBuckets, kNumRanks, parameters_);
 
-  fmt::print("constexpr KingBuckets<RankTable<ScorePair>> kDefendedPawnBonus = ");
+  fmt::print(
+      "constexpr KingBuckets<RankTable<ScorePair>> kDefendedPawnBonus = ");
   Print2DArray(index, kNumKingBuckets, kNumRanks, parameters_);
 
-  fmt::print("constexpr KingBuckets<FileTable<ScorePair>> kDoubledPawnPenalty = ");
-  Print2DArray(index, kNumKingBuckets, kNumFiles, parameters_);
-
-  fmt::print("constexpr KingBuckets<FileTable<ScorePair>> kIsolatedPawnPenalty = ");
+  fmt::print(
+      "constexpr KingBuckets<FileTable<ScorePair>> kDoubledPawnPenalty = ");
   Print2DArray(index, kNumKingBuckets, kNumFiles, parameters_);
 
   fmt::print(
-      "constexpr KingBuckets<std::array<FileTable<ScorePair>, 2>> kRookOnFileBonus = ");
+      "constexpr KingBuckets<FileTable<ScorePair>> kIsolatedPawnPenalty = ");
+  Print2DArray(index, kNumKingBuckets, kNumFiles, parameters_);
+
+  fmt::print(
+      "constexpr KingBuckets<std::array<FileTable<ScorePair>, 2>> "
+      "kRookOnFileBonus = ");
   Print3DArray(index, kNumKingBuckets, 2, kNumFiles, parameters_);
 
-  fmt::print("constexpr KingBuckets<std::array<ScorePair, 12>> kPawnShelterTable = ");
-  Print2DArray(
-      index, kNumKingBuckets, 12, parameters_, 3);
-
-  fmt::print("constexpr KingBuckets<std::array<ScorePair, 21>> kPawnStormTable = ");
-  Print2DArray(index, kNumKingBuckets, 21, parameters_, 3);
-
-  fmt::print("constexpr KingBuckets<std::array<ScorePair, 8>> kKingPPDistanceTable = ");
-  Print2DArray(
-      index, kNumKingBuckets, 8, parameters_);
+  fmt::print(
+      "constexpr KingBuckets<std::array<ScorePair, 12>> kPawnShelterTable = ");
+  Print2DArray(index, kNumKingBuckets, 12, parameters_, 3);
 
   fmt::print(
-      "constexpr KingBuckets<std::array<ScorePair, 8>> kEnemyKingPPDistanceTable "
+      "constexpr KingBuckets<std::array<ScorePair, 21>> kPawnStormTable = ");
+  Print2DArray(index, kNumKingBuckets, 21, parameters_, 3);
+
+  fmt::print(
+      "constexpr KingBuckets<std::array<ScorePair, 8>> kKingPPDistanceTable "
       "= ");
-  Print2DArray(
-      index, kNumKingBuckets, 8, parameters_);
+  Print2DArray(index, kNumKingBuckets, 8, parameters_);
+
+  fmt::print(
+      "constexpr KingBuckets<std::array<ScorePair, 8>> "
+      "kEnemyKingPPDistanceTable "
+      "= ");
+  Print2DArray(index, kNumKingBuckets, 8, parameters_);
 
   fmt::print("constexpr KingBuckets<ScorePair> kKingCantReachPPBonus = ");
   PrintArray(index, kNumKingBuckets, parameters_);
@@ -475,7 +486,8 @@ void Tuner::PrintParameters() {
   fmt::println("");
 
   fmt::print(
-      "constexpr KingBuckets<std::array<FileTable<ScorePair>, 2>> kKingOnFilePenalty = ");
+      "constexpr KingBuckets<std::array<FileTable<ScorePair>, 2>> "
+      "kKingOnFilePenalty = ");
   Print3DArray(index, kNumKingBuckets, 2, kNumFiles, parameters_);
 
   fmt::print("constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = ");
