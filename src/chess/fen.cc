@@ -45,12 +45,17 @@ BoardState StringToBoard(std::string_view fen_str) {
   }
 
   // We need to re-place the pieces because of king buckets
-  const Square white_king_sq = state.King(Color::kWhite).GetLsb();
+  const Square white_king_sq =
+      Square(state.King(Color::kWhite).GetLsb()).RelativeTo(Color::kWhite);
   const Square black_king_sq = state.King(Color::kBlack).GetLsb();
 
-  state.king_bucket = {
-      eval::kKingBucketLayout[black_king_sq],
-      eval::kKingBucketLayout[white_king_sq.RelativeTo(Color::kWhite)]};
+  state.king_bucket = {eval::kKingBucketLayout[black_king_sq],
+                       eval::kKingBucketLayout[white_king_sq]};
+
+  state.piece_scores[Color::kWhite] =
+      eval::kPieceSquareTable[0][kKing][white_king_sq];
+  state.piece_scores[Color::kBlack] =
+      eval::kPieceSquareTable[0][kKing][black_king_sq];
 
   for (int square = 0; square < kSquareCount; square++) {
     const auto color = state.GetPieceColor(square);
