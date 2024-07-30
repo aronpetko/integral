@@ -22,17 +22,17 @@ void Initialize(search::Search &search) {
   listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [](const Option &option) {
     search::transposition_table.Resize(option.GetValue<int>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("Pawn Cache", 1, 1, 1048576, [](const Option &option) {
+  listener.AddOption<OptionVisibility::kPublic>("PawnCache", 1, 1, 16, [](const Option &option) {
     eval::pawn_cache.Resize(option.GetValue<int>());
   });
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
     search.SetThreadCount(option.GetValue<U16>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("Move Overhead", 10, 0, 10000);
+  listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
     syzygy::SetPath(option.GetValue<std::string>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeDepth", 0, 0, 100, [](const Option &option) {
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeDepth", 1, 1, 100, [](const Option &option) {
     syzygy::probe_depth = option.GetValue<int>();
   });
   // clang-format on
