@@ -7,28 +7,28 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 include(CheckCXXCompilerFlag)
 
 # Options for different build types
-option(BUILD_X86_64 "Build with x86-64 optimization" OFF)
-option(BUILD_X86_64_MODERN "Build with x86-64 modern optimization" OFF)
-option(BUILD_X86_64_BMI2 "Build with x86-64 bmi2 optimization" OFF)
+option(BUILD_X86_64_POPCNT "Build with x86-64-popcnt optimizations" OFF)
+option(BUILD_X86_64_MODERN "Build with x86-64 modern optimizations" OFF)
+option(BUILD_X86_64_BMI2 "Build with x86-64 bmi2 optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 option(BUILD_NATIVE "Build with native optimizations" ON)
 
 # Set the build type
 if (BUILD_DEBUG)
     set(CMAKE_BUILD_TYPE Debug)
-elseif (BUILD_X86_64)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver1 -msse -msse2 -mpopcnt")
+elseif (BUILD_X86_64_POPCNT)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=sandybridge -mpopcnt")
 elseif (BUILD_X86_64_MODERN)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver2 -m64 -msse -msse3 -mpopcnt")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver2 -msse -msse3")
 elseif (BUILD_X86_64_BMI2)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=haswell -DUSE_AVX2 -mavx2 -mbmi2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=haswell -mavx2 -mbmi2")
 elseif (BUILD_NATIVE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 endif ()
 
 # Set debug and release specific flags
 set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -funroll-loops -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -O1")
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT LTO_SUPPORTED)

@@ -5,10 +5,10 @@ CXX=clang++
 # Detect the operating system
 ifeq ($(OS),Windows_NT)
     detected_OS := Windows
-    EXE ?= integral.exe
+    EXE_EXT := .exe
 else
     detected_OS := $(shell uname -s)
-    EXE ?= integral
+    EXE_EXT :=
 endif
 
 # Build directory
@@ -19,18 +19,13 @@ CMAKE_BUILD_OPTION ?= Release
 BUILD_TYPE ?= BUILD_NATIVE
 
 # Standard targets
-.PHONY: all clean debug x86_64 x86_64_modern x86_64_bmi2 native
+.PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
 
 all: $(BUILD_DIR)
-	@echo Building $(EXE) with $(BUILD_TYPE)...
+	@echo Building integral with $(BUILD_TYPE)...
 	@$(MAKE) -C $(BUILD_DIR) all
-ifeq ($(detected_OS),Windows)
 	@echo Copying executable...
-	@copy $(BUILD_DIR)\integral.exe $(EXE)
-else
-	@echo Copying executable...
-	@cp $(BUILD_DIR)/integral $(EXE)
-endif
+	@$(MAKE) copy_executable
 
 $(BUILD_DIR):
 ifeq ($(detected_OS),Windows)
@@ -44,19 +39,40 @@ endif
 clean:
 ifeq ($(detected_OS),Windows)
 	@if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
-	@if exist $(EXE) del /f /q $(EXE)
+	@del /f /q integral*$(EXE_EXT)
 else
 	@rm -rf $(BUILD_DIR)
-	@rm -f $(EXE)
+	@rm -f integral*$(EXE_EXT)
+endif
+
+copy_executable:
+ifeq ($(BUILD_TYPE),BUILD_DEBUG)
+	$(eval EXE_NAME := integral_debug$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_X86_64_POPCNT)
+	$(eval EXE_NAME := integral_x86_64_popcnt$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_X86_64_MODERN)
+	$(eval EXE_NAME := integral_x86_64_modern$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_X86_64_BMI2)
+	$(eval EXE_NAME := integral_x86_64_bmi2$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_NATIVE)
+	$(eval EXE_NAME := integral_native$(EXE_EXT))
+else
+	$(eval EXE_NAME := integral$(EXE_EXT))
+endif
+
+ifeq ($(detected_OS),Windows)
+	@copy $(BUILD_DIR)\integral$(EXE_EXT) $(EXE_NAME)
+else
+	@cp $(BUILD_DIR)/integral$(EXE_EXT) $(EXE_NAME)
 endif
 
 debug:
 	@echo Building with debug...
 	@$(MAKE) all BUILD_TYPE=BUILD_DEBUG
 
-x86_64:
+x86_64_popcnt:
 	@echo Building with x86-64 optimizations...
-	@$(MAKE) all BUILD_TYPE=BUILD_X86_64
+	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_POPCNT
 
 x86_64_modern:
 	@echo Building with x86-64 modern optimizations...
