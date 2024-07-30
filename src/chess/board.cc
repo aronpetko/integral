@@ -227,8 +227,9 @@ void Board::MakeMove(Move move) {
     const int new_bucket = eval::kKingBucketLayout[to.RelativeTo(us)];
     if (new_bucket != bucket) {
       state_.king_bucket[us] = new_bucket;
-      state_.piece_scores[us] = ScorePair{};
-      for (Square square : state_.Occupied(us)) {
+      state_.piece_scores[us] =
+          eval::kPieceSquareTable[0][kKing][to.RelativeTo(us)];
+      for (Square square : state_.Occupied(us) & ~state_.King(us)) {
         const auto piece_type = state_.GetPieceType(square);
         state_.piece_scores[us] +=
             eval::kPieceValues[piece_type] +
