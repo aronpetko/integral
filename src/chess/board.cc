@@ -211,11 +211,6 @@ void Board::MakeMove(Move move) {
   // Move the piece
   state_.RemovePiece(from, state_.turn, bucket);
 
-  if (piece == kKing) {
-    state_.king_bucket[us] =
-        eval::kKingBucketLayout[Square(to).RelativeTo(us)];
-  }
-
   auto new_piece = piece;
   if (move_type == MoveType::kCastle) {
     HandleCastling(move,
@@ -226,6 +221,22 @@ void Board::MakeMove(Move move) {
 
   // Use updated king bucket if it changed
   state_.PlacePiece(to, new_piece, state_.turn, state_.king_bucket[us]);
+
+  // Must refresh all of our pieces if the king bucket changed
+  if (piece == kKing) {
+    const int new_bucket = eval::kKingBucketLayout[to.RelativeTo(us)];
+    if (new_bucket != bucket) {
+      state_.king_bucket[us] = new_bucket;
+      state_.piece_scores[us] = ScorePair{};
+      for (Square square : state_.Occupied(us)) {
+        const auto piece_type = state_.GetPieceType(square);
+        state_.piece_scores[us] +=
+            eval::kPieceValues[piece_type] +
+            eval::kPieceSquareTable[new_bucket][piece_type]
+                                   [square.RelativeTo(us)];
+      }
+    }
+  }
 
   // Update the castling rights depending on the piece that moved
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
