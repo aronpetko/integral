@@ -145,6 +145,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   const auto SendStoppedSignal = [this]() {
     if constexpr (type == SearchType::kRegular) {
+      std::unique_lock lock(thread_stopped_mutex_);
       // Wait on the other threads to finish before reporting the best move
       --searching_threads_;
       thread_stopped_signal_.notify_all();
