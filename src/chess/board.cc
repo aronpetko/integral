@@ -191,9 +191,9 @@ void Board::MakeMove(Move move) {
   if (move_type == MoveType::kEnPassant) {
     const Square pawn_square =
         state_.en_passant - (us == Color::kWhite ? 8 : -8);
-    state_.RemovePiece(pawn_square, them, bucket);
+    state_.RemovePiece(pawn_square, them, state_.king_bucket[them]);
   } else if (captured != PieceType::kNone) {
-    state_.RemovePiece(to, them, bucket);
+    state_.RemovePiece(to, them, state_.king_bucket[them]);
     new_fifty_move_clock = 0;
   }
 
