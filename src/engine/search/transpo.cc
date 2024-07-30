@@ -2,6 +2,8 @@
 
 #include "../evaluation/evaluation.h"
 
+namespace search {
+
 [[nodiscard]] TranspositionTableEntry *TranspositionTable::Probe(
     const U64 &key) {
   auto &cluster = (*this)[key];
@@ -75,3 +77,5 @@ void TranspositionTable::Clear() {
   AlignedHashTable::Clear();
   age_ = 0;
 }
+
+}  // namespace search

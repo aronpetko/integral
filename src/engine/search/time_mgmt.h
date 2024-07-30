@@ -5,10 +5,12 @@
 #include <chrono>
 #include <condition_variable>
 
-using std::chrono::duration_cast;
-
 #include "../../chess/board.h"
 #include "../../utils/types.h"
+
+namespace search {
+
+using std::chrono::duration_cast;
 
 struct TimeConfig {
   bool infinite = false;
@@ -72,7 +74,9 @@ class TimeManagement {
 
   [[nodiscard]] U32 &NodesSpent(Move move);
 
-  [[nodiscard]] U64 TimeElapsed();
+  [[nodiscard]] U64 TimeElapsed() const;
+
+  [[nodiscard]] TimeType GetType() const;
 
  private:
   TimeConfig config_;
@@ -85,5 +89,7 @@ class TimeManagement {
   Move previous_best_move_;
   int best_move_stability_;
 };
+
+}  // namespace search
 
 #endif  // INTEGRAL_TIME_MGMT_H_

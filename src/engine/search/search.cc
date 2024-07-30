@@ -9,6 +9,8 @@
 #include "time_mgmt.h"
 #include "transpo.h"
 
+namespace search {
+
 namespace tables {
 
 using LateMoveReductionTable =
@@ -42,17 +44,11 @@ const LateMoveReductionTable kLateMoveReduction =
 
 Search::Search(Board &board)
     : board_(board),
-      history_(board_.GetState()),
-      sel_depth_(0),
-      nodes_searched_(0),
-      tb_hits_(0),
       stop_barrier_(2),
       start_barrier_(2),
       search_end_barrier_(1),
-      searching_threads_(0) {
-  search_stack_.Reset();
-  threads_.emplace_back([this]() { Run(); });
-}
+      next_thread_id_(0),
+      searching_threads_(0) {}
 
 Search::~Search() {
   if (!quit_.load(std::memory_order_acquire)) {
@@ -61,17 +57,17 @@ Search::~Search() {
 }
 
 template <SearchType type>
-void Search::IterativeDeepening() {
+void Search::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
-  const auto root_stack = &search_stack_.Front();
+  const auto root_stack = &thread.stack.Front();
   root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
   Score score = 0;
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
-    sel_depth_ = 0;
+    thread.sel_depth = 0;
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -86,7 +82,7 @@ void Search::IterativeDeepening() {
 
     while (true) {
       const Score new_score = PVSearch<NodeType::kPV>(
-          depth - fail_high_count, alpha, beta, root_stack, false);
+          thread, depth - fail_high_count, alpha, beta, root_stack, false);
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
@@ -121,62 +117,81 @@ void Search::IterativeDeepening() {
       window *= asp_window_growth;
     }
 
-    if (ShouldQuit() ||
-        time_mgmt_.ShouldStop(best_move, depth, nodes_searched_)) {
+    if (ShouldQuit(thread) ||
+        (thread.IsMainThread() &&
+         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
       break;
     }
 
-    if (!stop_ && print_info) {
+    if (thread.IsMainThread() && !stop_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
+      const auto nodes_searched = GetNodesSearched();
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
           "{} hashfull {}{}{} pv {}",
           depth,
-          sel_depth_,
+          thread.sel_depth,
           is_mate ? "mate" : "cp",
           is_mate ? eval::MateIn(score) : score,
-          nodes_searched_.load(),
+          nodes_searched,
           time_mgmt_.TimeElapsed(),
-          nodes_searched_ * 1000 / time_mgmt_.TimeElapsed(),
+          nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
           transposition_table.HashFull(),
           syzygy::enabled ? " tbhits " : "",
-          syzygy::enabled ? std::to_string(tb_hits_) + " " : "",
+          syzygy::enabled ? std::to_string(thread.tb_hits) + " " : "",
           root_stack->pv.UCIFormat());
     }
   }
 
-  // Age the transposition table to recognize TT entries from past searches
-  transposition_table.Age();
+  const auto SendStoppedSignal = [this]() {
+    if constexpr (type == SearchType::kRegular) {
+      // Wait on the other threads to finish before reporting the best move
+      --searching_threads_;
+      thread_stopped_signal_.notify_all();
+      search_end_barrier_.ArriveAndWait();
+    }
+  };
 
-  if constexpr (type == SearchType::kRegular) {
-    std::unique_lock lock(thread_stopped_mutex_);
-    // Wait on the other threads to finish before reporting the best move
-    --searching_threads_;
-    thread_stopped_signal_.notify_all();
-    search_end_barrier_.ArriveAndWait();
-  }
+  if (thread.IsMainThread()) {
+    // Don't report the best move until manually stopped with go infinite
+    if (time_mgmt_.GetType() == TimeType::kInfinite) {
+      while (!stop_.load(std::memory_order_relaxed)) std::this_thread::yield();
+    }
 
-  if (print_info) {
-    fmt::println("bestmove {}", best_move.ToString());
+    std::unique_lock lock(stop_mutex_);
+    stop_.store(true, std::memory_order_seq_cst);
+    SendStoppedSignal();
+
+    // Age the transposition table to recognize TT entries from past searches
+    transposition_table.Age();
+
+    if (print_info) {
+      fmt::println("bestmove {}", best_move.ToString());
+    }
+  } else if constexpr (type == SearchType::kRegular) {
+    SendStoppedSignal();
   }
 }
 
 template <NodeType node_type>
-Score Search::QuiescentSearch(Score alpha,
+Score Search::QuiescentSearch(Thread &thread,
+                              Score alpha,
                               Score beta,
-                              SearchStackEntry *stack) {
-  const auto &state = board_.GetState();
+                              StackEntry *stack) {
+  auto &board = thread.board;
+  auto &history = thread.history;
+  const auto &state = board.GetState();
+
   stack->pv.Clear();
 
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(state);
   }
 
-  sel_depth_ = std::max(sel_depth_, stack->ply);
+  thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
-  if (board_.IsDraw(stack->ply)) {
+  if (board.IsDraw(stack->ply)) {
     return kDrawScore;
-    ;
   }
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
@@ -214,8 +229,8 @@ Score Search::QuiescentSearch(Score alpha,
   Score best_score = kScoreNone;
 
   if (!state.InCheck()) {
-    stack->static_eval =
-        history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, eval::Evaluate(state));
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -236,7 +251,7 @@ Score Search::QuiescentSearch(Score alpha,
   const Score futility_score = best_score + qs_fut_margin;
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board_, tt_move, history_, stack);
+      MovePickerType::kQuiescence, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
@@ -245,7 +260,7 @@ Score Search::QuiescentSearch(Score alpha,
       break;
     }
 
-    if (!board_.IsMoveLegal(move)) {
+    if (!board.IsMoveLegal(move)) {
       continue;
     }
 
@@ -258,15 +273,16 @@ Score Search::QuiescentSearch(Score alpha,
     }
 
     // Prefetch the TT entry for the next move as early as possible
-    transposition_table.Prefetch(board_.PredictKeyAfter(move));
+    transposition_table.Prefetch(board.PredictKeyAfter(move));
 
-    nodes_searched_++;
+    ++thread.nodes_searched;
 
-    board_.MakeMove(move);
-    const Score score = -QuiescentSearch<node_type>(-beta, -alpha, stack + 1);
-    board_.UndoMove();
+    board.MakeMove(move);
+    const Score score =
+        -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
+    board.UndoMove();
 
-    if (ShouldQuit()) {
+    if (ShouldQuit(thread)) {
       return 0;
     }
 
@@ -317,24 +333,28 @@ Score Search::QuiescentSearch(Score alpha,
 }
 
 template <NodeType node_type>
-Score Search::PVSearch(int depth,
+Score Search::PVSearch(Thread &thread,
+                       int depth,
                        Score alpha,
                        Score beta,
-                       SearchStackEntry *stack,
+                       StackEntry *stack,
                        bool cut_node) {
-  const auto &state = board_.GetState();
+  auto &board = thread.board;
+  auto &history = thread.history;
+  const auto &state = board.GetState();
+
   stack->pv.Clear();
 
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(state);
   }
 
-  sel_depth_ = std::max(sel_depth_, stack->ply);
+  thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
   if (depth == 0) {
-    return QuiescentSearch<node_type>(alpha, beta, stack);
+    return QuiescentSearch<node_type>(thread, alpha, beta, stack);
   }
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
@@ -344,9 +364,8 @@ Score Search::PVSearch(int depth,
   const bool in_root = stack->ply == 0;
 
   if (!in_root) {
-    if (board_.IsDraw(stack->ply)) {
+    if (board.IsDraw(stack->ply)) {
       return kDrawScore;
-      ;
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
@@ -359,7 +378,7 @@ Score Search::PVSearch(int depth,
       return alpha;
     }
 
-    if (ShouldQuit()) {
+    if (ShouldQuit(thread)) {
       return 0;
     }
   }
@@ -411,7 +430,7 @@ Score Search::PVSearch(int depth,
         tt_flag = TranspositionTableEntry::kExact;
       }
 
-      ++tb_hits_;
+      ++thread.tb_hits;
 
       if (tt_flag == TranspositionTableEntry::kExact ||
           (tt_flag == TranspositionTableEntry::kLowerBound ? score >= beta
@@ -444,8 +463,8 @@ Score Search::PVSearch(int depth,
   if (state.InCheck()) {
     stack->static_eval = stack->eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
-    stack->static_eval =
-        history_.correction_history->CorrectStaticEval(eval::Evaluate(state));
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, eval::Evaluate(state));
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
@@ -463,7 +482,7 @@ Score Search::PVSearch(int depth,
   stack->improving_rate = 0.0;
   bool improving = false;
 
-  SearchStackEntry *past_stack = nullptr;
+  StackEntry *past_stack = nullptr;
   if ((stack - 2)->static_eval != kScoreNone) {
     past_stack = stack - 2;
   } else if ((stack - 4)->static_eval != kScoreNone) {
@@ -508,12 +527,12 @@ Score Search::PVSearch(int depth,
         const int reduction = std::clamp<int>(
             depth / null_move_rf + null_move_rb + eval_reduction, 0, depth);
 
-        board_.MakeNullMove();
+        board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
-            depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
-        board_.UndoMove();
+            thread, depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
+        board.UndoMove();
 
-        if (ShouldQuit()) {
+        if (ShouldQuit(thread)) {
           return 0;
         }
 
@@ -546,20 +565,20 @@ Score Search::PVSearch(int depth,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kSearch, board_, tt_move, history_, stack);
+      MovePickerType::kSearch, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
-    if (move == stack->excluded_tt_move || !board_.IsMoveLegal(move)) {
+    if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
       continue;
     }
 
     // Prefetch the TT entry for the next move as early as possible
-    transposition_table.Prefetch(board_.PredictKeyAfter(move));
+    transposition_table.Prefetch(board.PredictKeyAfter(move));
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
     const int history_score =
-        is_capture ? history_.GetCaptureMoveScore(move)
-                   : history_.GetQuietMoveScore(move, threats, stack);
+        is_capture ? history.GetCaptureMoveScore(state, move)
+                   : history.GetQuietMoveScore(state, move, threats, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
@@ -619,10 +638,10 @@ Score Search::PVSearch(int depth,
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
-            reduced_depth, new_beta - 1, new_beta, stack, cut_node);
+            thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
         stack->excluded_tt_move = Move::NullMove();
 
-        if (ShouldQuit()) {
+        if (ShouldQuit(thread)) {
           return 0;
         }
 
@@ -660,13 +679,14 @@ Score Search::PVSearch(int depth,
 
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
-    stack->continuation_entry = history_.continuation_history->GetEntry(move);
+    stack->continuation_entry =
+        history.continuation_history->GetEntry(state, move);
 
-    board_.MakeMove(move);
+    board.MakeMove(move);
 
-    nodes_searched_++;
+    ++thread.nodes_searched;
 
-    const U32 prev_nodes_searched = nodes_searched_;
+    const U32 prev_nodes_searched = thread.nodes_searched;
     const int new_depth = depth + extensions - 1;
 
     // Principal Variation Search (PVS)
@@ -688,7 +708,7 @@ Score Search::PVSearch(int depth,
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
-          new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+          thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
       needs_full_search = score > alpha && reduction != 0;
     } else {
       // If we didn't perform late move reduction, then we search this move at
@@ -701,23 +721,23 @@ Score Search::PVSearch(int depth,
     // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
-          new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+          thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
     }
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
-      score =
-          -PVSearch<NodeType::kPV>(new_depth, -beta, -alpha, stack + 1, false);
+      score = -PVSearch<NodeType::kPV>(
+          thread, new_depth, -beta, -alpha, stack + 1, false);
     }
 
-    board_.UndoMove();
+    board.UndoMove();
 
-    if (in_root) {
+    if (in_root && thread.IsMainThread()) {
       U32 &nodes_spent = time_mgmt_.NodesSpent(move);
-      nodes_spent += nodes_searched_ - prev_nodes_searched;
+      nodes_spent += thread.nodes_searched - prev_nodes_searched;
     }
 
-    if (ShouldQuit()) {
+    if (ShouldQuit(thread)) {
       return 0;
     }
 
@@ -737,10 +757,12 @@ Score Search::PVSearch(int depth,
         if (alpha >= beta) {
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history_.quiet_history->UpdateScore(stack, depth, threats, quiets);
-            history_.continuation_history->UpdateScore(stack, depth, quiets);
+            history.quiet_history->UpdateScore(
+                state, stack, depth, threats, quiets);
+            history.continuation_history->UpdateScore(
+                state, stack, depth, quiets);
           } else if (is_capture) {
-            history_.capture_history->UpdateScore(stack, depth);
+            history.capture_history->UpdateScore(state, stack, depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
@@ -757,7 +779,7 @@ Score Search::PVSearch(int depth,
 
       // Since "good" captures are expected to be the best moves, we apply a
       // penalty to all captures even in the case where the best move was quiet
-      history_.capture_history->Penalize(depth, captures);
+      history.capture_history->Penalize(state, depth, captures);
     }
   }
 
@@ -788,19 +810,15 @@ Score Search::PVSearch(int depth,
         tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
-      history_.correction_history->UpdateScore(
-          stack, best_score, tt_flag, depth);
+      history.correction_history->UpdateScore(
+          state, stack, best_score, tt_flag, depth);
     }
   }
 
   return best_score;
 }
 
-TimeManagement &Search::GetTimeManagement() {
-  return time_mgmt_;
-}
-
-void Search::Run() {
+void Search::Run(Thread &thread) {
   while (true) {
     // Indicate that we have stopped searching
     stop_barrier_.ArriveAndWait();
@@ -811,60 +829,11 @@ void Search::Run() {
       return;
     }
 
-    IterativeDeepening<SearchType::kRegular>();
+    IterativeDeepening<SearchType::kRegular>(thread);
   }
 }
 
-void Search::QuitThreads() {
-  quit_.store(true, std::memory_order_release);
-  stop_barrier_.ArriveAndWait();
-  start_barrier_.ArriveAndWait();
-
-  for (auto &thread : threads_) {
-    if (thread.joinable()) {
-      thread.join();
-    }
-  }
-}
-
-bool Search::ShouldQuit() {
-  return stop_.load(std::memory_order_relaxed) ||
-         (search_stack_.Front().best_move &&
-          time_mgmt_.TimesUp(nodes_searched_.load(std::memory_order_relaxed)));
-}
-
-void Search::Start(TimeConfig &time_config) {
-  // Wait untl all search threads have stopped
-  stop_barrier_.ArriveAndWait();
-
-  nodes_searched_.store(0, std::memory_order_seq_cst);
-  tb_hits_.store(0, std::memory_order_seq_cst);
-  stop_.store(false, std::memory_order_seq_cst);
-  searching_threads_.store(1, std::memory_order_seq_cst);
-
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
-  // Wait until all search threads have received the signal
-  start_barrier_.ArriveAndWait();
-}
-
-void Search::Bench(int depth) {
-  nodes_searched_.store(0, std::memory_order_seq_cst);
-  tb_hits_.store(0, std::memory_order_seq_cst);
-  stop_.store(false, std::memory_order_seq_cst);
-
-  TimeConfig config{.depth = depth};
-  time_mgmt_.SetConfig(config);
-  time_mgmt_.Start();
-
-  IterativeDeepening<SearchType::kBench>();
-}
-
-void Search::Stop() {
-  stop_.store(true, std::memory_order_relaxed);
-
-  // Wait for the threads to finish searching
+void Search::WaitForThreads() {
   if (searching_threads_.load() > 0) {
     std::unique_lock lock(thread_stopped_mutex_);
     thread_stopped_signal_.wait(lock, [this] {
@@ -873,13 +842,116 @@ void Search::Stop() {
   }
 }
 
+void Search::QuitThreads() {
+  if (threads_.empty()) {
+    return;
+  }
+
+  quit_.store(true, std::memory_order_release);
+  stop_barrier_.ArriveAndWait();
+  start_barrier_.ArriveAndWait();
+
+  for (auto &thread : threads_) {
+    if (thread->raw_thread.joinable()) {
+      thread->raw_thread.join();
+    }
+  }
+}
+
+bool Search::ShouldQuit(Thread &thread) {
+  if (stop_.load(std::memory_order_relaxed)) return true;
+  if (thread.IsMainThread()) {
+    return thread.stack.Front().best_move &&
+           time_mgmt_.TimesUp(thread.nodes_searched);
+  }
+  return false;
+}
+
+void Search::SetThreadCount(U16 count) {
+  if (threads_.size() == count) {
+    return;
+  } else if (!threads_.empty()) {
+    QuitThreads();
+  }
+
+  quit_.store(false, std::memory_order_release);
+
+  search_end_barrier_.Reset(count);
+  // Count + 1 so that we can arrive/wait in the UCI thread as well
+  stop_barrier_.Reset(count + 1);
+  start_barrier_.Reset(count + 1);
+
+  threads_.clear();
+  threads_.shrink_to_fit();
+  threads_.reserve(count);
+
+  next_thread_id_ = 0;
+  for (U16 i = 0; i < count; i++) {
+    auto &thread =
+        threads_.emplace_back(std::make_unique<Thread>(next_thread_id_++));
+    thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
+  }
+}
+
+void Search::Start(TimeConfig &time_config) {
+  if (searching_threads_.load() > 0) {
+    return;
+  }
+
+  // Wait untl all search threads have stopped
+  stop_barrier_.ArriveAndWait();
+  stop_.store(false, std::memory_order_relaxed);
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
+
+  searching_threads_.store(static_cast<U16>(threads_.size()),
+                           std::memory_order_seq_cst);
+  for (auto &thread : threads_) {
+    thread->Reset(board_);
+  }
+
+  // Wait until all search threads have received the signal
+  start_barrier_.ArriveAndWait();
+}
+
+U64 Search::Bench(int depth) {
+  TimeConfig config{.depth = depth};
+  time_mgmt_.SetConfig(config);
+  time_mgmt_.Start();
+
+  stop_.store(false, std::memory_order_seq_cst);
+
+  auto thread = std::make_unique<Thread>(0);
+  thread->Reset(board_);
+
+  IterativeDeepening<SearchType::kBench>(*thread);
+  return thread->nodes_searched;
+}
+
+void Search::Stop() {
+  stop_.store(true, std::memory_order_relaxed);
+  WaitForThreads();
+}
+
 void Search::NewGame() {
   transposition_table.Clear();
   eval::pawn_cache.Clear();
-  history_.Clear();
-  search_stack_.Reset();
+
+  for (auto &thread : threads_) {
+    thread->NewGame();
+  }
+}
+
+const TimeManagement &Search::GetTimeManagement() const {
+  return time_mgmt_;
 }
 
 U64 Search::GetNodesSearched() const {
-  return nodes_searched_;
+  return std::accumulate(
+      threads_.begin(), threads_.end(), 0ULL, [](auto sum, const auto &thread) {
+        return sum + thread->nodes_searched;
+      });
 }
+
+}  // namespace search

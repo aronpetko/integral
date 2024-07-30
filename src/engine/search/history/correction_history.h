@@ -5,17 +5,17 @@
 #include "../../../utils/multi_array.h"
 #include "../stack.h"
 
-namespace history {
+namespace search::history {
 
 inline Tunable corr_history_scale("corr_history_scale", 256, 100, 500, 15);
 inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
 
 class CorrectionHistory {
  public:
-  explicit CorrectionHistory(const BoardState &state)
-      : state_(state), table_({}) {}
+  CorrectionHistory() : table_({}) {}
 
-  void UpdateScore(SearchStackEntry *stack,
+  void UpdateScore(const BoardState &state,
+                   StackEntry *stack,
                    Score search_score,
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
@@ -28,7 +28,7 @@ class CorrectionHistory {
         static_eval_error * static_cast<int>(corr_history_scale);
     const int weight = std::min(1 + depth, 16);
 
-    auto &score = table_[state_.turn][GetTableIndex()];
+    auto &score = table_[state.turn][GetTableIndex(state)];
     score = (score * (corr_history_scale - weight) + scaled_bonus * weight) /
             corr_history_scale;
     score = std::clamp<Score>(score,
@@ -36,8 +36,9 @@ class CorrectionHistory {
                               corr_history_scale * max_corr_hist);
   }
 
-  [[nodiscard]] Score CorrectStaticEval(Score static_eval) const {
-    const Score correction = table_[state_.turn][GetTableIndex()];
+  [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
+                                        Score static_eval) const {
+    const Score correction = table_[state.turn][GetTableIndex(state)];
     const Score adjusted_score =
         static_eval + correction / static_cast<int>(corr_history_scale);
     // Ensure no static evaluations are mate scores
@@ -57,16 +58,15 @@ class CorrectionHistory {
            !(failed_low && static_eval < search_score);
   }
 
-  [[nodiscard]] int GetTableIndex() const {
-    return state_.pawn_key & 16383;
+  [[nodiscard]] int GetTableIndex(const BoardState &state) const {
+    return state.pawn_key & 16383;
   }
 
  private:
-  const BoardState &state_;
   MultiArray<Score, kNumColors, 16384>
       table_;  // Keep the size fixed for the MultiArray
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_CORRECTION_HISTORY_H

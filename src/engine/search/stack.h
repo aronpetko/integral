@@ -4,6 +4,8 @@
 #include "../../chess/move_gen.h"
 #include "../../utils/types.h"
 
+namespace search {
+
 struct PVLine {
  public:
   PVLine() : moves_({}) {
@@ -49,7 +51,7 @@ struct PVLine {
   List<Move, kMaxPlyFromRoot> moves_;
 };
 
-struct SearchStackEntry {
+struct StackEntry {
   // Number of ply from root
   U16 ply;
   // Evaluation of the position at this ply
@@ -83,7 +85,7 @@ struct SearchStackEntry {
     killer_moves.fill(Move::NullMove());
   }
 
-  explicit SearchStackEntry(U16 ply)
+  explicit StackEntry(U16 ply)
       : ply(ply),
         static_eval(kScoreNone),
         eval(kScoreNone),
@@ -97,33 +99,35 @@ struct SearchStackEntry {
     ClearKillerMoves();
   }
 
-  SearchStackEntry() : SearchStackEntry(0) {}
+  StackEntry() : StackEntry(0) {}
 };
 
-class SearchStack {
+class Stack {
  public:
   static constexpr int kPadding = 4;
 
-  SearchStack() {
+  Stack() {
     Reset();
   }
 
   void Reset() {
     for (int i = 0; i < stack_.size(); i++) {
-      stack_[i] = SearchStackEntry(i - kPadding);
+      stack_[i] = StackEntry(i - kPadding);
     }
   }
 
-  [[nodiscard]] SearchStackEntry &Front() {
+  [[nodiscard]] StackEntry &Front() {
     return stack_[kPadding];
   }
 
-  [[nodiscard]] SearchStackEntry &operator[](int idx) {
+  [[nodiscard]] StackEntry &operator[](int idx) {
     return stack_[idx + kPadding];
   }
 
  private:
-  std::array<SearchStackEntry, kMaxPlyFromRoot + kPadding> stack_;
+  std::array<StackEntry, kMaxPlyFromRoot + kPadding> stack_;
 };
+
+}  // namespace search
 
 #endif  // INTEGRAL_STACK_H

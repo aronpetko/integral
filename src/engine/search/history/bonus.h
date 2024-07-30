@@ -4,7 +4,7 @@
 #include "../../../tuner/spsa.h"
 #include "../../../utils/types.h"
 
-namespace history {
+namespace search::history {
 
 inline Tunable hist_default_gravity(
     "hist_default_gravity", 15176, 8192, 32768, 1024);
@@ -25,6 +25,6 @@ static int ScaleBonus(I32 score,
   return bonus - score * std::abs(bonus) / gravity;
 }
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_BONUS_H
