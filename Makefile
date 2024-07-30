@@ -18,11 +18,14 @@ BUILD_DIR=build
 CMAKE_BUILD_OPTION ?= Release
 BUILD_TYPE ?= BUILD_NATIVE
 
+# Executable name (can be overridden from command line)
+EXE ?= integral
+
 # Standard targets
 .PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
 
 all: $(BUILD_DIR)
-	@echo Building integral with $(BUILD_TYPE)...
+	@echo Building $(EXE) with $(BUILD_TYPE)...
 ifeq ($(detected_OS),Windows)
 	@$(MAKE) -C $(BUILD_DIR) all > NUL 2>&1
 else
@@ -43,23 +46,23 @@ endif
 clean:
 ifeq ($(detected_OS),Windows)
 	@if exist $(BUILD_DIR) rmdir /s /q $(BUILD_DIR)
-	@del /f /q integral*$(EXE_EXT)
+	@del /f /q $(EXE)*$(EXE_EXT)
 else
 	@rm -rf $(BUILD_DIR)
-	@rm -f integral*$(EXE_EXT)
+	@rm -f $(EXE)*$(EXE_EXT)
 endif
 
 copy_executable:
 ifeq ($(BUILD_TYPE),BUILD_DEBUG)
-	$(eval EXE_NAME := integral_debug$(EXE_EXT))
+	$(eval EXE_NAME := $(EXE)_debug$(EXE_EXT))
 else ifeq ($(BUILD_TYPE),BUILD_X86_64_POPCNT)
-	$(eval EXE_NAME := integral_x86_64_popcnt$(EXE_EXT))
+	$(eval EXE_NAME := $(EXE)_x86_64_popcnt$(EXE_EXT))
 else ifeq ($(BUILD_TYPE),BUILD_X86_64_MODERN)
-	$(eval EXE_NAME := integral_x86_64_modern$(EXE_EXT))
+	$(eval EXE_NAME := $(EXE)_x86_64_modern$(EXE_EXT))
 else ifeq ($(BUILD_TYPE),BUILD_X86_64_BMI2)
-	$(eval EXE_NAME := integral_x86_64_bmi2$(EXE_EXT))
+	$(eval EXE_NAME := $(EXE)_x86_64_bmi2$(EXE_EXT))
 else
-	$(eval EXE_NAME := integral$(EXE_EXT))
+	$(eval EXE_NAME := $(EXE)$(EXE_EXT))
 endif
 
 ifeq ($(detected_OS),Windows)
