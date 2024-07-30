@@ -139,6 +139,14 @@ class Tuner {
     }
   }
 
+  template <std::size_t N, std::size_t M, std::size_t L>
+  void Add3DArrayParameter(
+      const std::array<std::array<std::array<ScorePair, L>, M>, N>& parameter) {
+    for (const auto& array : parameter) {
+      Add2DArrayParameter(array);
+    }
+  }
+
  private:
   int num_terms_;
   std::vector<TermPair> parameters_;

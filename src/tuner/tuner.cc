@@ -4,6 +4,7 @@
 // #include <pthread.h>
 
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 
 #include "../engine/evaluation/evaluation.h"
@@ -123,7 +124,8 @@ void Tuner::Tune() {
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
-  Add2DArrayParameter<kNumPieceTypes, kSquareCount>(kPieceSquareTable);
+  Add3DArrayParameter<kNumKingBuckets, kNumPieceTypes, kSquareCount>(
+      kPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -164,9 +166,12 @@ std::vector<I16> Tuner::GetCoefficients() const {
 #define GET_2D_ARRAY_COEFFICIENTS(arr2d)         \
   for (std::size_t k = 0; k < arr2d.size(); ++k) \
   GET_ARRAY_COEFFICIENTS(arr2d[k])
+#define GET_3D_ARRAY_COEFFICIENTS(arr3d)         \
+  for (std::size_t l = 0; l < arr3d.size(); ++l) \
+  GET_2D_ARRAY_COEFFICIENTS(arr3d[l])
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
-  GET_2D_ARRAY_COEFFICIENTS(kPieceSquareTable);
+  GET_3D_ARRAY_COEFFICIENTS(kPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
@@ -263,7 +268,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
 
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#pragma omp parallel shared(local_gradient, mutex) num_threads(6)
+#pragma omp parallel shared(local_gradient, mutex) num_threads(10)
   {
 #pragma omp for schedule(static)
     for (const auto& entry : entries_) {
@@ -296,7 +301,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
 
 double Tuner::StaticEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(6)
+#pragma omp parallel shared(total) num_threads(10)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -308,7 +313,7 @@ double Tuner::StaticEvaluationErrors(double K) const {
 
 double Tuner::TunedEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(6)
+#pragma omp parallel shared(total) num_threads(10)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -371,6 +376,46 @@ void Print2DArray(std::size_t& index,
   fmt::println("\n}}}};\n");
 }
 
+#include <cmath>
+
+void Print3DArray(std::size_t& index,
+                  int buckets,
+                  int pieces,
+                  int squares,
+                  const std::vector<TermPair>& parameters) {
+  std::cout << "{\n";
+
+  for (int b = 0; b < buckets; ++b) {
+    std::cout << "  { // Bucket " << b << "\n";
+    for (int p = 0; p < pieces; ++p) {
+      std::cout << "    { // Piece " << p << "\n      ";
+
+      for (int s = 0; s < squares; ++s) {
+        if (index < parameters.size()) {
+          const auto& param = parameters[index++];
+          int mg = static_cast<int>(std::round(param[MG]));
+          int eg = static_cast<int>(std::round(param[EG]));
+          std::cout << "Pair(" << mg << ", " << eg << ")";
+        } else {
+          std::cout << "Pair(0, 0)";
+        }
+
+        if (s < squares - 1) std::cout << ", ";
+        if ((s + 1) % 8 == 0 && s < squares - 1) std::cout << "\n      ";
+      }
+
+      std::cout << "\n    }";
+      if (p < pieces - 1) std::cout << ",";
+      std::cout << "\n";
+    }
+    std::cout << "  }";
+    if (b < buckets - 1) std::cout << ",";
+    std::cout << "\n";
+  }
+
+  std::cout << "}";
+}
+
 void Tuner::PrintParameters() {
   std::size_t index = 0;
 
@@ -378,7 +423,8 @@ void Tuner::PrintParameters() {
   PrintArray(index, kPieceValues.size(), parameters_);
 
   fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
-  Print2DArray(index, kNumPieceTypes, kSquareCount, parameters_);
+  Print3DArray(
+      index, kNumKingBuckets, kNumPieceTypes, kSquareCount, parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
   PrintArray(index, kKnightMobility.size(), parameters_);

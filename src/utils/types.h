@@ -49,7 +49,7 @@ enum Color : U8 {
   kBlack,
   kWhite,
   kNoColor,
-  kNumColors
+  kNumColors = 2
 };
 
 constexpr Color FlipColor(Color color) {

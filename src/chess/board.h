@@ -77,12 +77,16 @@ struct BoardState {
         pawn_key(0ULL),
         checkers(0ULL),
         pinned(0ULL),
-        phase(0) {
+        phase(0),
+        king_bucket({}) {
     piece_on_square.fill(PieceType::kNone);
   }
 
   template <bool update_key = true>
-  void PlacePiece(Square square, PieceType piece_type, Color color) {
+  void PlacePiece(Square square,
+                  PieceType piece_type,
+                  Color color,
+                  int bucket) {
     // Add the piece to the bitboards and mailbox
     piece_bbs[piece_type].SetBit(square);
     side_bbs[color].SetBit(square);
@@ -90,7 +94,8 @@ struct BoardState {
 
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] += eval::kPieceSquareTable[piece_type][rel_square];
+    piece_scores[color] +=
+        eval::kPieceSquareTable[bucket][piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
@@ -108,7 +113,7 @@ struct BoardState {
   }
 
   template <bool update_key = true>
-  void RemovePiece(Square square, Color color) {
+  void RemovePiece(Square square, Color color, int bucket) {
     auto &piece_type = piece_on_square[square];
 
     // Remove the piece from the hash
@@ -127,7 +132,8 @@ struct BoardState {
 
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] -= eval::kPieceSquareTable[piece_type][rel_square];
+    piece_scores[color] -=
+        eval::kPieceSquareTable[bucket][piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
@@ -238,6 +244,7 @@ struct BoardState {
   BitBoard pinned;
   SideTable<ScorePair> piece_scores;
   int phase;
+  SideTable<int> king_bucket;
 };
 
 class Board {
@@ -269,7 +276,7 @@ class Board {
   [[nodiscard]] bool IsDraw(U16 ply);
 
  private:
-  void HandleCastling(Move move);
+  void HandleCastling(Move move, int old_bucket);
 
   void CalculateKingThreats();
 

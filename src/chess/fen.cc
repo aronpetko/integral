@@ -39,9 +39,26 @@ BoardState StringToBoard(std::string_view fen_str) {
 
     const auto piece_color = std::islower(ch) ? Color::kBlack : Color::kWhite;
     const auto piece_type = kCharToPieceType.at(std::tolower(ch));
-    state.PlacePiece(square, piece_type, piece_color);
+    state.PlacePiece(square, piece_type, piece_color, 0);
 
     square++;
+  }
+
+  // We need to re-place the pieces because of king buckets
+  const Square white_king_sq = state.King(Color::kWhite).GetLsb();
+  const Square black_king_sq = state.King(Color::kBlack).GetLsb();
+
+  state.king_bucket = {
+      eval::kKingBucketLayout[black_king_sq],
+      eval::kKingBucketLayout[white_king_sq.RelativeTo(Color::kWhite)]};
+
+  for (int square = 0; square < kSquareCount; square++) {
+    const auto color = state.GetPieceColor(square);
+    const auto piece = state.GetPieceType(square);
+    if (piece != kNone && piece != kKing) {
+      state.RemovePiece(square, color, 0);
+      state.PlacePiece(square, piece, color, state.king_bucket[color]);
+    }
   }
 
   char turn;

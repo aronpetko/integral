@@ -183,6 +183,7 @@ void Board::MakeMove(Move move) {
   const auto piece = state_.GetPieceType(from),
              captured = state_.GetPieceType(to);
   const auto move_type = move.GetType();
+  const int bucket = state_.king_bucket[us];
 
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
@@ -190,9 +191,9 @@ void Board::MakeMove(Move move) {
   if (move_type == MoveType::kEnPassant) {
     const Square pawn_square =
         state_.en_passant - (us == Color::kWhite ? 8 : -8);
-    state_.RemovePiece(pawn_square, them);
+    state_.RemovePiece(pawn_square, them, bucket);
   } else if (captured != PieceType::kNone) {
-    state_.RemovePiece(to, them);
+    state_.RemovePiece(to, them, bucket);
     new_fifty_move_clock = 0;
   }
 
@@ -208,16 +209,23 @@ void Board::MakeMove(Move move) {
   }
 
   // Move the piece
-  state_.RemovePiece(from, state_.turn);
-  auto new_piece = piece;
+  state_.RemovePiece(from, state_.turn, bucket);
 
+  if (piece == kKing) {
+    state_.king_bucket[us] =
+        eval::kKingBucketLayout[Square(to).RelativeTo(us)];
+  }
+
+  auto new_piece = piece;
   if (move_type == MoveType::kCastle) {
-    HandleCastling(move);
+    HandleCastling(move,
+                   bucket);  // Pass in the old bucket for moving rooks
   } else if (move_type == MoveType::kPromotion) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
   }
 
-  state_.PlacePiece(to, new_piece, state_.turn);
+  // Use updated king bucket if it changed
+  state_.PlacePiece(to, new_piece, state_.turn, state_.king_bucket[us]);
 
   // Update the castling rights depending on the piece that moved
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
@@ -354,13 +362,16 @@ bool Board::IsDraw(U16 ply) {
   return false;
 }
 
-void Board::HandleCastling(Move move) {
-  const bool is_white = state_.turn == Color::kWhite;
+void Board::HandleCastling(Move move, int old_bucket) {
+  const Color us = state_.turn;
+  const bool is_white = us == Color::kWhite;
 
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto move_rook_for_castling = [this](Square rook_from, Square rook_to) {
-    state_.RemovePiece(rook_from, state_.turn);
-    state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
+  const auto move_rook_for_castling = [this, &old_bucket, &us](Square rook_from,
+                                                               Square rook_to) {
+    state_.RemovePiece(rook_from, state_.turn, old_bucket);
+    state_.PlacePiece(
+        rook_to, PieceType::kRook, state_.turn, state_.king_bucket[us]);
   };
 
   constexpr int kKingsideCastleDist = -2;
