@@ -58,8 +58,6 @@ else ifeq ($(BUILD_TYPE),BUILD_X86_64_MODERN)
 	$(eval EXE_NAME := integral_x86_64_modern$(EXE_EXT))
 else ifeq ($(BUILD_TYPE),BUILD_X86_64_BMI2)
 	$(eval EXE_NAME := integral_x86_64_bmi2$(EXE_EXT))
-else ifeq ($(BUILD_TYPE),BUILD_NATIVE)
-	$(eval EXE_NAME := integral_native$(EXE_EXT))
 else
 	$(eval EXE_NAME := integral$(EXE_EXT))
 endif
