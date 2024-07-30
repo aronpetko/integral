@@ -49,18 +49,20 @@ struct EvalTrace {
   eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
   eval::RookMobilityTable<TraceTerm> kRookMobility{};
   eval::QueenMobilityTable<TraceTerm> kQueenMobility{};
-  eval::RankTable<TraceTerm> kPassedPawnBonus{};
-  eval::RankTable<TraceTerm> kPawnPhalanxBonus{};
-  eval::RankTable<TraceTerm> kDefendedPawnBonus{};
-  eval::FileTable<TraceTerm> kDoubledPawnPenalty{};
-  eval::FileTable<TraceTerm> kIsolatedPawnPenalty{};
-  std::array<eval::FileTable<TraceTerm>, 2> kRookOnFileBonus{};
-  std::array<TraceTerm, 12> kPawnShelterTable{};
-  std::array<TraceTerm, 21> kPawnStormTable{};
-  std::array<TraceTerm, 8> kKingPPDistanceTable{};
-  std::array<TraceTerm, 8> kEnemyKingPPDistanceTable{};
-  TraceTerm kKingCantReachPPBonus{};
-  std::array<eval::FileTable<TraceTerm>, 2> kKingOnFilePenalty{};
+  eval::KingBuckets<eval::RankTable<TraceTerm>> kPassedPawnBonus{};
+  eval::KingBuckets<eval::RankTable<TraceTerm>> kPawnPhalanxBonus{};
+  eval::KingBuckets<eval::RankTable<TraceTerm>> kDefendedPawnBonus{};
+  eval::KingBuckets<eval::FileTable<TraceTerm>> kDoubledPawnPenalty{};
+  eval::KingBuckets<eval::FileTable<TraceTerm>> kIsolatedPawnPenalty{};
+  eval::KingBuckets<std::array<eval::FileTable<TraceTerm>, 2>>
+      kRookOnFileBonus{};
+  eval::KingBuckets<std::array<TraceTerm, 12>> kPawnShelterTable{};
+  eval::KingBuckets<std::array<TraceTerm, 21>> kPawnStormTable{};
+  eval::KingBuckets<std::array<TraceTerm, 8>> kKingPPDistanceTable{};
+  eval::KingBuckets<std::array<TraceTerm, 8>> kEnemyKingPPDistanceTable{};
+  eval::KingBuckets<TraceTerm> kKingCantReachPPBonus{};
+  eval::KingBuckets<std::array<eval::FileTable<TraceTerm>, 2>>
+      kKingOnFilePenalty{};
   eval::PieceTable<std::array<TraceTerm, 8>> kAttackPower{};
   eval::PieceTable<TraceTerm> kSafeCheckBonus{};
   eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByPawnPenalty{};
@@ -70,7 +72,7 @@ struct EvalTrace {
   eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByRookPenalty{};
   eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
   eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
-  TraceTerm kBishopPairBonus{};
+  eval::KingBuckets<TraceTerm> kBishopPairBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};
 };

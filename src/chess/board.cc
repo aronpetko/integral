@@ -232,7 +232,7 @@ void Board::MakeMove(Move move) {
       for (Square square : state_.Occupied(us) & ~state_.King(us)) {
         const auto piece_type = state_.GetPieceType(square);
         state_.piece_scores[us] +=
-            eval::kPieceValues[piece_type] +
+            eval::kPieceValues[new_bucket][piece_type] +
             eval::kPieceSquareTable[new_bucket][piece_type]
                                    [square.RelativeTo(us)];
       }
