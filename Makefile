@@ -23,7 +23,11 @@ BUILD_TYPE ?= BUILD_NATIVE
 
 all: $(BUILD_DIR)
 	@echo Building integral with $(BUILD_TYPE)...
-	@$(MAKE) -C $(BUILD_DIR) all
+ifeq ($(detected_OS),Windows)
+	@$(MAKE) -C $(BUILD_DIR) all > NUL 2>&1
+else
+	@$(MAKE) -C $(BUILD_DIR) all > /dev/null 2>&1
+endif
 	@echo Copying executable...
 	@$(MAKE) copy_executable
 
