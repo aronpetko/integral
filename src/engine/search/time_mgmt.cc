@@ -28,7 +28,7 @@ std::array<Tunable, 5> move_stability_scale = {
 void TimeManagement::Start() {
   start_time_.store(GetCurrentTime());
   nodes_spent_.fill(0);
-  const int overhead = uci::listener.GetOption("Overhead").GetValue<int>();
+  const int overhead = uci::listener.GetOption("MoveOverhead").GetValue<int>();
 
   if (config_.move_time != 0) {
     hard_limit_.store(config_.move_time - overhead);
