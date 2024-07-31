@@ -1,3 +1,0 @@
-D:/Coding/integral/build/CMakeFiles/integral.dir
-D:/Coding/integral/build/CMakeFiles/edit_cache.dir
-D:/Coding/integral/build/CMakeFiles/rebuild_cache.dir
