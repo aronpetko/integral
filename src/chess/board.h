@@ -94,8 +94,8 @@ struct BoardState {
 
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] += eval::kPieceSquareTable[our_bucket][their_bucket]
-                                                  [piece_type][rel_square];
+    // piece_scores[color] += eval::kPieceSquareTable[our_bucket][their_bucket]
+    //                                               [piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
@@ -134,8 +134,8 @@ struct BoardState {
               their_bucket = king_bucket[FlipColor(color)];
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] -= eval::kPieceSquareTable[our_bucket][their_bucket]
-                                                  [piece_type][rel_square];
+    // piece_scores[color] -= eval::kPieceSquareTable[our_bucket][their_bucket]
+    //                                               [piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game

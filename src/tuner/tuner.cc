@@ -20,6 +20,9 @@ constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
+double decay =
+    pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
+
 // New constant for batch size
 constexpr int kBatchSize = 10'000'000;
 
@@ -92,9 +95,6 @@ void Tuner::TuneBatch() {
 
   double rate = kStartLearningRate;
   double error;
-
-  double decay =
-      pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs));
 
   for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
     const auto start_time = search::GetCurrentTime();
