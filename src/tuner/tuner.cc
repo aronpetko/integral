@@ -125,7 +125,7 @@ void Tuner::TuneBatch() {
         static_cast<double>(search::GetCurrentTime() - start_time) / 1000.0;
 
     error = TunedEvaluationErrors(K);
-    fmt::println("Epoch [{}] Error = [{}] LR = [{:.3f}] Speed = [:.0f pos/sec]",
+    fmt::println("Epoch [{}] Error = [{}] LR = [{:.3f}] Speed = [{:.0f} pos/sec]",
                  epoch,
                  error,
                  rate,
