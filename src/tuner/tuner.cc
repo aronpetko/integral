@@ -8,6 +8,7 @@
 #include <sstream>
 
 #include "../engine/evaluation/evaluation.h"
+#include "../engine/search/time_mgmt.h"
 
 using namespace eval;
 
@@ -92,10 +93,11 @@ void Tuner::TuneBatch() {
   double rate = kStartLearningRate;
   double error;
 
-  double decay = pow(kEndLearningRate / kStartLearningRate,
-                     1.0 / float(kMaxEpochs));
+  double decay =
+      pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs));
 
   for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
+    const auto start_time = search::GetCurrentTime();
     auto epoch_gradient = ComputeGradient(K, 0, num_entries);
     for (int i = 0; i < num_terms_; i++) {
       double mg_grad = (-K / 200.0) * epoch_gradient[i][MG] / num_entries;
@@ -119,8 +121,15 @@ void Tuner::TuneBatch() {
       parameters_[i][EG] -= eg_delta;
     }
 
+    const auto time_delta =
+        static_cast<double>(search::GetCurrentTime() - start_time) / 1000.0;
+
     error = TunedEvaluationErrors(K);
-    fmt::println("Epoch [{}] Error = [{}], Rate = [{}]", epoch, error, rate);
+    fmt::println("Epoch [{}] Error = [{}] LR = [{:.3f}] Speed = [:.0f pos/sec]",
+                 epoch,
+                 error,
+                 rate,
+                 num_entries / time_delta);
 
     // Pre-scheduled Learning Rate drops
     rate *= decay;
@@ -149,7 +158,8 @@ void Tuner::LoadAndTune(const std::string& source_file) {
     batch_count++;
   }
 
-  fmt::println("Finished processing all batches. Total batches: {}", batch_count);
+  fmt::println("Finished processing all batches. Total batches: {}",
+               batch_count);
 }
 
 void Tuner::InitBaseParameters() {
