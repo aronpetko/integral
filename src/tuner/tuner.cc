@@ -11,7 +11,7 @@
 
 using namespace eval;
 
-constexpr int kMaxEpochs = 1000;
+constexpr int kMaxEpochs = 350;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
 constexpr double kStartLearningRate = 1.0;
@@ -19,65 +19,67 @@ constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
+// New constant for batch size
+constexpr int kBatchSize = 10'000'000;
+
 inline double Sigmoid(double K, double E) {
   return 1.0 / (1.0 + exp(-K * E / 400.0));
 }
 
-void Tuner::LoadFromFile(const std::string& source_file) {
-  InitBaseParameters();
-
-  fmt::println("Loading data source...");
-
-  std::ifstream file(source_file);
-  if (file.is_open()) {
-    std::string line;
-    while (std::getline(file, line)) {
-      const auto bracket_pos = line.find_last_of('[');
-      if (bracket_pos != std::string::npos) {
-        // Extract the FEN part of the line (everything before the last '[')
-        const auto fen = line.substr(0, bracket_pos - 1);
-
-        Board board;
-        board.SetFromFen(fen);
-
-        // Extract the WDL marker (between the brackets)
-        auto end_bracket_pos = line.find_last_of(']');
-        if (end_bracket_pos != std::string::npos &&
-            bracket_pos + 1 < end_bracket_pos) {
-          const auto wdl =
-              line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
-
-          GameResult result;
-          if (wdl == "0.0") {
-            result = kBlackWon;
-          } else if (wdl == "0.5") {
-            result = kDrawn;
-          } else if (wdl == "1.0") {
-            result = kWhiteWon;
-          }
-
-          TunerEntry entry = CreateEntry(board.GetState(), result);
-          entries_.push_back(entry);
-
-          const Score computed_eval = ComputeEvaluation(entry);
-          const Score deviation = abs(entry.static_eval - computed_eval);
-          if (deviation > 1) {
-            fmt::println("Tuner deviation detected: real {} coeff {}",
-                         entry.static_eval,
-                         computed_eval);
-          }
-        }
-      }
-    }
-  } else {
-    fmt::println("Unable to open file");
+bool Tuner::LoadNextBatch() {
+  if (end_of_file_reached_) {
+    return false;
   }
 
-  file.close();
-  fmt::println("Loaded {} positions", entries_.size());
+  entries_.clear();
+  fmt::println("Loading next batch of {} positions...", kBatchSize);
+
+  std::string line;
+  int loaded_entries = 0;
+
+  while (loaded_entries < kBatchSize && std::getline(file_, line)) {
+    const auto bracket_pos = line.find_last_of('[');
+    if (bracket_pos != std::string::npos) {
+      // Extract the FEN part of the line (everything before the last '[')
+      const auto fen = line.substr(0, bracket_pos - 1);
+
+      Board board;
+      board.SetFromFen(fen);
+
+      // Extract the WDL marker (between the brackets)
+      auto end_bracket_pos = line.find_last_of(']');
+      if (end_bracket_pos != std::string::npos &&
+          bracket_pos + 1 < end_bracket_pos) {
+        const auto wdl =
+            line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
+
+        GameResult result;
+        if (wdl == "0.0") {
+          result = kBlackWon;
+        } else if (wdl == "0.5") {
+          result = kDrawn;
+        } else if (wdl == "1.0") {
+          result = kWhiteWon;
+        }
+
+        TunerEntry entry = CreateEntry(board.GetState(), result);
+        entries_.push_back(entry);
+
+        loaded_entries++;
+      }
+    }
+  }
+
+  if (file_.eof()) {
+    end_of_file_reached_ = true;
+    file_.close();
+  }
+
+  fmt::println("Loaded {} positions in this batch", entries_.size());
+  return !entries_.empty();
 }
 
-void Tuner::Tune() {
+void Tuner::TuneBatch() {
   VectorPair momentum, velocity;
   momentum.resize(num_terms_);
   velocity.resize(num_terms_);
@@ -93,8 +95,8 @@ void Tuner::Tune() {
   double decay = pow(kEndLearningRate / kStartLearningRate,
                      1.0 / float(kMaxEpochs));
 
-  for (int epoch = 0; epoch <= kMaxEpochs; epoch++) {
-    auto epoch_gradient = ComputeGradient(K);
+  for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
+    auto epoch_gradient = ComputeGradient(K, 0, num_entries);
     for (int i = 0; i < num_terms_; i++) {
       double mg_grad = (-K / 200.0) * epoch_gradient[i][MG] / num_entries;
       double eg_grad = (-K / 200.0) * epoch_gradient[i][EG] / num_entries;
@@ -122,8 +124,32 @@ void Tuner::Tune() {
 
     // Pre-scheduled Learning Rate drops
     rate *= decay;
-    if (epoch % 50 == 0) PrintParameters();
   }
+
+  PrintParameters();
+}
+
+void Tuner::LoadAndTune(const std::string& source_file) {
+  InitBaseParameters();
+
+  fmt::println("Opening data source...");
+
+  file_.open(source_file);
+  if (!file_.is_open()) {
+    fmt::println("Unable to open file");
+    return;
+  }
+
+  fmt::println("File opened successfully. Starting batch processing.");
+
+  int batch_count = 0;
+  while (LoadNextBatch()) {
+    fmt::println("Processing batch {}", batch_count);
+    TuneBatch();
+    batch_count++;
+  }
+
+  fmt::println("Finished processing all batches. Total batches: {}", batch_count);
 }
 
 void Tuner::InitBaseParameters() {
@@ -264,8 +290,7 @@ double Tuner::ComputeOptimalK() const {
 
   return K;
 }
-
-VectorPair Tuner::ComputeGradient(double K) const {
+VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
   VectorPair local_gradient;
   local_gradient.resize(num_terms_);
 
@@ -277,7 +302,8 @@ VectorPair Tuner::ComputeGradient(double K) const {
 #pragma omp parallel shared(local_gradient, mutex) num_threads(12)
   {
 #pragma omp for schedule(static)
-    for (const auto& entry : entries_) {
+    for (int i = start; i < end; ++i) {
+      const auto& entry = entries_[i];
       double E = ComputeEvaluation(entry);
       double S = Sigmoid(K, E);
       double X = (entry.result - S) * S * (1 - S);
