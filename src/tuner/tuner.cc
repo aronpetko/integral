@@ -11,10 +11,11 @@
 
 using namespace eval;
 
-constexpr int kMaxEpochs = 10000;
+constexpr int kMaxEpochs = 1000;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kLearningRate = 0.1;
+constexpr double kStartLearningRate = 1.0;
+constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
@@ -86,10 +87,13 @@ void Tuner::Tune() {
   const double K = ComputeOptimalK();
   fmt::println("Optimal K: {}", K);
 
-  double rate = kLearningRate;
+  double rate = kStartLearningRate;
   double error;
 
-  for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
+  double decay = pow(kEndLearningRate / kStartLearningRate,
+                     1.0 / float(kMaxEpochs));
+
+  for (int epoch = 0; epoch <= kMaxEpochs; epoch++) {
     auto epoch_gradient = ComputeGradient(K);
     for (int i = 0; i < num_terms_; i++) {
       double mg_grad = (-K / 200.0) * epoch_gradient[i][MG] / num_entries;
@@ -117,15 +121,14 @@ void Tuner::Tune() {
     fmt::println("Epoch [{}] Error = [{}], Rate = [{}]", epoch, error, rate);
 
     // Pre-scheduled Learning Rate drops
-    if (epoch % kLearningStepRate == 0) rate = rate / kLearningDropRate;
+    rate *= decay;
     if (epoch % 50 == 0) PrintParameters();
   }
 }
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
-  Add3DArrayParameter<kNumKingBuckets, kNumPieceTypes, kSquareCount>(
-      kPieceSquareTable);
+  Add4DArrayParameter(kPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -169,9 +172,12 @@ std::vector<I16> Tuner::GetCoefficients() const {
 #define GET_3D_ARRAY_COEFFICIENTS(arr3d)         \
   for (std::size_t l = 0; l < arr3d.size(); ++l) \
   GET_2D_ARRAY_COEFFICIENTS(arr3d[l])
+#define GET_4D_ARRAY_COEFFICIENTS(arr4d)         \
+  for (std::size_t z = 0; z < arr4d.size(); ++z) \
+  GET_3D_ARRAY_COEFFICIENTS(arr4d[z])
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
-  GET_3D_ARRAY_COEFFICIENTS(kPieceSquareTable);
+  GET_4D_ARRAY_COEFFICIENTS(kPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
@@ -268,7 +274,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
 
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#pragma omp parallel shared(local_gradient, mutex) num_threads(10)
+#pragma omp parallel shared(local_gradient, mutex) num_threads(12)
   {
 #pragma omp for schedule(static)
     for (const auto& entry : entries_) {
@@ -301,7 +307,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
 
 double Tuner::StaticEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(10)
+#pragma omp parallel shared(total) num_threads(12)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -313,7 +319,7 @@ double Tuner::StaticEvaluationErrors(double K) const {
 
 double Tuner::TunedEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(10)
+#pragma omp parallel shared(total) num_threads(12)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -416,6 +422,51 @@ void Print3DArray(std::size_t& index,
   std::cout << "}";
 }
 
+void Print4DArray(std::size_t& index,
+                  int dimensions,
+                  int buckets,
+                  int pieces,
+                  int squares,
+                  const std::vector<TermPair>& parameters) {
+  std::cout << "{{\n";
+
+  for (int d = 0; d < dimensions; ++d) {
+    std::cout << "  {{ // Bucket " << d << "\n";
+    for (int b = 0; b < buckets; ++b) {
+      std::cout << "    {{ // Bucket " << b << "\n";
+      for (int p = 0; p < pieces; ++p) {
+        std::cout << "      { // Piece " << p << "\n        ";
+
+        for (int s = 0; s < squares; ++s) {
+          if (index < parameters.size()) {
+            const auto& param = parameters[index++];
+            int mg = static_cast<int>(std::round(param[MG]));
+            int eg = static_cast<int>(std::round(param[EG]));
+            std::cout << "Pair(" << mg << ", " << eg << ")";
+          } else {
+            std::cout << "Pair(0, 0)";
+          }
+
+          if (s < squares - 1) std::cout << ", ";
+          if ((s + 1) % 8 == 0 && s < squares - 1) std::cout << "\n        ";
+        }
+
+        std::cout << "\n      }";
+        if (p < pieces - 1) std::cout << ",";
+        std::cout << "\n";
+      }
+      std::cout << "    }}";
+      if (b < buckets - 1) std::cout << ",";
+      std::cout << "\n";
+    }
+    std::cout << "  }}";
+    if (d < dimensions - 1) std::cout << ",";
+    std::cout << "\n";
+  }
+
+  std::cout << "}};\n\n";
+}
+
 void Tuner::PrintParameters() {
   std::size_t index = 0;
 
@@ -423,8 +474,12 @@ void Tuner::PrintParameters() {
   PrintArray(index, kPieceValues.size(), parameters_);
 
   fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
-  Print3DArray(
-      index, kNumKingBuckets, kNumPieceTypes, kSquareCount, parameters_);
+  Print4DArray(index,
+               kNumKingBuckets,
+               kNumKingBuckets,
+               kNumPieceTypes,
+               kSquareCount,
+               parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
   PrintArray(index, kKnightMobility.size(), parameters_);

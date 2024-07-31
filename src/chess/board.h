@@ -83,19 +83,19 @@ struct BoardState {
   }
 
   template <bool update_key = true>
-  void PlacePiece(Square square,
-                  PieceType piece_type,
-                  Color color,
-                  int bucket) {
+  void PlacePiece(Square square, PieceType piece_type, Color color) {
     // Add the piece to the bitboards and mailbox
     piece_bbs[piece_type].SetBit(square);
     side_bbs[color].SetBit(square);
     piece_on_square[square] = piece_type;
 
+    const int our_bucket = king_bucket[color],
+              their_bucket = king_bucket[FlipColor(color)];
+
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] +=
-        eval::kPieceSquareTable[bucket][piece_type][rel_square];
+    piece_scores[color] += eval::kPieceSquareTable[our_bucket][their_bucket]
+                                                  [piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
@@ -113,7 +113,7 @@ struct BoardState {
   }
 
   template <bool update_key = true>
-  void RemovePiece(Square square, Color color, int bucket) {
+  void RemovePiece(Square square, Color color) {
     auto &piece_type = piece_on_square[square];
 
     // Remove the piece from the hash
@@ -130,16 +130,38 @@ struct BoardState {
     piece_bbs[piece_type].ClearBit(square);
     side_bbs[color].ClearBit(square);
 
+    const int our_bucket = king_bucket[color],
+              their_bucket = king_bucket[FlipColor(color)];
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] -=
-        eval::kPieceSquareTable[bucket][piece_type][rel_square];
+    piece_scores[color] -= eval::kPieceSquareTable[our_bucket][their_bucket]
+                                                  [piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
     phase -= eval::kPhaseIncrements[piece_type];
 
     piece_type = PieceType::kNone;
+  }
+
+  void RecalculatePieceScores() {
+    const Square white_king_sq = King(Color::kWhite).GetLsb();
+    const Square black_king_sq = King(Color::kBlack).GetLsb();
+    king_bucket = {
+        eval::kKingBucketLayout[black_king_sq],
+        eval::kKingBucketLayout[white_king_sq.RelativeTo(Color::kWhite)]};
+    piece_scores = {};
+
+    for (Square square : Occupied()) {
+      const auto color = GetPieceColor(square);
+      const auto piece = GetPieceType(square);
+      const int our_bucket = king_bucket[color],
+                their_bucket = king_bucket[FlipColor(color)];
+      piece_scores[color] += eval::kPieceValues[piece];
+      piece_scores[color] +=
+          eval::kPieceSquareTable[our_bucket][their_bucket][piece]
+                                 [square.RelativeTo(color)];
+    }
   }
 
   [[nodiscard]] constexpr Color GetPieceColor(U8 square) const {
@@ -276,7 +298,7 @@ class Board {
   [[nodiscard]] bool IsDraw(U16 ply);
 
  private:
-  void HandleCastling(Move move, int old_bucket);
+  void HandleCastling(Move move);
 
   void CalculateKingThreats();
 
