@@ -14,8 +14,8 @@ using namespace eval;
 constexpr int kMaxEpochs = 10000;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kStartLearningRate = 5;
-constexpr double kEndLearningRate = 0.05;
+constexpr double kStartLearningRate = 1.0;
+constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
@@ -84,7 +84,7 @@ void Tuner::Tune() {
 
   const std::size_t num_entries = entries_.size();
 
-  const double K = ComputeOptimalK();
+  const double K = 3.6;
   fmt::println("Optimal K: {}", K);
 
   double rate = kStartLearningRate;
