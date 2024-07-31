@@ -14,7 +14,8 @@ using namespace eval;
 constexpr int kMaxEpochs = 10000;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kLearningRate = 0.1;
+constexpr double kStartLearningRate = 5;
+constexpr double kEndLearningRate = 0.05;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
 
@@ -86,8 +87,11 @@ void Tuner::Tune() {
   const double K = ComputeOptimalK();
   fmt::println("Optimal K: {}", K);
 
-  double rate = kLearningRate;
+  double rate = kStartLearningRate;
   double error;
+
+  double decay = pow(kEndLearningRate / kStartLearningRate,
+                     1.0 / float(kMaxEpochs));
 
   for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
     auto epoch_gradient = ComputeGradient(K);
@@ -117,24 +121,23 @@ void Tuner::Tune() {
     fmt::println("Epoch [{}] Error = [{}], Rate = [{}]", epoch, error, rate);
 
     // Pre-scheduled Learning Rate drops
-    if (epoch % kLearningStepRate == 0) rate = rate / kLearningDropRate;
+    rate *= decay;
     if (epoch % 50 == 0) PrintParameters();
   }
 }
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
-  Add3DArrayParameter<kNumKingBuckets, kNumPieceTypes, kSquareCount>(
-      kPieceSquareTable);
+  Add3DArrayParameter(kPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
   AddArrayParameter(kQueenMobility);
-  AddArrayParameter(kPassedPawnBonus);
-  AddArrayParameter(kPawnPhalanxBonus);
-  AddArrayParameter(kDefendedPawnBonus);
-  AddArrayParameter(kDoubledPawnPenalty);
-  AddArrayParameter(kIsolatedPawnPenalty);
+  Add2DArrayParameter(kPassedPawnBonus);
+  Add2DArrayParameter(kPawnPhalanxBonus);
+  Add2DArrayParameter(kDefendedPawnBonus);
+  Add2DArrayParameter(kDoubledPawnPenalty);
+  Add2DArrayParameter(kIsolatedPawnPenalty);
   Add2DArrayParameter(kRookOnFileBonus);
   AddArrayParameter(kPawnShelterTable);
   AddArrayParameter(kPawnStormTable);
@@ -176,11 +179,11 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
-  GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
-  GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
-  GET_ARRAY_COEFFICIENTS(kDefendedPawnBonus);
-  GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
-  GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kPassedPawnBonus);
+  GET_2D_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
+  GET_2D_ARRAY_COEFFICIENTS(kDefendedPawnBonus);
+  GET_2D_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
   GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
   GET_ARRAY_COEFFICIENTS(kPawnStormTable);
@@ -383,12 +386,13 @@ void Print3DArray(std::size_t& index,
                   int pieces,
                   int squares,
                   const std::vector<TermPair>& parameters) {
-  std::cout << "{\n";
+  std::cout << "{{\n";
 
   for (int b = 0; b < buckets; ++b) {
-    std::cout << "  { // Bucket " << b << "\n";
+    std::cout << "  {{ // Bucket " << b << "\n";
     for (int p = 0; p < pieces; ++p) {
-      std::cout << "    { // Piece " << p << "\n      ";
+      std::cout << "    {"
+                << "\n      ";
 
       for (int s = 0; s < squares; ++s) {
         if (index < parameters.size()) {
@@ -408,13 +412,14 @@ void Print3DArray(std::size_t& index,
       if (p < pieces - 1) std::cout << ",";
       std::cout << "\n";
     }
-    std::cout << "  }";
+    std::cout << "  }}";
     if (b < buckets - 1) std::cout << ",";
     std::cout << "\n";
   }
 
-  std::cout << "}";
+  std::cout << "}};\n\n";
 }
+
 
 void Tuner::PrintParameters() {
   std::size_t index = 0;
@@ -438,20 +443,20 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr QueenMobilityTable<ScorePair> kQueenMobility = ");
   PrintArray(index, kQueenMobility.size(), parameters_);
 
-  fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
-  PrintArray(index, kNumRanks, parameters_);
+  fmt::print("constexpr KingBuckets<RankTable<ScorePair>> kPassedPawnBonus = ");
+  Print2DArray(index, kNumKingBuckets, kNumRanks, parameters_);
 
-  fmt::print("constexpr RankTable<ScorePair> kPawnPhalanxBonus = ");
-  PrintArray(index, kNumRanks, parameters_);
+  fmt::print("constexpr KingBuckets<RankTable<ScorePair>> kPawnPhalanxBonus = ");
+  Print2DArray(index, kNumKingBuckets, kNumRanks, parameters_);
 
-  fmt::print("constexpr RankTable<ScorePair> kDefendedPawnBonus = ");
-  PrintArray(index, kNumRanks, parameters_);
+  fmt::print("constexpr KingBuckets<RankTable<ScorePair>> kDefendedPawnBonus = ");
+  Print2DArray(index, kNumKingBuckets, kNumRanks, parameters_);
 
-  fmt::print("constexpr FileTable<ScorePair> kDoubledPawnPenalty = ");
-  PrintArray(index, kNumFiles, parameters_);
+  fmt::print("constexpr KingBuckets<FileTable<ScorePair>> kDoubledPawnPenalty = ");
+  Print2DArray(index, kNumKingBuckets, kNumFiles, parameters_);
 
-  fmt::print("constexpr FileTable<ScorePair> kIsolatedPawnPenalty = ");
-  PrintArray(index, kNumFiles, parameters_);
+  fmt::print("constexpr KingBuckets<FileTable<ScorePair>> kIsolatedPawnPenalty = ");
+  Print2DArray(index, kNumKingBuckets, kNumFiles, parameters_);
 
   fmt::print(
       "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");

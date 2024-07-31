@@ -11,6 +11,9 @@
 .idea
 .DS_Store
 
+build
+*.exe
+
 # AWS User-specific
 .idea/**/aws.xml
 

@@ -219,15 +219,16 @@ ScorePair Evaluation::EvaluatePawns() {
   BitBoard passed_pawns;
 
   if (!has_pawn_structure_cache_) {
+    const int kb = state_.king_bucket[us];
+
     // Pawn phalanxes
     const BitBoard connected_pawns =
         Shift<Direction::kEast>(our_pawns) & our_pawns;
     for (Square square : connected_pawns) {
-      score += kPawnPhalanxBonus[square.RelativeRank<us>()];
-      TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
+      score += kPawnPhalanxBonus[kb][square.RelativeRank<us>()];
+      TRACE_INCREMENT(kPawnPhalanxBonus[kb][square.RelativeRank<us>()], us);
     }
 
-    const int kb = state_.king_bucket[us];
     for (Square square : our_pawns) {
       TRACE_INCREMENT(kPieceValues[kPawn], us);
       TRACE_INCREMENT(kPieceSquareTable[kb][kPawn][square.RelativeTo(us)], us);
@@ -241,28 +242,28 @@ ScorePair Evaluation::EvaluatePawns() {
       if (!their_pawns_ahead) {
         passed_pawns.SetBit(square);
 
-        score += kPassedPawnBonus[rank];
-        TRACE_INCREMENT(kPassedPawnBonus[rank], us);
+        score += kPassedPawnBonus[kb][rank];
+        TRACE_INCREMENT(kPassedPawnBonus[kb][rank], us);
       }
 
       if (IsDefendedByPawn<us>(square)) {
-        score += kDefendedPawnBonus[rank];
-        TRACE_INCREMENT(kDefendedPawnBonus[rank], us);
+        score += kDefendedPawnBonus[kb][rank];
+        TRACE_INCREMENT(kDefendedPawnBonus[kb][rank], us);
       }
 
       // Doubled pawns
       const BitBoard pawns_ahead_on_file =
           our_pawns & masks::forward_file[us][square];
       if (pawns_ahead_on_file) {
-        score += kDoubledPawnPenalty[file];
-        TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
+        score += kDoubledPawnPenalty[kb][file];
+        TRACE_INCREMENT(kDoubledPawnPenalty[kb][file], us);
       }
 
       // Isolated pawns
       const BitBoard adjacent_pawns = masks::adjacent_files[square] & our_pawns;
       if (!adjacent_pawns) {
-        score += kIsolatedPawnPenalty[file];
-        TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
+        score += kIsolatedPawnPenalty[kb][file];
+        TRACE_INCREMENT(kIsolatedPawnPenalty[kb][file], us);
       }
     }
 
