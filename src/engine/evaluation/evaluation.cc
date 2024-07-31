@@ -470,7 +470,7 @@ template <Color us>
 ScorePair Evaluation::EvaluateKing() {
   ScorePair score;
 
-  const int kb = 0;  // Choose the first king bucket for the king
+  const int kb = state_.king_bucket[FlipColor(us)];
 
   const Square square = state_.King(us).GetLsb();
   TRACE_INCREMENT(kPieceSquareTable[kb][kKing][square.RelativeTo(us)], us);

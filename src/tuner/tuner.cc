@@ -84,7 +84,7 @@ void Tuner::Tune() {
 
   const std::size_t num_entries = entries_.size();
 
-  const double K = 3.6;
+  const double K = ComputeOptimalK();
   fmt::println("Optimal K: {}", K);
 
   double rate = kStartLearningRate;

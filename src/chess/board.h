@@ -276,7 +276,7 @@ class Board {
   [[nodiscard]] bool IsDraw(U16 ply);
 
  private:
-  void HandleCastling(Move move, int old_bucket);
+  void HandleCastling(Move move);
 
   void CalculateKingThreats();
 

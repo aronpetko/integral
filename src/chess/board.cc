@@ -183,7 +183,8 @@ void Board::MakeMove(Move move) {
   const auto piece = state_.GetPieceType(from),
              captured = state_.GetPieceType(to);
   const auto move_type = move.GetType();
-  const int bucket = state_.king_bucket[us];
+  const int our_bucket = state_.king_bucket[us],
+            their_bucket = state_.king_bucket[them];
 
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
@@ -191,9 +192,9 @@ void Board::MakeMove(Move move) {
   if (move_type == MoveType::kEnPassant) {
     const Square pawn_square =
         state_.en_passant - (us == Color::kWhite ? 8 : -8);
-    state_.RemovePiece(pawn_square, them, state_.king_bucket[them]);
+    state_.RemovePiece(pawn_square, them, our_bucket);
   } else if (captured != PieceType::kNone) {
-    state_.RemovePiece(to, them, state_.king_bucket[them]);
+    state_.RemovePiece(to, them, our_bucket);
     new_fifty_move_clock = 0;
   }
 
@@ -209,32 +210,43 @@ void Board::MakeMove(Move move) {
   }
 
   // Move the piece
-  state_.RemovePiece(from, state_.turn, bucket);
+  state_.RemovePiece(from, state_.turn, their_bucket);
 
   auto new_piece = piece;
   if (move_type == MoveType::kCastle) {
-    HandleCastling(move,
-                   bucket);  // Pass in the old bucket for moving rooks
+    HandleCastling(move);  // Pass in the old bucket for moving rooks
   } else if (move_type == MoveType::kPromotion) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
   }
 
-  // Use updated king bucket if it changed
-  state_.PlacePiece(to, new_piece, state_.turn, state_.king_bucket[us]);
+  state_.PlacePiece(to, new_piece, state_.turn, their_bucket);
 
   // Must refresh all of our pieces if the king bucket changed
   if (piece == kKing) {
     const int new_bucket = eval::kKingBucketLayout[to.RelativeTo(us)];
-    if (new_bucket != bucket) {
+    if (new_bucket != our_bucket) {
       state_.king_bucket[us] = new_bucket;
-      state_.piece_scores[us] =
-          eval::kPieceSquareTable[0][kKing][to.RelativeTo(us)];
-      for (Square square : state_.Occupied(us) & ~state_.King(us)) {
+
+      // Reset scores for both sides
+      state_.piece_scores[us] = {};
+      state_.piece_scores[them] = {};
+
+      // Update scores for our pieces
+      for (Square square : state_.Occupied(us)) {
         const auto piece_type = state_.GetPieceType(square);
         state_.piece_scores[us] +=
             eval::kPieceValues[piece_type] +
-            eval::kPieceSquareTable[new_bucket][piece_type]
+            eval::kPieceSquareTable[their_bucket][piece_type]
                                    [square.RelativeTo(us)];
+      }
+
+      // Update scores for their pieces
+      for (Square square : state_.Occupied(them)) {
+        const auto piece_type = state_.GetPieceType(square);
+        state_.piece_scores[them] +=
+            eval::kPieceValues[piece_type] +
+            eval::kPieceSquareTable[new_bucket][piece_type]
+                                   [square.RelativeTo(them)];
       }
     }
   }
@@ -374,16 +386,16 @@ bool Board::IsDraw(U16 ply) {
   return false;
 }
 
-void Board::HandleCastling(Move move, int old_bucket) {
+void Board::HandleCastling(Move move) {
   const Color us = state_.turn;
   const bool is_white = us == Color::kWhite;
 
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto move_rook_for_castling = [this, &old_bucket, &us](Square rook_from,
+  const auto move_rook_for_castling = [this, &us](Square rook_from,
                                                                Square rook_to) {
-    state_.RemovePiece(rook_from, state_.turn, old_bucket);
+    state_.RemovePiece(rook_from, state_.turn, state_.king_bucket[FlipColor(us)]);
     state_.PlacePiece(
-        rook_to, PieceType::kRook, state_.turn, state_.king_bucket[us]);
+        rook_to, PieceType::kRook, state_.turn, state_.king_bucket[FlipColor(us)]);
   };
 
   constexpr int kKingsideCastleDist = -2;
