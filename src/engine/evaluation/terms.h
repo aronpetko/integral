@@ -50,122 +50,122 @@ template <typename T>
 using OutpostTable = std::array<T, 24>;
 
 constexpr PieceTable<ScorePair> kPieceValues = {
-  Pair(77, 140), Pair(332, 291), Pair(380, 412), Pair(465, 732), Pair(914, 1275), Pair(0, 0)
+  Pair(76, 150), Pair(274, 34), Pair(406, 410), Pair(452, 805), Pair(819, 1303), Pair(0, 0)
 };
 
 constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
   {{ // Bucket 0
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(-15, 57), Pair(-41, 71), Pair(-19, 13), Pair(1, -19), Pair(31, -47), Pair(29, -35), Pair(-58, -12), Pair(-73, 48),
-      Pair(1, 45), Pair(-6, 39), Pair(30, -9), Pair(41, -53), Pair(57, -55), Pair(97, -59), Pair(44, 3), Pair(34, 13),
-      Pair(-19, 11), Pair(-8, 1), Pair(-4, -21), Pair(-4, -39), Pair(23, -49), Pair(25, -51), Pair(-9, -12), Pair(8, -25),
-      Pair(-23, -13), Pair(-19, -6), Pair(-9, -28), Pair(2, -35), Pair(7, -40), Pair(18, -51), Pair(-13, -22), Pair(9, -42),
-      Pair(-34, -16), Pair(-30, -14), Pair(-20, -25), Pair(-14, -25), Pair(-5, -24), Pair(-7, -37), Pair(-14, -30), Pair(5, -52),
-      Pair(-22, -9), Pair(-19, -3), Pair(-14, -12), Pair(-8, -26), Pair(0, -1), Pair(11, -22), Pair(-1, -15), Pair(-4, -46),
+      Pair(-3, 57), Pair(-27, 70), Pair(-8, 13), Pair(11, -21), Pair(42, -50), Pair(39, -39), Pair(-42, -17), Pair(-65, 44),
+      Pair(3, 37), Pair(-2, 30), Pair(32, -16), Pair(42, -61), Pair(58, -64), Pair(99, -68), Pair(53, -7), Pair(35, 5),
+      Pair(-17, 3), Pair(-3, -10), Pair(-2, -29), Pair(-3, -48), Pair(25, -57), Pair(28, -60), Pair(1, -22), Pair(10, -35),
+      Pair(-21, -22), Pair(-14, -16), Pair(-7, -36), Pair(3, -43), Pair(8, -48), Pair(20, -60), Pair(-4, -32), Pair(10, -51),
+      Pair(-33, -26), Pair(-25, -25), Pair(-19, -33), Pair(-13, -33), Pair(-4, -32), Pair(-5, -47), Pair(-5, -42), Pair(6, -62),
+      Pair(-22, -18), Pair(-14, -14), Pair(-13, -20), Pair(-8, -34), Pair(1, -9), Pair(12, -31), Pair(8, -27), Pair(-3, -55),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
     },
     {
-      Pair(-135, -2), Pair(-134, 63), Pair(-69, 38), Pair(-45, 22), Pair(-38, 26), Pair(-24, -36), Pair(-112, 11), Pair(-80, -67),
-      Pair(-22, 36), Pair(-15, 59), Pair(-3, 43), Pair(-1, 46), Pair(8, 18), Pair(51, 15), Pair(31, 4), Pair(-5, -11),
-      Pair(-8, 47), Pair(8, 47), Pair(6, 65), Pair(20, 44), Pair(35, 31), Pair(80, 0), Pair(9, 33), Pair(29, -6),
-      Pair(11, 52), Pair(18, 54), Pair(36, 53), Pair(39, 67), Pair(37, 59), Pair(48, 54), Pair(29, 56), Pair(38, 24),
-      Pair(-9, 46), Pair(18, 45), Pair(28, 61), Pair(33, 56), Pair(32, 64), Pair(46, 36), Pair(32, 44), Pair(8, 43),
-      Pair(-24, 32), Pair(-2, 41), Pair(7, 48), Pair(19, 60), Pair(34, 55), Pair(20, 42), Pair(19, 38), Pair(0, 38),
-      Pair(-34, 29), Pair(-20, 38), Pair(-8, 34), Pair(10, 39), Pair(9, 42), Pair(6, 24), Pair(5, 30), Pair(0, 46),
-      Pair(-55, 7), Pair(-21, 28), Pair(-19, 30), Pair(0, 30), Pair(4, 37), Pair(9, 23), Pair(-16, 25), Pair(-24, 11)
+      Pair(-110, 60), Pair(-112, 133), Pair(-47, 106), Pair(-23, 92), Pair(-16, 95), Pair(-1, 30), Pair(-89, 79), Pair(-51, -7),
+      Pair(-1, 107), Pair(6, 131), Pair(19, 115), Pair(22, 116), Pair(30, 89), Pair(73, 86), Pair(53, 77), Pair(19, 59),
+      Pair(14, 119), Pair(30, 119), Pair(28, 137), Pair(42, 116), Pair(58, 101), Pair(102, 73), Pair(31, 104), Pair(51, 65),
+      Pair(33, 123), Pair(39, 127), Pair(57, 126), Pair(61, 140), Pair(59, 130), Pair(71, 127), Pair(50, 127), Pair(60, 95),
+      Pair(12, 118), Pair(39, 116), Pair(49, 134), Pair(55, 129), Pair(54, 136), Pair(67, 109), Pair(54, 116), Pair(30, 114),
+      Pair(-3, 103), Pair(20, 112), Pair(28, 120), Pair(41, 132), Pair(55, 127), Pair(41, 114), Pair(40, 109), Pair(21, 109),
+      Pair(-13, 98), Pair(1, 109), Pair(14, 105), Pair(31, 111), Pair(30, 113), Pair(28, 95), Pair(27, 100), Pair(21, 116),
+      Pair(-34, 76), Pair(-1, 99), Pair(2, 101), Pair(20, 101), Pair(24, 109), Pair(30, 95), Pair(4, 96), Pair(-3, 81)
     },
     {
-      Pair(-29, 41), Pair(-72, 29), Pair(-63, 17), Pair(-115, 36), Pair(-93, 17), Pair(-54, -13), Pair(-88, 60), Pair(-34, -5),
-      Pair(-30, 20), Pair(-20, 29), Pair(-11, 10), Pair(-29, 24), Pair(-25, 3), Pair(-24, 14), Pair(-60, 32), Pair(-49, 1),
-      Pair(-10, 29), Pair(-5, 32), Pair(-14, 25), Pair(-14, 13), Pair(-24, 23), Pair(20, 29), Pair(10, 24), Pair(-4, 37),
-      Pair(-27, 27), Pair(-12, 34), Pair(-6, 26), Pair(-3, 44), Pair(2, 21), Pair(4, 25), Pair(-11, 27), Pair(-20, 22),
-      Pair(-20, 24), Pair(-25, 25), Pair(-14, 31), Pair(-1, 16), Pair(-2, 14), Pair(-6, 11), Pair(-19, 22), Pair(-1, -3),
-      Pair(-18, 6), Pair(2, 28), Pair(-1, 23), Pair(-6, 28), Pair(-2, 38), Pair(4, 25), Pair(12, 8), Pair(8, 10),
-      Pair(-1, 5), Pair(-1, -5), Pair(7, -1), Pair(-9, 16), Pair(3, 16), Pair(13, 23), Pair(27, 12), Pair(16, -6),
-      Pair(-2, -10), Pair(19, -2), Pair(-4, 12), Pair(-7, 8), Pair(8, 3), Pair(12, 15), Pair(19, 1), Pair(33, -44)
+      Pair(-25, 62), Pair(-68, 51), Pair(-58, 39), Pair(-112, 58), Pair(-90, 41), Pair(-50, 9), Pair(-86, 85), Pair(-27, 15),
+      Pair(-26, 43), Pair(-16, 54), Pair(-7, 33), Pair(-25, 47), Pair(-21, 25), Pair(-20, 38), Pair(-55, 56), Pair(-44, 24),
+      Pair(-6, 54), Pair(-2, 56), Pair(-10, 50), Pair(-11, 36), Pair(-21, 48), Pair(24, 54), Pair(14, 48), Pair(0, 62),
+      Pair(-24, 50), Pair(-8, 59), Pair(-3, 51), Pair(1, 70), Pair(5, 46), Pair(7, 50), Pair(-7, 52), Pair(-16, 46),
+      Pair(-16, 49), Pair(-21, 49), Pair(-10, 55), Pair(3, 41), Pair(1, 39), Pair(-3, 35), Pair(-15, 46), Pair(3, 21),
+      Pair(-15, 31), Pair(5, 54), Pair(2, 48), Pair(-2, 52), Pair(2, 63), Pair(7, 50), Pair(15, 32), Pair(12, 33),
+      Pair(2, 29), Pair(3, 20), Pair(11, 23), Pair(-6, 40), Pair(6, 41), Pair(16, 47), Pair(31, 36), Pair(19, 18),
+      Pair(1, 13), Pair(22, 23), Pair(-1, 37), Pair(-5, 32), Pair(11, 27), Pair(16, 40), Pair(21, 25), Pair(37, -21)
     },
     {
-      Pair(23, 29), Pair(21, 42), Pair(12, 52), Pair(3, 45), Pair(39, 23), Pair(26, 35), Pair(38, 44), Pair(-4, 32),
-      Pair(8, 34), Pair(16, 44), Pair(24, 48), Pair(34, 35), Pair(16, 29), Pair(37, 28), Pair(72, 16), Pair(45, 15),
-      Pair(2, 34), Pair(44, 31), Pair(30, 35), Pair(31, 22), Pair(57, 7), Pair(80, -4), Pair(128, -25), Pair(56, -8),
-      Pair(18, 26), Pair(27, 35), Pair(38, 31), Pair(32, 22), Pair(44, 8), Pair(46, 12), Pair(58, 4), Pair(33, -3),
-      Pair(0, 20), Pair(2, 39), Pair(12, 26), Pair(15, 27), Pair(16, 19), Pair(1, 26), Pair(40, 2), Pair(17, -3),
-      Pair(-10, 22), Pair(-1, 24), Pair(5, 26), Pair(4, 28), Pair(15, 14), Pair(14, 11), Pair(53, -20), Pair(32, -32),
-      Pair(-10, 11), Pair(-5, 26), Pair(13, 17), Pair(12, 24), Pair(19, 8), Pair(17, 4), Pair(41, -12), Pair(10, -29),
-      Pair(1, 24), Pair(9, 16), Pair(13, 20), Pair(18, 15), Pair(24, 6), Pair(21, 14), Pair(20, 4), Pair(-17, 12)
+      Pair(36, 45), Pair(34, 59), Pair(26, 69), Pair(17, 62), Pair(53, 41), Pair(38, 53), Pair(52, 62), Pair(9, 50),
+      Pair(21, 52), Pair(29, 63), Pair(38, 66), Pair(47, 52), Pair(29, 47), Pair(50, 47), Pair(85, 35), Pair(59, 33),
+      Pair(14, 52), Pair(56, 50), Pair(42, 54), Pair(43, 40), Pair(70, 26), Pair(92, 15), Pair(141, -5), Pair(69, 11),
+      Pair(29, 45), Pair(39, 54), Pair(50, 51), Pair(45, 41), Pair(56, 26), Pair(58, 31), Pair(70, 24), Pair(45, 15),
+      Pair(13, 38), Pair(13, 58), Pair(24, 44), Pair(27, 46), Pair(28, 37), Pair(13, 44), Pair(52, 21), Pair(28, 14),
+      Pair(2, 38), Pair(11, 42), Pair(18, 45), Pair(16, 46), Pair(28, 32), Pair(26, 28), Pair(65, -2), Pair(44, -15),
+      Pair(3, 26), Pair(7, 43), Pair(25, 35), Pair(24, 42), Pair(31, 25), Pair(30, 21), Pair(55, 5), Pair(22, -13),
+      Pair(13, 40), Pair(22, 33), Pair(26, 38), Pair(31, 32), Pair(36, 24), Pair(33, 31), Pair(33, 21), Pair(-6, 29)
     },
     {
-      Pair(24, 47), Pair(24, 49), Pair(40, 49), Pair(78, 18), Pair(58, 35), Pair(57, 56), Pair(115, -16), Pair(54, 51),
-      Pair(38, 48), Pair(37, 49), Pair(37, 78), Pair(33, 71), Pair(3, 120), Pair(37, 98), Pair(36, 80), Pair(90, 48),
-      Pair(45, 50), Pair(45, 58), Pair(45, 77), Pair(42, 88), Pair(41, 90), Pair(65, 102), Pair(71, 80), Pair(60, 64),
-      Pair(38, 61), Pair(51, 58), Pair(50, 62), Pair(43, 79), Pair(46, 96), Pair(68, 52), Pair(62, 80), Pair(69, 48),
-      Pair(36, 54), Pair(34, 76), Pair(40, 72), Pair(39, 89), Pair(52, 69), Pair(40, 73), Pair(61, 52), Pair(58, 53),
-      Pair(40, 40), Pair(42, 58), Pair(39, 77), Pair(36, 75), Pair(38, 79), Pair(50, 60), Pair(68, 40), Pair(65, 5),
-      Pair(42, 28), Pair(44, 38), Pair(45, 45), Pair(47, 60), Pair(52, 46), Pair(61, 13), Pair(66, 3), Pair(74, -45),
-      Pair(34, 48), Pair(37, 43), Pair(42, 38), Pair(44, 42), Pair(50, 22), Pair(44, 7), Pair(47, -27), Pair(26, 32)
+      Pair(58, 108), Pair(56, 111), Pair(74, 109), Pair(110, 80), Pair(94, 93), Pair(86, 122), Pair(142, 54), Pair(88, 114),
+      Pair(71, 109), Pair(70, 110), Pair(71, 140), Pair(67, 131), Pair(36, 181), Pair(70, 160), Pair(69, 144), Pair(123, 114),
+      Pair(78, 112), Pair(78, 119), Pair(78, 139), Pair(75, 148), Pair(74, 152), Pair(97, 167), Pair(104, 143), Pair(92, 128),
+      Pair(70, 122), Pair(84, 119), Pair(84, 124), Pair(77, 140), Pair(79, 157), Pair(100, 114), Pair(95, 142), Pair(101, 110),
+      Pair(70, 115), Pair(67, 137), Pair(73, 132), Pair(73, 149), Pair(86, 130), Pair(73, 134), Pair(95, 113), Pair(91, 114),
+      Pair(74, 100), Pair(75, 119), Pair(72, 138), Pair(69, 135), Pair(72, 140), Pair(82, 120), Pair(101, 100), Pair(98, 66),
+      Pair(76, 88), Pair(77, 98), Pair(79, 105), Pair(80, 119), Pair(85, 107), Pair(95, 72), Pair(101, 62), Pair(108, 14),
+      Pair(67, 109), Pair(70, 103), Pair(75, 99), Pair(77, 103), Pair(84, 82), Pair(77, 67), Pair(80, 35), Pair(59, 94)
     },
     {
-      Pair(1003, -147), Pair(968, -92), Pair(931, -70), Pair(865, -39), Pair(858, -44), Pair(839, -36), Pair(916, -55), Pair(1040, -155),
-      Pair(883, -72), Pair(956, -38), Pair(883, -21), Pair(960, -32), Pair(898, -21), Pair(900, -9), Pair(954, -24), Pair(940, -57),
-      Pair(878, -43), Pair(1013, -28), Pair(910, -2), Pair(871, 10), Pair(896, 13), Pair(960, -3), Pair(905, -1), Pair(892, -42),
-      Pair(921, -65), Pair(952, -38), Pair(896, -13), Pair(837, 3), Pair(834, 2), Pair(858, -5), Pair(884, -26), Pair(799, -39),
-      Pair(447, -76), Pair(462, -45), Pair(383, -13), Pair(348, 3), Pair(349, -2), Pair(380, -18), Pair(384, -33), Pair(336, -51),
-      Pair(240, -49), Pair(274, -25), Pair(204, 3), Pair(199, 14), Pair(198, 12), Pair(199, 0), Pair(233, -21), Pair(207, -41),
-      Pair(46, -33), Pair(6, 10), Pair(-7, 22), Pair(-26, 33), Pair(-31, 35), Pair(-13, 23), Pair(4, 5), Pair(21, -27),
-      Pair(-95, -20), Pair(-68, 13), Pair(7, 29), Pair(-46, 46), Pair(-8, 33), Pair(-32, 38), Pair(-93, 22), Pair(-89, -22)
+      Pair(2030, -168), Pair(1996, -113), Pair(1954, -93), Pair(1902, -66), Pair(1906, -73), Pair(1881, -64), Pair(1946, -78), Pair(2048, -165),
+      Pair(1938, -102), Pair(1995, -66), Pair(1938, -51), Pair(1987, -59), Pair(1931, -50), Pair(1929, -38), Pair(1991, -53), Pair(1988, -87),
+      Pair(1897, -71), Pair(2021, -55), Pair(1917, -29), Pair(1877, -17), Pair(1899, -15), Pair(1961, -29), Pair(1921, -30), Pair(1914, -72),
+      Pair(1948, -93), Pair(1973, -65), Pair(1912, -41), Pair(1854, -25), Pair(1851, -27), Pair(1876, -33), Pair(1912, -56), Pair(1834, -70),
+      Pair(1161, -91), Pair(1173, -59), Pair(1099, -28), Pair(1061, -12), Pair(1063, -17), Pair(1093, -32), Pair(1100, -47), Pair(1056, -68),
+      Pair(600, -58), Pair(633, -32), Pair(565, -5), Pair(559, 6), Pair(558, 4), Pair(559, -7), Pair(592, -27), Pair(567, -49),
+      Pair(115, -36), Pair(73, 8), Pair(62, 21), Pair(43, 31), Pair(36, 34), Pair(56, 22), Pair(71, 5), Pair(88, -28),
+      Pair(-219, -20), Pair(-193, 16), Pair(28, 28), Pair(-25, 46), Pair(14, 32), Pair(-11, 38), Pair(-218, 26), Pair(-215, -22)
     }
   }},
   {{ // Bucket 1
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(14, 101), Pair(-9, 120), Pair(-18, 90), Pair(53, 65), Pair(-1, 50), Pair(-25, 40), Pair(-37, 65), Pair(-63, 82),
-      Pair(22, 25), Pair(-7, 45), Pair(31, -10), Pair(41, -46), Pair(38, -46), Pair(60, -39), Pair(8, 31), Pair(0, 12),
-      Pair(11, 1), Pair(-1, -8), Pair(4, -24), Pair(9, -46), Pair(25, -51), Pair(13, -47), Pair(2, -15), Pair(-4, -10),
-      Pair(12, -21), Pair(-11, -7), Pair(10, -37), Pair(21, -44), Pair(15, -43), Pair(12, -47), Pair(4, -25), Pair(-9, -25),
-      Pair(9, -28), Pair(-9, -15), Pair(-4, -30), Pair(-9, -29), Pair(-6, -31), Pair(-11, -36), Pair(2, -30), Pair(-16, -29),
-      Pair(10, -16), Pair(-2, -4), Pair(-1, -12), Pair(-25, -11), Pair(-25, 0), Pair(-5, -20), Pair(4, -16), Pair(-9, -18),
+      Pair(25, 91), Pair(1, 110), Pair(-10, 83), Pair(61, 60), Pair(7, 42), Pair(-16, 33), Pair(-29, 56), Pair(-55, 71),
+      Pair(24, 16), Pair(-5, 34), Pair(31, -18), Pair(40, -52), Pair(38, -53), Pair(61, -47), Pair(10, 22), Pair(0, 3),
+      Pair(12, -7), Pair(0, -18), Pair(5, -31), Pair(9, -54), Pair(25, -58), Pair(14, -56), Pair(3, -25), Pair(-3, -19),
+      Pair(13, -29), Pair(-10, -17), Pair(10, -44), Pair(21, -52), Pair(15, -50), Pair(13, -55), Pair(5, -34), Pair(-8, -35),
+      Pair(10, -36), Pair(-8, -26), Pair(-3, -39), Pair(-9, -39), Pair(-6, -41), Pair(-11, -45), Pair(3, -40), Pair(-16, -38),
+      Pair(11, -24), Pair(-2, -15), Pair(0, -20), Pair(-25, -19), Pair(-24, -9), Pair(-4, -29), Pair(6, -27), Pair(-9, -28),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
     },
     {
-      Pair(-149, -92), Pair(-231, 83), Pair(-120, 6), Pair(-94, 26), Pair(2, -20), Pair(-53, -53), Pair(-111, 28), Pair(-114, -89),
-      Pair(-93, 31), Pair(-32, 24), Pair(-9, 11), Pair(-41, 26), Pair(-22, 19), Pair(8, 8), Pair(-56, 12), Pair(-7, -15),
-      Pair(-58, 42), Pair(0, 40), Pair(-33, 60), Pair(7, 30), Pair(2, 33), Pair(10, 18), Pair(-27, 36), Pair(-25, 14),
-      Pair(-2, 45), Pair(0, 50), Pair(16, 47), Pair(27, 44), Pair(25, 41), Pair(32, 45), Pair(13, 34), Pair(15, 20),
-      Pair(-14, 47), Pair(7, 51), Pair(17, 47), Pair(23, 47), Pair(23, 52), Pair(35, 33), Pair(18, 50), Pair(-1, 26),
-      Pair(-35, 35), Pair(-6, 42), Pair(10, 35), Pair(14, 52), Pair(26, 50), Pair(8, 32), Pair(11, 24), Pair(-15, 31),
-      Pair(-38, 44), Pair(-13, 39), Pair(-3, 43), Pair(-7, 43), Pair(1, 32), Pair(0, 27), Pair(-9, 26), Pair(-32, 17),
-      Pair(-79, 13), Pair(-34, 33), Pair(-23, 30), Pair(-18, 44), Pair(-8, 43), Pair(-21, 24), Pair(-34, 33), Pair(-30, -11)
+      Pair(-123, -46), Pair(-213, 141), Pair(-104, 63), Pair(-78, 86), Pair(12, 39), Pair(-40, 6), Pair(-95, 89), Pair(-89, -38),
+      Pair(-82, 92), Pair(-22, 85), Pair(2, 72), Pair(-29, 86), Pair(-10, 79), Pair(18, 69), Pair(-45, 73), Pair(4, 46),
+      Pair(-46, 102), Pair(12, 100), Pair(-22, 121), Pair(18, 92), Pair(13, 94), Pair(20, 80), Pair(-15, 96), Pair(-14, 75),
+      Pair(10, 106), Pair(11, 111), Pair(26, 107), Pair(37, 104), Pair(37, 101), Pair(44, 105), Pair(24, 93), Pair(26, 81),
+      Pair(-3, 108), Pair(18, 112), Pair(28, 107), Pair(34, 108), Pair(35, 112), Pair(46, 94), Pair(29, 110), Pair(10, 86),
+      Pair(-24, 94), Pair(5, 102), Pair(21, 96), Pair(26, 112), Pair(36, 111), Pair(19, 91), Pair(22, 84), Pair(-4, 90),
+      Pair(-26, 104), Pair(-3, 99), Pair(8, 103), Pair(4, 103), Pair(13, 92), Pair(11, 87), Pair(2, 86), Pair(-21, 76),
+      Pair(-67, 71), Pair(-23, 93), Pair(-12, 91), Pair(-8, 105), Pair(2, 103), Pair(-10, 84), Pair(-23, 93), Pair(-20, 50)
     },
     {
-      Pair(-85, 16), Pair(-88, 30), Pair(-116, 16), Pair(-146, 34), Pair(-221, 68), Pair(-171, 9), Pair(-59, 15), Pair(-98, 5),
-      Pair(-79, 1), Pair(-47, 9), Pair(-48, 5), Pair(-70, 16), Pair(-79, 14), Pair(-43, 7), Pair(-58, 3), Pair(-42, -4),
-      Pair(-36, 25), Pair(-48, 38), Pair(-49, 32), Pair(-15, 5), Pair(-38, 12), Pair(-22, 10), Pair(-12, 19), Pair(-10, 11),
-      Pair(-34, 28), Pair(-13, 18), Pair(-23, 22), Pair(-16, 21), Pair(-17, 14), Pair(-10, 32), Pair(-25, 23), Pair(-32, 28),
-      Pair(-20, -3), Pair(-59, 38), Pair(-7, -5), Pair(-7, 6), Pair(-3, 1), Pair(-19, 8), Pair(-30, 20), Pair(-24, -2),
-      Pair(-32, 14), Pair(4, 8), Pair(-4, 21), Pair(-7, 24), Pair(-6, 28), Pair(1, 16), Pair(-5, 11), Pair(-18, -3),
-      Pair(-4, -6), Pair(2, 5), Pair(13, -4), Pair(-15, 26), Pair(-3, 15), Pair(2, -2), Pair(3, 2), Pair(-10, -9),
-      Pair(-21, 0), Pair(-5, 12), Pair(-26, 16), Pair(-9, 8), Pair(-5, -2), Pair(-29, 19), Pair(-42, 29), Pair(-18, -10)
+      Pair(-86, 25), Pair(-94, 43), Pair(-121, 27), Pair(-151, 45), Pair(-225, 79), Pair(-175, 21), Pair(-62, 26), Pair(-96, 11),
+      Pair(-86, 13), Pair(-55, 22), Pair(-56, 18), Pair(-77, 27), Pair(-86, 26), Pair(-51, 20), Pair(-66, 16), Pair(-49, 9),
+      Pair(-43, 38), Pair(-55, 51), Pair(-57, 45), Pair(-24, 19), Pair(-46, 25), Pair(-30, 23), Pair(-21, 33), Pair(-19, 25),
+      Pair(-41, 41), Pair(-21, 31), Pair(-31, 36), Pair(-24, 34), Pair(-25, 27), Pair(-18, 46), Pair(-32, 36), Pair(-39, 42),
+      Pair(-28, 10), Pair(-67, 52), Pair(-15, 7), Pair(-15, 19), Pair(-11, 13), Pair(-27, 20), Pair(-37, 32), Pair(-31, 10),
+      Pair(-40, 26), Pair(-4, 21), Pair(-12, 34), Pair(-14, 36), Pair(-13, 41), Pair(-7, 29), Pair(-12, 24), Pair(-26, 9),
+      Pair(-12, 5), Pair(-6, 17), Pair(5, 8), Pair(-22, 39), Pair(-10, 27), Pair(-5, 11), Pair(-5, 15), Pair(-18, 3),
+      Pair(-29, 13), Pair(-13, 24), Pair(-33, 28), Pair(-17, 21), Pair(-13, 11), Pair(-37, 31), Pair(-48, 42), Pair(-27, 2)
     },
     {
-      Pair(7, 24), Pair(-79, 51), Pair(-32, 29), Pair(-17, 29), Pair(-77, 42), Pair(-73, 49), Pair(-55, 42), Pair(-52, 47),
-      Pair(-35, 18), Pair(-36, 33), Pair(-29, 25), Pair(-12, 26), Pair(27, -1), Pair(-10, 10), Pair(-26, 18), Pair(-38, 21),
-      Pair(-23, 6), Pair(-1, 17), Pair(-40, 22), Pair(1, 3), Pair(29, -17), Pair(-11, -2), Pair(26, 0), Pair(-18, -4),
-      Pair(-28, 11), Pair(12, -1), Pair(-16, 29), Pair(-19, 23), Pair(-14, 10), Pair(9, -1), Pair(2, -3), Pair(-25, 4),
-      Pair(-16, 9), Pair(-42, 21), Pair(-30, 11), Pair(-18, 19), Pair(-18, 12), Pair(-33, 7), Pair(-17, 1), Pair(-42, -5),
-      Pair(-25, 1), Pair(-14, 15), Pair(-30, 11), Pair(-28, 15), Pair(-20, 3), Pair(-20, -1), Pair(-3, -19), Pair(-30, -13),
-      Pair(-28, -15), Pair(-32, 11), Pair(-15, 11), Pair(-23, -7), Pair(-6, -16), Pair(-22, 3), Pair(-16, -23), Pair(-41, -27),
-      Pair(-10, -18), Pair(-23, -6), Pair(-24, 11), Pair(-10, -5), Pair(-1, -14), Pair(-27, -13), Pair(-18, -19), Pair(-20, -33)
+      Pair(-1, 21), Pair(-93, 50), Pair(-41, 26), Pair(-26, 27), Pair(-84, 40), Pair(-85, 49), Pair(-64, 42), Pair(-60, 45),
+      Pair(-45, 16), Pair(-47, 32), Pair(-40, 23), Pair(-23, 25), Pair(16, -2), Pair(-20, 9), Pair(-34, 17), Pair(-47, 20),
+      Pair(-33, 5), Pair(-12, 16), Pair(-50, 21), Pair(-8, 1), Pair(19, -17), Pair(-22, -2), Pair(15, 0), Pair(-29, -5),
+      Pair(-38, 9), Pair(2, -4), Pair(-26, 27), Pair(-28, 21), Pair(-24, 9), Pair(-1, -3), Pair(-8, -3), Pair(-34, 3),
+      Pair(-25, 7), Pair(-51, 18), Pair(-40, 9), Pair(-27, 16), Pair(-27, 10), Pair(-42, 5), Pair(-26, -1), Pair(-51, -7),
+      Pair(-35, -2), Pair(-24, 12), Pair(-40, 8), Pair(-36, 13), Pair(-29, 1), Pair(-30, -3), Pair(-12, -21), Pair(-38, -17),
+      Pair(-36, -19), Pair(-41, 6), Pair(-24, 7), Pair(-31, -11), Pair(-15, -20), Pair(-31, 1), Pair(-24, -27), Pair(-49, -31),
+      Pair(-18, -23), Pair(-32, -11), Pair(-33, 6), Pair(-18, -10), Pair(-10, -17), Pair(-36, -16), Pair(-27, -22), Pair(-28, -38)
     },
     {
-      Pair(-97, 55), Pair(-112, 74), Pair(-56, 61), Pair(-34, 45), Pair(-50, 60), Pair(-73, 64), Pair(-81, 69), Pair(-59, -2),
-      Pair(-40, -17), Pair(-65, 52), Pair(-64, 68), Pair(-111, 121), Pair(-125, 133), Pair(-66, 91), Pair(-40, 41), Pair(-9, 50),
-      Pair(-33, 28), Pair(-40, 9), Pair(-52, 67), Pair(-30, 42), Pair(-50, 93), Pair(-26, 55), Pair(-4, 22), Pair(3, 55),
-      Pair(-29, 15), Pair(-26, 30), Pair(-19, 47), Pair(-36, 73), Pair(-34, 57), Pair(-9, 33), Pair(2, 27), Pair(-10, 46),
-      Pair(-19, 1), Pair(-41, 70), Pair(-24, 32), Pair(-25, 101), Pair(-29, 84), Pair(-22, 38), Pair(-14, 33), Pair(-15, 18),
-      Pair(-27, 5), Pair(-14, 27), Pair(-19, 56), Pair(-30, 61), Pair(-19, 51), Pair(-18, 55), Pair(-8, 29), Pair(-12, 44),
-      Pair(-20, -31), Pair(-5, -48), Pair(-4, -30), Pair(-9, 5), Pair(-12, 11), Pair(-15, 7), Pair(15, -58), Pair(10, -42),
-      Pair(-22, -50), Pair(-16, -59), Pair(-13, -28), Pair(-14, -40), Pair(-23, -22), Pair(-21, -53), Pair(-11, -51), Pair(5, -45)
+      Pair(-106, 75), Pair(-123, 96), Pair(-68, 81), Pair(-49, 68), Pair(-61, 80), Pair(-94, 94), Pair(-92, 94), Pair(-68, 19),
+      Pair(-53, 2), Pair(-78, 72), Pair(-78, 88), Pair(-126, 143), Pair(-138, 152), Pair(-79, 114), Pair(-55, 65), Pair(-23, 73),
+      Pair(-47, 50), Pair(-53, 30), Pair(-65, 85), Pair(-43, 62), Pair(-63, 113), Pair(-41, 78), Pair(-19, 46), Pair(-13, 78),
+      Pair(-42, 36), Pair(-40, 51), Pair(-33, 65), Pair(-49, 91), Pair(-47, 76), Pair(-23, 55), Pair(-13, 49), Pair(-24, 69),
+      Pair(-32, 22), Pair(-54, 91), Pair(-37, 52), Pair(-39, 121), Pair(-42, 102), Pair(-36, 60), Pair(-27, 54), Pair(-28, 39),
+      Pair(-40, 27), Pair(-27, 48), Pair(-32, 76), Pair(-43, 82), Pair(-32, 72), Pair(-32, 76), Pair(-21, 50), Pair(-25, 65),
+      Pair(-33, -12), Pair(-18, -29), Pair(-17, -9), Pair(-22, 25), Pair(-25, 32), Pair(-27, 28), Pair(2, -38), Pair(-4, -22),
+      Pair(-38, -29), Pair(-30, -38), Pair(-27, -8), Pair(-27, -18), Pair(-36, -1), Pair(-35, -31), Pair(-25, -28), Pair(-12, -20)
     },
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
@@ -181,53 +181,53 @@ constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
   {{ // Bucket 2
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(100, 79), Pair(44, 96), Pair(56, 83), Pair(107, 23), Pair(71, 24), Pair(82, 41), Pair(8, 80), Pair(-13, 98),
-      Pair(8, 19), Pair(10, 20), Pair(23, -7), Pair(42, -46), Pair(64, -57), Pair(86, -39), Pair(45, 14), Pair(6, 21),
-      Pair(-15, 4), Pair(-10, 1), Pair(-8, -18), Pair(6, -37), Pair(34, -41), Pair(26, -38), Pair(12, -9), Pair(-17, -10),
-      Pair(-20, -11), Pair(-17, -2), Pair(-9, -22), Pair(4, -29), Pair(13, -33), Pair(14, -34), Pair(1, -15), Pair(-25, -22),
-      Pair(-38, -12), Pair(-30, -4), Pair(-23, -18), Pair(-16, -19), Pair(-12, -19), Pair(-10, -24), Pair(-1, -21), Pair(-38, -23),
-      Pair(-26, -10), Pair(-17, -2), Pair(-12, -15), Pair(-26, -9), Pair(0, -15), Pair(25, -23), Pair(22, -19), Pair(-35, -20),
+      Pair(114, 76), Pair(62, 90), Pair(69, 82), Pair(119, 22), Pair(84, 21), Pair(94, 38), Pair(20, 75), Pair(1, 94),
+      Pair(9, 11), Pair(12, 9), Pair(23, -15), Pair(41, -54), Pair(63, -66), Pair(84, -48), Pair(46, 3), Pair(6, 12),
+      Pair(-15, -5), Pair(-8, -11), Pair(-8, -27), Pair(6, -46), Pair(34, -50), Pair(26, -47), Pair(13, -20), Pair(-15, -18),
+      Pair(-19, -20), Pair(-15, -13), Pair(-8, -31), Pair(4, -38), Pair(12, -42), Pair(14, -43), Pair(2, -26), Pair(-25, -31),
+      Pair(-37, -21), Pair(-27, -15), Pair(-22, -27), Pair(-16, -28), Pair(-12, -27), Pair(-10, -32), Pair(0, -32), Pair(-37, -32),
+      Pair(-26, -19), Pair(-15, -13), Pair(-12, -23), Pair(-26, -17), Pair(0, -23), Pair(24, -32), Pair(21, -29), Pair(-35, -29),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
     },
     {
-      Pair(-178, -12), Pair(-147, 23), Pair(-134, 41), Pair(3, -1), Pair(60, -6), Pair(-141, 24), Pair(-250, 57), Pair(-157, -44),
-      Pair(-70, 41), Pair(-41, 38), Pair(-14, 33), Pair(54, 20), Pair(14, 20), Pair(45, 5), Pair(-8, 33), Pair(-6, 5),
-      Pair(-37, 36), Pair(-3, 35), Pair(0, 56), Pair(27, 34), Pair(22, 38), Pair(76, -1), Pair(27, 8), Pair(43, 3),
-      Pair(-29, 44), Pair(10, 42), Pair(34, 50), Pair(55, 38), Pair(45, 46), Pair(72, 36), Pair(34, 39), Pair(57, 22),
-      Pair(-16, 50), Pair(11, 43), Pair(23, 59), Pair(41, 50), Pair(43, 51), Pair(55, 38), Pair(58, 30), Pair(18, 38),
-      Pair(-37, 35), Pair(-10, 39), Pair(13, 41), Pair(21, 58), Pair(44, 49), Pair(20, 31), Pair(27, 22), Pair(5, 27),
-      Pair(-46, 30), Pair(-45, 44), Pair(-17, 46), Pair(6, 35), Pair(12, 28), Pair(9, 38), Pair(3, 17), Pair(-1, 30),
-      Pair(-104, 61), Pair(-34, 36), Pair(-14, 31), Pair(-8, 47), Pair(2, 38), Pair(11, 27), Pair(-9, 31), Pair(-42, 36)
+      Pair(-162, 41), Pair(-138, 79), Pair(-128, 98), Pair(10, 56), Pair(67, 51), Pair(-137, 83), Pair(-240, 114), Pair(-139, 9),
+      Pair(-65, 99), Pair(-36, 96), Pair(-9, 92), Pair(60, 78), Pair(19, 78), Pair(48, 63), Pair(-4, 92), Pair(1, 63),
+      Pair(-31, 94), Pair(3, 93), Pair(6, 115), Pair(32, 94), Pair(27, 96), Pair(80, 59), Pair(33, 67), Pair(48, 61),
+      Pair(-23, 102), Pair(16, 100), Pair(39, 109), Pair(60, 96), Pair(51, 104), Pair(78, 94), Pair(41, 97), Pair(63, 81),
+      Pair(-10, 108), Pair(16, 100), Pair(29, 117), Pair(47, 107), Pair(50, 110), Pair(60, 97), Pair(64, 88), Pair(24, 97),
+      Pair(-30, 92), Pair(-3, 97), Pair(20, 98), Pair(27, 116), Pair(50, 107), Pair(27, 89), Pair(33, 79), Pair(11, 84),
+      Pair(-39, 87), Pair(-38, 101), Pair(-10, 103), Pair(12, 93), Pair(18, 85), Pair(15, 96), Pair(9, 74), Pair(5, 87),
+      Pair(-97, 118), Pair(-27, 94), Pair(-9, 90), Pair(-2, 105), Pair(8, 97), Pair(17, 85), Pair(-2, 89), Pair(-36, 94)
     },
     {
-      Pair(-68, 32), Pair(-65, 17), Pair(-121, 32), Pair(-129, 33), Pair(-86, 21), Pair(-117, 34), Pair(-59, 22), Pair(-120, 38),
-      Pair(-48, 15), Pair(-31, 19), Pair(-24, 9), Pair(-69, 29), Pair(-50, 20), Pair(-37, 15), Pair(-59, 30), Pair(-37, 17),
-      Pair(-33, 24), Pair(-20, 20), Pair(-17, 18), Pair(-26, 13), Pair(3, 7), Pair(20, 16), Pair(5, 23), Pair(5, 22),
-      Pair(-27, 19), Pair(-10, 16), Pair(-4, 20), Pair(22, 17), Pair(15, 16), Pair(18, 14), Pair(-12, 14), Pair(-5, 10),
-      Pair(-31, 14), Pair(-40, 27), Pair(-5, 12), Pair(4, 18), Pair(9, 8), Pair(-13, 23), Pair(-10, 15), Pair(-13, 12),
-      Pair(-37, 22), Pair(5, 14), Pair(0, 15), Pair(5, 18), Pair(3, 26), Pair(5, 14), Pair(12, 13), Pair(-3, -7),
-      Pair(-24, 12), Pair(-15, -5), Pair(2, 1), Pair(-13, 8), Pair(0, 7), Pair(4, 3), Pair(20, -9), Pair(-15, -6),
-      Pair(-39, 10), Pair(-1, 21), Pair(-1, 8), Pair(-11, 18), Pair(-8, 19), Pair(-21, 27), Pair(7, 0), Pair(-39, -5)
+      Pair(-78, 42), Pair(-77, 28), Pair(-132, 42), Pair(-143, 43), Pair(-97, 31), Pair(-130, 44), Pair(-70, 32), Pair(-125, 45),
+      Pair(-62, 26), Pair(-45, 30), Pair(-38, 20), Pair(-81, 39), Pair(-63, 31), Pair(-51, 26), Pair(-73, 41), Pair(-48, 28),
+      Pair(-47, 35), Pair(-34, 30), Pair(-30, 29), Pair(-39, 24), Pair(-11, 18), Pair(8, 26), Pair(-8, 34), Pair(-9, 33),
+      Pair(-40, 29), Pair(-22, 26), Pair(-18, 31), Pair(9, 28), Pair(2, 26), Pair(5, 25), Pair(-24, 23), Pair(-18, 20),
+      Pair(-43, 24), Pair(-52, 37), Pair(-17, 22), Pair(-9, 28), Pair(-4, 19), Pair(-25, 32), Pair(-22, 25), Pair(-25, 23),
+      Pair(-48, 31), Pair(-7, 24), Pair(-12, 25), Pair(-7, 28), Pair(-9, 36), Pair(-7, 24), Pair(0, 24), Pair(-15, 2),
+      Pair(-35, 21), Pair(-27, 4), Pair(-10, 12), Pair(-25, 18), Pair(-12, 17), Pair(-8, 13), Pair(7, 0), Pair(-26, 3),
+      Pair(-51, 20), Pair(-13, 31), Pair(-14, 18), Pair(-24, 29), Pair(-20, 29), Pair(-34, 37), Pair(-5, 10), Pair(-50, 4)
     },
     {
-      Pair(-24, 35), Pair(1, 45), Pair(-16, 48), Pair(2, 42), Pair(-10, 34), Pair(32, 33), Pair(-14, 51), Pair(-21, 42),
-      Pair(-12, 28), Pair(1, 39), Pair(22, 34), Pair(48, 24), Pair(40, 20), Pair(60, 22), Pair(23, 28), Pair(1, 25),
-      Pair(-5, 25), Pair(17, 28), Pair(20, 26), Pair(22, 18), Pair(48, 2), Pair(60, 5), Pair(69, 9), Pair(7, 10),
-      Pair(-29, 40), Pair(30, 27), Pair(11, 33), Pair(22, 23), Pair(31, 5), Pair(40, 9), Pair(34, 16), Pair(-7, 16),
-      Pair(-49, 34), Pair(-12, 31), Pair(-15, 30), Pair(1, 24), Pair(-6, 18), Pair(-18, 29), Pair(-1, 16), Pair(-23, 15),
-      Pair(-32, 17), Pair(-27, 23), Pair(-20, 15), Pair(-15, 18), Pair(-6, 15), Pair(-8, 10), Pair(12, -5), Pair(-41, 8),
-      Pair(-34, 8), Pair(-19, 14), Pair(-13, 14), Pair(-9, 14), Pair(4, -5), Pair(0, 1), Pair(-7, 5), Pair(-30, -11),
-      Pair(-39, 15), Pair(-29, 12), Pair(-26, 16), Pair(-23, 12), Pair(-13, -3), Pair(-15, -4), Pair(-18, 2), Pair(-39, 9)
+      Pair(-43, 28), Pair(-20, 38), Pair(-34, 42), Pair(-15, 34), Pair(-30, 27), Pair(11, 27), Pair(-34, 45), Pair(-40, 35),
+      Pair(-32, 20), Pair(-20, 33), Pair(1, 27), Pair(28, 17), Pair(19, 13), Pair(38, 16), Pair(1, 23), Pair(-19, 18),
+      Pair(-26, 19), Pair(-5, 22), Pair(-1, 19), Pair(1, 11), Pair(26, -4), Pair(39, -1), Pair(47, 3), Pair(-15, 4),
+      Pair(-50, 33), Pair(9, 21), Pair(-9, 26), Pair(1, 17), Pair(11, -2), Pair(20, 2), Pair(14, 10), Pair(-28, 10),
+      Pair(-69, 27), Pair(-33, 24), Pair(-35, 22), Pair(-19, 17), Pair(-25, 11), Pair(-37, 22), Pair(-21, 10), Pair(-43, 8),
+      Pair(-51, 10), Pair(-46, 15), Pair(-39, 7), Pair(-33, 10), Pair(-25, 8), Pair(-27, 2), Pair(-7, -12), Pair(-60, 0),
+      Pair(-53, 0), Pair(-38, 6), Pair(-32, 6), Pair(-27, 6), Pair(-14, -13), Pair(-19, -8), Pair(-26, -3), Pair(-49, -19),
+      Pair(-55, 4), Pair(-46, 2), Pair(-43, 5), Pair(-39, 1), Pair(-30, -13), Pair(-32, -15), Pair(-36, -8), Pair(-56, -2)
     },
     {
-      Pair(-56, 60), Pair(-17, 19), Pair(10, 39), Pair(48, 15), Pair(53, 18), Pair(26, 39), Pair(126, -54), Pair(48, 27),
-      Pair(-34, 43), Pair(-21, 41), Pair(-19, 76), Pair(0, 52), Pair(-5, 84), Pair(22, 37), Pair(23, 28), Pair(38, 54),
-      Pair(-13, 23), Pair(-1, 37), Pair(18, 48), Pair(17, 57), Pair(30, 58), Pair(78, 13), Pair(56, 21), Pair(51, 10),
-      Pair(-14, 26), Pair(-3, 53), Pair(11, 53), Pair(15, 61), Pair(27, 47), Pair(25, 57), Pair(39, 43), Pair(33, 21),
-      Pair(-7, 23), Pair(-17, 68), Pair(-3, 63), Pair(10, 64), Pair(15, 53), Pair(15, 41), Pair(22, 38), Pair(8, 46),
-      Pair(-12, 6), Pair(-6, 36), Pair(-3, 40), Pair(3, 48), Pair(8, 49), Pair(15, 41), Pair(26, 23), Pair(3, 46),
-      Pair(-2, 7), Pair(-12, 11), Pair(-2, 14), Pair(6, 14), Pair(4, 22), Pair(8, -1), Pair(12, -30), Pair(23, -39),
-      Pair(-43, 19), Pair(-33, 14), Pair(-26, 20), Pair(-5, 5), Pair(-12, 8), Pair(-20, 13), Pair(-4, 18), Pair(-8, -7)
+      Pair(-81, 65), Pair(-45, 26), Pair(-18, 46), Pair(23, 20), Pair(24, 24), Pair(-8, 53), Pair(93, -38), Pair(19, 38),
+      Pair(-60, 49), Pair(-48, 46), Pair(-46, 81), Pair(-27, 56), Pair(-33, 90), Pair(-7, 45), Pair(-5, 36), Pair(10, 63),
+      Pair(-39, 28), Pair(-27, 41), Pair(-8, 53), Pair(-10, 61), Pair(2, 63), Pair(50, 19), Pair(27, 30), Pair(23, 19),
+      Pair(-40, 32), Pair(-29, 57), Pair(-15, 56), Pair(-11, 63), Pair(0, 50), Pair(-1, 61), Pair(12, 49), Pair(7, 27),
+      Pair(-31, 26), Pair(-42, 72), Pair(-28, 66), Pair(-15, 66), Pair(-10, 56), Pair(-10, 45), Pair(-4, 42), Pair(-17, 51),
+      Pair(-36, 9), Pair(-30, 38), Pair(-27, 42), Pair(-22, 50), Pair(-17, 51), Pair(-10, 44), Pair(1, 26), Pair(-22, 50),
+      Pair(-27, 9), Pair(-37, 14), Pair(-26, 16), Pair(-18, 17), Pair(-21, 25), Pair(-17, 2), Pair(-14, -26), Pair(-4, -34),
+      Pair(-70, 23), Pair(-56, 16), Pair(-50, 22), Pair(-29, 7), Pair(-36, 10), Pair(-45, 18), Pair(-29, 22), Pair(-35, -3)
     },
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
@@ -243,53 +243,53 @@ constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
   {{ // Bucket 3
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(78, 69), Pair(178, 38), Pair(97, 58), Pair(123, 27), Pair(182, 3), Pair(58, 34), Pair(-31, 102), Pair(-19, 98),
-      Pair(10, 7), Pair(52, 17), Pair(95, -32), Pair(92, -52), Pair(122, -61), Pair(128, -44), Pair(56, 3), Pair(64, -12),
-      Pair(-21, 3), Pair(0, 8), Pair(-2, -17), Pair(16, -30), Pair(37, -29), Pair(37, -30), Pair(16, -5), Pair(-17, -10),
-      Pair(-44, -7), Pair(-26, 12), Pair(-15, -14), Pair(-4, -19), Pair(4, -17), Pair(8, -20), Pair(-9, -2), Pair(-32, -13),
-      Pair(-65, -9), Pair(-37, 5), Pair(-22, -15), Pair(5, -17), Pair(-5, -13), Pair(-3, -19), Pair(-15, -7), Pair(-52, -15),
-      Pair(-51, 0), Pair(-17, 9), Pair(0, -12), Pair(-38, -3), Pair(6, -7), Pair(17, -16), Pair(-3, -5), Pair(-46, -7),
+      Pair(83, 50), Pair(176, 21), Pair(101, 43), Pair(118, 15), Pair(173, -9), Pair(56, 18), Pair(-33, 87), Pair(-16, 79),
+      Pair(6, -4), Pair(42, 9), Pair(87, -40), Pair(84, -59), Pair(113, -68), Pair(118, -51), Pair(39, -3), Pair(59, -23),
+      Pair(-21, -8), Pair(-9, 0), Pair(-4, -26), Pair(10, -38), Pair(32, -37), Pair(30, -40), Pair(3, -12), Pair(-20, -20),
+      Pair(-44, -16), Pair(-35, 5), Pair(-18, -23), Pair(-10, -27), Pair(-1, -25), Pair(1, -29), Pair(-23, -9), Pair(-34, -24),
+      Pair(-66, -19), Pair(-47, -3), Pair(-26, -23), Pair(-2, -27), Pair(-12, -21), Pair(-12, -28), Pair(-31, -13), Pair(-55, -25),
+      Pair(-53, -10), Pair(-26, 1), Pair(-4, -21), Pair(-38, -13), Pair(1, -15), Pair(11, -26), Pair(-17, -11), Pair(-48, -18),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
     },
     {
-      Pair(-248, -38), Pair(-298, 22), Pair(-158, 42), Pair(-88, 13), Pair(-85, 20), Pair(-129, 4), Pair(-59, -10), Pair(-230, -18),
-      Pair(-117, 9), Pair(-38, 21), Pair(-62, 30), Pair(14, 4), Pair(10, 0), Pair(-12, 8), Pair(-68, 35), Pair(-87, 15),
-      Pair(-15, -8), Pair(12, 9), Pair(15, 17), Pair(27, 23), Pair(17, 11), Pair(50, -13), Pair(48, -2), Pair(33, -18),
-      Pair(-15, 28), Pair(-1, 25), Pair(29, 29), Pair(59, 20), Pair(89, 15), Pair(58, 28), Pair(86, -1), Pair(33, 13),
-      Pair(-31, 18), Pair(0, 25), Pair(-1, 39), Pair(33, 34), Pair(43, 36), Pair(52, 14), Pair(12, 18), Pair(33, 0),
-      Pair(-46, -1), Pair(-44, 22), Pair(1, 19), Pair(4, 34), Pair(40, 32), Pair(33, 8), Pair(6, 10), Pair(-58, 26),
-      Pair(-103, 19), Pair(-22, 20), Pair(-52, 24), Pair(-8, 27), Pair(-26, 29), Pair(43, 11), Pair(-26, 18), Pair(5, 17),
-      Pair(-80, 24), Pair(-53, 1), Pair(-112, 44), Pair(-144, 38), Pair(-38, 22), Pair(-28, 13), Pair(-63, 17), Pair(-54, 38)
+      Pair(-242, -3), Pair(-314, 62), Pair(-176, 82), Pair(-110, 53), Pair(-114, 61), Pair(-144, 43), Pair(-80, 32), Pair(-233, 21),
+      Pair(-144, 50), Pair(-64, 62), Pair(-86, 70), Pair(-8, 44), Pair(-10, 39), Pair(-36, 48), Pair(-94, 75), Pair(-106, 55),
+      Pair(-41, 35), Pair(-9, 47), Pair(-8, 57), Pair(2, 63), Pair(-7, 51), Pair(26, 29), Pair(21, 38), Pair(10, 22),
+      Pair(-38, 69), Pair(-20, 64), Pair(4, 69), Pair(35, 59), Pair(67, 54), Pair(35, 67), Pair(64, 38), Pair(13, 52),
+      Pair(-48, 58), Pair(-24, 64), Pair(-21, 77), Pair(13, 72), Pair(20, 75), Pair(30, 53), Pair(-9, 57), Pair(15, 38),
+      Pair(-64, 38), Pair(-62, 62), Pair(-15, 58), Pair(-17, 73), Pair(18, 71), Pair(15, 47), Pair(-14, 49), Pair(-74, 64),
+      Pair(-119, 59), Pair(-40, 60), Pair(-72, 65), Pair(-26, 66), Pair(-42, 68), Pair(24, 50), Pair(-46, 58), Pair(-13, 56),
+      Pair(-96, 63), Pair(-68, 39), Pair(-131, 84), Pair(-161, 78), Pair(-53, 61), Pair(-45, 52), Pair(-76, 55), Pair(-69, 79)
     },
     {
-      Pair(-92, 4), Pair(-89, 18), Pair(-66, -1), Pair(-112, -7), Pair(-107, 9), Pair(-208, 10), Pair(-129, -2), Pair(-112, -10),
-      Pair(-75, -17), Pair(-6, -14), Pair(-86, 4), Pair(3, -17), Pair(-112, 2), Pair(-45, -15), Pair(-88, 14), Pair(-80, -5),
-      Pair(-30, 2), Pair(-47, -10), Pair(-28, -5), Pair(1, -19), Pair(-10, -4), Pair(31, -8), Pair(-3, -1), Pair(22, -17),
-      Pair(-21, -6), Pair(-19, -8), Pair(12, -16), Pair(31, -15), Pair(41, -17), Pair(17, 4), Pair(20, -11), Pair(8, -16),
-      Pair(-80, 2), Pair(-32, 2), Pair(-9, -8), Pair(11, -4), Pair(9, -12), Pair(3, -2), Pair(-29, 3), Pair(-56, -6),
-      Pair(-74, 1), Pair(-43, 3), Pair(-14, -6), Pair(7, -15), Pair(26, -16), Pair(-2, -10), Pair(-24, -11), Pair(-60, -3),
-      Pair(-49, 22), Pair(-47, -2), Pair(-54, 5), Pair(-33, 0), Pair(-25, -3), Pair(-48, 1), Pair(-17, -24), Pair(-17, -25),
-      Pair(-61, -10), Pair(-75, 47), Pair(-32, -4), Pair(-43, -4), Pair(7, -12), Pair(-35, 0), Pair(-135, 24), Pair(-61, -13)
+      Pair(-123, -4), Pair(-137, 11), Pair(-107, -8), Pair(-152, -14), Pair(-150, 2), Pair(-250, 3), Pair(-170, -9), Pair(-145, -19),
+      Pair(-119, -24), Pair(-51, -22), Pair(-129, -4), Pair(-39, -25), Pair(-153, -6), Pair(-88, -23), Pair(-133, 8), Pair(-121, -12),
+      Pair(-71, -6), Pair(-89, -17), Pair(-70, -14), Pair(-45, -26), Pair(-57, -11), Pair(-15, -15), Pair(-48, -9), Pair(-22, -25),
+      Pair(-62, -14), Pair(-57, -17), Pair(-31, -23), Pair(-16, -23), Pair(-6, -24), Pair(-27, -4), Pair(-19, -21), Pair(-33, -25),
+      Pair(-120, -6), Pair(-74, -6), Pair(-48, -17), Pair(-33, -12), Pair(-34, -20), Pair(-38, -11), Pair(-70, -5), Pair(-91, -16),
+      Pair(-109, -8), Pair(-81, -6), Pair(-53, -15), Pair(-32, -24), Pair(-13, -25), Pair(-40, -18), Pair(-64, -19), Pair(-98, -11),
+      Pair(-87, 14), Pair(-82, -12), Pair(-90, -4), Pair(-69, -9), Pair(-61, -13), Pair(-86, -7), Pair(-53, -33), Pair(-55, -33),
+      Pair(-100, -18), Pair(-108, 38), Pair(-67, -13), Pair(-80, -12), Pair(-32, -20), Pair(-69, -10), Pair(-173, 17), Pair(-97, -22)
     },
     {
-      Pair(-70, 21), Pair(-74, 24), Pair(-7, 12), Pair(-80, 23), Pair(-38, 7), Pair(-30, 26), Pair(-34, 10), Pair(-106, 24),
-      Pair(-23, -3), Pair(-7, 10), Pair(-33, 16), Pair(63, -28), Pair(-16, -5), Pair(-17, 12), Pair(-19, 6), Pair(-44, -4),
-      Pair(-61, 11), Pair(-5, 1), Pair(15, -15), Pair(-23, -5), Pair(-1, -12), Pair(24, -10), Pair(-6, -2), Pair(-61, -3),
-      Pair(-124, 26), Pair(-17, 2), Pair(-53, 18), Pair(-3, 4), Pair(-15, -7), Pair(-41, 2), Pair(-24, -1), Pair(-59, -3),
-      Pair(-114, 14), Pair(-107, 28), Pair(-90, 14), Pair(-56, 8), Pair(-26, -4), Pair(-63, 2), Pair(-67, 6), Pair(-85, -4),
-      Pair(-77, -9), Pair(-61, -8), Pair(-51, -13), Pair(-56, -11), Pair(-55, -13), Pair(-62, -2), Pair(-27, -34), Pair(-115, -14),
-      Pair(-125, -2), Pair(-69, -14), Pair(-65, -7), Pair(-79, -8), Pair(-83, -1), Pair(-33, -28), Pair(-44, -30), Pair(-100, -12),
-      Pair(-76, -14), Pair(-75, -5), Pair(-76, -1), Pair(-66, -5), Pair(-66, -14), Pair(-52, -21), Pair(-60, -18), Pair(-73, -20)
+      Pair(-140, -25), Pair(-145, -20), Pair(-83, -32), Pair(-148, -22), Pair(-109, -39), Pair(-106, -17), Pair(-109, -34), Pair(-174, -21),
+      Pair(-95, -48), Pair(-79, -35), Pair(-106, -29), Pair(-11, -73), Pair(-89, -51), Pair(-94, -31), Pair(-93, -38), Pair(-116, -48),
+      Pair(-133, -33), Pair(-76, -44), Pair(-59, -59), Pair(-93, -50), Pair(-74, -56), Pair(-49, -53), Pair(-76, -46), Pair(-132, -47),
+      Pair(-193, -19), Pair(-88, -42), Pair(-122, -28), Pair(-73, -42), Pair(-84, -53), Pair(-111, -42), Pair(-95, -45), Pair(-126, -48),
+      Pair(-181, -31), Pair(-175, -18), Pair(-159, -31), Pair(-125, -38), Pair(-97, -50), Pair(-132, -42), Pair(-134, -38), Pair(-149, -51),
+      Pair(-141, -56), Pair(-127, -54), Pair(-118, -59), Pair(-121, -57), Pair(-120, -60), Pair(-128, -47), Pair(-93, -79), Pair(-177, -61),
+      Pair(-185, -49), Pair(-131, -61), Pair(-130, -53), Pair(-141, -55), Pair(-146, -48), Pair(-96, -75), Pair(-107, -76), Pair(-161, -60),
+      Pair(-133, -65), Pair(-135, -53), Pair(-137, -50), Pair(-124, -54), Pair(-125, -63), Pair(-110, -70), Pair(-120, -67), Pair(-129, -71)
     },
     {
-      Pair(-177, -8), Pair(-133, -32), Pair(-139, -11), Pair(-115, -11), Pair(-231, 55), Pair(-129, 35), Pair(-69, -106), Pair(-171, 3),
-      Pair(-176, -7), Pair(-183, -1), Pair(-188, 32), Pair(-116, 21), Pair(-91, 2), Pair(-15, -56), Pair(-108, -32), Pair(-26, -90),
-      Pair(-98, -25), Pair(-157, -7), Pair(-68, -39), Pair(-149, 31), Pair(-67, -11), Pair(-24, -52), Pair(-12, -92), Pair(-35, -64),
-      Pair(-159, -3), Pair(-106, -27), Pair(-91, -33), Pair(-115, 14), Pair(-49, -31), Pair(-41, -34), Pair(-11, -79), Pair(-56, -61),
-      Pair(-130, -65), Pair(-176, 13), Pair(-113, 17), Pair(-90, 7), Pair(-100, 28), Pair(-76, -23), Pair(-81, -19), Pair(-123, 11),
-      Pair(-211, -7), Pair(-102, -57), Pair(-95, -33), Pair(-103, -23), Pair(-106, -7), Pair(-51, -81), Pair(-38, -118), Pair(-123, -41),
-      Pair(-127, -60), Pair(-156, -10), Pair(-91, -80), Pair(-97, -59), Pair(-91, -31), Pair(-104, -62), Pair(-98, -100), Pair(-136, -85),
-      Pair(-193, -22), Pair(-196, -12), Pair(-123, -59), Pair(-104, -88), Pair(-90, -109), Pair(-92, -59), Pair(-132, -8), Pair(-88, -85)
+      Pair(-281, -83), Pair(-243, -107), Pair(-247, -89), Pair(-233, -84), Pair(-339, -23), Pair(-266, -25), Pair(-185, -171), Pair(-273, -72),
+      Pair(-281, -87), Pair(-289, -81), Pair(-295, -50), Pair(-222, -62), Pair(-199, -78), Pair(-136, -128), Pair(-221, -105), Pair(-139, -162),
+      Pair(-205, -102), Pair(-263, -86), Pair(-175, -120), Pair(-255, -52), Pair(-183, -87), Pair(-135, -131), Pair(-120, -172), Pair(-144, -141),
+      Pair(-262, -86), Pair(-212, -107), Pair(-197, -118), Pair(-219, -74), Pair(-158, -114), Pair(-152, -114), Pair(-120, -158), Pair(-160, -140),
+      Pair(-229, -147), Pair(-276, -71), Pair(-214, -68), Pair(-193, -80), Pair(-205, -57), Pair(-178, -108), Pair(-186, -102), Pair(-231, -69),
+      Pair(-312, -91), Pair(-198, -145), Pair(-196, -120), Pair(-201, -110), Pair(-207, -93), Pair(-152, -166), Pair(-143, -198), Pair(-220, -127),
+      Pair(-231, -136), Pair(-254, -94), Pair(-188, -168), Pair(-195, -144), Pair(-189, -115), Pair(-205, -145), Pair(-200, -181), Pair(-236, -165),
+      Pair(-303, -94), Pair(-291, -99), Pair(-220, -144), Pair(-197, -179), Pair(-189, -189), Pair(-192, -140), Pair(-234, -89), Pair(-193, -163)
     },
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
@@ -305,53 +305,53 @@ constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
   {{ // Bucket 4
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(66, 59), Pair(281, 3), Pair(222, 31), Pair(98, 18), Pair(56, 60), Pair(-57, 84), Pair(-7, 113), Pair(203, 40),
-      Pair(3, 2), Pair(8, 51), Pair(95, -26), Pair(112, -39), Pair(142, -38), Pair(139, -24), Pair(129, 2), Pair(48, 9),
-      Pair(-58, 8), Pair(45, 20), Pair(33, -18), Pair(10, -16), Pair(38, -12), Pair(61, -16), Pair(10, 13), Pair(17, -8),
-      Pair(-44, -4), Pair(-48, 37), Pair(-11, -6), Pair(-27, 3), Pair(2, -3), Pair(-10, -2), Pair(-44, 21), Pair(-56, -6),
-      Pair(-64, -9), Pair(-23, 22), Pair(6, -18), Pair(-2, -9), Pair(-2, -9), Pair(6, -11), Pair(-4, 5), Pair(-67, -7),
-      Pair(-77, 2), Pair(-44, 29), Pair(24, -21), Pair(-21, -22), Pair(9, -5), Pair(23, -15), Pair(4, 2), Pair(-79, 1),
+      Pair(71, 48), Pair(243, 1), Pair(239, 22), Pair(115, 11), Pair(55, 55), Pair(-54, 75), Pair(-6, 101), Pair(191, 30),
+      Pair(-8, -8), Pair(-13, 42), Pair(82, -33), Pair(99, -46), Pair(126, -44), Pair(111, -30), Pair(100, -5), Pair(35, -2),
+      Pair(-65, -2), Pair(17, 14), Pair(19, -25), Pair(-2, -24), Pair(22, -19), Pair(38, -23), Pair(-21, 7), Pair(5, -17),
+      Pair(-52, -12), Pair(-75, 31), Pair(-27, -14), Pair(-42, -5), Pair(-18, -11), Pair(-29, -11), Pair(-81, 16), Pair(-68, -15),
+      Pair(-72, -18), Pair(-54, 16), Pair(-10, -26), Pair(-15, -17), Pair(-24, -17), Pair(-14, -19), Pair(-43, 0), Pair(-78, -15),
+      Pair(-83, -7), Pair(-70, 22), Pair(10, -29), Pair(-24, -34), Pair(-7, -13), Pair(6, -23), Pair(-33, -2), Pair(-88, -9),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
     },
     {
-      Pair(-234, -132), Pair(-297, -47), Pair(-49, -21), Pair(-53, -36), Pair(46, -25), Pair(70, -53), Pair(-235, -19), Pair(-618, 4),
-      Pair(-145, -3), Pair(-53, -2), Pair(-32, -15), Pair(117, -46), Pair(29, -49), Pair(-22, 1), Pair(63, -16), Pair(38, -54),
-      Pair(-74, -13), Pair(-1, -19), Pair(110, -31), Pair(93, -36), Pair(28, -6), Pair(91, -38), Pair(80, -32), Pair(62, -33),
-      Pair(-62, 4), Pair(9, -8), Pair(27, -8), Pair(128, -28), Pair(101, -16), Pair(62, -1), Pair(186, -51), Pair(130, -52),
-      Pair(-84, 1), Pair(-60, 7), Pair(-24, 16), Pair(29, 7), Pair(14, 5), Pair(68, -2), Pair(0, -3), Pair(114, -21),
-      Pair(-113, 1), Pair(-127, 24), Pair(22, -4), Pair(-24, 12), Pair(-27, 20), Pair(33, -8), Pair(-73, 21), Pair(-81, 10),
-      Pair(-101, 13), Pair(-133, 12), Pair(-65, -5), Pair(-20, -3), Pair(-32, 5), Pair(-109, 27), Pair(12, -36), Pair(-41, -19),
-      Pair(-84, -7), Pair(-123, -15), Pair(-187, 8), Pair(43, -14), Pair(-47, 5), Pair(-99, -4), Pair(-71, 7), Pair(-200, 47)
+      Pair(-248, -112), Pair(-314, -26), Pair(-110, 0), Pair(-116, -14), Pair(-26, -1), Pair(59, -39), Pair(-319, 7), Pair(-648, 26),
+      Pair(-199, 17), Pair(-108, 17), Pair(-96, 5), Pair(44, -24), Pair(-34, -30), Pair(-84, 21), Pair(-2, 3), Pair(-21, -33),
+      Pair(-142, 9), Pair(-56, -1), Pair(34, -10), Pair(25, -16), Pair(-50, 16), Pair(24, -18), Pair(13, -12), Pair(-22, -10),
+      Pair(-116, 23), Pair(-49, 9), Pair(-35, 10), Pair(62, -10), Pair(40, 3), Pair(1, 17), Pair(123, -32), Pair(56, -30),
+      Pair(-127, 19), Pair(-109, 25), Pair(-85, 34), Pair(-26, 24), Pair(-48, 23), Pair(-7, 18), Pair(-54, 16), Pair(60, -4),
+      Pair(-161, 20), Pair(-176, 41), Pair(-26, 12), Pair(-92, 32), Pair(-89, 40), Pair(-20, 9), Pair(-130, 40), Pair(-121, 26),
+      Pair(-193, 41), Pair(-173, 30), Pair(-119, 15), Pair(-69, 15), Pair(-75, 22), Pair(-158, 44), Pair(-45, -16), Pair(-103, 2),
+      Pair(-172, 21), Pair(-152, 1), Pair(-239, 30), Pair(-8, 6), Pair(-101, 25), Pair(-151, 16), Pair(-113, 24), Pair(-284, 78)
     },
     {
-      Pair(-12, -44), Pair(-135, -11), Pair(18, -55), Pair(-16, -34), Pair(-37, -45), Pair(-5, -50), Pair(-83, -31), Pair(-11, -45),
-      Pair(-30, -47), Pair(13, -51), Pair(25, -42), Pair(-110, -32), Pair(-113, -24), Pair(3, -47), Pair(-117, -19), Pair(-107, -7),
-      Pair(-76, -13), Pair(-23, -40), Pair(109, -55), Pair(49, -47), Pair(120, -65), Pair(67, -27), Pair(72, -42), Pair(3, -30),
-      Pair(-133, -8), Pair(-1, -40), Pair(37, -41), Pair(97, -56), Pair(-5, -22), Pair(48, -38), Pair(33, -44), Pair(15, -38),
-      Pair(-45, -41), Pair(-12, -37), Pair(-20, -37), Pair(38, -46), Pair(-21, -40), Pair(-17, -26), Pair(18, -36), Pair(2, -36),
-      Pair(-137, 0), Pair(-3, -25), Pair(-20, -23), Pair(10, -33), Pair(23, -21), Pair(1, -27), Pair(-3, -18), Pair(-131, -6),
-      Pair(-91, 9), Pair(-83, -18), Pair(-21, -28), Pair(-28, -28), Pair(-109, -8), Pair(-84, -30), Pair(-28, -41), Pair(-115, -9),
-      Pair(-150, -7), Pair(-146, -15), Pair(-49, -20), Pair(-33, -18), Pair(-121, -20), Pair(-68, -19), Pair(-86, -39), Pair(124, -21)
+      Pair(-177, -58), Pair(-221, -37), Pair(-71, -82), Pair(-106, -59), Pair(-130, -71), Pair(-102, -75), Pair(-155, -59), Pair(-79, -73),
+      Pair(-113, -74), Pair(-67, -79), Pair(-61, -69), Pair(-182, -62), Pair(-186, -53), Pair(-77, -76), Pair(-194, -48), Pair(-191, -34),
+      Pair(-148, -43), Pair(-100, -70), Pair(25, -83), Pair(-36, -75), Pair(28, -92), Pair(-23, -54), Pair(-21, -69), Pair(-76, -59),
+      Pair(-203, -37), Pair(-78, -69), Pair(-45, -70), Pair(8, -84), Pair(-96, -50), Pair(-42, -65), Pair(-46, -74), Pair(-69, -65),
+      Pair(-113, -71), Pair(-96, -65), Pair(-96, -68), Pair(-50, -74), Pair(-101, -69), Pair(-98, -55), Pair(-59, -66), Pair(-73, -65),
+      Pair(-203, -29), Pair(-70, -57), Pair(-95, -54), Pair(-64, -62), Pair(-54, -51), Pair(-78, -56), Pair(-80, -47), Pair(-201, -35),
+      Pair(-158, -20), Pair(-145, -50), Pair(-94, -57), Pair(-97, -59), Pair(-168, -40), Pair(-155, -59), Pair(-96, -71), Pair(-194, -34),
+      Pair(-230, -32), Pair(-224, -42), Pair(-109, -51), Pair(-99, -48), Pair(-190, -49), Pair(-126, -52), Pair(-156, -68), Pair(48, -48)
     },
     {
-      Pair(-59, -26), Pair(-67, -9), Pair(-22, -19), Pair(-38, -30), Pair(-60, -14), Pair(53, -50), Pair(-55, -17), Pair(56, -52),
-      Pair(-33, -33), Pair(20, -41), Pair(-3, -38), Pair(57, -63), Pair(61, -67), Pair(-14, -27), Pair(60, -51), Pair(15, -47),
-      Pair(-14, -46), Pair(-31, -26), Pair(-24, -33), Pair(24, -48), Pair(68, -71), Pair(-17, -40), Pair(-21, -29), Pair(-36, -38),
-      Pair(-49, -29), Pair(-89, -7), Pair(-13, -42), Pair(8, -45), Pair(-33, -44), Pair(30, -59), Pair(-6, -36), Pair(-73, -31),
-      Pair(-87, -35), Pair(-142, -17), Pair(-117, -23), Pair(-107, -28), Pair(-20, -57), Pair(-21, -48), Pair(-73, -37), Pair(-42, -67),
-      Pair(-41, -51), Pair(-72, -25), Pair(-188, -10), Pair(-125, -21), Pair(-114, -31), Pair(-91, -42), Pair(-65, -52), Pair(-129, -37),
-      Pair(-156, -19), Pair(-152, -7), Pair(-72, -41), Pair(-68, -38), Pair(-24, -62), Pair(-23, -57), Pair(-45, -66), Pair(-108, -41),
-      Pair(-139, -19), Pair(-135, -13), Pair(-130, -18), Pair(-108, -31), Pair(-71, -47), Pair(-69, -48), Pair(-121, -18), Pair(-127, -37)
+      Pair(-189, -117), Pair(-202, -97), Pair(-163, -107), Pair(-166, -120), Pair(-198, -101), Pair(-91, -136), Pair(-178, -108), Pair(-80, -140),
+      Pair(-170, -123), Pair(-124, -129), Pair(-139, -127), Pair(-85, -151), Pair(-81, -153), Pair(-158, -114), Pair(-96, -135), Pair(-130, -134),
+      Pair(-148, -135), Pair(-158, -117), Pair(-155, -124), Pair(-116, -136), Pair(-78, -156), Pair(-155, -127), Pair(-153, -119), Pair(-174, -126),
+      Pair(-173, -121), Pair(-216, -99), Pair(-141, -133), Pair(-129, -133), Pair(-165, -133), Pair(-105, -147), Pair(-137, -125), Pair(-199, -121),
+      Pair(-213, -126), Pair(-265, -109), Pair(-243, -114), Pair(-234, -119), Pair(-145, -147), Pair(-152, -138), Pair(-198, -128), Pair(-169, -156),
+      Pair(-159, -143), Pair(-191, -117), Pair(-305, -102), Pair(-238, -114), Pair(-232, -122), Pair(-209, -134), Pair(-190, -143), Pair(-245, -128),
+      Pair(-268, -111), Pair(-267, -100), Pair(-180, -135), Pair(-179, -132), Pair(-135, -154), Pair(-141, -148), Pair(-167, -155), Pair(-223, -132),
+      Pair(-237, -118), Pair(-240, -108), Pair(-241, -111), Pair(-216, -125), Pair(-177, -142), Pair(-172, -144), Pair(-233, -111), Pair(-222, -136)
     },
     {
-      Pair(-293, -11), Pair(-346, -27), Pair(-230, -39), Pair(-306, 16), Pair(-36, -147), Pair(-427, 85), Pair(50, -226), Pair(-579, 160),
-      Pair(-321, -24), Pair(-187, -65), Pair(-378, 50), Pair(-402, 133), Pair(-309, 83), Pair(-361, 35), Pair(-373, 21), Pair(-243, -56),
-      Pair(-354, -14), Pair(-336, 14), Pair(-138, -81), Pair(-347, 74), Pair(-87, -93), Pair(-124, -33), Pair(-494, 82), Pair(-189, -69),
-      Pair(-386, 36), Pair(-353, 40), Pair(-466, 103), Pair(-155, -43), Pair(-239, -10), Pair(-161, -71), Pair(-290, -4), Pair(-91, -97),
-      Pair(-476, 65), Pair(-336, -3), Pair(-607, 175), Pair(-207, -30), Pair(-191, -43), Pair(-279, 38), Pair(-150, -102), Pair(-177, -150),
-      Pair(-638, 120), Pair(-377, 49), Pair(-221, -35), Pair(-312, 64), Pair(-174, -55), Pair(-110, -153), Pair(-313, -63), Pair(-331, 41),
-      Pair(-496, 122), Pair(-437, 59), Pair(-371, 36), Pair(-356, 32), Pair(-256, -17), Pair(-241, -105), Pair(-314, -26), Pair(-548, 112),
-      Pair(-411, 20), Pair(-248, -177), Pair(-283, -77), Pair(-172, -233), Pair(-243, -30), Pair(-371, -13), Pair(-381, 46), Pair(-364, -121)
+      Pair(-527, -165), Pair(-533, -206), Pair(-469, -197), Pair(-517, -157), Pair(-306, -288), Pair(-565, -126), Pair(-237, -355), Pair(-799, -5),
+      Pair(-514, -204), Pair(-391, -242), Pair(-568, -137), Pair(-621, -42), Pair(-500, -111), Pair(-538, -159), Pair(-615, -131), Pair(-447, -229),
+      Pair(-562, -183), Pair(-589, -137), Pair(-332, -266), Pair(-538, -112), Pair(-308, -263), Pair(-342, -204), Pair(-669, -113), Pair(-378, -252),
+      Pair(-575, -147), Pair(-540, -150), Pair(-657, -84), Pair(-347, -236), Pair(-430, -197), Pair(-360, -257), Pair(-485, -186), Pair(-280, -283),
+      Pair(-662, -119), Pair(-544, -181), Pair(-759, -34), Pair(-399, -222), Pair(-386, -232), Pair(-454, -159), Pair(-361, -277), Pair(-360, -333),
+      Pair(-809, -77), Pair(-524, -162), Pair(-419, -220), Pair(-483, -136), Pair(-369, -241), Pair(-293, -339), Pair(-493, -252), Pair(-539, -139),
+      Pair(-684, -56), Pair(-626, -124), Pair(-523, -176), Pair(-522, -168), Pair(-433, -207), Pair(-421, -293), Pair(-527, -194), Pair(-738, -73),
+      Pair(-561, -175), Pair(-446, -333), Pair(-448, -266), Pair(-349, -411), Pair(-422, -222), Pair(-534, -203), Pair(-546, -156), Pair(-538, -297)
     },
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
@@ -367,53 +367,53 @@ constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
   {{ // Bucket 5
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(-47, 109), Pair(218, 39), Pair(394, 71), Pair(325, 31), Pair(11, 115), Pair(237, 87), Pair(-87, 152), Pair(123, 104),
-      Pair(58, 8), Pair(94, 55), Pair(142, 7), Pair(141, -10), Pair(210, -26), Pair(170, 0), Pair(153, 10), Pair(25, 29),
-      Pair(-74, 23), Pair(-10, 46), Pair(76, 2), Pair(-14, 6), Pair(49, -4), Pair(48, -1), Pair(26, 19), Pair(-56, 11),
-      Pair(-85, 15), Pair(-30, 42), Pair(28, 1), Pair(-46, 6), Pair(1, -5), Pair(-51, 10), Pair(-13, 19), Pair(-74, 2),
-      Pair(-84, 1), Pair(-34, 27), Pair(21, -15), Pair(2, -5), Pair(25, -12), Pair(-1, -5), Pair(36, 2), Pair(-55, -4),
-      Pair(-95, 4), Pair(-45, 31), Pair(42, -9), Pair(-187, 47), Pair(-94, 5), Pair(-42, 1), Pair(-7, 6), Pair(-98, 10),
+      Pair(-37, 82), Pair(172, 29), Pair(350, 58), Pair(309, 18), Pair(3, 100), Pair(166, 76), Pair(-59, 125), Pair(89, 86),
+      Pair(41, -2), Pair(53, 50), Pair(132, -2), Pair(119, -15), Pair(190, -30), Pair(114, -2), Pair(101, 7), Pair(-9, 21),
+      Pair(-90, 12), Pair(-63, 42), Pair(44, -6), Pair(-45, 0), Pair(26, -11), Pair(0, -6), Pair(-36, 16), Pair(-92, 4),
+      Pair(-106, 7), Pair(-87, 40), Pair(-4, -6), Pair(-77, 0), Pair(-28, -10), Pair(-92, 4), Pair(-73, 17), Pair(-115, -3),
+      Pair(-102, -8), Pair(-92, 25), Pair(-9, -22), Pair(-28, -11), Pair(-6, -19), Pair(-39, -12), Pair(-24, 1), Pair(-94, -9),
+      Pair(-106, -5), Pair(-97, 29), Pair(15, -17), Pair(-188, 36), Pair(-117, -5), Pair(-75, -6), Pair(-63, 6), Pair(-125, 3),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
     },
     {
-      Pair(9, -150), Pair(181, -158), Pair(223, -125), Pair(150, -138), Pair(108, -93), Pair(195, -172), Pair(-104, -108), Pair(433, -203),
-      Pair(-458, -66), Pair(107, -89), Pair(174, -107), Pair(270, -143), Pair(236, -145), Pair(1, -84), Pair(48, -83), Pair(-59, -85),
-      Pair(-187, -50), Pair(27, -80), Pair(53, -90), Pair(76, -68), Pair(402, -144), Pair(143, -95), Pair(198, -120), Pair(81, -111),
-      Pair(1, -91), Pair(16, -72), Pair(134, -80), Pair(116, -71), Pair(79, -71), Pair(18, -49), Pair(135, -105), Pair(-2, -70),
-      Pair(-58, -73), Pair(-111, -52), Pair(13, -54), Pair(22, -53), Pair(186, -68), Pair(39, -68), Pair(142, -107), Pair(18, -94),
-      Pair(-124, -96), Pair(-169, -43), Pair(-77, -47), Pair(13, -64), Pair(-87, -35), Pair(-94, -30), Pair(-142, -46), Pair(-57, -70),
-      Pair(-371, -50), Pair(-295, -33), Pair(-206, -47), Pair(-245, -30), Pair(-88, -40), Pair(-16, -66), Pair(-20, -56), Pair(-211, -26),
-      Pair(-164, -47), Pair(-79, -87), Pair(-401, -4), Pair(-217, -9), Pair(-102, -70), Pair(-322, -27), Pair(-73, -69), Pair(-165, -41)
+      Pair(-74, -137), Pair(44, -140), Pair(81, -113), Pair(-18, -115), Pair(-15, -80), Pair(41, -149), Pair(-263, -89), Pair(324, -190),
+      Pair(-528, -58), Pair(-22, -75), Pair(18, -92), Pair(135, -129), Pair(110, -130), Pair(-98, -77), Pair(-100, -68), Pair(-158, -77),
+      Pair(-317, -35), Pair(-81, -71), Pair(-47, -81), Pair(-56, -58), Pair(214, -123), Pair(22, -84), Pair(66, -108), Pair(-28, -101),
+      Pair(-130, -77), Pair(-70, -69), Pair(17, -72), Pair(1, -62), Pair(-35, -63), Pair(-87, -44), Pair(24, -98), Pair(-119, -60),
+      Pair(-145, -67), Pair(-222, -41), Pair(-85, -49), Pair(-100, -44), Pair(50, -58), Pair(-94, -56), Pair(-6, -91), Pair(-74, -84),
+      Pair(-221, -82), Pair(-257, -36), Pair(-155, -44), Pair(-109, -52), Pair(-188, -27), Pair(-168, -28), Pair(-246, -37), Pair(-134, -63),
+      Pair(-491, -26), Pair(-396, -20), Pair(-303, -34), Pair(-308, -26), Pair(-153, -36), Pair(-139, -53), Pair(-137, -43), Pair(-381, -2),
+      Pair(-293, -28), Pair(-139, -80), Pair(-431, -5), Pair(-306, -1), Pair(-180, -60), Pair(-394, -21), Pair(-119, -63), Pair(-246, -18)
     },
     {
-      Pair(-323, -66), Pair(237, -134), Pair(157, -136), Pair(37, -127), Pair(22, -127), Pair(-50, -101), Pair(424, -181), Pair(-60, -109),
-      Pair(-80, -101), Pair(17, -104), Pair(-42, -88), Pair(-33, -116), Pair(176, -147), Pair(119, -124), Pair(161, -130), Pair(-21, -115),
-      Pair(-63, -84), Pair(73, -128), Pair(-6, -95), Pair(144, -122), Pair(52, -114), Pair(141, -111), Pair(190, -132), Pair(101, -119),
-      Pair(12, -116), Pair(41, -106), Pair(103, -111), Pair(155, -131), Pair(84, -111), Pair(69, -105), Pair(35, -106), Pair(97, -133),
-      Pair(-81, -83), Pair(-32, -90), Pair(61, -104), Pair(30, -98), Pair(58, -112), Pair(-55, -74), Pair(34, -119), Pair(8, -70),
-      Pair(-85, -68), Pair(84, -99), Pair(-52, -84), Pair(22, -89), Pair(3, -92), Pair(11, -89), Pair(-71, -57), Pair(-60, -88),
-      Pair(-85, -62), Pair(-161, -58), Pair(-101, -84), Pair(-12, -98), Pair(9, -99), Pair(-179, -76), Pair(-225, -41), Pair(-170, -87),
-      Pair(-155, -62), Pair(-60, -81), Pair(-151, -48), Pair(-178, -70), Pair(-207, -52), Pair(-127, -75), Pair(-155, -74), Pair(-259, -34)
+      Pair(-456, -98), Pair(59, -164), Pair(24, -171), Pair(-100, -162), Pair(-141, -158), Pair(-201, -136), Pair(229, -209), Pair(-164, -146),
+      Pair(-192, -140), Pair(-104, -143), Pair(-163, -127), Pair(-169, -153), Pair(34, -182), Pair(-27, -160), Pair(13, -166), Pair(-149, -152),
+      Pair(-167, -126), Pair(-64, -166), Pair(-137, -133), Pair(-11, -157), Pair(-80, -152), Pair(2, -148), Pair(30, -167), Pair(-29, -158),
+      Pair(-105, -154), Pair(-94, -144), Pair(-49, -146), Pair(2, -166), Pair(-60, -149), Pair(-65, -145), Pair(-88, -146), Pair(-56, -168),
+      Pair(-202, -122), Pair(-154, -131), Pair(-61, -146), Pair(-116, -135), Pair(-71, -151), Pair(-172, -116), Pair(-89, -159), Pair(-163, -103),
+      Pair(-173, -111), Pair(-44, -139), Pair(-174, -124), Pair(-95, -131), Pair(-106, -135), Pair(-104, -131), Pair(-195, -97), Pair(-171, -127),
+      Pair(-202, -99), Pair(-255, -101), Pair(-226, -122), Pair(-130, -138), Pair(-93, -140), Pair(-308, -112), Pair(-311, -85), Pair(-303, -119),
+      Pair(-268, -97), Pair(-187, -118), Pair(-229, -94), Pair(-288, -109), Pair(-317, -92), Pair(-212, -115), Pair(-270, -110), Pair(-378, -70)
     },
     {
-      Pair(-42, -133), Pair(-21, -140), Pair(-106, -118), Pair(-43, -119), Pair(-150, -119), Pair(-38, -142), Pair(-42, -120), Pair(124, -175),
-      Pair(-13, -149), Pair(11, -139), Pair(1, -146), Pair(28, -167), Pair(21, -169), Pair(-77, -134), Pair(159, -195), Pair(-43, -137),
-      Pair(-144, -120), Pair(-43, -139), Pair(40, -177), Pair(-50, -150), Pair(-27, -146), Pair(16, -171), Pair(110, -183), Pair(-58, -153),
-      Pair(-142, -113), Pair(-61, -139), Pair(-135, -127), Pair(-77, -146), Pair(-133, -139), Pair(16, -188), Pair(-171, -122), Pair(-49, -161),
-      Pair(-215, -112), Pair(-214, -102), Pair(-129, -122), Pair(-65, -145), Pair(-88, -145), Pair(-23, -153), Pair(-70, -140), Pair(-151, -118),
-      Pair(-145, -139), Pair(-194, -117), Pair(-142, -132), Pair(-160, -114), Pair(-100, -145), Pair(-167, -129), Pair(-37, -152), Pair(-253, -114),
-      Pair(-127, -132), Pair(-207, -108), Pair(-129, -127), Pair(-171, -120), Pair(-222, -119), Pair(-149, -126), Pair(-231, -114), Pair(-209, -121),
-      Pair(-324, -74), Pair(-323, -54), Pair(-228, -107), Pair(-188, -115), Pair(-221, -111), Pair(-190, -115), Pair(-196, -117), Pair(-292, -78)
+      Pair(-272, -244), Pair(-236, -254), Pair(-312, -234), Pair(-256, -235), Pair(-358, -233), Pair(-284, -248), Pair(-284, -227), Pair(-131, -280),
+      Pair(-233, -263), Pair(-206, -254), Pair(-209, -263), Pair(-170, -286), Pair(-192, -283), Pair(-299, -246), Pair(-84, -303), Pair(-292, -243),
+      Pair(-349, -238), Pair(-260, -254), Pair(-176, -291), Pair(-266, -265), Pair(-251, -258), Pair(-196, -285), Pair(-120, -293), Pair(-253, -272),
+      Pair(-351, -229), Pair(-271, -255), Pair(-326, -248), Pair(-277, -263), Pair(-326, -257), Pair(-191, -303), Pair(-363, -240), Pair(-259, -274),
+      Pair(-400, -233), Pair(-391, -225), Pair(-330, -240), Pair(-249, -266), Pair(-262, -267), Pair(-236, -266), Pair(-277, -254), Pair(-338, -238),
+      Pair(-323, -261), Pair(-375, -237), Pair(-316, -254), Pair(-336, -235), Pair(-277, -265), Pair(-320, -255), Pair(-264, -262), Pair(-395, -243),
+      Pair(-320, -250), Pair(-364, -233), Pair(-297, -250), Pair(-321, -245), Pair(-376, -244), Pair(-327, -245), Pair(-410, -232), Pair(-355, -248),
+      Pair(-434, -211), Pair(-456, -185), Pair(-376, -231), Pair(-348, -236), Pair(-360, -239), Pair(-344, -240), Pair(-359, -239), Pair(-413, -215)
     },
     {
-      Pair(-446, -241), Pair(-559, -168), Pair(-289, -272), Pair(-272, -244), Pair(-329, -245), Pair(-309, -299), Pair(-329, -291), Pair(-368, -300),
-      Pair(-618, -82), Pair(-332, -239), Pair(-292, -222), Pair(-271, -190), Pair(-372, -192), Pair(-80, -332), Pair(-129, -315), Pair(-482, -131),
-      Pair(-438, -194), Pair(-251, -308), Pair(-214, -260), Pair(-256, -270), Pair(-156, -301), Pair(28, -429), Pair(-495, -160), Pair(-80, -376),
-      Pair(-611, -112), Pair(-383, -236), Pair(-360, -190), Pair(-32, -378), Pair(-335, -208), Pair(-385, -212), Pair(-585, -101), Pair(-511, -151),
-      Pair(-731, -28), Pair(-437, -167), Pair(-554, -111), Pair(-471, -81), Pair(-439, -122), Pair(-124, -364), Pair(-709, 0), Pair(-400, -181),
-      Pair(-746, -21), Pair(-699, -4), Pair(-449, -151), Pair(-332, -242), Pair(-884, 125), Pair(-565, -132), Pair(-530, -141), Pair(-404, -178),
-      Pair(-460, -221), Pair(-556, -133), Pair(-430, -176), Pair(-374, -276), Pair(-550, -125), Pair(-570, -149), Pair(-402, -133), Pair(-482, -229),
-      Pair(-389, -321), Pair(-632, -73), Pair(-345, -300), Pair(-565, -201), Pair(-461, -151), Pair(-467, -169), Pair(-631, -68), Pair(-81, -364)
+      Pair(-765, -456), Pair(-810, -430), Pair(-589, -512), Pair(-604, -473), Pair(-662, -471), Pair(-596, -543), Pair(-676, -508), Pair(-656, -533),
+      Pair(-901, -334), Pair(-674, -467), Pair(-631, -445), Pair(-559, -449), Pair(-592, -486), Pair(-436, -551), Pair(-466, -546), Pair(-808, -364),
+      Pair(-723, -446), Pair(-618, -512), Pair(-515, -510), Pair(-555, -522), Pair(-459, -550), Pair(-396, -606), Pair(-759, -428), Pair(-327, -651),
+      Pair(-868, -372), Pair(-731, -453), Pair(-661, -442), Pair(-388, -602), Pair(-674, -442), Pair(-680, -466), Pair(-871, -355), Pair(-767, -419),
+      Pair(-899, -350), Pair(-800, -387), Pair(-817, -377), Pair(-726, -363), Pair(-737, -378), Pair(-465, -586), Pair(-997, -253), Pair(-665, -442),
+      Pair(-1202, -182), Pair(-946, -282), Pair(-736, -407), Pair(-595, -508), Pair(-1123, -160), Pair(-827, -396), Pair(-754, -423), Pair(-869, -336),
+      Pair(-741, -466), Pair(-793, -413), Pair(-705, -433), Pair(-645, -536), Pair(-786, -403), Pair(-769, -446), Pair(-686, -384), Pair(-762, -481),
+      Pair(-747, -518), Pair(-974, -291), Pair(-681, -491), Pair(-721, -513), Pair(-794, -370), Pair(-759, -407), Pair(-1032, -253), Pair(-305, -639)
     },
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
@@ -429,53 +429,53 @@ constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
   {{ // Bucket 6
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(-70, 157), Pair(209, 141), Pair(329, 180), Pair(115, 191), Pair(12, 199), Pair(100, 211), Pair(-160, 223), Pair(88, 138),
-      Pair(-75, 66), Pair(168, 85), Pair(339, 38), Pair(83, 48), Pair(95, 33), Pair(186, 73), Pair(-24, 92), Pair(-54, 32),
-      Pair(-100, 48), Pair(-68, 70), Pair(115, 25), Pair(-119, 43), Pair(16, 12), Pair(12, 28), Pair(-188, 68), Pair(-47, 20),
-      Pair(-122, 37), Pair(-27, 33), Pair(118, 7), Pair(42, -11), Pair(1, 8), Pair(10, -4), Pair(-48, 33), Pair(-39, -5),
-      Pair(-127, 27), Pair(116, -5), Pair(158, -35), Pair(132, -50), Pair(-43, 14), Pair(85, -20), Pair(-59, 15), Pair(30, -15),
-      Pair(-162, 32), Pair(57, 16), Pair(84, -11), Pair(-383, 75), Pair(-52, -4), Pair(-42, 3), Pair(-28, 13), Pair(-39, 13),
+      Pair(-151, 153), Pair(293, 119), Pair(254, 170), Pair(95, 186), Pair(40, 180), Pair(85, 196), Pair(-177, 206), Pair(79, 121),
+      Pair(-121, 55), Pair(278, 58), Pair(315, 22), Pair(89, 42), Pair(156, 14), Pair(173, 59), Pair(-47, 80), Pair(-21, 14),
+      Pair(-200, 46), Pair(-18, 52), Pair(68, 16), Pair(-98, 28), Pair(24, -1), Pair(-11, 17), Pair(-233, 61), Pair(-52, 6),
+      Pair(-232, 38), Pair(20, 21), Pair(44, 3), Pair(35, -16), Pair(3, -4), Pair(-21, -12), Pair(-117, 32), Pair(-61, -14),
+      Pair(-238, 29), Pair(148, -15), Pair(100, -40), Pair(134, -54), Pair(-54, 0), Pair(63, -29), Pair(-111, 15), Pair(38, -26),
+      Pair(-234, 30), Pair(81, 7), Pair(30, -18), Pair(-391, 72), Pair(-79, -18), Pair(-65, -5), Pair(-110, 17), Pair(-67, 6),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
     },
     {
-      Pair(-42, -179), Pair(-277, -102), Pair(384, -168), Pair(150, -169), Pair(2, -107), Pair(371, -212), Pair(128, -295), Pair(-49, -217),
-      Pair(380, -203), Pair(75, -153), Pair(-167, -26), Pair(57, -121), Pair(424, -210), Pair(-209, -83), Pair(171, -221), Pair(28, -132),
-      Pair(212, -158), Pair(-201, -62), Pair(197, -101), Pair(416, -131), Pair(757, -203), Pair(181, -104), Pair(320, -154), Pair(224, -137),
-      Pair(53, -102), Pair(-182, -26), Pair(336, -151), Pair(422, -155), Pair(317, -135), Pair(147, -93), Pair(552, -159), Pair(367, -181),
-      Pair(100, -102), Pair(-154, -42), Pair(-170, -29), Pair(-262, 1), Pair(491, -105), Pair(98, -92), Pair(-76, -72), Pair(-172, -49),
-      Pair(-169, -81), Pair(-124, -102), Pair(21, -85), Pair(-48, -69), Pair(327, -122), Pair(52, -83), Pair(41, -138), Pair(-103, -43),
-      Pair(7, -181), Pair(-147, -72), Pair(-128, -43), Pair(-421, 8), Pair(-461, -9), Pair(91, -114), Pair(-112, -91), Pair(294, -179),
-      Pair(-318, -20), Pair(-466, 50), Pair(-115, -29), Pair(-192, -24), Pair(175, -43), Pair(-521, 14), Pair(-517, 25), Pair(-26, -84)
+      Pair(-110, -167), Pair(-393, -76), Pair(498, -209), Pair(39, -157), Pair(-147, -88), Pair(495, -235), Pair(262, -304), Pair(-174, -219),
+      Pair(618, -267), Pair(-5, -147), Pair(-266, -20), Pair(-93, -104), Pair(358, -207), Pair(-262, -82), Pair(33, -201), Pair(-17, -134),
+      Pair(153, -157), Pair(-313, -49), Pair(44, -84), Pair(179, -106), Pair(449, -170), Pair(75, -94), Pair(349, -174), Pair(175, -139),
+      Pair(-66, -100), Pair(-315, -15), Pair(147, -126), Pair(235, -136), Pair(158, -118), Pair(59, -91), Pair(320, -133), Pair(445, -206),
+      Pair(36, -113), Pair(-312, -25), Pair(-494, 18), Pair(-434, 20), Pair(228, -71), Pair(27, -95), Pair(-231, -55), Pair(-277, -36),
+      Pair(-314, -52), Pair(-251, -83), Pair(-41, -81), Pair(-183, -54), Pair(217, -109), Pair(-274, -38), Pair(-171, -101), Pair(-219, -29),
+      Pair(-42, -160), Pair(-251, -51), Pair(-222, -38), Pair(-600, 34), Pair(-637, 12), Pair(65, -108), Pair(-132, -82), Pair(587, -244),
+      Pair(-760, 38), Pair(-393, 36), Pair(-344, 4), Pair(-295, -9), Pair(230, -50), Pair(-711, 52), Pair(-893, 89), Pair(-86, -69)
     },
     {
-      Pair(-34, -127), Pair(157, -159), Pair(88, -104), Pair(557, -158), Pair(-289, -90), Pair(-136, -130), Pair(-34, -146), Pair(-65, -91),
-      Pair(-87, -144), Pair(-7, -136), Pair(-192, -117), Pair(208, -179), Pair(-3, -100), Pair(93, -133), Pair(213, -161), Pair(-50, -143),
-      Pair(47, -131), Pair(-39, -97), Pair(148, -154), Pair(40, -152), Pair(54, -151), Pair(57, -109), Pair(63, -127), Pair(-109, -116),
-      Pair(-86, -98), Pair(-40, -88), Pair(201, -120), Pair(12, -129), Pair(166, -141), Pair(-51, -108), Pair(-148, -73), Pair(420, -209),
-      Pair(-62, -106), Pair(343, -177), Pair(49, -112), Pair(188, -141), Pair(11, -113), Pair(174, -123), Pair(-9, -90), Pair(550, -124),
-      Pair(105, -114), Pair(127, -161), Pair(267, -152), Pair(-64, -95), Pair(-43, -98), Pair(-125, -96), Pair(-23, -108), Pair(-5, -84),
-      Pair(-199, -32), Pair(383, -140), Pair(288, -159), Pair(82, -114), Pair(-29, -104), Pair(119, -97), Pair(-378, -94), Pair(-98, -41),
-      Pair(-206, -88), Pair(288, -84), Pair(-151, -78), Pair(-237, -38), Pair(-110, -82), Pair(-246, -76), Pair(-155, -45), Pair(-230, -89)
+      Pair(-20, -174), Pair(43, -194), Pair(-36, -141), Pair(394, -193), Pair(-408, -124), Pair(-302, -160), Pair(-144, -179), Pair(-25, -148),
+      Pair(-191, -181), Pair(-158, -167), Pair(-346, -147), Pair(54, -209), Pair(-179, -131), Pair(-25, -169), Pair(44, -192), Pair(-191, -174),
+      Pair(-99, -165), Pair(-182, -131), Pair(-27, -186), Pair(-126, -182), Pair(-108, -181), Pair(-120, -137), Pair(-131, -150), Pair(-237, -152),
+      Pair(-215, -131), Pair(-203, -121), Pair(17, -151), Pair(-123, -165), Pair(-19, -167), Pair(-217, -137), Pair(-299, -112), Pair(253, -238),
+      Pair(-232, -135), Pair(162, -206), Pair(-74, -153), Pair(59, -178), Pair(-95, -149), Pair(0, -153), Pair(-172, -125), Pair(432, -179),
+      Pair(-12, -152), Pair(-21, -187), Pair(118, -188), Pair(-215, -128), Pair(-143, -140), Pair(-220, -137), Pair(-141, -149), Pair(-138, -118),
+      Pair(-383, -56), Pair(230, -169), Pair(118, -185), Pair(-95, -143), Pair(-257, -124), Pair(-24, -133), Pair(-472, -131), Pair(-209, -81),
+      Pair(-337, -109), Pair(275, -135), Pair(-275, -112), Pair(-359, -71), Pair(-392, -97), Pair(-388, -103), Pair(-341, -59), Pair(-405, -100)
     },
     {
-      Pair(153, -222), Pair(-22, -155), Pair(278, -257), Pair(-92, -174), Pair(205, -230), Pair(16, -185), Pair(3, -206), Pair(387, -279),
-      Pair(319, -274), Pair(227, -233), Pair(123, -224), Pair(88, -207), Pair(192, -246), Pair(57, -211), Pair(80, -223), Pair(316, -275),
-      Pair(14, -197), Pair(117, -201), Pair(5, -194), Pair(19, -200), Pair(-25, -192), Pair(194, -238), Pair(9, -189), Pair(24, -187),
-      Pair(137, -230), Pair(-4, -191), Pair(12, -210), Pair(-342, -111), Pair(-158, -143), Pair(285, -260), Pair(254, -256), Pair(141, -202),
-      Pair(-103, -173), Pair(129, -197), Pair(214, -226), Pair(-191, -157), Pair(487, -302), Pair(26, -205), Pair(264, -241), Pair(16, -185),
-      Pair(-13, -192), Pair(-230, -128), Pair(73, -251), Pair(37, -208), Pair(-388, -114), Pair(76, -210), Pair(202, -202), Pair(-101, -180),
-      Pair(-303, -129), Pair(-158, -114), Pair(-229, -168), Pair(46, -190), Pair(-131, -165), Pair(-81, -178), Pair(-68, -163), Pair(-246, -134),
-      Pair(-344, -108), Pair(-260, -92), Pair(16, -170), Pair(-340, -112), Pair(-123, -149), Pair(-127, -158), Pair(-59, -191), Pair(-322, -88)
+      Pair(-105, -323), Pair(-233, -267), Pair(-89, -333), Pair(-333, -278), Pair(-60, -330), Pair(-277, -280), Pair(-193, -324), Pair(105, -381),
+      Pair(22, -367), Pair(-25, -341), Pair(-131, -328), Pair(-167, -311), Pair(-83, -343), Pair(-196, -311), Pair(-160, -328), Pair(2, -366),
+      Pair(-266, -295), Pair(-141, -301), Pair(-258, -293), Pair(-285, -288), Pair(-300, -290), Pair(-91, -335), Pair(-207, -300), Pair(-218, -295),
+      Pair(-109, -333), Pair(-253, -298), Pair(-265, -307), Pair(-536, -230), Pair(-334, -268), Pair(8, -359), Pair(-34, -351), Pair(-122, -303),
+      Pair(-348, -279), Pair(-144, -299), Pair(-76, -324), Pair(-383, -274), Pair(217, -401), Pair(-250, -306), Pair(-105, -316), Pair(-291, -279),
+      Pair(-280, -292), Pair(-471, -233), Pair(-238, -334), Pair(-150, -326), Pair(-552, -236), Pair(-189, -312), Pair(-124, -290), Pair(-344, -289),
+      Pair(-444, -258), Pair(-365, -230), Pair(-451, -271), Pair(-174, -296), Pair(-311, -285), Pair(-324, -281), Pair(-340, -265), Pair(-487, -239),
+      Pair(-442, -244), Pair(-420, -212), Pair(-224, -268), Pair(-479, -236), Pair(-332, -255), Pair(-360, -260), Pair(-282, -293), Pair(-411, -228)
     },
     {
-      Pair(-220, -419), Pair(-762, -79), Pair(-404, -239), Pair(-275, -265), Pair(-151, -355), Pair(-667, -132), Pair(-319, -262), Pair(45, -514),
-      Pair(-151, -324), Pair(-512, -176), Pair(-51, -338), Pair(-147, -329), Pair(-145, -338), Pair(-524, -150), Pair(-252, -325), Pair(-391, -305),
-      Pair(-212, -299), Pair(-100, -370), Pair(-284, -227), Pair(-111, -332), Pair(-176, -288), Pair(-294, -260), Pair(-171, -312), Pair(-132, -408),
-      Pair(-191, -271), Pair(-353, -174), Pair(-51, -303), Pair(-119, -333), Pair(-113, -306), Pair(-317, -170), Pair(-229, -251), Pair(-208, -275),
-      Pair(-106, -352), Pair(-159, -278), Pair(-190, -322), Pair(-338, -189), Pair(-225, -233), Pair(-199, -223), Pair(-353, -190), Pair(-228, -322),
-      Pair(-215, -306), Pair(-313, -173), Pair(-491, -88), Pair(-257, -230), Pair(-693, -39), Pair(-547, -118), Pair(41, -422), Pair(-110, -383),
-      Pair(93, -421), Pair(-155, -383), Pair(-373, -172), Pair(-449, -203), Pair(-468, -126), Pair(-160, -314), Pair(-147, -309), Pair(-299, -181),
-      Pair(-181, -344), Pair(-346, -395), Pair(-123, -385), Pair(-534, -92), Pair(-394, -246), Pair(-524, -146), Pair(-270, -430), Pair(-627, -194)
+      Pair(-576, -626), Pair(-1095, -305), Pair(-729, -479), Pair(-686, -467), Pair(-531, -565), Pair(-914, -404), Pair(-683, -479), Pair(-451, -654),
+      Pair(-552, -535), Pair(-916, -377), Pair(-413, -575), Pair(-505, -564), Pair(-513, -565), Pair(-893, -370), Pair(-493, -615), Pair(-595, -586),
+      Pair(-596, -513), Pair(-401, -629), Pair(-573, -502), Pair(-428, -591), Pair(-526, -528), Pair(-610, -516), Pair(-532, -544), Pair(-423, -674),
+      Pair(-599, -483), Pair(-761, -384), Pair(-469, -510), Pair(-500, -554), Pair(-473, -543), Pair(-805, -345), Pair(-617, -470), Pair(-493, -549),
+      Pair(-396, -623), Pair(-507, -524), Pair(-694, -483), Pair(-861, -348), Pair(-560, -487), Pair(-588, -454), Pair(-780, -382), Pair(-561, -572),
+      Pair(-563, -552), Pair(-690, -404), Pair(-961, -261), Pair(-791, -375), Pair(-1485, -34), Pair(-939, -341), Pair(-243, -695), Pair(-258, -734),
+      Pair(-15, -782), Pair(-379, -673), Pair(-784, -387), Pair(-1268, -204), Pair(-1063, -243), Pair(-492, -568), Pair(-425, -590), Pair(-854, -331),
+      Pair(-477, -610), Pair(-752, -568), Pair(-197, -774), Pair(-1244, -134), Pair(-958, -365), Pair(-1009, -288), Pair(-659, -608), Pair(-1365, -218)
     },
     {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
@@ -491,189 +491,189 @@ constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
 }};
 
 constexpr KnightMobilityTable<ScorePair> kKnightMobility = {
-  Pair(-14, 81), Pair(1, 74), Pair(10, 98), Pair(16, 108), Pair(21, 117), Pair(26, 126), Pair(32, 124), Pair(35, 123),
-  Pair(37, 116)
+  Pair(19, 298), Pair(34, 291), Pair(43, 316), Pair(48, 328), Pair(54, 335), Pair(58, 344), Pair(65, 344), Pair(68, 343),
+  Pair(70, 335)
 };
 
 constexpr BishopMobilityTable<ScorePair> kBishopMobility = {
-  Pair(-36, -7), Pair(-26, -17), Pair(-16, 2), Pair(-10, 15), Pair(-3, 25), Pair(-1, 36), Pair(2, 41), Pair(3, 46),
-  Pair(5, 51), Pair(10, 51), Pair(19, 49), Pair(21, 54), Pair(19, 69), Pair(15, 55)
+  Pair(-69, 4), Pair(-59, -7), Pair(-50, 13), Pair(-44, 27), Pair(-38, 37), Pair(-35, 49), Pair(-32, 53), Pair(-30, 59),
+  Pair(-29, 64), Pair(-25, 64), Pair(-16, 62), Pair(-12, 67), Pair(-15, 84), Pair(-19, 68)
 };
 
 constexpr RookMobilityTable<ScorePair> kRookMobility = {
-  Pair(-38, -15), Pair(-25, 15), Pair(-21, 22), Pair(-20, 36), Pair(-16, 38), Pair(-10, 41), Pair(-7, 47), Pair(-3, 50),
-  Pair(1, 53), Pair(4, 58), Pair(9, 60), Pair(12, 64), Pair(17, 66), Pair(20, 66), Pair(20, 62)
+  Pair(-44, -44), Pair(-33, -14), Pair(-30, -5), Pair(-28, 8), Pair(-25, 11), Pair(-19, 15), Pair(-16, 21), Pair(-12, 24),
+  Pair(-8, 28), Pair(-5, 32), Pair(-1, 34), Pair(2, 39), Pair(7, 42), Pair(8, 41), Pair(6, 39)
 };
 
 constexpr QueenMobilityTable<ScorePair> kQueenMobility = {
-  Pair(-55, -68), Pair(10, -182), Pair(0, 53), Pair(9, 101), Pair(10, 145), Pair(12, 164), Pair(15, 180), Pair(17, 194),
-  Pair(19, 202), Pair(23, 205), Pair(25, 212), Pair(26, 221), Pair(30, 217), Pair(30, 223), Pair(33, 224), Pair(36, 221),
-  Pair(36, 227), Pair(39, 223), Pair(46, 215), Pair(61, 200), Pair(69, 193), Pair(112, 164), Pair(109, 154), Pair(125, 131),
-  Pair(176, 111), Pair(266, 35), Pair(272, 33), Pair(191, 51)
+  Pair(-27, -8), Pair(38, -126), Pair(29, 103), Pair(38, 152), Pair(38, 196), Pair(41, 215), Pair(44, 232), Pair(46, 245),
+  Pair(48, 255), Pair(52, 256), Pair(53, 265), Pair(55, 272), Pair(59, 270), Pair(59, 276), Pair(61, 276), Pair(64, 274),
+  Pair(64, 279), Pair(66, 276), Pair(75, 269), Pair(89, 254), Pair(95, 249), Pair(135, 223), Pair(133, 214), Pair(144, 196),
+  Pair(191, 178), Pair(267, 116), Pair(254, 118), Pair(163, 143)
 };
 
 constexpr KingBuckets<RankTable<ScorePair>> kPassedPawnBonus = {{
   {
-      Pair(0, 0), Pair(-8, -90), Pair(-3, -73), Pair(2, -38), Pair(29, 2), Pair(25, 67), Pair(87, 124), Pair(0, 0)
+      Pair(0, 0), Pair(20, -86), Pair(24, -70), Pair(28, -34), Pair(54, 6), Pair(51, 72), Pair(104, 124), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-17, -88), Pair(-19, -69), Pair(-5, -36), Pair(11, 7), Pair(-1, 77), Pair(53, 73), Pair(0, 0)
+      Pair(0, 0), Pair(10, -86), Pair(8, -67), Pair(20, -36), Pair(36, 10), Pair(23, 79), Pair(69, 75), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-23, -77), Pair(-27, -61), Pair(-21, -26), Pair(16, 12), Pair(14, 87), Pair(52, 71), Pair(0, 0)
+      Pair(0, 0), Pair(4, -76), Pair(-1, -59), Pair(5, -24), Pair(42, 13), Pair(39, 89), Pair(63, 67), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-67, -67), Pair(-50, -52), Pair(-58, -16), Pair(-22, 18), Pair(-20, 96), Pair(60, 72), Pair(0, 0)
+      Pair(0, 0), Pair(-40, -69), Pair(-24, -53), Pair(-34, -16), Pair(-1, 18), Pair(2, 94), Pair(73, 77), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-87, -58), Pair(-44, -61), Pair(-61, -18), Pair(-16, 16), Pair(-5, 84), Pair(97, 71), Pair(0, 0)
+      Pair(0, 0), Pair(-62, -62), Pair(-20, -63), Pair(-41, -21), Pair(-4, 14), Pair(5, 80), Pair(92, 64), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-93, -53), Pair(-34, -64), Pair(-27, -28), Pair(-23, 20), Pair(-14, 93), Pair(105, 62), Pair(0, 0)
+      Pair(0, 0), Pair(-62, -60), Pair(-8, -69), Pair(-8, -33), Pair(-16, 16), Pair(-32, 87), Pair(80, 60), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-159, -41), Pair(-119, -57), Pair(-111, 1), Pair(-36, 46), Pair(-38, 109), Pair(-1, 84), Pair(0, 0)
+      Pair(0, 0), Pair(-99, -55), Pair(-85, -61), Pair(-73, -9), Pair(-29, 39), Pair(-83, 104), Pair(-43, 73), Pair(0, 0)
   }
 }};
 
 constexpr KingBuckets<RankTable<ScorePair>> kPawnPhalanxBonus = {{
   {
-      Pair(0, 0), Pair(5, -2), Pair(15, 4), Pair(23, 15), Pair(57, 61), Pair(121, 283), Pair(-104, 525), Pair(0, 0)
+      Pair(0, 0), Pair(5, -2), Pair(15, 5), Pair(22, 15), Pair(57, 64), Pair(120, 298), Pair(-102, 545), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(13, -2), Pair(14, 15), Pair(12, 25), Pair(36, 52), Pair(52, 309), Pair(9, 633), Pair(0, 0)
+      Pair(0, 0), Pair(12, -1), Pair(14, 16), Pair(12, 24), Pair(36, 53), Pair(49, 318), Pair(-104, 692), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(5, 5), Pair(15, 9), Pair(20, 20), Pair(45, 68), Pair(90, 247), Pair(-90, 424), Pair(0, 0)
+      Pair(0, 0), Pair(5, 5), Pair(14, 9), Pair(20, 20), Pair(45, 69), Pair(87, 255), Pair(-128, 445), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-6, 4), Pair(16, 9), Pair(11, 24), Pair(41, 79), Pair(-127, 285), Pair(-289, 453), Pair(0, 0)
+      Pair(0, 0), Pair(-5, 3), Pair(19, 8), Pair(10, 24), Pair(38, 80), Pair(-133, 282), Pair(-741, 533), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(6, 0), Pair(-18, 6), Pair(37, 12), Pair(39, 70), Pair(-146, 279), Pair(-459, 375), Pair(0, 0)
+      Pair(0, 0), Pair(9, -1), Pair(-15, 5), Pair(37, 11), Pair(31, 69), Pair(-187, 276), Pair(-978, 493), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-17, 4), Pair(-47, -1), Pair(61, -7), Pair(94, 46), Pair(16, 106), Pair(-223, 588), Pair(0, 0)
+      Pair(0, 0), Pair(-8, 2), Pair(-36, -2), Pair(57, -7), Pair(75, 47), Pair(-69, 111), Pair(-1490, 673), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(-109, 15), Pair(-58, 11), Pair(-90, 45), Pair(38, 54), Pair(-579, 182), Pair(-178, -60), Pair(0, 0)
+      Pair(0, 0), Pair(-80, 12), Pair(-73, 11), Pair(-104, 44), Pair(20, 53), Pair(-793, 226), Pair(-628, 60), Pair(0, 0)
   }
 }};
 
 constexpr KingBuckets<RankTable<ScorePair>> kDefendedPawnBonus = {{
   {
-      Pair(0, 0), Pair(0, 0), Pair(22, 19), Pair(12, 17), Pair(12, 22), Pair(18, 79), Pair(91, 102), Pair(0, 0)
+      Pair(0, 0), Pair(0, 0), Pair(22, 20), Pair(12, 17), Pair(12, 22), Pair(17, 82), Pair(91, 107), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(0, 0), Pair(20, 16), Pair(13, 16), Pair(15, 22), Pair(24, 53), Pair(197, 72), Pair(0, 0)
+      Pair(0, 0), Pair(0, 0), Pair(20, 16), Pair(13, 15), Pair(15, 22), Pair(24, 53), Pair(195, 72), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(0, 0), Pair(26, 8), Pair(20, 7), Pair(13, 19), Pair(24, 56), Pair(159, 73), Pair(0, 0)
+      Pair(0, 0), Pair(0, 0), Pair(26, 8), Pair(20, 7), Pair(13, 20), Pair(23, 57), Pair(150, 78), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(0, 0), Pair(32, 4), Pair(25, 0), Pair(17, 15), Pair(-3, 58), Pair(207, 38), Pair(0, 0)
+      Pair(0, 0), Pair(0, 0), Pair(32, 4), Pair(26, -1), Pair(17, 15), Pair(-5, 57), Pair(180, 39), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(0, 0), Pair(1, 7), Pair(24, -4), Pair(13, 6), Pair(77, 29), Pair(145, 4), Pair(0, 0)
+      Pair(0, 0), Pair(0, 0), Pair(4, 6), Pair(27, -5), Pair(15, 5), Pair(64, 30), Pair(75, 11), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(0, 0), Pair(-20, 8), Pair(1, -3), Pair(26, 5), Pair(95, 2), Pair(190, -62), Pair(0, 0)
+      Pair(0, 0), Pair(0, 0), Pair(-8, 5), Pair(14, -5), Pair(31, 5), Pair(83, 2), Pair(53, -39), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(0, 0), Pair(-22, 12), Pair(-47, 10), Pair(64, 5), Pair(41, -9), Pair(161, -56), Pair(0, 0)
+      Pair(0, 0), Pair(0, 0), Pair(-28, 11), Pair(-52, 9), Pair(46, 8), Pair(-5, -3), Pair(78, -52), Pair(0, 0)
   }
 }};
 
 constexpr KingBuckets<FileTable<ScorePair>> kDoubledPawnPenalty = {{
   {
-      Pair(-6, -52), Pair(8, -33), Pair(-3, -22), Pair(0, -16), Pair(-14, 1), Pair(-17, -5), Pair(24, -31), Pair(-12, -44)
+      Pair(-10, -49), Pair(4, -31), Pair(-3, -21), Pair(-1, -16), Pair(-14, 2), Pair(-17, -4), Pair(16, -30), Pair(-17, -43)
   },
   {
-      Pair(-39, -28), Pair(12, -26), Pair(3, -23), Pair(-7, 0), Pair(-6, 7), Pair(-4, -11), Pair(-6, -19), Pair(-12, -41)
+      Pair(-39, -26), Pair(11, -24), Pair(4, -24), Pair(-7, -1), Pair(-5, 6), Pair(-4, -12), Pair(-7, -18), Pair(-11, -40)
   },
   {
-      Pair(-6, -43), Pair(1, -25), Pair(1, -25), Pair(3, -8), Pair(-3, -4), Pair(-8, -16), Pair(-5, -24), Pair(1, -50)
+      Pair(-7, -42), Pair(0, -23), Pair(0, -25), Pair(3, -7), Pair(-3, -4), Pair(-7, -17), Pair(-6, -23), Pair(2, -52)
   },
   {
-      Pair(-37, -40), Pair(-30, -25), Pair(10, -32), Pair(8, -19), Pair(22, -17), Pair(-2, -23), Pair(1, -26), Pair(-58, -38)
+      Pair(-29, -41), Pair(-23, -28), Pair(12, -33), Pair(12, -18), Pair(25, -17), Pair(2, -24), Pair(11, -29), Pair(-46, -42)
   },
   {
-      Pair(-36, -40), Pair(-2, -58), Pair(-12, -35), Pair(70, -38), Pair(63, -40), Pair(-37, -37), Pair(-29, -30), Pair(41, -66)
+      Pair(-16, -43), Pair(19, -62), Pair(-4, -38), Pair(81, -41), Pair(77, -43), Pair(-19, -40), Pair(-1, -35), Pair(65, -70)
   },
   {
-      Pair(23, -69), Pair(-37, -55), Pair(-95, -41), Pair(52, -57), Pair(38, -43), Pair(-60, -40), Pair(-54, -28), Pair(19, -85)
+      Pair(78, -76), Pair(6, -62), Pair(-61, -46), Pair(83, -60), Pair(60, -47), Pair(-23, -46), Pair(-10, -35), Pair(58, -92)
   },
   {
-      Pair(1, -56), Pair(-101, 22), Pair(-216, -7), Pair(-118, -100), Pair(92, -32), Pair(-90, -18), Pair(-125, -9), Pair(58, -104)
+      Pair(44, -60), Pair(-75, 10), Pair(-175, -14), Pair(-81, -107), Pair(82, -29), Pair(-41, -27), Pair(-77, -16), Pair(64, -104)
   }
 }};
 
 constexpr KingBuckets<FileTable<ScorePair>> kIsolatedPawnPenalty = {{
   {
-      Pair(-2, 4), Pair(-2, -13), Pair(-12, -10), Pair(-10, -12), Pair(-17, -15), Pair(-10, -3), Pair(1, -19), Pair(-8, 2)
+      Pair(1, 1), Pair(-2, -14), Pair(-11, -12), Pair(-9, -14), Pair(-16, -16), Pair(-10, -4), Pair(1, -19), Pair(-1, 0)
   },
   {
-      Pair(-5, 4), Pair(0, -13), Pair(-10, -10), Pair(-10, -10), Pair(-9, -18), Pair(3, -13), Pair(2, -13), Pair(-3, -2)
+      Pair(-5, 2), Pair(-1, -13), Pair(-10, -10), Pair(-10, -12), Pair(-9, -18), Pair(3, -14), Pair(1, -12), Pair(-2, -3)
   },
   {
-      Pair(2, 3), Pair(2, -15), Pair(-7, -11), Pair(-1, -20), Pair(-4, -21), Pair(0, -13), Pair(1, -16), Pair(11, -2)
+      Pair(4, 1), Pair(2, -15), Pair(-6, -11), Pair(-1, -21), Pair(-4, -22), Pair(0, -13), Pair(1, -15), Pair(11, -3)
   },
   {
-      Pair(9, 6), Pair(-16, -13), Pair(-4, -8), Pair(11, -23), Pair(5, -24), Pair(2, -11), Pair(6, -14), Pair(15, -3)
+      Pair(5, 7), Pair(-16, -13), Pair(-7, -8), Pair(10, -22), Pair(3, -24), Pair(0, -10), Pair(6, -14), Pair(6, 0)
   },
   {
-      Pair(3, 17), Pair(-14, -16), Pair(-8, 2), Pair(16, -20), Pair(-11, -17), Pair(-1, -7), Pair(3, -11), Pair(-14, 10)
+      Pair(-12, 20), Pair(-14, -14), Pair(-13, 3), Pair(8, -18), Pair(-15, -16), Pair(-11, -5), Pair(-1, -10), Pair(-32, 13)
   },
   {
-      Pair(4, 14), Pair(-17, -15), Pair(-28, 11), Pair(12, -10), Pair(-28, -7), Pair(30, -12), Pair(-35, -2), Pair(-3, 6)
+      Pair(-19, 20), Pair(-16, -14), Pair(-38, 14), Pair(9, -9), Pair(-45, -4), Pair(11, -8), Pair(-49, 0), Pair(-22, 12)
   },
   {
-      Pair(82, -3), Pair(-44, -8), Pair(-25, -2), Pair(145, -12), Pair(19, -10), Pair(33, -15), Pair(45, -9), Pair(14, 10)
+      Pair(141, -9), Pair(-152, 5), Pair(-26, 3), Pair(115, -11), Pair(-12, -6), Pair(-11, -8), Pair(41, -8), Pair(-34, 20)
   }
 }};
 
 constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = {{
   {
-      Pair(22, 7), Pair(19, 3), Pair(18, 10), Pair(21, 8), Pair(22, 13), Pair(36, 3), Pair(45, 2), Pair(76, -4)
+      Pair(23, 6), Pair(20, 1), Pair(19, 9), Pair(21, 7), Pair(23, 13), Pair(37, 3), Pair(45, 1), Pair(75, -4)
   },
   {
-      Pair(11, 37), Pair(10, 8), Pair(12, 8), Pair(21, 0), Pair(17, -1), Pair(22, -6), Pair(26, -6), Pair(21, 14)
+      Pair(11, 35), Pair(11, 6), Pair(13, 8), Pair(21, -1), Pair(17, -2), Pair(22, -7), Pair(26, -7), Pair(22, 13)
   }
 }};
 
 constexpr std::array<ScorePair, 12> kPawnShelterTable = {
-  Pair(13, -4), Pair(19, -6), Pair(9, -1),
-  Pair(31, -13), Pair(29, -16), Pair(29, -14),
-  Pair(40, -7), Pair(0, 0), Pair(35, -5),
-  Pair(8, -2), Pair(25, -14), Pair(7, 0)
+  Pair(13, -4), Pair(20, -4), Pair(9, 0),
+  Pair(31, -14), Pair(30, -15), Pair(29, -13),
+  Pair(39, -7), Pair(0, 0), Pair(35, -6),
+  Pair(7, -2), Pair(21, -13), Pair(6, 0)
 };
 
 constexpr std::array<ScorePair, 21> kPawnStormTable = {
-  Pair(-5, 0), Pair(-13, 3), Pair(-8, 3),
-  Pair(-5, -1), Pair(-17, 6), Pair(-9, 3),
-  Pair(1, -6), Pair(-14, 4), Pair(-1, -4),
-  Pair(14, -6), Pair(-5, -2), Pair(12, -4),
-  Pair(26, -8), Pair(25, 3), Pair(17, -8),
-  Pair(0, 0), Pair(4, -28), Pair(0, 0),
-  Pair(50, -48), Pair(0, 0), Pair(42, -47)
+  Pair(-6, 2), Pair(-14, 4), Pair(-8, 4),
+  Pair(-6, 1), Pair(-18, 7), Pair(-9, 4),
+  Pair(0, -4), Pair(-15, 5), Pair(-1, -2),
+  Pair(12, -5), Pair(-6, -1), Pair(11, -3),
+  Pair(24, -7), Pair(24, 3), Pair(17, -8),
+  Pair(0, 0), Pair(-2, -27), Pair(0, 0),
+  Pair(46, -48), Pair(0, 0), Pair(39, -47)
 };
 
 constexpr std::array<ScorePair, 8> kKingPPDistanceTable = {
-  Pair(0, 0), Pair(2, 70), Pair(-1, 54), Pair(0, 38), Pair(3, 29), Pair(7, 29), Pair(14, 28), Pair(10, 21)
+  Pair(0, 0), Pair(-15, 99), Pair(-18, 84), Pair(-16, 67), Pair(-13, 60), Pair(-9, 58), Pair(-3, 59), Pair(-8, 52)
 };
 
 constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable = {
-  Pair(0, 0), Pair(-77, -13), Pair(-15, -5), Pair(-12, 23), Pair(-5, 36), Pair(-3, 45), Pair(0, 52), Pair(-9, 42)
+  Pair(0, 0), Pair(-77, -43), Pair(-24, -35), Pair(-21, -7), Pair(-15, 6), Pair(-13, 15), Pair(-12, 24), Pair(-20, 13)
 };
 
-constexpr ScorePair kKingCantReachPPBonus = Pair(-2193, 245);
+constexpr ScorePair kKingCantReachPPBonus = Pair(-2624, 243);
 
 constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = {{
   {
-      Pair(-79, -11), Pair(-83, -6), Pair(-25, -14), Pair(-29, -9), Pair(-26, -5), Pair(-41, -3), Pair(-60, -1), Pair(-42, 3)
+      Pair(-80, -7), Pair(-84, -4), Pair(-26, -12), Pair(-31, -8), Pair(-27, -4), Pair(-42, -2), Pair(-59, 0), Pair(-40, 6)
   },
   {
-      Pair(-14, 48), Pair(-42, 21), Pair(-2, 10), Pair(4, -3), Pair(-9, -4), Pair(-2, 2), Pair(-32, 20), Pair(-19, 30)
+      Pair(-14, 49), Pair(-41, 21), Pair(-3, 12), Pair(3, -2), Pair(-9, -3), Pair(-4, 3), Pair(-30, 18), Pair(-17, 32)
   }
 }};
 
@@ -682,16 +682,16 @@ constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = {{
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(12, 3), Pair(26, -6), Pair(61, -29), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+      Pair(0, 0), Pair(11, 3), Pair(25, -7), Pair(58, -28), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(15, 1), Pair(31, -2), Pair(65, -12), Pair(75, -48), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+      Pair(0, 0), Pair(15, 1), Pair(31, -1), Pair(65, -12), Pair(74, -46), Pair(0, 0), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(22, -21), Pair(37, -21), Pair(53, -13), Pair(83, -16), Pair(92, -25), Pair(0, 0), Pair(0, 0)
+      Pair(0, 0), Pair(22, -20), Pair(37, -20), Pair(53, -13), Pair(82, -14), Pair(89, -23), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(2, 14), Pair(11, 26), Pair(31, 31), Pair(77, 15), Pair(114, 11), Pair(177, -12), Pair(232, -60)
+      Pair(0, 0), Pair(2, 15), Pair(10, 28), Pair(30, 31), Pair(76, 16), Pair(113, 12), Pair(176, -10), Pair(227, -52)
   },
   {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
@@ -699,24 +699,24 @@ constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = {{
 }};
 
 constexpr PieceTable<ScorePair> kSafeCheckBonus = {
-  Pair(0, 0), Pair(51, 9), Pair(19, 25), Pair(60, 1), Pair(27, 15), Pair(0, 0)
+  Pair(0, 0), Pair(51, 9), Pair(20, 24), Pair(60, 2), Pair(27, 17), Pair(0, 0)
 };
 
 constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty = {{
   {
-      Pair(-20, 15), Pair(-13, 20)
+      Pair(-20, 14), Pair(-12, 21)
   },
   {
-      Pair(-73, -26), Pair(-73, -35)
+      Pair(-73, -26), Pair(-72, -36)
   },
   {
-      Pair(-63, -54), Pair(-71, -81)
+      Pair(-61, -53), Pair(-71, -82)
   },
   {
-      Pair(-103, -1), Pair(-92, -38)
+      Pair(-101, -1), Pair(-91, -41)
   },
   {
-      Pair(-82, 38), Pair(-91, 20)
+      Pair(-82, 36), Pair(-91, 19)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -724,24 +724,24 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty = {{
 }};
 
 constexpr PieceTable<ScorePair> kPawnPushThreat = {
-  Pair(0, 0), Pair(19, 36), Pair(22, 24), Pair(32, 11), Pair(25, -2), Pair(60, -6)
+  Pair(0, 0), Pair(19, 35), Pair(22, 25), Pair(32, 13), Pair(23, 0), Pair(59, -6)
 };
 
 constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty = {{
   {
-      Pair(-3, -22), Pair(9, -13)
+      Pair(-2, -22), Pair(10, -12)
   },
   {
-      Pair(-26, -49), Pair(-5, -66)
+      Pair(-25, -49), Pair(-5, -66)
   },
   {
-      Pair(-47, -38), Pair(-31, -39)
+      Pair(-45, -37), Pair(-31, -39)
   },
   {
-      Pair(-89, -3), Pair(-67, -31)
+      Pair(-88, -4), Pair(-66, -32)
   },
   {
-      Pair(-60, 33), Pair(-61, 22)
+      Pair(-60, 33), Pair(-62, 22)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -753,16 +753,16 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty = {{
       Pair(-11, -22), Pair(1, -9)
   },
   {
-      Pair(-53, -25), Pair(-23, -28)
+      Pair(-53, -25), Pair(-24, -27)
   },
   {
-      Pair(18, -156), Pair(31, -148)
+      Pair(18, -154), Pair(31, -148)
   },
   {
-      Pair(-89, -7), Pair(-52, -40)
+      Pair(-89, -7), Pair(-51, -42)
   },
   {
-      Pair(-92, -18), Pair(-67, -93)
+      Pair(-92, -18), Pair(-67, -94)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -771,19 +771,19 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty = {{
 
 constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty = {{
   {
-      Pair(0, -28), Pair(14, -12)
+      Pair(0, -27), Pair(14, -12)
   },
   {
-      Pair(-46, -28), Pair(-2, -15)
+      Pair(-46, -27), Pair(-2, -14)
   },
   {
-      Pair(-33, -34), Pair(-14, -6)
+      Pair(-33, -32), Pair(-14, -6)
   },
   {
-      Pair(2, -74), Pair(19, -48)
+      Pair(2, -75), Pair(18, -49)
   },
   {
-      Pair(-93, 12), Pair(-66, -51)
+      Pair(-94, 15), Pair(-66, -51)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -791,20 +791,20 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty = {{
 }};
 
 constexpr OutpostTable<ScorePair> kKnightOutpostTable = {
-  Pair(16, 31), Pair(18, 17), Pair(42, 26), Pair(49, 27), Pair(54, 33), Pair(39, 49), Pair(50, 17), Pair(4, 35),
-  Pair(3, 19), Pair(15, 20), Pair(21, 24), Pair(11, 38), Pair(15, 25), Pair(14, 20), Pair(15, 17), Pair(-9, 31),
-  Pair(10, 11), Pair(6, 3), Pair(2, 17), Pair(9, 19), Pair(8, 22), Pair(-8, 21), Pair(4, 8), Pair(0, 9)
+  Pair(16, 31), Pair(17, 16), Pair(42, 25), Pair(50, 27), Pair(54, 33), Pair(39, 47), Pair(49, 16), Pair(3, 36),
+  Pair(3, 20), Pair(14, 19), Pair(20, 23), Pair(11, 38), Pair(15, 26), Pair(13, 21), Pair(15, 18), Pair(-10, 30),
+  Pair(10, 11), Pair(6, 3), Pair(2, 17), Pair(9, 20), Pair(7, 23), Pair(-8, 22), Pair(3, 8), Pair(0, 9)
 };
 
 constexpr OutpostTable<ScorePair> kBishopOutpostTable = {
-  Pair(-17, 21), Pair(23, 2), Pair(34, 2), Pair(48, 3), Pair(76, -15), Pair(50, -2), Pair(27, -8), Pair(-22, -23),
-  Pair(-21, -13), Pair(22, 10), Pair(12, 5), Pair(27, 12), Pair(15, 8), Pair(18, -4), Pair(13, 14), Pair(15, -18),
-  Pair(-24, 34), Pair(12, 5), Pair(3, 23), Pair(21, 15), Pair(27, 24), Pair(2, 8), Pair(16, 0), Pair(-51, 8)
+  Pair(-17, 21), Pair(23, 2), Pair(34, 3), Pair(48, 3), Pair(76, -16), Pair(50, -2), Pair(27, -9), Pair(-21, -22),
+  Pair(-22, -14), Pair(21, 10), Pair(13, 6), Pair(27, 11), Pair(15, 8), Pair(18, -3), Pair(13, 15), Pair(15, -17),
+  Pair(-24, 34), Pair(11, 5), Pair(3, 23), Pair(21, 16), Pair(27, 25), Pair(3, 9), Pair(15, 2), Pair(-52, 10)
 };
 
-constexpr ScorePair kBishopPairBonus = Pair(23, 64);
+constexpr ScorePair kBishopPairBonus = Pair(24, 63);
 
-constexpr ScorePair kTempoBonus = Pair(33, 31);
+constexpr ScorePair kTempoBonus = Pair(34, 30);
 
 constexpr std::array<int, kNumPieceTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
