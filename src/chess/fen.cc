@@ -57,7 +57,8 @@ BoardState StringToBoard(std::string_view fen_str) {
     const auto piece = state.GetPieceType(square);
     if (piece != kNone && piece != kKing) {
       state.RemovePiece(square, color, 0);
-      state.PlacePiece(square, piece, color, state.king_bucket[color]);
+      state.PlacePiece(
+          square, piece, color, state.king_bucket[FlipColor(color)]);
     }
   }
 
