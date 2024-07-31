@@ -4,6 +4,8 @@
 #include "../../chess/move_gen.h"
 #include "../../utils/types.h"
 
+namespace search {
+
 struct PVLine {
  public:
   PVLine() : moves_({}) {
@@ -49,11 +51,11 @@ struct PVLine {
   List<Move, kMaxPlyFromRoot> moves_;
 };
 
-struct SearchStackEntry {
+struct StackEntry {
   // Number of ply from root
   U16 ply;
   // Evaluation of the position at this ply
-  Score static_eval;
+  Score static_eval, eval;
   // Best moves following down this ply
   PVLine pv;
   // The move with the best score
@@ -66,6 +68,10 @@ struct SearchStackEntry {
   void *continuation_entry;
   // Moves that caused a beta cutoff at this ply
   std::array<Move, 2> killer_moves;
+  // Overall improving rate from the last couple plies
+  double improving_rate;
+  // Number of double extensions performed
+  int double_extensions;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -79,44 +85,49 @@ struct SearchStackEntry {
     killer_moves.fill(Move::NullMove());
   }
 
-  explicit SearchStackEntry(U16 ply)
+  explicit StackEntry(U16 ply)
       : ply(ply),
         static_eval(kScoreNone),
+        eval(kScoreNone),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
-        continuation_entry(nullptr) {
+        continuation_entry(nullptr),
+        improving_rate(kScoreNone),
+        double_extensions(0) {
     ClearKillerMoves();
   }
 
-  SearchStackEntry() : SearchStackEntry(0) {}
+  StackEntry() : StackEntry(0) {}
 };
 
-class SearchStack {
+class Stack {
  public:
   static constexpr int kPadding = 4;
 
-  SearchStack() {
+  Stack() {
     Reset();
   }
 
   void Reset() {
-    for (std::size_t i = 0; i < stack_.size(); i++) {
-      stack_[i] = SearchStackEntry(std::max<std::size_t>(0, i - kPadding));
+    for (int i = 0; i < stack_.size(); i++) {
+      stack_[i] = StackEntry(i - kPadding);
     }
   }
 
-  [[nodiscard]] SearchStackEntry &Front() {
+  [[nodiscard]] StackEntry &Front() {
     return stack_[kPadding];
   }
 
-  [[nodiscard]] SearchStackEntry &operator[](int idx) {
+  [[nodiscard]] StackEntry &operator[](int idx) {
     return stack_[idx + kPadding];
   }
 
  private:
-  std::array<SearchStackEntry, kMaxPlyFromRoot + kPadding> stack_;
+  std::array<StackEntry, kMaxPlyFromRoot + kPadding> stack_;
 };
+
+}  // namespace search
 
 #endif  // INTEGRAL_STACK_H

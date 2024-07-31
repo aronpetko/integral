@@ -1,27 +1,30 @@
 #ifndef INTEGRAL_BONUS_H
 #define INTEGRAL_BONUS_H
 
+#include "../../../tuner/spsa.h"
 #include "../../../utils/types.h"
 
-namespace history {
+namespace search::history {
 
-constexpr int kHistoryDefaultGravity = 16384;
-constexpr int kHistoryDefaultScale = 130;
-constexpr int kHistoryDefaultMaxBonus = 1159;
+inline Tunable hist_default_gravity(
+    "hist_default_gravity", 15176, 8192, 32768, 1024);
+inline Tunable hist_default_scale("hist_default_scale", 135, 65, 260, 5);
+inline Tunable hist_default_max_bonus(
+    "hist_default_max_bonus", 1188, 580, 2318, 50);
 
 static int HistoryBonus(int depth,
-                        int scale = kHistoryDefaultScale,
-                        int max_bonus = kHistoryDefaultMaxBonus) {
+                        int scale = hist_default_scale,
+                        int max_bonus = hist_default_max_bonus) {
   return std::clamp(scale * depth, -max_bonus, max_bonus);
 }
 
 // Linear interpolation of the bonus and maximum score
 static int ScaleBonus(I32 score,
                       int bonus,
-                      int gravity = kHistoryDefaultGravity) {
+                      int gravity = hist_default_gravity) {
   return bonus - score * std::abs(bonus) / gravity;
 }
 
-} // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_BONUS_H

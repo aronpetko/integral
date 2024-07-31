@@ -33,19 +33,16 @@ enum PieceType : U8 {
 };
 
 enum class PromotionType : U8 {
-  kNone,
   kKnight,
   kBishop,
   kRook,
   kQueen,
-  kAny,
 };
 
-enum MoveType : U8 {
-  kCaptures = 0b1,
-  kQuiet = 0b10,
-  kTactical = 0b100 | kCaptures,
-  kAll = kCaptures | kQuiet | kTactical,
+enum MoveGenType : U8 {
+  kQuiet = 0b01,
+  kNoisy = 0b10,
+  kAll = kQuiet | kNoisy,
 };
 
 enum Color : U8 {
@@ -55,7 +52,7 @@ enum Color : U8 {
   kNumColors
 };
 
-constexpr Color FlipColor(const Color& color) {
+constexpr Color FlipColor(Color color) {
   return Color(!color);
 }
 
@@ -192,7 +189,7 @@ enum Squares : U8 {
   kA6, kB6, kC6, kD6, kE6, kF6, kG6, kH6,
   kA7, kB7, kC7, kD7, kE7, kF7, kG7, kH7,
   kA8, kB8, kC8, kD8, kE8, kF8, kG8, kH8,
-  kSquareCount = 64,
+  kSquareCount = 64, kNoSquare = 64
 };
 // clang-format on
 
@@ -247,11 +244,11 @@ class ScorePair {
   constexpr ScorePair operator*(int scalar) const {
     return ScorePair{score_ * scalar};
   }
-  
+
   constexpr ScorePair operator/(const ScorePair& other) const {
     return ScorePair{score_ / other.score_};
   }
-  
+
   constexpr ScorePair operator/(int scalar) const {
     return ScorePair{score_ / scalar};
   }
@@ -287,6 +284,7 @@ constexpr ScorePair Pair(Score middle_game, Score end_game) {
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<I16>::max() - 1;
 const Score kInfiniteScore = std::numeric_limits<I16>::max();
+const Score kTBWinScore = kMateScore - kMaxPlyFromRoot - 1;
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_

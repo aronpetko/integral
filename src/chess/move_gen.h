@@ -6,31 +6,31 @@
 #include "board.h"
 
 constexpr int kMaxMoves = 256;
-
 using MoveList = List<Move, kMaxMoves>;
 
 namespace move_gen {
 
-// Initializes piece attack lookups and magics
-void InitializeAttacks();
+bool IsSquareAttacked(Square square, Color attacker, const BoardState &state);
 
 BitBoard PawnAttacks(BitBoard pawns, Color side);
 
-BitBoard &PawnAttacks(Square square, Color side);
+BitBoard PawnAttacks(Square square, Color side);
 
-BitBoard PawnMoves(Square square, const BoardState &state);
+BitBoard PawnPushes(BitBoard pawns, Color side);
 
-BitBoard &KnightMoves(Square square);
+BitBoard PawnPushMoves(Square square, const BoardState &state);
 
-BitBoard &BishopMoves(Square square, const BitBoard &occupied);
+BitBoard KnightMoves(Square square);
 
-BitBoard &RookMoves(Square square, const BitBoard &occupied);
+BitBoard BishopMoves(Square square, const BitBoard &occupied);
+
+BitBoard RookMoves(Square square, const BitBoard &occupied);
 
 BitBoard QueenMoves(Square square, const BitBoard &occupied);
 
 BitBoard KingMoves(Square square, const BoardState &state);
 
-BitBoard &KingAttacks(Square square);
+BitBoard KingAttacks(Square square);
 
 BitBoard CastlingMoves(Color which, const BoardState &state);
 
@@ -50,13 +50,13 @@ BitBoard GetSlidingAttackersTo(const BoardState &state,
 
 // Returns a bitboard with the set bits being sliding attacks between the two
 // squares
-BitBoard &RayBetween(Square first, Square second);
+BitBoard RayBetween(Square first, Square second);
 
 // Returns a bitboard with the set bits being the ray that the two squares lie
 // on
-BitBoard &RayIntersecting(Square first, Square second);
+BitBoard RayIntersecting(Square first, Square second);
 
-MoveList GenerateMoves(MoveType move_type, Board &board);
+MoveList GenerateMoves(MoveGenType move_type, Board &board);
 
 }  // namespace move_gen
 

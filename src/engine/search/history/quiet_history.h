@@ -5,20 +5,25 @@
 #include "../stack.h"
 #include "bonus.h"
 
-namespace history {
+namespace search::history {
 
 class QuietHistory {
  public:
-  explicit QuietHistory(const BoardState &state) : state_(state), table_({}) {}
+  QuietHistory() : table_({}) {}
 
-  void UpdateScore(SearchStackEntry *stack, int depth, MoveList &quiets) {
-    const Color turn = state_.turn;
+  void UpdateScore(const BoardState &state,
+                   StackEntry *stack,
+                   int depth,
+                   BitBoard threats,
+                   MoveList &quiets) {
+    const Color turn = state.turn;
     const Move move = stack->move;
 
     const int bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
-    int &score = table_[turn][move.GetFrom()][move.GetTo()];
+    int &score =
+        table_[turn][move.GetFrom()][move.GetTo()][ThreatIndex(move, threats)];
     score += ScaleBonus(score, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
@@ -26,20 +31,28 @@ class QuietHistory {
       const Move bad_quiet = quiets[i];
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_quiet_score =
-          table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()];
+          table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()]
+                [ThreatIndex(bad_quiet, threats)];
       bad_quiet_score += ScaleBonus(bad_quiet_score, -bonus);
     }
   }
 
-  [[nodiscard]] int GetScore(Move move) const {
-    return table_[state_.turn][move.GetFrom()][move.GetTo()];
+  [[nodiscard]] int GetScore(const BoardState &state,
+                             Move move,
+                             BitBoard threats) const {
+    return table_[state.turn][move.GetFrom()][move.GetTo()]
+                 [ThreatIndex(move, threats)];
   }
 
  private:
-  const BoardState &state_;
-  MultiArray<int, kNumColors, kSquareCount, kSquareCount> table_;
+  [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
+    return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());
+  }
+
+ private:
+  MultiArray<int, kNumColors, kSquareCount, kSquareCount, 4> table_;
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_QUIET_HISTORY_H

@@ -72,7 +72,7 @@ void Tuner::LoadFromFile(const std::string& source_file) {
   }
 
   file.close();
-  fmt::println("Finished loading data source...");
+  fmt::println("Loaded {} positions", entries_.size());
 }
 
 void Tuner::Tune() {
@@ -81,7 +81,6 @@ void Tuner::Tune() {
   velocity.resize(num_terms_);
 
   const std::size_t num_entries = entries_.size();
-  fmt::println("Num Positions: {}", num_entries);
 
   const double K = ComputeOptimalK();
   fmt::println("Optimal K: {}", K);
@@ -131,6 +130,7 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kQueenMobility);
   AddArrayParameter(kPassedPawnBonus);
   AddArrayParameter(kPawnPhalanxBonus);
+  AddArrayParameter(kDefendedPawnBonus);
   AddArrayParameter(kDoubledPawnPenalty);
   AddArrayParameter(kIsolatedPawnPenalty);
   Add2DArrayParameter(kRookOnFileBonus);
@@ -141,10 +141,12 @@ void Tuner::InitBaseParameters() {
   AddSingleParameter(kKingCantReachPPBonus);
   Add2DArrayParameter(kKingOnFilePenalty);
   Add2DArrayParameter(kAttackPower);
-  AddArrayParameter(kThreatenedByPawnPenalty);
-  AddArrayParameter(kThreatenedByKnightPenalty);
-  AddArrayParameter(kThreatenedByBishopPenalty);
-  AddArrayParameter(kThreatenedByRookPenalty);
+  AddArrayParameter(kSafeCheckBonus);
+  Add2DArrayParameter(kThreatenedByPawnPenalty);
+  AddArrayParameter(kPawnPushThreat);
+  Add2DArrayParameter(kThreatenedByKnightPenalty);
+  Add2DArrayParameter(kThreatenedByBishopPenalty);
+  Add2DArrayParameter(kThreatenedByRookPenalty);
   AddArrayParameter(kKnightOutpostTable);
   AddArrayParameter(kBishopOutpostTable);
   AddSingleParameter(kBishopPairBonus);
@@ -171,6 +173,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
   GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
+  GET_ARRAY_COEFFICIENTS(kDefendedPawnBonus);
   GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
   GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
   GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
@@ -181,10 +184,12 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_COEFFICIENT(kKingCantReachPPBonus);
   GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
   GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
-  GET_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);
-  GET_ARRAY_COEFFICIENTS(kThreatenedByKnightPenalty);
-  GET_ARRAY_COEFFICIENTS(kThreatenedByBishopPenalty);
-  GET_ARRAY_COEFFICIENTS(kThreatenedByRookPenalty);
+  GET_ARRAY_COEFFICIENTS(kSafeCheckBonus);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);
+  GET_ARRAY_COEFFICIENTS(kPawnPushThreat);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByKnightPenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByBishopPenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByRookPenalty);
   GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
   GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
   GET_COEFFICIENT(kBishopPairBonus);
@@ -388,16 +393,19 @@ void Tuner::PrintParameters() {
   PrintArray(index, kQueenMobility.size(), parameters_);
 
   fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
-  PrintArray(index, kPassedPawnBonus.size(), parameters_);
+  PrintArray(index, kNumRanks, parameters_);
 
   fmt::print("constexpr RankTable<ScorePair> kPawnPhalanxBonus = ");
-  PrintArray(index, kPawnPhalanxBonus.size(), parameters_);
+  PrintArray(index, kNumRanks, parameters_);
+
+  fmt::print("constexpr RankTable<ScorePair> kDefendedPawnBonus = ");
+  PrintArray(index, kNumRanks, parameters_);
 
   fmt::print("constexpr FileTable<ScorePair> kDoubledPawnPenalty = ");
-  PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
+  PrintArray(index, kNumFiles, parameters_);
 
   fmt::print("constexpr FileTable<ScorePair> kIsolatedPawnPenalty = ");
-  PrintArray(index, kDoubledPawnPenalty.size(), parameters_);
+  PrintArray(index, kNumFiles, parameters_);
 
   fmt::print(
       "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
@@ -409,8 +417,7 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
   PrintArray(index, kPawnStormTable.size(), parameters_, 3);
 
-  fmt::print(
-      "constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
+  fmt::print("constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
   PrintArray(index, kKingPPDistanceTable.size(), parameters_);
 
   fmt::print(
@@ -430,17 +437,31 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = ");
   Print2DArray(index, kNumPieceTypes, 8, parameters_);
 
-  fmt::print("constexpr PieceTable<ScorePair> kThreatenedByPawnPenalty = ");
+  fmt::print("constexpr PieceTable<ScorePair> kSafeCheckBonus = ");
   PrintArray(index, kNumPieceTypes, parameters_);
 
-  fmt::print("constexpr PieceTable<ScorePair> kThreatenedByKnightPenalty = ");
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty "
+      "= ");
+  Print2DArray(index, kNumPieceTypes, 2, parameters_);
+
+  fmt::print("constexpr PieceTable<ScorePair> kPawnPushThreat = ");
   PrintArray(index, kNumPieceTypes, parameters_);
 
-  fmt::print("constexpr PieceTable<ScorePair> kThreatenedByBishopPenalty = ");
-  PrintArray(index, kNumPieceTypes, parameters_);
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> "
+      "kThreatenedByKnightPenalty = ");
+  Print2DArray(index, kNumPieceTypes, 2, parameters_);
 
-  fmt::print("constexpr PieceTable<ScorePair> kThreatenedByRookPenalty = ");
-  PrintArray(index, kNumPieceTypes, parameters_);
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> "
+      "kThreatenedByBishopPenalty = ");
+  Print2DArray(index, kNumPieceTypes, 2, parameters_);
+
+  fmt::print(
+      "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty "
+      "= ");
+  Print2DArray(index, kNumPieceTypes, 2, parameters_);
 
   fmt::print("constexpr OutpostTable<ScorePair> kKnightOutpostTable = ");
   PrintArray(index, kKnightOutpostTable.size(), parameters_);

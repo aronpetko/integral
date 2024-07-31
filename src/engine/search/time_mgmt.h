@@ -5,21 +5,35 @@
 #include <chrono>
 #include <condition_variable>
 
-using std::chrono::duration_cast;
-
 #include "../../chess/board.h"
 #include "../../utils/types.h"
+
+namespace search {
+
+using std::chrono::duration_cast;
 
 struct TimeConfig {
   bool infinite = false;
   int depth = 0;
+  int nodes = 0;
   int move_time = 0;
   int time_left = 0;
   int increment = 0;
+
+  [[nodiscard]] bool HasBeenModified() const {
+    static const TimeConfig default_config;
+    return !(*this == default_config);
+  }
+
+  bool operator==(const TimeConfig &other) const {
+    return infinite == other.infinite && depth == other.depth &&
+           move_time == other.move_time && time_left == other.time_left &&
+           increment == other.increment && nodes == other.nodes;
+  }
 };
 
 using SteadyClock = std::chrono::steady_clock;
-using TimeStamp = U32;
+using TimeStamp = U64;
 
 [[maybe_unused]] static U64 GetCurrentTime() {
   const auto duration = SteadyClock::now().time_since_epoch();
@@ -31,6 +45,8 @@ enum class TimeType {
   kTimed,
   // Search up to a certain depth
   kDepth,
+  // Search up to a specific number of nodes
+  kNodes,
   // Search until a "stop" command
   kInfinite
 };
@@ -52,13 +68,15 @@ class TimeManagement {
   [[nodiscard]] bool ShouldStop(Move best_move, int depth, U32 nodes_searched);
 
   // Determine if the search must give up now to avoid losing
-  [[nodiscard]] bool TimesUp();
+  [[nodiscard]] bool TimesUp(U32 nodes_searched);
 
   [[nodiscard]] int GetSearchDepth() const;
 
   [[nodiscard]] U32 &NodesSpent(Move move);
 
-  [[nodiscard]] U64 TimeElapsed();
+  [[nodiscard]] U64 TimeElapsed() const;
+
+  [[nodiscard]] TimeType GetType() const;
 
  private:
   TimeConfig config_;
@@ -71,5 +89,7 @@ class TimeManagement {
   Move previous_best_move_;
   int best_move_stability_;
 };
+
+}  // namespace search
 
 #endif  // INTEGRAL_TIME_MGMT_H_

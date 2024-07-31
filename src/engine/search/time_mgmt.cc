@@ -1,22 +1,23 @@
 #include "time_mgmt.h"
 
 #include "../../tuner/spsa.h"
-#include "../uci/uci.h"
 #include "search.h"
 
-Tunable base_time_scale("base_time_scale", 0.054, 0, 0.10);
-Tunable increment_scale("increment_scale", 0.85, 0, 1.00);
-Tunable percent_limit("percent_limit", 0.76, 0, 1.00);
-Tunable hard_limit_scale("hard_limit_scale", 3.04, 1.00, 4.50);
-Tunable soft_limit_scale("soft_limit_scale", 0.76, 0, 1.50);
-Tunable node_fraction_base("node_fraction_base", 1.52, 0.50, 2.50);
-Tunable node_fraction_scale("node_fraction_scale", 1.74, 0.50, 2.50);
+namespace search {
+
+Tunable base_time_scale("base_time_scale", 0.055, 0, 0.10, 0.003);
+Tunable increment_scale("increment_scale", 0.91, 0, 1.00, 0.04);
+Tunable percent_limit("percent_limit", 0.77, 0, 1.00, 0.03);
+Tunable hard_limit_scale("hard_limit_scale", 3.25, 1.00, 4.50, 0.08);
+Tunable soft_limit_scale("soft_limit_scale", 0.83, 0, 1.50, 0.08);
+Tunable node_fraction_base("node_fraction_base", 1.49, 0.50, 2.50, 0.08);
+Tunable node_fraction_scale("node_fraction_scale", 1.56, 0.50, 2.50, 0.08);
 std::array<Tunable, 5> move_stability_scale = {
-    Tunable("mss_1", 2.43, 0.0, 5.0),
-    Tunable("mss_2", 1.35, 0.0, 5.0),
-    Tunable("mss_3", 1.09, 0.0, 5.0),
-    Tunable("mss_4", 0.88, 0.0, 5.0),
-    Tunable("mss_5", 0.68, 0.0, 5.0),
+    Tunable("mss_1", 2.32, 0.0, 5.0, 0.07),
+    Tunable("mss_2", 1.22, 0.0, 5.0, 0.07),
+    Tunable("mss_3", 1.07, 0.0, 5.0, 0.07),
+    Tunable("mss_4", 0.79, 0.0, 5.0, 0.07),
+    Tunable("mss_5", 0.68, 0.0, 5.0, 0.07),
 };
 
 [[maybe_unused]] TimeManagement::TimeManagement(const TimeConfig &config)
@@ -25,18 +26,29 @@ std::array<Tunable, 5> move_stability_scale = {
 }
 
 void TimeManagement::Start() {
-  const int base_time = config_.time_left * base_time_scale +
-                        config_.increment * increment_scale -
-                        uci::GetOption("Move Overhead").GetValue<int>();
-  const auto maximum_time = percent_limit * config_.time_left;
-
-  hard_limit_.store(std::min(hard_limit_scale * base_time, maximum_time));
-  soft_limit_.store(std::min(soft_limit_scale * base_time, maximum_time));
-
   start_time_.store(GetCurrentTime());
   nodes_spent_.fill(0);
+  const int overhead = uci::listener.GetOption("MoveOverhead").GetValue<int>();
+
+  if (config_.move_time != 0) {
+    hard_limit_.store(config_.move_time - overhead);
+    soft_limit_.store(hard_limit_);
+    return;
+  }
 
   previous_best_move_ = Move::NullMove();
+
+  const int base_time = config_.time_left * base_time_scale +
+                        config_.increment * increment_scale - overhead;
+  const int maximum_time = percent_limit * config_.time_left;
+
+  const int scaled_hard_limit =
+      std::min(static_cast<int>(hard_limit_scale * base_time), maximum_time);
+  const int scaled_soft_limit =
+      std::min(static_cast<int>(soft_limit_scale * base_time), maximum_time);
+
+  hard_limit_.store(std::max(5, scaled_hard_limit));
+  soft_limit_.store(std::max(1, scaled_soft_limit));
 }
 
 void TimeManagement::Stop() {
@@ -50,6 +62,8 @@ void TimeManagement::SetConfig(const TimeConfig &config) {
     type_ = TimeType::kInfinite;
   } else if (config.depth != 0) {
     type_ = TimeType::kDepth;
+  } else if (config.nodes != 0) {
+    type_ = TimeType::kNodes;
   } else {
     type_ = TimeType::kTimed;
   }
@@ -61,6 +75,8 @@ int TimeManagement::GetSearchDepth() const {
       return std::numeric_limits<int>::max();
     case TimeType::kDepth:
       return config_.depth;
+    case TimeType::kNodes:
+      [[fallthrough]];
     case TimeType::kTimed:
       return kMaxSearchDepth;
     default:
@@ -69,22 +85,22 @@ int TimeManagement::GetSearchDepth() const {
   }
 }
 
-bool TimeManagement::TimesUp() {
-  if (type_ != TimeType::kTimed) {
+bool TimeManagement::TimesUp(U32 nodes_searched) {
+  if (type_ == TimeType::kNodes) {
+    return nodes_searched >= config_.nodes;
+  } else if (type_ != TimeType::kTimed) {
     return false;
   }
-
-  return TimeElapsed() >= hard_limit_;
+  if (config_.move_time != 0 && TimeElapsed() >= config_.move_time) {
+    fmt::println("{}", config_.move_time);
+  }
+  return nodes_searched & 4096 && TimeElapsed() >= hard_limit_;
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
-  if (type_ != TimeType::kTimed) {
-    return false;
-  }
-
-  if (config_.move_time != 0) {
-    return TimesUp();
-  }
+  if (type_ == TimeType::kNodes) return nodes_searched >= config_.nodes;
+  if (type_ != TimeType::kTimed) return false;
+  if (config_.move_time != 0) return TimesUp(nodes_searched);
 
   if (depth < 7) {
     return TimeElapsed() >= soft_limit_;
@@ -113,6 +129,12 @@ U32 &TimeManagement::NodesSpent(Move move) {
   return nodes_spent_[move.GetData() & 4095];
 }
 
-U64 TimeManagement::TimeElapsed() {
+U64 TimeManagement::TimeElapsed() const {
   return std::max<U64>(1, GetCurrentTime() - start_time_.load());
 }
+
+TimeType TimeManagement::GetType() const {
+  return type_;
+}
+
+}  // namespace search

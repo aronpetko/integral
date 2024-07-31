@@ -1,21 +1,21 @@
 #ifndef INTEGRAL_CORRECTION_HISTORY_H
 #define INTEGRAL_CORRECTION_HISTORY_H
 
+#include "../../../tuner/spsa.h"
 #include "../../../utils/multi_array.h"
 #include "../stack.h"
 
-namespace history {
+namespace search::history {
+
+inline Tunable corr_history_scale("corr_history_scale", 256, 100, 500, 15);
+inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
 
 class CorrectionHistory {
  public:
-  explicit CorrectionHistory(const BoardState &state)
-      : state_(state), table_({}) {}
+  CorrectionHistory() : table_({}) {}
 
-  static constexpr int kHistorySize = 16384;
-  static constexpr int kHistoryMaxBonus = 128;
-  static constexpr int kHistoryGravity = 512;
-
-  void UpdateScore(SearchStackEntry *stack,
+  void UpdateScore(const BoardState &state,
+                   StackEntry *stack,
                    Score search_score,
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
@@ -24,21 +24,23 @@ class CorrectionHistory {
     }
 
     const Score static_eval_error = search_score - stack->static_eval;
-    const int bonus = std::clamp(static_eval_error * depth / 8,
-                                 -kHistoryGravity / 4,
-                                 kHistoryGravity / 4);
+    const int scaled_bonus =
+        static_eval_error * static_cast<int>(corr_history_scale);
+    const int weight = std::min(1 + depth, 16);
 
-    // Apply a linear dampening to the bonus as the depth increases
-    Score &score = table_[state_.turn][GetTableIndex()];
-    score += ScaleBonus(score, bonus, kHistoryGravity);
+    auto &score = table_[state.turn][GetTableIndex(state)];
+    score = (score * (corr_history_scale - weight) + scaled_bonus * weight) /
+            corr_history_scale;
+    score = std::clamp<Score>(score,
+                              corr_history_scale * -max_corr_hist,
+                              corr_history_scale * max_corr_hist);
   }
 
-  [[nodiscard]] Score CorrectedStaticEval() const {
-    const Score static_eval = eval::Evaluate(state_);
-    const Score correction = table_[state_.turn][GetTableIndex()];
+  [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
+                                        Score static_eval) const {
+    const Score correction = table_[state.turn][GetTableIndex(state)];
     const Score adjusted_score =
-        static_eval + (correction * std::abs(correction)) / kHistorySize;
-
+        static_eval + correction / static_cast<int>(corr_history_scale);
     // Ensure no static evaluations are mate scores
     return std::clamp(adjusted_score,
                       -kMateScore + kMaxPlyFromRoot + 1,
@@ -56,15 +58,15 @@ class CorrectionHistory {
            !(failed_low && static_eval < search_score);
   }
 
-  [[nodiscard]] int GetTableIndex() const {
-    return state_.pawn_key & (kHistorySize - 1);
+  [[nodiscard]] int GetTableIndex(const BoardState &state) const {
+    return state.pawn_key & 16383;
   }
 
  private:
-  const BoardState &state_;
-  MultiArray<Score, kNumColors, kHistorySize> table_;
+  MultiArray<Score, kNumColors, 16384>
+      table_;  // Keep the size fixed for the MultiArray
 };
 
-}  // namespace history
+}  // namespace search::history
 
 #endif  // INTEGRAL_CORRECTION_HISTORY_H

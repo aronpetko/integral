@@ -4,15 +4,24 @@
 #include "move.h"
 #include "move_gen.h"
 
+// clang-format off
+constexpr std::array<U8, 64> kCastlingRights = {
+  7, 15, 15, 15,  3, 15, 15, 11,
+  15, 15, 15, 15, 15, 15, 15, 15,
+  15, 15, 15, 15, 15, 15, 15, 15,
+  15, 15, 15, 15, 15, 15, 15, 15,
+  15, 15, 15, 15, 15, 15, 15, 15,
+  15, 15, 15, 15, 15, 15, 15, 15,
+  15, 15, 15, 15, 15, 15, 15, 15,
+  13, 15, 15, 15, 12, 15, 15, 14
+};
+// clang-format on
+
 Board::Board() : history_({}) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
-  // Reset history everytime we parse from fen, since they will be re-applied
-  // when the moves are made
-  history_.Clear();
   state_ = fen::StringToBoard(fen_str);
-
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 bool Board::IsMovePseudoLegal(Move move) {
@@ -25,9 +34,8 @@ bool Board::IsMovePseudoLegal(Move move) {
   }
 
   const auto piece_type = state_.GetPieceType(from);
-  const auto promotion_type = move.GetPromotionType();
   if (piece_type != PieceType::kPawn &&
-      promotion_type != PromotionType::kNone) {
+      move.GetType() == MoveType::kPromotion) {
     return false;
   }
 
@@ -35,23 +43,24 @@ bool Board::IsMovePseudoLegal(Move move) {
   const BitBoard occupied = our_pieces | their_pieces;
 
   if (piece_type == PieceType::kKing) {
-    const bool is_white = us == Color::kWhite;
-
     constexpr int kKingsideCastleDist = -2;
     constexpr int kQueensideCastleDist = 2;
+    constexpr BitBoard kWhiteKingsideOccupancy = 0x60;
+    constexpr BitBoard kWhiteQueensideOccupancy = 0xe;
+    constexpr BitBoard kBlackKingsideOccupancy = 0x6000000000000000;
+    constexpr BitBoard kBlackQueensideOccupancy = 0xe00000000000000;
 
     // Note: the only way move_dist is ever 2 or -2 is from
     // move_gen::CastlingMoves allowing it
     const int move_dist = static_cast<int>(from) - static_cast<int>(to);
     if (move_dist == kKingsideCastleDist) {
       return !state_.checkers && state_.castle_rights.CanKingsideCastle(us) &&
-             !occupied.IsSet(is_white ? Squares::kG1 : Squares::kG8) &&
-             !occupied.IsSet(is_white ? Squares::kF1 : Squares::kF8);
+             !(occupied & (us == Color::kWhite ? kWhiteKingsideOccupancy
+                                               : kBlackKingsideOccupancy));
     } else if (move_dist == kQueensideCastleDist) {
       return !state_.checkers && state_.castle_rights.CanQueensideCastle(us) &&
-             !occupied.IsSet(is_white ? Squares::kC1 : Squares::kC8) &&
-             !occupied.IsSet(is_white ? Squares::kD1 : Squares::kD8) &&
-             !occupied.IsSet(is_white ? Squares::kB1 : Squares::kB8);
+             !(occupied & (us == Color::kWhite ? kWhiteQueensideOccupancy
+                                               : kBlackQueensideOccupancy));
     }
   }
 
@@ -59,12 +68,12 @@ bool Board::IsMovePseudoLegal(Move move) {
   switch (piece_type) {
     case PieceType::kPawn: {
       BitBoard en_passant_mask;
-      if (state_.en_passant.has_value()) {
-        en_passant_mask = BitBoard::FromSquare(state_.en_passant.value());
+      if (state_.en_passant != Squares::kNoSquare) {
+        en_passant_mask = BitBoard::FromSquare(state_.en_passant);
       }
       const BitBoard pawn_attacks = (move_gen::PawnAttacks(from, state_.turn) &
                                      (their_pieces | en_passant_mask));
-      possible_moves = move_gen::PawnMoves(from, state_) | pawn_attacks;
+      possible_moves = move_gen::PawnPushMoves(from, state_) | pawn_attacks;
       break;
     }
     case PieceType::kKnight:
@@ -124,7 +133,9 @@ bool Board::IsMoveLegal(Move move) {
     // attacked on, since the threats bitboard doesn't xray past pieces
     return !move_gen::GetAttackersTo(
         state_, to, state_.Occupied() ^ king_mask, them);
-  } else if (piece_type == PieceType::kPawn && to == state_.en_passant) {
+  } else if (piece_type == PieceType::kPawn &&
+             state_.en_passant != Squares::kNoSquare &&
+             to == state_.en_passant) {
     // Pawn must be directly behind/in front of the attack square
     const BitBoard en_passant_pawn_mask =
         BitBoard::FromSquare(is_white ? to - 8 : to + 8);
@@ -166,82 +177,59 @@ void Board::MakeMove(Move move) {
   // Create new board state
   history_.Push(state_);
 
+  const Color us = state_.turn, them = FlipColor(us);
+
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto piece_type = state_.GetPieceType(from);
+  const auto piece = state_.GetPieceType(from),
+             captured = state_.GetPieceType(to);
+  const auto move_type = move.GetType();
 
-  int new_fifty_move_clock = state_.fifty_moves_clock + 1;
+  int new_fifty_move_clock =
+      piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
 
-  // Xor out the previous turn hash
-  state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
-
-  // Xor out previous en passant square if it was captured
-  if (state_.en_passant.has_value()) {
-    state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-  }
-
-  const auto captured_piece = state_.GetPieceType(to);
-  if (captured_piece != PieceType::kNone) {
-    state_.RemovePiece(to, FlipColor(state_.turn));
+  if (move_type == MoveType::kEnPassant) {
+    const Square pawn_square =
+        state_.en_passant - (us == Color::kWhite ? 8 : -8);
+    state_.RemovePiece(pawn_square, them);
+  } else if (captured != PieceType::kNone) {
+    state_.RemovePiece(to, them);
     new_fifty_move_clock = 0;
   }
 
-  const bool is_white = state_.turn == Color::kWhite;
-
-  // Used for zobrist hashing later
-  bool move_is_double_push = false;
-  if (piece_type == PieceType::kPawn) {
-    new_fifty_move_clock = 0;
-
-    // Check if this was an en passant capture
-    if (to == state_.en_passant) {
-      // Pawn must be directly behind/in front of the attack square
-      const Square en_passant_pawn_pos = is_white ? to - 8 : to + 8;
-      state_.RemovePiece(en_passant_pawn_pos, FlipColor(state_.turn));
-    } else {
-      // Setting en passant target if pawn moved two squares
-      constexpr int kDoublePushDist = 16;
-      if ((from ^ to) == kDoublePushDist) {
-        // Pawn must be directly behind/in front of the attack square
-        const Square en_passant_pawn_pos = is_white ? to - 8 : to + 8;
-        state_.en_passant = en_passant_pawn_pos;
-
-        // Keep track if this was a move that caused en passant to be set (for
-        // zobrist hashing)
-        move_is_double_push = true;
-      }
-    }
+  // Xor out en passant if it exists
+  if (state_.en_passant != Squares::kNoSquare) {
+    state_.zobrist_key ^= zobrist::en_passant[state_.en_passant.File()];
+    state_.en_passant = Squares::kNoSquare;
   }
 
-  if (!move_is_double_push) {
-    state_.en_passant = std::nullopt;
+  if (piece == PieceType::kPawn && std::abs(to.Rank() - from.Rank()) == 2) {
+    state_.en_passant = to - (us == Color::kWhite ? 8 : -8);
+    state_.zobrist_key ^= zobrist::en_passant[state_.en_passant.File()];
   }
-
-  HandleCastling(move);
 
   // Move the piece
   state_.RemovePiece(from, state_.turn);
-  state_.PlacePiece(to, piece_type, state_.turn);
+  auto new_piece = piece;
 
-  const auto promotion_type = move.GetPromotionType();
-  if (piece_type == PieceType::kPawn &&
-      promotion_type != PromotionType::kNone) {
-    HandlePromotions(move);
+  if (move_type == MoveType::kCastle) {
+    HandleCastling(move);
+  } else if (move_type == MoveType::kPromotion) {
+    new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
   }
 
-  // Xor in new turn
+  state_.PlacePiece(to, new_piece, state_.turn);
+
+  // Update the castling rights depending on the piece that moved
+  state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
+  state_.castle_rights &= kCastlingRights[from] & kCastlingRights[to];
+  state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
+
   state_.turn = FlipColor(state_.turn);
-  state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
-
-  // Xor en passant in now that the turn's have been switched
-  // This is important since HashEnPassant checks if the opponents pawn
-  // is next to the double-pushed pawn
-  if (move_is_double_push) {
-    state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-  }
+  state_.zobrist_key ^= zobrist::turn;
 
   state_.fifty_moves_clock = new_fifty_move_clock;
 
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 void Board::UndoMove() {
@@ -251,57 +239,61 @@ void Board::UndoMove() {
 void Board::MakeNullMove() {
   history_.Push(state_);
 
-  // Xor out the previous turn hash
-  state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
-
   // Xor out en passant if it exists
-  if (state_.en_passant.has_value()) {
-    state_.zobrist_key ^= zobrist::HashEnPassant(state_);
-    state_.en_passant = std::nullopt;
+  if (state_.en_passant != Squares::kNoSquare) {
+    state_.zobrist_key ^= zobrist::en_passant[state_.en_passant.File()];
+    state_.en_passant = Squares::kNoSquare;
   }
 
-  // Switch turn and xor in the new turn hash
   state_.turn = FlipColor(state_.turn);
-  state_.zobrist_key ^= zobrist::HashTurn(state_.turn);
+  state_.zobrist_key ^= zobrist::turn;
 
   state_.fifty_moves_clock++;
 
-  CalculateKingThreats();
+  CalculateThreats();
 }
 
 U64 Board::PredictKeyAfter(Move move) {
-  U64 key = state_.zobrist_key;
-  key ^= zobrist::HashTurn(state_.turn) ^
-         zobrist::HashTurn(FlipColor(state_.turn));
-
-  // Just swap sides
-  if (move.IsNull()) {
-    return key;
-  }
+  auto key = state_.zobrist_key ^ zobrist::turn;
 
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
+  const auto move_type = move.GetType();
   const auto piece = state_.GetPieceType(from);
 
   // Xor out from position
-  key ^= zobrist::HashSquare(from, state_, state_.turn, piece);
+  const int colored_piece = piece * 2 + state_.turn;
+  key ^= zobrist::pieces[colored_piece][from];
 
   const auto captured_piece = state_.GetPieceType(to);
   if (captured_piece != PieceType::kNone) {
-    // Xor out the captured piece
-    key ^=
-        zobrist::HashSquare(to, state_, FlipColor(state_.turn), captured_piece);
+    const int colored_captured_piece =
+        captured_piece * 2 + FlipColor(state_.turn);
+    key ^= zobrist::pieces[colored_captured_piece][to];
   }
 
-  const auto promotion_type = move.GetPromotionType();
-  if (piece == PieceType::kPawn && promotion_type != PromotionType::kNone) {
-    // Xor in the promoted piece
-    key ^=
-        zobrist::HashSquare(to, state_, state_.turn, PieceType(promotion_type));
-  } else {
-    // Xor in the moved piece
-    key ^= zobrist::HashSquare(to, state_, state_.turn, piece);
+  auto new_piece = piece;
+  if (move_type == MoveType::kPromotion) {
+    new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
   }
+
+  if (move_type == MoveType::kEnPassant) {
+    const Square pawn_square =
+        state_.en_passant - (state_.turn == Color::kWhite ? 8 : -8);
+    key ^= zobrist::pieces[PieceType::kPawn * 2 + FlipColor(state_.turn)]
+                          [pawn_square];
+  }
+
+  if (state_.en_passant != Squares::kNoSquare) {
+    key ^= zobrist::en_passant[state_.en_passant.File()];
+  }
+
+  if (piece == PieceType::kPawn && std::abs(to.Rank() - from.Rank()) == 2) {
+    key ^= zobrist::en_passant[from.File()];
+  }
+
+  const int colored_new_piece = new_piece * 2 + state_.turn;
+  key ^= zobrist::pieces[colored_new_piece][to];
 
   return key;
 }
@@ -366,105 +358,49 @@ void Board::HandleCastling(Move move) {
   const bool is_white = state_.turn == Color::kWhite;
 
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto piece_type = state_.GetPieceType(from);
+  const auto move_rook_for_castling = [this](Square rook_from, Square rook_to) {
+    state_.RemovePiece(rook_from, state_.turn);
+    state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
+  };
 
-  const auto old_castle_rights = state_.castle_rights;
+  constexpr int kKingsideCastleDist = -2;
+  constexpr int kQueensideCastleDist = 2;
 
-  if (piece_type == PieceType::kKing) {
-    if (state_.castle_rights.CanKingsideCastle(state_.turn) ||
-        state_.castle_rights.CanQueensideCastle(state_.turn)) {
-      const auto move_rook_for_castling = [this](const Square &rook_from,
-                                                 const Square &rook_to) {
-        state_.RemovePiece(rook_from, state_.turn);
-        state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
-      };
-
-      constexpr int kKingsideCastleDist = -2;
-      constexpr int kQueensideCastleDist = 2;
-
-      // Note: the only way move_dist is ever 2 or -2 is from
-      // move_gen::CastlingMoves allowing it
-      const int move_dist = static_cast<int>(from) - static_cast<int>(to);
-      if (move_dist == kKingsideCastleDist) {
-        move_rook_for_castling(is_white ? Squares::kH1 : Squares::kH8,
-                               is_white ? Squares::kF1 : Squares::kF8);
-      } else if (move_dist == kQueensideCastleDist) {
-        move_rook_for_castling(is_white ? Squares::kA1 : Squares::kA8,
-                               is_white ? Squares::kD1 : Squares::kD8);
-      }
-
-      state_.castle_rights.SetBothRights(state_.turn, false);
-    }
-  }
-  // Handle rook moves changing castle rights
-  else if (piece_type == PieceType::kRook &&
-           state_.castle_rights.CanCastle(state_.turn)) {
-    if (is_white) {
-      if (from == Squares::kH1) {
-        state_.castle_rights.SetCanKingsideCastle(state_.turn, false);
-      } else if (from == Squares::kA1) {
-        state_.castle_rights.SetCanQueensideCastle(state_.turn, false);
-      }
-    } else {
-      if (from == Squares::kH8) {
-        state_.castle_rights.SetCanKingsideCastle(state_.turn, false);
-      } else if (from == Squares::kA8) {
-        state_.castle_rights.SetCanQueensideCastle(state_.turn, false);
-      }
-    }
-  }
-
-  // Handle rook getting captured changing castle rights
-  auto their_kingside_rook =
-      state_.castle_rights.GetKingsideRook(FlipColor(state_.turn));
-  auto their_queenside_rook =
-      state_.castle_rights.GetQueensideRook(FlipColor(state_.turn));
-
-  if (to == their_kingside_rook) {
-    state_.castle_rights.SetCanKingsideCastle(FlipColor(state_.turn), false);
-  } else if (to == their_queenside_rook) {
-    state_.castle_rights.SetCanQueensideCastle(FlipColor(state_.turn), false);
-  }
-
-  if (state_.castle_rights != old_castle_rights) {
-    state_.zobrist_key ^= zobrist::HashCastleRights(old_castle_rights);
-    state_.zobrist_key ^= zobrist::HashCastleRights(state_.castle_rights);
+  // Note: the only way move_dist is ever 2 or -2 is from
+  // move_gen::CastlingMoves allowing it
+  const int move_dist = static_cast<int>(from) - static_cast<int>(to);
+  if (move_dist == kKingsideCastleDist) {
+    move_rook_for_castling(is_white ? Squares::kH1 : Squares::kH8,
+                           is_white ? Squares::kF1 : Squares::kF8);
+  } else if (move_dist == kQueensideCastleDist) {
+    move_rook_for_castling(is_white ? Squares::kA1 : Squares::kA8,
+                           is_white ? Squares::kD1 : Squares::kD8);
   }
 }
 
-void Board::HandlePromotions(Move move) {
-  const bool is_white = state_.turn == Color::kWhite;
+void Board::CalculateThreats() {
+  const Color them = FlipColor(state_.turn);
 
-  const auto to = move.GetTo();
-  const auto to_rank = to.Rank();
+  state_.threats = move_gen::PawnAttacks(state_.Pawns(them), them);
 
-  if ((is_white && to_rank == kNumRanks - 1) || (!is_white && to_rank == 0)) {
-    // Since this pawn is promoting, we remove the pawn in place of the promoted
-    // piece
-    state_.RemovePiece(to, state_.GetPieceColor(to));
-
-    switch (move.GetPromotionType()) {
-      case PromotionType::kKnight: {
-        state_.PlacePiece(to, PieceType::kKnight, state_.turn);
-        break;
-      }
-      case PromotionType::kBishop: {
-        state_.PlacePiece(to, PieceType::kBishop, state_.turn);
-        break;
-      }
-      case PromotionType::kRook: {
-        state_.PlacePiece(to, PieceType::kRook, state_.turn);
-        break;
-      }
-      case PromotionType::kAny:  // Just choose a queen
-      case PromotionType::kQueen: {
-        state_.PlacePiece(to, PieceType::kQueen, state_.turn);
-        break;
-      }
-      default:
-        break;
-    }
+  for (Square square : state_.Knights(them)) {
+    state_.threats |= move_gen::KnightMoves(square);
   }
+
+  const BitBoard queens = state_.Queens(them);
+  const BitBoard occupied = state_.Occupied();
+
+  for (Square square : state_.Bishops(them) | queens) {
+    state_.threats |= move_gen::BishopMoves(square, occupied);
+  }
+
+  for (Square square : state_.Rooks(them) | queens) {
+    state_.threats |= move_gen::RookMoves(square, occupied);
+  }
+
+  state_.threats |= move_gen::KingAttacks(state_.King(them).GetLsb());
+
+  CalculateKingThreats();
 }
 
 void Board::CalculateKingThreats() {

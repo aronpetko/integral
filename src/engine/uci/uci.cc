@@ -1,5 +1,7 @@
 #include "uci.h"
 
+#include <tbprobe.h>
+
 #include <string>
 
 #include "../../ascii_logo.h"
@@ -8,127 +10,212 @@
 #include "../../tests/tests.h"
 #include "../../tuner/tuner.h"
 #include "../search/search.h"
+#include "../search/syzygy/syzygy.h"
 #include "fmt/format.h"
 
 namespace uci {
 
-void InitializeOptions() {
-  AddOption<OptionVisibility::kPublic>(
-      "Hash", 64, 1, 1048576, [](Option &option) {
-        transposition_table.Resize(option.GetValue<int>());
-      });
-  AddOption<OptionVisibility::kPublic>(
-      "Pawn Cache", 1, 1, 1048576, [](Option &option) {
-        eval::pawn_cache.Resize(option.GetValue<int>());
-      });
-  AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 1);
-  AddOption<OptionVisibility::kPublic>("Move Overhead", 50, 0, 10000);
+namespace options {
+
+void Initialize(search::Search &search) {
+  // clang-format off
+  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [](const Option &option) {
+    search::transposition_table.Resize(option.GetValue<int>());
+  });
+  listener.AddOption<OptionVisibility::kPublic>("PawnCache", 1, 1, 16, [](const Option &option) {
+    eval::pawn_cache.Resize(option.GetValue<int>());
+  });
+  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
+    search.SetThreadCount(option.GetValue<U16>());
+  });
+  listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
+    syzygy::SetPath(option.GetValue<std::string>());
+  });
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeDepth", 1, 1, 100, [](const Option &option) {
+    syzygy::probe_depth = option.GetValue<int>();
+  });
+  // clang-format on
 }
 
-void Position(Board &board, std::stringstream &input_stream) {
-  std::string position_type;
-  input_stream >> position_type;
+}  // namespace options
 
-  std::string position_fen;
-  if (position_type == "fen") {
-    position_fen =
-        input_stream.str().substr(static_cast<int>(input_stream.tellg()) + 1);
-  } else if (position_type == "startpos") {
-    position_fen = fen::kStartFen;
-  }
+namespace commands {
 
-  board.SetFromFen(position_fen);
+void Initialize(Board &board, search::Search &search) {
+  // clang-format off
+  listener.RegisterCommand("position", CommandType::kOrdered, {
+    CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
+    CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("kiwipete", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("moves", ArgumentType::kOptional, UnlimitedInputProcessor())
+  }, [&board](Command *cmd) {
+    std::string board_fen;
+    if (cmd->ArgumentExists("startpos")) board_fen = fen::kStartFen;
+    else if (cmd->ArgumentExists("kiwipete")) board_fen = fen::kKiwipeteFen;
+    else if (cmd->ArgumentExists("fen")) board_fen = *cmd->ParseArgument<std::string>("fen");
+    board.SetFromFen(board_fen);
 
-  std::string dummy;
-  while (input_stream >> dummy && dummy != "moves")
-    ;
-
-  std::string move_input;
-  while (input_stream >> move_input) {
-    const auto move = Move::FromStr(move_input);
-    if (move && board.IsMovePseudoLegal(move)) {
-      board.MakeMove(move);
-    } else {
-      std::cerr << fmt::format("invalid move: {}\n", move_input);
+    const auto moves = cmd->ParseArgument<std::string>("moves");
+    if (moves) {
+      std::stringstream stream(*moves);
+      std::string move_str;
+      while (stream >> move_str) {
+        const auto move = Move::FromStr(move_str, board.GetState());
+        if (move) board.MakeMove(move);
+        else fmt::println("error: invalid move '{}'", move_str);
+      }
     }
-  }
-}
+  });
 
-void Go(Board &board, Search &search, std::stringstream &input_stream) {
-  TimeConfig time_config;
-  std::array<int, 2> time_left = {};
-  std::array<int, 2> increment = {};
-
-  std::string option;
-  while (input_stream >> option) {
-    if (option == "wtime") {
-      input_stream >> time_left[Color::kWhite];
-    } else if (option == "btime") {
-      input_stream >> time_left[Color::kBlack];
-    } else if (option == "winc") {
-      input_stream >> increment[Color::kWhite];
-    } else if (option == "binc") {
-      input_stream >> increment[Color::kBlack];
-    } else if (option == "movetime") {
-      input_stream >> time_config.move_time;
-    } else if (option == "depth") {
-      input_stream >> time_config.depth;
-    } else if (option == "infinite") {
-      time_config.infinite = true;
-    } else if (option == "perft") {
-      int depth;
-      input_stream >> depth;
-      tests::Perft(board, depth);
+  listener.RegisterCommand("go", CommandType::kUnordered, {
+    CreateArgument("perft", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("infinite", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("movetime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("depth", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("wtime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("binc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+  }, [&board, &search](Command *cmd) {
+    const auto perft_depth = cmd->ParseArgument<int>("perft");
+    if (perft_depth) {
+      tests::Perft(board, *perft_depth);
       return;
     }
-  }
 
-  if (option.empty()) {
-    time_config.infinite = true;
-  }
+    search::TimeConfig time_config;
+    std::array<int, 2> time_left = {};
+    std::array<int, 2> increment = {};
 
-  const Color turn = board.GetState().turn;
-  time_config.time_left = time_left[turn];
-  time_config.increment = increment[turn];
+    const auto white_time = cmd->ParseArgument<int>("wtime");
+    if (white_time) time_left[Color::kWhite] = *white_time;
 
-  search.Start(time_config);
-}
+    const auto black_time = cmd->ParseArgument<int>("btime");
+    if (black_time) time_left[Color::kBlack] = *black_time;
 
-void Test(std::stringstream &input_stream) {
-  std::string type;
-  input_stream >> type;
+    const auto white_inc = cmd->ParseArgument<int>("winc");
+    if (white_inc) increment[Color::kWhite] = *white_inc;
 
-  if (type == "perft") {
-    tests::PerftSuite();
-  } else if (type == "see") {
-    tests::SEESuite();
-  } else {
-    tests::PerftSuite();
-    tests::SEESuite();
-  }
-}
+    const auto black_inc = cmd->ParseArgument<int>("binc");
+    if (black_inc) increment[Color::kBlack] = *black_inc;
 
-void SetOption(std::stringstream &input_stream) {
-  std::string arg;
-  input_stream >> arg;
+    const auto move_time = cmd->ParseArgument<int>("movetime");
+    if (move_time) time_config.move_time = *move_time;
 
-  if (arg == "name") {
-    std::string name;
-    input_stream >> name;
+    const auto depth = cmd->ParseArgument<int>("depth");
+    if (depth) time_config.depth = *depth;
 
-    input_stream >> arg;
-    if (arg == "value") {
-      std::string value;
-      input_stream >> value;
-      GetOption(name).SetValue(value);
+    const auto nodes = cmd->ParseArgument<int>("nodes");
+    if (nodes) time_config.nodes = *nodes;
+
+    const Color turn = board.GetState().turn;
+    time_config.time_left = time_left[turn];
+    time_config.increment = increment[turn];
+
+    // No arguments passed has the same behavior as passing 'infinite'
+    if (cmd->ArgumentExists("infinite") || !time_config.HasBeenModified())
+      time_config.infinite = true;
+
+    search.Start(time_config);
+  });
+
+  listener.RegisterCommand("stop", CommandType::kUnordered, {}, [&search](Command *cmd) {
+    search.Stop();
+  });
+
+  listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {
+    search.NewGame();
+  });
+
+  listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
+    fmt::println("info cp {}", eval::Evaluate(board.GetState()));
+  });
+
+  listener.RegisterCommand("print", CommandType::kUnordered, {}, [&board](Command *cmd) {
+    board.PrintPieces();
+  });
+
+  listener.RegisterCommand("setoption", CommandType::kUnordered, {
+    CreateArgument("name", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("value", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("wtime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+  }, [](Command *cmd) {
+    const auto option_name = *cmd->ParseArgument<std::string>("name");
+    const auto option_value = *cmd->ParseArgument<std::string>("value");
+    listener.GetOption(option_name).SetValue(option_value);
+  });
+
+  listener.RegisterCommand("test", CommandType::kUnordered, {
+    CreateArgument("see", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("perft", ArgumentType::kOptional, NoInputProcessor()),
+  }, [](Command *cmd) {
+    if (cmd->ArgumentExists("see")) tests::SEESuite();
+    else if (cmd->ArgumentExists("perft")) tests::PerftSuite();
+    else {
+      tests::SEESuite();
+      tests::PerftSuite();
     }
+  });
+
+  listener.RegisterCommand("bench", CommandType::kUnordered, {
+    CreateArgument("depth", ArgumentType::kOptional, NoInputProcessor()),
+  }, [](Command *cmd) {
+    const auto bench_depth = cmd->ParseArgument<int>("depth");
+    if (bench_depth) tests::BenchSuite(*bench_depth);
+    else tests::BenchSuite(tests::kDefaultBenchDepth);
+  });
+
+  listener.RegisterCommand("uci", CommandType::kUnordered, {}, [](Command *cmd) {
+    fmt::println(
+      "id name {}\n"
+      "id author {}",
+      constants::kEngineName,
+      constants::kEngineAuthor
+    );
+    listener.PrintOptions();
+    fmt::println("uciok");
+  });
+
+  listener.RegisterCommand("isready", CommandType::kUnordered, {}, [](Command *cmd) {
+    fmt::println("readyok");
+  });
+
+  listener.RegisterCommand("quit", CommandType::kUnordered, {}, [](Command *cmd) {
+    exit(EXIT_SUCCESS);
+  });
+  // clang-format on
+}
+
+}  // namespace commands
+
+Listener::~Listener() {
+  if (syzygy::enabled) {
+    syzygy::Free();
   }
 }
 
 void AcceptCommands(int arg_count, char **args) {
-  move_gen::InitializeAttacks();
+  Board board;
+  board.SetFromFen(fen::kStartFen);
 
-  InitializeOptions();
+  search::Search search(board);
+
+  options::Initialize(search);
+  commands::Initialize(board, search);
+
+  // OpenBench requires the bench command to be parsed from the command line
+  if (args[1] && std::string(args[1]) == "bench") {
+    const int depth =
+        arg_count == 3 ? std::stoi(args[2]) : tests::kDefaultBenchDepth;
+    tests::BenchSuite(depth);
+    return;
+  }
+
+  PrintAsciiLogo();
+  fmt::println(
+      "    {} by {}\n", constants::kEngineName, constants::kEngineAuthor);
 
 #ifdef TUNE
   Tuner tuner;
@@ -136,61 +223,7 @@ void AcceptCommands(int arg_count, char **args) {
   tuner.Tune();
 #endif
 
-  Board board;
-  board.SetFromFen(fen::kStartFen);
-
-  Search search(board);
-  search.NewGame();
-
-  if (args[1] && std::string(args[1]) == "bench") {
-    const int depth = arg_count == 3 ? std::stoi(args[2]) : 0;
-    tests::BenchSuite(board, search, depth);
-    return;
-  }
-
-  PrintAsciiLogo();
-  fmt::println("    Integral v{} by {}\n", kEngineVersion, kEngineAuthor);
-
-  std::string input_line;
-  while (input_line != "quit") {
-    std::getline(std::cin, input_line);
-    std::stringstream input_stream(input_line);
-
-    std::string command;
-    input_stream >> command;
-
-    if (command == "uci") {
-      fmt::println("id name {}", kEngineName);
-      fmt::println("id author {}", kEngineAuthor);
-      PrintOptions();
-      fmt::println("uciok");
-    } else if (command == "isready") {
-      fmt::println("readyok");
-    } else if (command == "position") {
-      search.WaitUntilFinished();
-      Position(board, input_stream);
-    } else if (command == "go") {
-      Go(board, search, input_stream);
-    } else if (command == "stop") {
-      search.Stop();
-    } else if (command == "ucinewgame") {
-      search.WaitUntilFinished();
-      search.NewGame();
-    } else if (command == "print") {
-      board.PrintPieces();
-    } else if (command == "test") {
-      Test(input_stream);
-    } else if (command == "bench") {
-      // Bench is its own command for OpenBench support
-      int depth = 0;
-      input_stream >> depth;
-      tests::BenchSuite(board, search, depth);
-    } else if (command == "setoption") {
-      SetOption(input_stream);
-    } else if (command == "eval" || command == "evaluate") {
-      fmt::println("{}", eval::Evaluate(board.GetState()));
-    }
-  }
+  listener.Listen();
 }
 
 }  // namespace uci

@@ -60,33 +60,23 @@ constexpr std::array kBenchFens = {
 };
 // clang-format on
 
-constexpr int kDefaultBenchDepth = 10;
+void BenchSuite(int depth) {
+  Board board;
+  search::Search search(board);
 
-void BenchSuite(Board &board, Search &search, int depth) {
-  if (depth == 0) {
-    depth = kDefaultBenchDepth;
-  }
-
-  Board old_board = board;
   U64 nodes = 0, elapsed = 0;
-
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
-
     search.NewGame();
-    search.Bench(depth);
 
     auto &time_mgmt = search.GetTimeManagement();
-    nodes += search.GetNodesSearched();
+    nodes += search.Bench(depth);
     elapsed += time_mgmt.TimeElapsed();
   }
 
   fmt::println("{} nodes {} nps",
                nodes,
                static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));
-
-  board = old_board;
-  search.NewGame();
 }
 
 }  // namespace tests

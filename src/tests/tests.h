@@ -1,8 +1,9 @@
 #ifndef INTEGRAL_TESTS_H
 #define INTEGRAL_TESTS_H
 
-#include <chrono>
 #include <fmt/format.h>
+
+#include <chrono>
 #include <ranges>
 #include <sstream>
 #include <vector>
@@ -14,7 +15,9 @@ class Search;
 
 namespace tests {
 
-void BenchSuite(Board &board, Search &search, int depth);
+constexpr int kDefaultBenchDepth = 12;
+
+void BenchSuite(int depth);
 
 void SEESuite();
 

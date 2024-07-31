@@ -74,7 +74,11 @@ class BitBoard {
     return Iterator(0);
   }
 
-  static BitBoard FromSquare(U8 square) {
+  explicit operator U64() const {
+    return bitboard_;
+  }
+
+  static constexpr BitBoard FromSquare(U8 square) {
     return {1ULL << square};
   }
 

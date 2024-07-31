@@ -1,14 +1,14 @@
 #include "board.h"
 
 Move Move::NullMove() {
-  return Move(0, 0);
+  return Move(0, 0, MoveType::kNormal);
 }
 
 Move::operator bool() const {
   return !IsNull();
 }
 
-Move Move::FromStr(std::string_view str) {
+Move Move::FromStr(std::string_view str, const BoardState &state) {
   constexpr int kMinMoveLen = 4, kMaxMoveLen = 5;
   if (str.length() < kMinMoveLen || str.length() > kMaxMoveLen)
     return Move::NullMove();
@@ -19,12 +19,24 @@ Move Move::FromStr(std::string_view str) {
   if (from_rank < 0 || from_rank >= 8 || to_rank < 0 || to_rank >= 8 ||
       from_file < 0 || from_file >= 8 || to_file < 0 || to_file >= 8)
     return Move::NullMove();
-  ;
 
   const auto from = Square::FromRankFile(from_rank, from_file);
   const auto to = Square::FromRankFile(to_rank, to_file);
 
-  if (str.length() < kMaxMoveLen) return Move(from, to);
+  auto flag = MoveType::kNormal;
+
+  if (str.length() < kMaxMoveLen) {
+    const auto piece = state.GetPieceType(from);
+    if (piece == PieceType::kKing && std::abs(from_file - to_file) == 2) {
+      flag = MoveType::kCastle;
+    } else if (piece == PieceType::kPawn) {
+      if (state.en_passant && to == state.en_passant) {
+        flag = MoveType::kEnPassant;
+      }
+    }
+
+    return Move(from, to, flag);
+  }
 
   PromotionType promotion_type;
   switch (str[4]) {
@@ -46,32 +58,26 @@ Move Move::FromStr(std::string_view str) {
       break;
     default:
       return Move::NullMove();
-      ;
   }
 
   return Move(from, to, promotion_type);
 }
 
 bool Move::IsCapture(const BoardState &state) const {
-  const auto from = GetFrom();
-  const auto to = GetTo();
-  return state.GetPieceType(to) != PieceType::kNone ||
-         (state.GetPieceType(from) == PieceType::kPawn &&
-          state.en_passant == to);
+  return state.GetPieceType(GetTo()) != PieceType::kNone || IsEnPassant(state);
 }
 
-bool Move::IsTactical(const BoardState &state) const {
-  return IsCapture(state) || GetPromotionType() != PromotionType::kNone;
+bool Move::IsNoisy(const BoardState &state) const {
+  return IsCapture(state) || GetType() == MoveType::kPromotion;
 }
 
 bool Move::IsEnPassant(const BoardState &state) const {
-  return state.GetPieceType(GetFrom()) == PieceType::kPawn &&
-         GetTo() == state.en_passant;
+  return GetType() == MoveType::kEnPassant;
 }
 
 bool Move::IsUnderPromotion() const {
   const auto promo_type = GetPromotionType();
-  return promo_type != PromotionType::kNone &&
+  return GetType() == MoveType::kPromotion &&
          promo_type != PromotionType::kQueen &&
          promo_type != PromotionType::kKnight;
 }
@@ -86,23 +92,23 @@ std::string Move::ToString() const {
                     std::to_string(from_rank + 1) +
                     std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);
 
-  const auto promo_type = GetPromotionType();
-  switch (promo_type) {
-    case PromotionType::kAny:
-    case PromotionType::kQueen:
-      res += 'q';
-      break;
-    case PromotionType::kKnight:
-      res += 'n';
-      break;
-    case PromotionType::kBishop:
-      res += 'b';
-      break;
-    case PromotionType::kRook:
-      res += 'r';
-      break;
-    default:
-      break;
+  if (GetType() == MoveType::kPromotion) {
+    switch (GetPromotionType()) {
+      case PromotionType::kQueen:
+        res += 'q';
+        break;
+      case PromotionType::kKnight:
+        res += 'n';
+        break;
+      case PromotionType::kBishop:
+        res += 'b';
+        break;
+      case PromotionType::kRook:
+        res += 'r';
+        break;
+      default:
+        break;
+    }
   }
 
   return res;

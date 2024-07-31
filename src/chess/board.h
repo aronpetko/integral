@@ -17,9 +17,6 @@ class CastleRights {
   static constexpr int kKingsideIndex = 0;
   static constexpr int kQueensideIndex = 1;
 
-  static constexpr std::array<std::array<Square, 2>, 2> kRookSquares = {
-      {{Squares::kH8, Squares::kA8}, {Squares::kH1, Squares::kA1}}};
-
   static constexpr std::array<std::array<U8, 2>, 2> kMasks = {
       {{CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside},
        {CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside}}};
@@ -30,43 +27,40 @@ class CastleRights {
     return rights_ == other.rights_;
   }
 
-  [[nodiscard]] inline bool CanKingsideCastle(Color turn) const {
+  [[nodiscard]] constexpr bool CanKingsideCastle(Color turn) const {
     return rights_ & kMasks[turn][kKingsideIndex];
   }
 
-  [[nodiscard]] inline bool CanQueensideCastle(Color turn) const {
+  [[nodiscard]] constexpr bool CanQueensideCastle(Color turn) const {
     return rights_ & kMasks[turn][kQueensideIndex];
   }
 
-  [[nodiscard]] inline bool CanCastle(Color turn) const {
+  [[nodiscard]] constexpr bool CanCastle(Color turn) const {
     return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
-  inline void SetCanKingsideCastle(Color turn, bool value) {
+  constexpr void SetCanKingsideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kKingsideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  inline void SetCanQueensideCastle(Color turn, bool value) {
+  constexpr void SetCanQueensideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  inline void SetBothRights(Color turn, bool value) {
+  constexpr void SetBothRights(Color turn, bool value) {
     const U8 mask =
         kMasks[turn][kKingsideIndex] | kMasks[turn][kQueensideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
   }
 
-  [[nodiscard]] inline Square GetKingsideRook(Color turn) const {
-    return kRookSquares[turn][kKingsideIndex];
+  U8 operator&=(U8 mask) {
+    rights_ &= mask;
+    return rights_;
   }
 
-  [[nodiscard]] inline Square GetQueensideRook(Color turn) const {
-    return kRookSquares[turn][kQueensideIndex];
-  }
-
-  inline U8 GetRights() const {
+  [[nodiscard]] U8 AsU8() const {
     return rights_;
   }
 
@@ -78,7 +72,7 @@ struct BoardState {
   BoardState()
       : turn(Color::kWhite),
         fifty_moves_clock(0),
-        en_passant(std::nullopt),
+        en_passant(Squares::kNoSquare),
         zobrist_key(0ULL),
         pawn_key(0ULL),
         checkers(0ULL),
@@ -104,10 +98,11 @@ struct BoardState {
 
     // Insert the piece to the hash
     if constexpr (update_key) {
-      zobrist_key ^= zobrist::HashSquare(square, *this, color, piece_type);
+      const int colored_piece = piece_type * 2 + color;
+      zobrist_key ^= zobrist::pieces[colored_piece][square];
 
       if (piece_type == PieceType::kPawn) {
-        pawn_key ^= zobrist::HashSquare(square, *this, color, PieceType::kPawn);
+        pawn_key ^= zobrist::pieces[colored_piece][square];
       }
     }
   }
@@ -118,10 +113,11 @@ struct BoardState {
 
     // Remove the piece from the hash
     if constexpr (update_key) {
-      zobrist_key ^= zobrist::HashSquare(square, *this, color, piece_type);
+      const int colored_piece = piece_type * 2 + color;
+      zobrist_key ^= zobrist::pieces[colored_piece][square];
 
       if (piece_type == PieceType::kPawn) {
-        pawn_key ^= zobrist::HashSquare(square, *this, color, PieceType::kPawn);
+        pawn_key ^= zobrist::pieces[colored_piece][square];
       }
     }
 
@@ -232,12 +228,13 @@ struct BoardState {
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, kSquareCount> piece_on_square;
   Color turn;
-  U16 fifty_moves_clock;
-  std::optional<Square> en_passant;
+  U8 fifty_moves_clock;
+  Square en_passant;
   CastleRights castle_rights;
   U64 zobrist_key;
   U64 pawn_key;
   BitBoard checkers;
+  BitBoard threats;
   BitBoard pinned;
   SideTable<ScorePair> piece_scores;
   int phase;
@@ -251,15 +248,7 @@ class Board {
     return state_;
   }
 
-  inline BoardState &GetPrevState() {
-    return history_.Back();
-  }
-
   void SetFromFen(std::string_view fen_str);
-
-  [[nodiscard]] bool IsMovePseudoLegal(Move move);
-
-  [[nodiscard]] bool IsMoveLegal(Move move);
 
   void MakeMove(Move move);
 
@@ -267,20 +256,24 @@ class Board {
 
   void UndoMove();
 
-  U64 PredictKeyAfter(Move move);
+  void PrintPieces();
+
+  [[nodiscard]] bool IsMovePseudoLegal(Move move);
+
+  [[nodiscard]] bool IsMoveLegal(Move move);
+
+  [[nodiscard]] U64 PredictKeyAfter(Move move);
 
   [[nodiscard]] bool HasRepeated(U16 ply);
 
   [[nodiscard]] bool IsDraw(U16 ply);
 
-  void PrintPieces();
-
  private:
   void HandleCastling(Move move);
 
-  void HandlePromotions(Move move);
-
   void CalculateKingThreats();
+
+  void CalculateThreats();
 
  private:
   BoardState state_;

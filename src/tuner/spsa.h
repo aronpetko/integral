@@ -12,8 +12,13 @@ class Tunable {
                    double value,
                    double min,
                    double max,
+                   double step,
+                   bool disabled = false,
                    double learning_rate = 0.002)
       : value_(value) {
+#ifdef SPSA_TUNE
+    if (disabled) return;
+
     const int exponent = std::max({GetScalingExponent(value),
                                    GetScalingExponent(min),
                                    GetScalingExponent(max)});
@@ -23,16 +28,14 @@ class Tunable {
     const auto int_min = static_cast<I64>(min * scaling_constant_);
     const auto int_max = static_cast<I64>(max * scaling_constant_);
 
-    uci::AddOption<uci::OptionVisibility::kHidden>(
+    uci::listener.AddOption<uci::OptionVisibility::kPublic>(
         name, int_value, int_min, int_max, [this](uci::Option &option) {
           value_ =
               option.GetValue<I64>() / static_cast<double>(scaling_constant_);
         });
 
-#ifdef SPSA_TUNE
-    constexpr double kStepFactor = 0.05;
-    const int step = (int_max - int_min) * kStepFactor;
-    fmt::println("{}, {}, {}, {}, {}, {}",
+    const int int_step = static_cast<I64>(step * scaling_constant_);
+    fmt::println("{}, int, {}, {}, {}, {}, {}",
                  name,
                  int_value,
                  int_min,
