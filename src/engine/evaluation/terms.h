@@ -28,7 +28,7 @@ using PieceTable = std::array<T, kNumPieceTypes>;
 template <typename T>
 using PieceSquareTable = PieceTable<SquareTable<T>>;
 
-// [is_our_piece][pawn_position][piece_position]
+// [is_our_piece][pawn_position][piece][piece_position]
 template <typename T>
 using PawnRelativePSQT = SideTable<SquareTable<PieceTable<SquareTable<T>>>>;
 
