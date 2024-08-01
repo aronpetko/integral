@@ -46,7 +46,8 @@ struct EvalTrace {
   // The names, though they are not constant, must match the above names (for
   // ease of use with the tuner)
   eval::PieceTable<TraceTerm> kPieceValues{};
-  eval::PawnRelativePSQT<TraceTerm> kPieceSquareTable{};
+  eval::PawnRelativePSQT<TraceTerm> kPawnPieceSquareTable{};
+  eval::PieceSquareTable<TraceTerm> kNormalPieceSquareTable{};
   eval::KnightMobilityTable<TraceTerm> kKnightMobility{};
   eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
   eval::RookMobilityTable<TraceTerm> kRookMobility{};

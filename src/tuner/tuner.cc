@@ -46,8 +46,7 @@ bool Tuner::LoadNextBatch() {
   int loaded_entries = 0;
   int last_percentage = 0;
 
-  while (loaded_entries < kBatchSize &&
-         std::getline(file_, line)) {
+  while (loaded_entries < kBatchSize && std::getline(file_, line)) {
     const auto bracket_pos = line.find_last_of('[');
     if (bracket_pos != std::string::npos) {
       // Extract the FEN part of the line (everything before the last '[')
@@ -194,7 +193,8 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
-  Add4DArrayParameter(kPieceSquareTable);
+  Add4DArrayParameter(kPawnPieceSquareTable);
+  Add2DArrayParameter(kNormalPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -243,7 +243,8 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_3D_ARRAY_COEFFICIENTS(arr4d[z])
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
-  GET_4D_ARRAY_COEFFICIENTS(kPieceSquareTable);
+  GET_4D_ARRAY_COEFFICIENTS(kPawnPieceSquareTable);
+  GET_2D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
@@ -539,9 +540,13 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);
 
-  fmt::print("constexpr PawnRelativePSQT<ScorePair> kPieceSquareTable = ");
+  fmt::print("constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable = ");
   Print4DArray(
       index, 2, kSquareCount, kNumPieceTypes, kSquareCount, parameters_);
+
+  fmt::print(
+      "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable = ");
+  Print2DArray(index, kNumPieceTypes, kSquareCount, parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
   PrintArray(index, kKnightMobility.size(), parameters_);
