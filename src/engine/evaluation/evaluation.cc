@@ -331,6 +331,10 @@ ScorePair Evaluation::EvaluateKnights() {
               pawn_color)][kKnight][square.RelativeTo<us>()],
           us);
     }
+    if (!state_.Pawns()) {
+      score += kNormalPieceSquareTable[kKnight][square.RelativeTo<us>()];
+      TRACE_INCREMENT(kNormalPieceSquareTable[kKnight][square.RelativeTo<us>()], us);
+    }
 
     const BitBoard legal_moves =
         LegalizeMoves(kKnight, square, move_gen::KnightMoves(square), us);
@@ -386,6 +390,10 @@ ScorePair Evaluation::EvaluateBishops() {
               pawn_color)][kBishop][square.RelativeTo<us>()],
           us);
     }
+    if (!state_.Pawns()) {
+      score += kNormalPieceSquareTable[kBishop][square.RelativeTo<us>()];
+      TRACE_INCREMENT(kNormalPieceSquareTable[kBishop][square.RelativeTo<us>()], us);
+    }
 
     const BitBoard legal_moves = LegalizeMoves(
         kBishop, square, move_gen::BishopMoves(square, occupied), us);
@@ -437,6 +445,10 @@ ScorePair Evaluation::EvaluateRooks() {
           kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
               pawn_color)][kRook][square.RelativeTo<us>()],
           us);
+    }
+    if (!state_.Pawns()) {
+      score += kNormalPieceSquareTable[kRook][square.RelativeTo<us>()];
+      TRACE_INCREMENT(kNormalPieceSquareTable[kRook][square.RelativeTo<us>()], us);
     }
 
     const BitBoard legal_moves =
@@ -527,6 +539,11 @@ ScorePair Evaluation::EvaluateKing() {
     TRACE_INCREMENT(kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
                         pawn_color)][kKing][square.RelativeTo<us>()],
                     us);
+  }
+
+  if (!state_.Pawns()) {
+    score += kNormalPieceSquareTable[kKing][square.RelativeTo<us>()];
+    TRACE_INCREMENT(kNormalPieceSquareTable[kKing][square.RelativeTo<us>()], us);
   }
 
   const Color them = FlipColor(us);

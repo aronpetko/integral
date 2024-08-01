@@ -25,7 +25,7 @@ double decay =
 double rate = kStartLearningRate;
 
 // New constant for batch size
-constexpr int kBatchSize = 2'500'000;
+constexpr int kBatchSize = 5'000'000;
 
 inline double Sigmoid(double K, double E) {
   return 1.0 / (1.0 + exp(-K * E / 400.0));
