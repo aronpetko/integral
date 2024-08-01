@@ -1,6 +1,8 @@
 #ifndef INTEGRAL_TUNER_H
 #define INTEGRAL_TUNER_H
 
+#include <fstream>
+
 #include "../chess/board.h"
 #include "../engine/evaluation/terms.h"
 #include "../utils/string.h"
@@ -44,7 +46,8 @@ struct EvalTrace {
   // The names, though they are not constant, must match the above names (for
   // ease of use with the tuner)
   eval::PieceTable<TraceTerm> kPieceValues{};
-  eval::PieceSquareTable<TraceTerm> kPieceSquareTable{};
+  eval::PawnRelativePSQT<TraceTerm> kPawnPieceSquareTable{};
+  eval::PieceSquareTable<TraceTerm> kNormalPieceSquareTable{};
   eval::KnightMobilityTable<TraceTerm> kKnightMobility{};
   eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
   eval::RookMobilityTable<TraceTerm> kRookMobility{};
@@ -92,11 +95,9 @@ inline EvalTrace trace;
 
 class Tuner {
  public:
-  Tuner() : num_terms_(0) {}
+  Tuner() : num_terms_(0), batch_count_(1) {}
 
-  void LoadFromFile(const std::string& source_file);
-
-  void Tune();
+  void LoadAndTune(const std::string& source_file);
 
  private:
   void InitBaseParameters();
@@ -112,11 +113,15 @@ class Tuner {
 
   [[nodiscard]] double ComputeOptimalK() const;
 
-  [[nodiscard]] VectorPair ComputeGradient(double K) const;
+  [[nodiscard]] VectorPair ComputeGradient(double K, int start, int end) const;
 
   [[nodiscard]] double StaticEvaluationErrors(double K) const;
 
   [[nodiscard]] double TunedEvaluationErrors(double K) const;
+
+  [[nodiscard]] bool LoadNextBatch();
+
+  void TuneBatch();
 
   void AddSingleParameter(const ScorePair& parameter) {
     parameters_.push_back({static_cast<double>(parameter.MiddleGame()),
@@ -139,11 +144,31 @@ class Tuner {
     }
   }
 
+  template <std::size_t N, std::size_t M, std::size_t L>
+  void Add3DArrayParameter(
+      const std::array<std::array<std::array<ScorePair, L>, M>, N>& parameter) {
+    for (const auto& array : parameter) {
+      Add2DArrayParameter(array);
+    }
+  }
+
+  template <std::size_t N, std::size_t M, std::size_t L, std::size_t K>
+  void Add4DArrayParameter(
+      const std::array<std::array<std::array<std::array<ScorePair, K>, L>, M>,
+                       N>& parameter) {
+    for (const auto& array : parameter) {
+      Add3DArrayParameter(array);
+    }
+  }
+
  private:
   int num_terms_;
   std::vector<TermPair> parameters_;
   std::vector<TunerEntry> entries_;
+  std::ifstream file_;
+  bool end_of_file_reached_ = false;
   VectorPair gradients_;
+  int batch_count_;
 };
 
 #endif  // INTEGRAL_TUNER_H

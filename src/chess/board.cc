@@ -183,6 +183,8 @@ void Board::MakeMove(Move move) {
   const auto piece = state_.GetPieceType(from),
              captured = state_.GetPieceType(to);
   const auto move_type = move.GetType();
+  const int bucket = state_.king_bucket[us],
+            their_bucket = state_.king_bucket[them];
 
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
@@ -209,15 +211,25 @@ void Board::MakeMove(Move move) {
 
   // Move the piece
   state_.RemovePiece(from, state_.turn);
-  auto new_piece = piece;
 
+  auto new_piece = piece;
   if (move_type == MoveType::kCastle) {
     HandleCastling(move);
   } else if (move_type == MoveType::kPromotion) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
   }
 
+  // Use updated king bucket if it changed
   state_.PlacePiece(to, new_piece, state_.turn);
+
+  // Must refresh all of our pieces if the king bucket changed
+  /* if (piece == kKing) {
+    const int new_bucket = eval::kKingBucketLayout[to.RelativeTo(us)];
+    if (new_bucket != bucket) {
+      state_.king_bucket[us] = new_bucket;
+      state_.RecalculatePieceScores();
+    }
+  } */
 
   // Update the castling rights depending on the piece that moved
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
@@ -355,12 +367,15 @@ bool Board::IsDraw(U16 ply) {
 }
 
 void Board::HandleCastling(Move move) {
-  const bool is_white = state_.turn == Color::kWhite;
+  const Color us = state_.turn;
+  const bool is_white = us == Color::kWhite;
 
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto move_rook_for_castling = [this](Square rook_from, Square rook_to) {
+  const auto move_rook_for_castling = [this, &us](Square rook_from,
+                                                               Square rook_to) {
     state_.RemovePiece(rook_from, state_.turn);
-    state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
+    state_.PlacePiece(
+        rook_to, PieceType::kRook, state_.turn);
   };
 
   constexpr int kKingsideCastleDist = -2;
