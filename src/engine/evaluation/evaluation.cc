@@ -230,8 +230,15 @@ ScorePair Evaluation::EvaluatePawns() {
     const int kb = state_.king_bucket[us], their_kb = state_.king_bucket[them];
     for (Square square : our_pawns) {
       TRACE_INCREMENT(kPieceValues[kPawn], us);
-      TRACE_INCREMENT(
-          kPieceSquareTable[kb][their_kb][kPawn][square.RelativeTo(us)], us);
+
+      for (Square pawn_square : state_.Pawns()) {
+        const Color pawn_color = state_.GetPieceColor(pawn_square);
+        score += kPieceSquareTable[pawn_color == us][pawn_square][kPawn]
+                                  [square.RelativeTo(us)];
+        TRACE_INCREMENT(kPieceSquareTable[pawn_color == us][pawn_square][kPawn]
+                                         [square.RelativeTo(us)],
+                        us);
+      }
 
       const int file = square.File();
       const int rank = square.RelativeRank<us>();
@@ -314,8 +321,14 @@ ScorePair Evaluation::EvaluateKnights() {
 
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
-    TRACE_INCREMENT(
-        kPieceSquareTable[kb][their_kb][kKnight][square.RelativeTo(us)], us);
+    for (Square pawn_square : state_.Pawns()) {
+      const Color pawn_color = state_.GetPieceColor(pawn_square);
+      score += kPieceSquareTable[pawn_color == us][pawn_square][kKnight]
+                                [square.RelativeTo(us)];
+      TRACE_INCREMENT(kPieceSquareTable[pawn_color == us][pawn_square][kKnight]
+                                       [square.RelativeTo(us)],
+                      us);
+    }
 
     const BitBoard legal_moves =
         LegalizeMoves(kKnight, square, move_gen::KnightMoves(square), us);
@@ -362,8 +375,14 @@ ScorePair Evaluation::EvaluateBishops() {
 
   for (Square square : our_bishops) {
     TRACE_INCREMENT(kPieceValues[kBishop], us);
-    TRACE_INCREMENT(
-        kPieceSquareTable[kb][their_kb][kBishop][square.RelativeTo(us)], us);
+    for (Square pawn_square : state_.Pawns()) {
+      const Color pawn_color = state_.GetPieceColor(pawn_square);
+      score += kPieceSquareTable[pawn_color == us][pawn_square][kBishop]
+                                [square.RelativeTo(us)];
+      TRACE_INCREMENT(kPieceSquareTable[pawn_color == us][pawn_square][kBishop]
+                                       [square.RelativeTo(us)],
+                      us);
+    }
 
     const BitBoard legal_moves = LegalizeMoves(
         kBishop, square, move_gen::BishopMoves(square, occupied), us);
@@ -407,8 +426,14 @@ ScorePair Evaluation::EvaluateRooks() {
 
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[kRook], us);
-    TRACE_INCREMENT(
-        kPieceSquareTable[kb][their_kb][kRook][square.RelativeTo(us)], us);
+    for (Square pawn_square : state_.Pawns()) {
+      const Color pawn_color = state_.GetPieceColor(pawn_square);
+      score += kPieceSquareTable[pawn_color == us][pawn_square][kRook]
+                                [square.RelativeTo(us)];
+      TRACE_INCREMENT(kPieceSquareTable[pawn_color == us][pawn_square][kRook]
+                                       [square.RelativeTo(us)],
+                      us);
+    }
 
     const BitBoard legal_moves =
         LegalizeMoves(kRook, square, move_gen::RookMoves(square, occupied), us);
@@ -451,8 +476,14 @@ ScorePair Evaluation::EvaluateQueens() {
 
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
-    TRACE_INCREMENT(
-        kPieceSquareTable[kb][their_kb][kQueen][square.RelativeTo(us)], us);
+    for (Square pawn_square : state_.Pawns()) {
+      const Color pawn_color = state_.GetPieceColor(pawn_square);
+      score += kPieceSquareTable[pawn_color == us][pawn_square][kQueen]
+                                [square.RelativeTo(us)];
+      TRACE_INCREMENT(kPieceSquareTable[pawn_color == us][pawn_square][kQueen]
+                                       [square.RelativeTo(us)],
+                      us);
+    }
 
     const BitBoard legal_moves = LegalizeMoves(
         kQueen, square, move_gen::QueenMoves(square, occupied), us);
@@ -478,12 +509,15 @@ template <Color us>
 ScorePair Evaluation::EvaluateKing() {
   ScorePair score;
 
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
-
   const Square square = state_.King(us).GetLsb();
-  TRACE_INCREMENT(kPieceSquareTable[kb][their_kb][kKing][square.RelativeTo(us)],
-                  us);
+  for (Square pawn_square : state_.Pawns()) {
+    const Color pawn_color = state_.GetPieceColor(pawn_square);
+    score += kPieceSquareTable[pawn_color == us][pawn_square][kKing]
+                              [square.RelativeTo(us)];
+    TRACE_INCREMENT(kPieceSquareTable[pawn_color == us][pawn_square][kKing]
+                                     [square.RelativeTo(us)],
+                    us);
+  }
 
   const Color them = FlipColor(us);
 

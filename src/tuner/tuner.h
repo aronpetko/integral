@@ -94,7 +94,7 @@ inline EvalTrace trace;
 
 class Tuner {
  public:
-  Tuner() : num_terms_(0) {}
+  Tuner() : num_terms_(0), batch_count_(1) {}
 
   void LoadAndTune(const std::string& source_file);
 
@@ -167,6 +167,7 @@ class Tuner {
   std::ifstream file_;
   bool end_of_file_reached_ = false;
   VectorPair gradients_;
+  int batch_count_;
 };
 
 #endif  // INTEGRAL_TUNER_H

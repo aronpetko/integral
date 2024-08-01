@@ -22,9 +22,10 @@ constexpr int kLearningStepRate = 250;
 
 double decay =
     pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
+double rate = kStartLearningRate;
 
 // New constant for batch size
-constexpr int kBatchSize = 10'000'000;
+constexpr int kBatchSize = 2'500'000;
 
 inline double Sigmoid(double K, double E) {
   return 1.0 / (1.0 + exp(-K * E / 400.0));
@@ -36,12 +37,17 @@ bool Tuner::LoadNextBatch() {
   }
 
   entries_.clear();
-  fmt::println("Loading next batch of {} positions...", kBatchSize);
+  entries_.shrink_to_fit();
+  entries_.reserve(kBatchSize);
+
+  fmt::println("Loading next batch of {} positions ", kBatchSize);
 
   std::string line;
   int loaded_entries = 0;
+  int last_percentage = 0;
 
-  while (loaded_entries < kBatchSize && std::getline(file_, line)) {
+  while (loaded_entries < kBatchSize &&
+         std::getline(file_, line)) {
     const auto bracket_pos = line.find_last_of('[');
     if (bracket_pos != std::string::npos) {
       // Extract the FEN part of the line (everything before the last '[')
@@ -66,20 +72,45 @@ bool Tuner::LoadNextBatch() {
           result = kWhiteWon;
         }
 
-        TunerEntry entry = CreateEntry(board.GetState(), result);
+        const auto entry = CreateEntry(board.GetState(), result);
         entries_.push_back(entry);
 
+        if (batch_count_ == 1) {
+          const Score computed_eval = ComputeEvaluation(entry);
+          const Score deviation = abs(entry.static_eval - computed_eval);
+          if (deviation > 1) {
+            fmt::println("Tuner deviation detected: real {} coeff {}",
+                         entry.static_eval,
+                         computed_eval);
+          }
+        }
+
         loaded_entries++;
+
+        // Update percentage counter every 5%
+        int current_percentage = (loaded_entries * 100) / kBatchSize;
+        if (current_percentage >= last_percentage + 5) {
+          fmt::print("\rLoading progress: {}%", current_percentage);
+          std::cout.flush();
+          last_percentage = current_percentage;
+        }
       }
     }
   }
 
-  if (file_.eof()) {
+  if (file_.eof() || !file_.good()) {
     end_of_file_reached_ = true;
     file_.close();
   }
 
-  fmt::println("Loaded {} positions in this batch", entries_.size());
+  fmt::println("\nLoaded {} positions in this batch", entries_.size());
+
+  if (loaded_entries < kBatchSize) {
+    fmt::println(
+        "Warning: Loaded fewer positions than batch size. This may be the last "
+        "batch.");
+  }
+
   return !entries_.empty();
 }
 
@@ -93,10 +124,9 @@ void Tuner::TuneBatch() {
   const double K = ComputeOptimalK();
   fmt::println("Optimal K: {}", K);
 
-  double rate = kStartLearningRate;
   double error;
 
-  for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
+  for (int epoch = 0; epoch <= kMaxEpochs; epoch++) {
     const auto start_time = search::GetCurrentTime();
     auto epoch_gradient = ComputeGradient(K, 0, num_entries);
     for (int i = 0; i < num_terms_; i++) {
@@ -125,11 +155,12 @@ void Tuner::TuneBatch() {
         static_cast<double>(search::GetCurrentTime() - start_time) / 1000.0;
 
     error = TunedEvaluationErrors(K);
-    fmt::println("Epoch [{}] Error = [{}] LR = [{:.3f}] Speed = [:.0f pos/sec]",
-                 epoch,
-                 error,
-                 rate,
-                 num_entries / time_delta);
+    fmt::println(
+        "Epoch [{}] Error = [{}] LR = [{:.3f}] Speed = [{:.0f} pos/sec]",
+        epoch,
+        error,
+        rate,
+        num_entries / time_delta);
 
     // Pre-scheduled Learning Rate drops
     rate *= decay;
@@ -151,15 +182,14 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 
   fmt::println("File opened successfully. Starting batch processing.");
 
-  int batch_count = 0;
   while (LoadNextBatch()) {
-    fmt::println("Processing batch {}", batch_count);
+    fmt::println("Processing batch {}", batch_count_);
     TuneBatch();
-    batch_count++;
+    batch_count_++;
   }
 
   fmt::println("Finished processing all batches. Total batches: {}",
-               batch_count);
+               batch_count_);
 }
 
 void Tuner::InitBaseParameters() {
@@ -509,13 +539,9 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);
 
-  fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
-  Print4DArray(index,
-               kNumKingBuckets,
-               kNumKingBuckets,
-               kNumPieceTypes,
-               kSquareCount,
-               parameters_);
+  fmt::print("constexpr PawnRelativePSQT<ScorePair> kPieceSquareTable = ");
+  Print4DArray(
+      index, 2, kSquareCount, kNumPieceTypes, kSquareCount, parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
   PrintArray(index, kKnightMobility.size(), parameters_);
