@@ -343,8 +343,6 @@ ScorePair Evaluation::EvaluateKnights() {
   ScorePair score;
 
   const BitBoard our_knights = state_.Knights(us);
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
 
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
@@ -389,8 +387,6 @@ ScorePair Evaluation::EvaluateBishops() {
   const BitBoard our_bishops = state_.Bishops(us);
   const BitBoard occupied =
       state_.Occupied() ^ state_.Queens(us) ^ state_.Bishops(us);
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
 
   if (our_bishops.MoreThanOne()) {
     score += kBishopPairBonus;
@@ -442,8 +438,6 @@ ScorePair Evaluation::EvaluateRooks() {
   const BitBoard their_pawns = state_.Pawns(FlipColor(us));
   const BitBoard occupied =
       state_.Occupied() ^ state_.Queens(us) ^ state_.Rooks(us);
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
 
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[kRook], us);
@@ -489,8 +483,6 @@ ScorePair Evaluation::EvaluateQueens() {
   const BitBoard our_queens = state_.Queens(us);
   const BitBoard occupied =
       state_.Occupied() ^ state_.Bishops(us) ^ state_.Rooks(us);
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
 
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[kQueen], us);

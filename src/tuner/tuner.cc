@@ -295,13 +295,11 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
 
   for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back(
-          {static_cast<std::size_t>(i), coefficients[i]});
+      entry.coefficient_entries.push_back({static_cast<I16>(i), coefficients[i]});
     }
   }
 
   // Save some of the evaluation modifiers
-  entry.eval = trace.eval;
   entry.turn = state.turn;
 
   return entry;

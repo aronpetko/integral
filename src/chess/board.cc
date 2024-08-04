@@ -240,6 +240,7 @@ void Board::MakeMove(Move move) {
   state_.zobrist_key ^= zobrist::turn;
 
   state_.fifty_moves_clock = new_fifty_move_clock;
+  ++state_.half_moves;
 
   CalculateThreats();
 }

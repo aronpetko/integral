@@ -816,7 +816,7 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
-  return best_score;
+  return stack->score = best_score;
 }
 
 void Search::Run(Thread &thread) {
@@ -894,7 +894,7 @@ void Search::SetThreadCount(U16 count) {
   }
 }
 
-void Search::Start(TimeConfig &time_config) {
+void Search::Start(TimeConfig time_config) {
   if (searching_threads_.load() > 0) {
     return;
   }
@@ -916,6 +916,22 @@ void Search::Start(TimeConfig &time_config) {
   start_barrier_.ArriveAndWait();
 }
 
+std::pair<Score, Move> Search::DataGenStart(TimeConfig time_config) {
+  stop_.store(false, std::memory_order_relaxed);
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
+
+  const auto thread = std::make_unique<Thread>(0);
+  thread->Reset(board_);
+
+  IterativeDeepening<SearchType::kBench>(*thread);
+
+  const auto &stack = thread->stack.Front();
+  return {stack.score * (board_.GetState().turn == Color::kBlack ? -1 : 1),
+          stack.best_move};
+}
+
 U64 Search::Bench(int depth) {
   TimeConfig config{.depth = depth};
   time_mgmt_.SetConfig(config);
@@ -935,9 +951,11 @@ void Search::Stop() {
   WaitForThreads();
 }
 
-void Search::NewGame() {
-  transposition_table.Clear();
-  eval::pawn_cache.Clear();
+void Search::NewGame(bool clear_tables) {
+  if (clear_tables) {
+    transposition_table.Clear();
+    eval::pawn_cache.Clear();
+  }
 
   for (auto &thread : threads_) {
     thread->NewGame();

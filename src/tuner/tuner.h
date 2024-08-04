@@ -11,8 +11,7 @@
 // #define TUNE
 
 struct CoefficientEntry {
-  std::size_t index;
-  I16 value;
+  I16 index, value;
 };
 
 using GameResult = double;
@@ -22,9 +21,8 @@ constexpr GameResult kDrawn = 0.5;
 constexpr GameResult kWhiteWon = 1.0;
 
 struct TunerEntry {
-  int phase;
-  Score static_eval;
-  Score eval;
+  I16 phase;
+  I16 static_eval;
   Color turn;
   GameResult result;
   std::array<double, 2> phase_factors;

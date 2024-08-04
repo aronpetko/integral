@@ -65,7 +65,9 @@ class Search {
 
   ~Search();
 
-  void Start(TimeConfig &time_config);
+  void Start(TimeConfig time_config);
+
+  std::pair<Score, Move> DataGenStart(TimeConfig time_config);
 
   U64 Bench(int depth);
 
@@ -75,7 +77,7 @@ class Search {
 
   void QuitThreads();
 
-  void NewGame();
+  void NewGame(bool clear_tables = true);
 
   const TimeManagement &GetTimeManagement() const;
 

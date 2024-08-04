@@ -15,7 +15,7 @@ using std::chrono::duration_cast;
 struct TimeConfig {
   bool infinite = false;
   int depth = 0;
-  int nodes = 0;
+  U64 nodes = 0, soft_nodes = 0;
   int move_time = 0;
   int time_left = 0;
   int increment = 0;

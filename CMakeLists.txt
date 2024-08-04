@@ -59,4 +59,4 @@ add_definitions(-DFMT_HEADER_ONLY)
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
 
 # Create the executable target
-add_executable(integral ${SOURCES} third-party/fathom/tbconfig.h third-party/fathom/tbprobe.h third-party/fathom/stdendian.h third-party/fathom/tbprobe.c)
+add_executable(integral ${SOURCES} third-party/fathom/tbconfig.h third-party/fathom/tbprobe.h third-party/fathom/stdendian.h third-party/fathom/tbprobe.c src/data_gen/data_gen.h src/data_gen/format/binpack.h)

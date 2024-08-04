@@ -37,7 +37,7 @@ class Listener {
         command->ProcessLine(ss);
         command->Execute();
       } else {
-        fmt::println("error: unknown command: '{}'", command_name);
+        fmt::println("Error: unknown command: '{}'", command_name);
       }
     }
   }

@@ -90,15 +90,15 @@ bool TimeManagement::TimesUp(U32 nodes_searched) {
     return nodes_searched >= config_.nodes;
   } else if (type_ != TimeType::kTimed) {
     return false;
+  } else {
+    return nodes_searched & 4096 && TimeElapsed() >= hard_limit_;
   }
-  if (config_.move_time != 0 && TimeElapsed() >= config_.move_time) {
-    fmt::println("{}", config_.move_time);
-  }
-  return nodes_searched & 4096 && TimeElapsed() >= hard_limit_;
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
-  if (type_ == TimeType::kNodes) return nodes_searched >= config_.nodes;
+  if (type_ == TimeType::kNodes)
+    return nodes_searched >= config_.nodes ||
+           config_.soft_nodes != 0 && nodes_searched >= config_.soft_nodes;
   if (type_ != TimeType::kTimed) return false;
   if (config_.move_time != 0) return TimesUp(nodes_searched);
 
