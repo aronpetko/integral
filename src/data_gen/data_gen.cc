@@ -201,7 +201,7 @@ void GameLoop(const Config &config,
     const auto completed =
         games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
 
-    if (completed % (config.num_games / 20) == 0) {
+    if (completed % (config.num_games / 50) == 0) {
       PrintProgress(config, completed, written);
     }
   }
