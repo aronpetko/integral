@@ -229,6 +229,8 @@ void Generate(Config config) {
   const auto time = std::time(nullptr);
   const auto tm = *std::localtime(&time);
 
+  RandomSeed(time);
+
   std::stringstream buffer;
   buffer << std::put_time(&tm, "%d-%m-%Y");
 

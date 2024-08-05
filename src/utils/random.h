@@ -5,8 +5,13 @@
 
 #include "types.h"
 
-constexpr int kRandomSeed = 0x1333317;
-static thread_local std::mt19937_64 mt_generator(kRandomSeed);
+inline U64 random_seed = 0x1333317;
+static thread_local std::mt19937_64 mt_generator(random_seed);
+
+static void RandomSeed(U64 seed) {
+  random_seed = seed;
+  mt_generator = std::mt19937_64(random_seed);
+}
 
 static U64 RandomU64() {
   return mt_generator();
