@@ -62,7 +62,7 @@ void TimeManagement::SetConfig(const TimeConfig &config) {
     type_ = TimeType::kInfinite;
   } else if (config.depth != 0) {
     type_ = TimeType::kDepth;
-  } else if (config.nodes != 0) {
+  } else if (config.nodes != 0 || config.soft_nodes != 0) {
     type_ = TimeType::kNodes;
   } else {
     type_ = TimeType::kTimed;
@@ -87,7 +87,7 @@ int TimeManagement::GetSearchDepth() const {
 
 bool TimeManagement::TimesUp(U32 nodes_searched) {
   if (type_ == TimeType::kNodes) {
-    return nodes_searched >= config_.nodes;
+    return config_.nodes != 0 && nodes_searched >= config_.nodes;
   } else if (type_ != TimeType::kTimed) {
     return false;
   } else {
@@ -97,7 +97,7 @@ bool TimeManagement::TimesUp(U32 nodes_searched) {
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
   if (type_ == TimeType::kNodes)
-    return nodes_searched >= config_.nodes ||
+    return config_.nodes != 0 && nodes_searched >= config_.nodes ||
            config_.soft_nodes != 0 && nodes_searched >= config_.soft_nodes;
   if (type_ != TimeType::kTimed) return false;
   if (config_.move_time != 0) return TimesUp(nodes_searched);

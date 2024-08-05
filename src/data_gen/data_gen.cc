@@ -1,7 +1,9 @@
 #include "data_gen.h"
 
+#include <fmt/color.h>
 #include <fmt/format.h>
 
+#include <csignal>
 #include <filesystem>
 
 #include "../chess/board.h"
@@ -37,19 +39,96 @@ Board FindStartingPosition(I32 plies) {
       continue;
     }
 
-    const auto move = legal_moves[RandomU64() % legal_moves.Size()];
+    const auto move = legal_moves[RandomU64(0, legal_moves.Size() - 1)];
     board.MakeMove(move);
 
-    ++current_ply;
+    // Prevent the last ply being checkmate/stalemate
+    if (++current_ply == plies && GetLegalMoves(board).Empty()) {
+      board.UndoMove(), --current_ply;
+    }
   }
 
   return board;
 }
 
-inline std::atomic<U64> positions_written = 0;
-inline std::mutex write_mutex;
+std::atomic<U64> positions_written = 0, games_completed = 0, start_time = 0;
+std::mutex display_mutex;
 
-void GameLoop(const Config &config, std::ostream &output_stream) {
+void PrintProgress(const Config &config, U64 completed, U64 written) {
+  std::lock_guard lock(display_mutex);
+
+  auto current_time = search::GetCurrentTime();
+  auto elapsed_time = current_time - start_time;
+  auto games_left = config.num_games - completed;
+  auto time_per_game = elapsed_time / completed;
+  auto time_remaining = time_per_game * games_left;
+
+  // Calculate progress bar
+  int bar_width = 50;
+  double progress = static_cast<double>(completed) / config.num_games;
+  int filled_length = static_cast<int>(std::round(bar_width * progress));
+
+  std::string bar;
+  for (int i = 0; i < bar_width; ++i) {
+    if (i < filled_length) {
+      bar += "\u2588";  // Full block
+    } else {
+      bar += " ";  // Light shade
+    }
+  }
+
+  // Calculate speeds
+  double games_per_second =
+      static_cast<double>(completed) / (elapsed_time / 1000.0);
+  double positions_per_second =
+      static_cast<double>(written) / (elapsed_time / 1000.0);
+
+  // Format time remaining
+  std::string time_str;
+  if (time_remaining >= 3600000) {
+    time_str = fmt::format("{}h {}m {}s",
+                           time_remaining / 3600000,
+                           (time_remaining % 3600000) / 60000,
+                           (time_remaining % 60000) / 1000);
+  } else if (time_remaining >= 60000) {
+    time_str = fmt::format(
+        "{}m {}s", time_remaining / 60000, (time_remaining % 60000) / 1000);
+  } else {
+    time_str = fmt::format("{}s", time_remaining / 1000);
+  }
+
+  // Clear previous lines (5 lines total)
+  fmt::print("\033[5F\033[J");
+
+  // Print updated progress with green bar and aligned gray data
+  fmt::print("{:15} [", "Progress:");
+  fmt::print(fg(fmt::color::green), "{}", bar);
+  fmt::print("] ");
+  fmt::print(
+      fg(fmt::color::gray), "{}% complete\n", static_cast<int>(progress * 100));
+
+  fmt::print("{:15} ", "Games:");
+  fmt::print(fg(fmt::color::gray), "{} / {}\n", completed, config.num_games);
+
+  fmt::print("{:15} ", "Positions:");
+  fmt::print(fg(fmt::color::gray), "{}\n", written);
+
+  fmt::print("{:15} ", "Time remaining:");
+  fmt::print(fg(fmt::color::gray), "{}\n", time_str);
+
+  fmt::print("{:15} ", "Speed:");
+  fmt::print(fg(fmt::color::gray),
+             "{:.1f} games/s, {:.1f} pos/s\n",
+             games_per_second,
+             positions_per_second);
+
+  // Ensure output is displayed immediately
+  std::cout.flush();
+}
+
+void GameLoop(const Config &config,
+              int thread_id,
+              std::ostream &output_stream) {
   constexpr int kWinThreshold = 800;
   constexpr int kDrawThreshold = 10;
   constexpr int kPliesThreshold = 5;
@@ -58,7 +137,8 @@ void GameLoop(const Config &config, std::ostream &output_stream) {
                                  .soft_nodes = config.soft_node_limit};
   format::BinPackFormatter formatter(output_stream);
 
-  for (int i = 0; i < config.num_games / config.num_threads && !stop; i++) {
+  const int workload = config.num_games / config.num_threads;
+  for (int i = 0; i < workload && !stop; i++) {
     // Find a valid legal position to play the game from
     auto board = FindStartingPosition(config.random_move_plies);
 
@@ -77,6 +157,7 @@ void GameLoop(const Config &config, std::ostream &output_stream) {
       // The game has ended
       if (!best_move) {
         wdl_outcome = state.InCheck() ? state.turn == Color::kBlack : 0.5;
+        break;
       } else {
         if (std::abs(score) >= kTBWinScore - kMaxPlyFromRoot) {
           // Return the correct score depending on who is getting checkmated
@@ -111,18 +192,39 @@ void GameLoop(const Config &config, std::ostream &output_stream) {
       }
 
       if (wdl_outcome) {
-        positions_written.store(
-            positions_written.load(std::memory_order_relaxed) +
-                formatter.WriteOutcome(*wdl_outcome),
-            std::memory_order_relaxed);
         break;
       }
     }
+
+    const auto written = positions_written.fetch_add(
+        formatter.WriteOutcome(*wdl_outcome), std::memory_order_relaxed);
+    const auto completed =
+        games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
+
+    if (completed % (config.num_games / 20) == 0) {
+      PrintProgress(config, completed, written);
+    }
   }
+
+  PrintProgress(config,
+                games_completed.load(std::memory_order_relaxed),
+                positions_written.load(std::memory_order_relaxed));
+}
+
+void signal_handler([[maybe_unused]] int signum) {
+  stop = true;
 }
 
 void Generate(Config config) {
-  fmt::println("Starting data generation process...");
+  fmt::println("Starting data generation process...\n");
+
+  games_completed = positions_written = 0;
+
+  // Handle Ctrl + C
+  std::signal(SIGINT, signal_handler);
+
+  // Change the number of games to fit evenly within the number of threads
+  config.num_games -= config.num_games % config.num_threads;
 
   const auto time = std::time(nullptr);
   const auto tm = *std::localtime(&time);
@@ -131,40 +233,37 @@ void Generate(Config config) {
   buffer << std::put_time(&tm, "%d-%m-%Y");
 
   const auto path = config.output_file + "-" + buffer.str();
-  const auto start_time = search::GetCurrentTime();
+  start_time = search::GetCurrentTime();
 
   std::vector<std::thread> threads;
   threads.reserve(config.num_threads);
 
   std::vector<std::string> temp_files;
-  std::atomic<int> successful_threads{0};
 
   for (int i = 0; i < config.num_threads; i++) {
-    const auto thread_path = path + fmt::format("_temp{}", i);
+    auto thread_path = path + fmt::format("_temp{}", i);
     temp_files.push_back(thread_path);
 
-    threads.emplace_back([&config, &thread_path, i, &successful_threads]() {
-      try {
-        std::ofstream output_stream(thread_path,
-                                    std::ios::binary | std::ios::app);
-        if (!output_stream) {
-          fmt::println("Error: Failed to open output file {} for thread {}", thread_path, i);
-          return;
-        }
-        GameLoop(config, output_stream);
-        output_stream.close();
-        if (output_stream.good()) {
-          // Explicitly flush to ensure all data is written
-          output_stream.flush();
-          successful_threads++;
-          fmt::println("Thread {} completed successfully", i);
-        } else {
-          fmt::println("Error: Thread {} encountered an issue while closing the file", i);
-        }
-      } catch (const std::exception& e) {
-        fmt::println("Error: Thread {} threw an exception: {}", i, e.what());
-      } catch (...) {
-        fmt::println("Error: Thread {} threw an unknown exception", i);
+    threads.emplace_back([&config, thread_path = std::move(thread_path), i]() {
+      std::ofstream output_stream(thread_path,
+                                  std::ios::binary | std::ios::app);
+      if (!output_stream) {
+        fmt::println("Error: Failed to open output file {} for thread {} '{}'",
+                     thread_path,
+                     i,
+                     strerror(errno));
+        return;
+      }
+
+      GameLoop(config, i, output_stream);
+
+      output_stream.close();
+      if (output_stream.good()) {
+        // Explicitly flush to ensure all data is written
+        output_stream.flush();
+      } else {
+        fmt::println(
+            "Error: Thread {} encountered an issue while closing the file", i);
       }
     });
   }
@@ -173,11 +272,10 @@ void Generate(Config config) {
     thread.join();
   }
 
-  fmt::println("All threads completed. Successful threads: {}/{}",
-               successful_threads.load(), config.num_threads);
-
   // Add a small delay to ensure file system sync
   std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  fmt::println("");
 
   // Concatenate all temp files into one big file
   std::ofstream final_output(path, std::ios::binary);
@@ -195,23 +293,28 @@ void Generate(Config config) {
       // Delete the temp file
       if (std::remove(temp_file.c_str()) == 0) {
         concatenated_files++;
-        fmt::println("Successfully concatenated and removed temp file {}", temp_file);
+        fmt::println("Successfully concatenated and removed temp file {}",
+                     temp_file);
       } else {
-        fmt::println("Error: Failed to remove temp file {} after concatenation. Error: {}", temp_file, strerror(errno));
+        fmt::println(
+            "Error: Failed to remove temp file {} after concatenation. Error: "
+            "{}",
+            temp_file,
+            strerror(errno));
       }
     } else {
-      fmt::println("Error: Failed to open temp file {} for concatenation. Error: {}", temp_file, strerror(errno));
+      fmt::println(
+          "Error: Failed to open temp file {} for concatenation. Error: {}",
+          temp_file,
+          strerror(errno));
     }
   }
 
   final_output.close();
 
-  fmt::println("Concatenated {} out of {} expected temp files", concatenated_files, config.num_threads);
-
-  const auto time_elapsed = search::GetCurrentTime() - start_time;
-  fmt::println("Wrote {} positions. Average Speed: {} pos/sec",
-               positions_written.load(),
-               positions_written.load() * 1000 / time_elapsed);
+  fmt::println("Concatenated {} out of {} expected temp files",
+               concatenated_files,
+               config.num_threads);
 }
 
 }  // namespace data_gen

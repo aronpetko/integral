@@ -131,7 +131,7 @@ class BinPackFormatter : public OutputFormatter {
     MarlinChessBoard converted{.occupied = state.Occupied().AsU64()};
 
     int i = 0;
-    for (Square square : BitBoard(converted.occupied)) {
+    for (Square square : state.Occupied()) {
       const auto piece = state.GetPieceType(square);
       const auto color = state.GetPieceColor(square);
 

@@ -7,11 +7,11 @@ namespace data_gen::format {
 
 class OutputFormatter {
  public:
-  virtual void SetPosition(const BoardState& state) {}
+  virtual void SetPosition(const BoardState& state) = 0;
 
-  virtual void PushMove(Move move, Color turn, Score score) {}
+  virtual void PushMove(Move move, Color turn, Score score) = 0;
 
-  virtual U64 WriteOutcome(double wdl_outcome) {}
+  virtual U64 WriteOutcome(double wdl_outcome) = 0;
 };
 
 }  // namespace data_gen::format

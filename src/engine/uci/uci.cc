@@ -74,6 +74,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     CreateArgument("movetime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("depth", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("soft_nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("wtime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
@@ -110,6 +111,9 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     const auto nodes = cmd->ParseArgument<int>("nodes");
     if (nodes) time_config.nodes = *nodes;
 
+    const auto soft_nodes = cmd->ParseArgument<int>("soft_nodes");
+    if (soft_nodes) time_config.soft_nodes = *soft_nodes;
+
     const Color turn = board.GetState().turn;
     time_config.time_left = time_left[turn];
     time_config.increment = increment[turn];
@@ -137,7 +141,6 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       .random_move_plies = *cmd->ParseArgument<I32>("random_moves"),
       .output_file = *cmd->ParseArgument<std::string>("out"),
     };
-    fmt::println("{}", config.num_games);
     data_gen::Generate(config);
   });
 

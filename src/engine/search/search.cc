@@ -117,12 +117,6 @@ void Search::IterativeDeepening(Thread &thread) {
       window *= asp_window_growth;
     }
 
-    if (ShouldQuit(thread) ||
-        (thread.IsMainThread() &&
-         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
-      break;
-    }
-
     if (thread.IsMainThread() && !stop_ && print_info) {
       const bool is_mate = eval::IsMateScore(score);
       const auto nodes_searched = GetNodesSearched();
@@ -141,9 +135,15 @@ void Search::IterativeDeepening(Thread &thread) {
           syzygy::enabled ? std::to_string(thread.tb_hits) + " " : "",
           root_stack->pv.UCIFormat());
     }
+
+    if (ShouldQuit(thread) ||
+        (thread.IsMainThread() &&
+         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
+      break;
+    }
   }
 
-  const auto SendStoppedSignal = [this]() {
+  const auto SendStoppedSignal = [&]() {
     if constexpr (type == SearchType::kRegular) {
       std::unique_lock lock(thread_stopped_mutex_);
       // Wait on the other threads to finish before reporting the best move

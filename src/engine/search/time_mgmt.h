@@ -28,7 +28,8 @@ struct TimeConfig {
   bool operator==(const TimeConfig &other) const {
     return infinite == other.infinite && depth == other.depth &&
            move_time == other.move_time && time_left == other.time_left &&
-           increment == other.increment && nodes == other.nodes;
+           increment == other.increment && nodes == other.nodes &&
+           soft_nodes == other.soft_nodes;
   }
 };
 
