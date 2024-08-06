@@ -83,6 +83,8 @@ class Search {
 
   [[nodiscard]] U64 GetNodesSearched() const;
 
+  void ResizeHash(U64 size);
+
  private:
   void Run(Thread &thread);
 
@@ -116,6 +118,7 @@ class Search {
   std::atomic_int searching_threads_, next_thread_id_;
   std::condition_variable thread_stopped_signal_;
   std::vector<std::unique_ptr<Thread>> threads_;
+  TranspositionTable transposition_table_;
 };
 
 }  // namespace search

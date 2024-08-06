@@ -130,7 +130,7 @@ void Search::IterativeDeepening(Thread &thread) {
           nodes_searched,
           time_mgmt_.TimeElapsed(),
           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-          transposition_table.HashFull(),
+          transposition_table_.HashFull(),
           syzygy::enabled ? " tbhits " : "",
           syzygy::enabled ? std::to_string(thread.tb_hits) + " " : "",
           root_stack->pv.UCIFormat());
@@ -164,7 +164,7 @@ void Search::IterativeDeepening(Thread &thread) {
     SendStoppedSignal();
 
     // Age the transposition table to recognize TT entries from past searches
-    transposition_table.Age();
+    transposition_table_.Age();
 
     if (print_info) {
       fmt::println("bestmove {}", best_move.ToString());
@@ -202,7 +202,7 @@ Score Search::QuiescentSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   const int tt_depth = state.InCheck();
-  const auto tt_entry = transposition_table.Probe(state.zobrist_key);
+  const auto tt_entry = transposition_table_.Probe(state.zobrist_key);
   const bool tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
   auto tt_move = Move::NullMove();
@@ -257,7 +257,7 @@ Score Search::QuiescentSearch(Thread &thread,
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
     if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen > 0) {
+        moves_seen >= 3) {
       break;
     }
 
@@ -274,7 +274,7 @@ Score Search::QuiescentSearch(Thread &thread,
     }
 
     // Prefetch the TT entry for the next move as early as possible
-    transposition_table.Prefetch(board.PredictKeyAfter(move));
+    transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     ++thread.nodes_searched;
 
@@ -327,7 +327,7 @@ Score Search::QuiescentSearch(Thread &thread,
                                              best_score,
                                              Move::NullMove(),
                                              tt_was_in_pv);
-  transposition_table.Save(
+  transposition_table_.Save(
       tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
   return best_score;
@@ -391,7 +391,7 @@ Score Search::PVSearch(Thread &thread,
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
 
   if (!stack->excluded_tt_move) {
-    tt_entry = transposition_table.Probe(state.zobrist_key);
+    tt_entry = transposition_table_.Probe(state.zobrist_key);
     tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
     // Use the TT entry's evaluation if possible
@@ -443,7 +443,7 @@ Score Search::PVSearch(Thread &thread,
                                                    score,
                                                    Move::NullMove(),
                                                    tt_was_in_pv);
-        transposition_table.Save(
+        transposition_table_.Save(
             tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
         return score;
       }
@@ -573,7 +573,7 @@ Score Search::PVSearch(Thread &thread,
     }
 
     // Prefetch the TT entry for the next move as early as possible
-    transposition_table.Prefetch(board.PredictKeyAfter(move));
+    transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
@@ -590,7 +590,6 @@ Score Search::PVSearch(Thread &thread,
                            (lmp_mult - std::max(0.0, stack->improving_rate)));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
-        continue;
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
@@ -599,7 +598,6 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
-        continue;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
@@ -807,7 +805,7 @@ Score Search::PVSearch(Thread &thread,
     // position
     const TranspositionTableEntry new_tt_entry(
         state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
-    transposition_table.Save(
+    transposition_table_.Save(
         tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
     if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
@@ -953,7 +951,7 @@ void Search::Stop() {
 
 void Search::NewGame(bool clear_tables) {
   if (clear_tables) {
-    transposition_table.Clear();
+    transposition_table_.Clear();
     eval::pawn_cache.Clear();
   }
 
@@ -971,6 +969,10 @@ U64 Search::GetNodesSearched() const {
       threads_.begin(), threads_.end(), 0ULL, [](auto sum, const auto &thread) {
         return sum + thread->nodes_searched;
       });
+}
+
+void Search::ResizeHash(U64 size) {
+  transposition_table_.Resize(size);
 }
 
 }  // namespace search

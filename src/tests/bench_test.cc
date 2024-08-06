@@ -63,6 +63,7 @@ constexpr std::array kBenchFens = {
 void BenchSuite(int depth) {
   Board board;
   search::Search search(board);
+  search.ResizeHash(16);
 
   U64 nodes = 0, elapsed = 0;
   for (const auto &position : kBenchFens) {

@@ -26,7 +26,7 @@ struct TranspositionTableEntry {
         depth(depth),
         score(score),
         move(move),
-        bits(0) {
+        bits({}) {
     SetWasPV(was_in_pv);
     SetFlag(flag);
   }
@@ -129,8 +129,6 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  private:
   int age_;
 };
-
-inline TranspositionTable transposition_table;
 
 }  // namespace search
 

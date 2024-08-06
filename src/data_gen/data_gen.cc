@@ -26,8 +26,7 @@ MoveList GetLegalMoves(Board &board) {
   return legal_move_list;
 }
 
-Board FindStartingPosition(I32 plies) {
-  Board board;
+void FindStartingPosition(Board &board, I32 plies) {
   board.SetFromFen(fen::kStartFen);
 
   I32 current_ply = 0;
@@ -47,8 +46,6 @@ Board FindStartingPosition(I32 plies) {
       board.UndoMove(), --current_ply;
     }
   }
-
-  return board;
 }
 
 std::atomic<U64> positions_written = 0, games_completed = 0, start_time = 0;
@@ -129,6 +126,8 @@ void PrintProgress(const Config &config, U64 completed, U64 written) {
 void GameLoop(const Config &config,
               int thread_id,
               std::ostream &output_stream) {
+  RandomSeed(search::GetCurrentTime());
+
   constexpr int kWinThreshold = 800;
   constexpr int kDrawThreshold = 10;
   constexpr int kPliesThreshold = 5;
@@ -137,15 +136,18 @@ void GameLoop(const Config &config,
                                  .soft_nodes = config.soft_node_limit};
   format::BinPackFormatter formatter(output_stream);
 
+  Board board;
+  search::Search search(board);
+  search.ResizeHash(16);
+
   const int workload = config.num_games / config.num_threads;
   for (int i = 0; i < workload && !stop; i++) {
     // Find a valid legal position to play the game from
-    auto board = FindStartingPosition(config.random_move_plies);
+    FindStartingPosition(board, config.random_move_plies);
 
     const auto &state = board.GetState();
     formatter.SetPosition(state);
 
-    search::Search search(board);
     search.NewGame();
 
     U64 win_plies = 0, loss_plies = 0, draw_plies = 0;
@@ -201,7 +203,7 @@ void GameLoop(const Config &config,
     const auto completed =
         games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
 
-    if (completed % (config.num_games / 50) == 0) {
+    if (completed % (config.num_games / 50) == 0 || completed == 1) {
       PrintProgress(config, completed, written);
     }
   }
@@ -228,8 +230,6 @@ void Generate(Config config) {
 
   const auto time = std::time(nullptr);
   const auto tm = *std::localtime(&time);
-
-  RandomSeed(time);
 
   std::stringstream buffer;
   buffer << std::put_time(&tm, "%d-%m-%Y");

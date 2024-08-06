@@ -20,8 +20,8 @@ namespace options {
 
 void Initialize(search::Search &search) {
   // clang-format off
-  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [](const Option &option) {
-    search::transposition_table.Resize(option.GetValue<int>());
+  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&search](const Option &option) {
+    search.ResizeHash(option.GetValue<int>());
   });
   listener.AddOption<OptionVisibility::kPublic>("PawnCache", 1, 1, 16, [](const Option &option) {
     eval::pawn_cache.Resize(option.GetValue<int>());
