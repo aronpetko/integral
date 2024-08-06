@@ -590,7 +590,6 @@ Score Search::PVSearch(Thread &thread,
                            (lmp_mult - std::max(0.0, stack->improving_rate)));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
-        continue;
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
@@ -599,7 +598,6 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
-        continue;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
@@ -617,7 +615,6 @@ Score Search::PVSearch(Thread &thread,
         if (depth <= hist_prune_depth &&
             history_score <= hist_thresh_base + hist_thresh_mult * depth) {
           move_picker.SkipQuiets();
-          continue;
         }
       }
     }
