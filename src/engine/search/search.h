@@ -67,7 +67,8 @@ class Search {
 
   void Start(TimeConfig time_config);
 
-  std::pair<Score, Move> DataGenStart(TimeConfig time_config);
+  std::pair<Score, Move> DataGenStart(std::unique_ptr<Thread> &thread,
+                                      TimeConfig time_config);
 
   U64 Bench(int depth);
 

@@ -916,13 +916,13 @@ void Search::Start(TimeConfig time_config) {
   start_barrier_.ArriveAndWait();
 }
 
-std::pair<Score, Move> Search::DataGenStart(TimeConfig time_config) {
+std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
+                                            TimeConfig time_config) {
   stop_.store(false, std::memory_order_relaxed);
 
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
-  const auto thread = std::make_unique<Thread>(0);
   thread->Reset(board_);
 
   IterativeDeepening<SearchType::kBench>(*thread);

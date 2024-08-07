@@ -8,7 +8,16 @@
 constexpr int kRandomSeed = 0x1333317;
 static thread_local std::mt19937_64 mt_generator(kRandomSeed);
 
-static void RandomSeed(U64 seed) {
+template <typename... Args>
+static void RandomSeed(U64 base_seed, Args... additional_seeds) {
+  std::random_device rd;
+  std::vector<unsigned> seed_data{static_cast<unsigned>(rd()),
+                                  static_cast<unsigned>(rd()),
+                                  static_cast<unsigned>(rd()),
+                                  static_cast<unsigned>(rd()),
+                                  static_cast<unsigned>(base_seed),
+                                  static_cast<unsigned>(additional_seeds)...};
+  std::seed_seq seed(seed_data.begin(), seed_data.end());
   mt_generator.seed(seed);
 }
 

@@ -126,7 +126,7 @@ void PrintProgress(const Config &config, U64 completed, U64 written) {
 void GameLoop(const Config &config,
               int thread_id,
               std::ostream &output_stream) {
-  RandomSeed(search::GetCurrentTime());
+  RandomSeed(search::GetCurrentTime(), thread_id);
 
   constexpr int kWinThreshold = 800;
   constexpr int kDrawThreshold = 10;
@@ -137,8 +137,11 @@ void GameLoop(const Config &config,
   format::BinPackFormatter formatter(output_stream);
 
   Board board;
+
   search::Search search(board);
   search.ResizeHash(16);
+
+  auto thread = std::make_unique<search::Thread>(0);
 
   const int workload = config.num_games / config.num_threads;
   for (int i = 0; i < workload && !stop; i++) {
@@ -154,7 +157,7 @@ void GameLoop(const Config &config,
 
     std::optional<double> wdl_outcome;
     while (!stop) {
-      const auto [score, best_move] = search.DataGenStart(time_config);
+      const auto [score, best_move] = search.DataGenStart(thread, time_config);
 
       // The game has ended
       if (!best_move) {
