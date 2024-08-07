@@ -26,7 +26,7 @@ struct TranspositionTableEntry {
         depth(depth),
         score(score),
         move(move),
-        bits({}) {
+        bits(0) {
     SetWasPV(was_in_pv);
     SetFlag(flag);
   }

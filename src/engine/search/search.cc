@@ -257,7 +257,7 @@ Score Search::QuiescentSearch(Thread &thread,
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
     if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen >= 3) {
+        moves_seen > 0) {
       break;
     }
 
@@ -590,6 +590,7 @@ Score Search::PVSearch(Thread &thread,
                            (lmp_mult - std::max(0.0, stack->improving_rate)));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
+        continue;
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
@@ -598,6 +599,7 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
+        continue;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
