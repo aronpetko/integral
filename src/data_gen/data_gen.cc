@@ -129,7 +129,7 @@ void GameLoop(const Config &config,
   RandomSeed(search::GetCurrentTime(), thread_id);
 
   constexpr int kWinThreshold = 800;
-  constexpr int kDrawThreshold = 10;
+  constexpr int kDrawThreshold = 5;
   constexpr int kPliesThreshold = 5;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
@@ -152,6 +152,7 @@ void GameLoop(const Config &config,
     formatter.SetPosition(state);
 
     search.NewGame();
+    thread->NewGame();
 
     U64 win_plies = 0, loss_plies = 0, draw_plies = 0;
 
