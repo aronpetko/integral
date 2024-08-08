@@ -18,7 +18,7 @@ struct TranspositionTableEntry {
   };
 
   TranspositionTableEntry()
-      : key(0), depth(0), score(kScoreNone), move(Move::NullMove()), bits(0) {}
+      : key(0), depth(0), score(kScoreNone), move(Move::NullMove()), bits({}) {}
 
   explicit TranspositionTableEntry(
       U64 key, U8 depth, Flag flag, Score score, Move move, bool was_in_pv)
@@ -26,7 +26,7 @@ struct TranspositionTableEntry {
         depth(depth),
         score(score),
         move(move),
-        bits(0) {
+        bits({}) {
     SetWasPV(was_in_pv);
     SetFlag(flag);
   }
