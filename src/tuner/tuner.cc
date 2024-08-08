@@ -3,39 +3,112 @@
 #include <fmt/format.h>
 // #include <pthread.h>
 
+#include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 
+#include "../data_gen/format/binpack.h"
 #include "../engine/evaluation/evaluation.h"
+#include "../engine/search/time_mgmt.h"
 
 using namespace eval;
 
-constexpr int kMaxEpochs = 10000;
+constexpr int kMaxEpochs = 350;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kLearningRate = 0.1;
+constexpr double kStartLearningRate = 0.1;
+constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
+
+double decay =
+    pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
+double rate = kStartLearningRate;
+
+// New constant for batch size
+constexpr int kBatchSize = 5'000'000;
 
 inline double Sigmoid(double K, double E) {
   return 1.0 / (1.0 + exp(-K * E / 400.0));
 }
 
-void Tuner::LoadFromFile(const std::string& source_file) {
-  InitBaseParameters();
+bool Tuner::LoadNextBatch() {
+  if (end_of_file_reached_) {
+    return false;
+  }
 
-  fmt::println("Loading data source...");
+  entries_.clear();
+  entries_.shrink_to_fit();
+  entries_.reserve(kBatchSize);
 
-  std::ifstream file(source_file);
-  if (file.is_open()) {
-    std::string line;
-    while (std::getline(file, line)) {
+  fmt::println("Loading next batch of {} positions ", kBatchSize);
+
+  std::string line;
+  int loaded_entries = 0;
+  int last_percentage = 0;
+
+  while (loaded_entries < kBatchSize) {
+    if (file_.eof() || !file_.good()) {
+      end_of_file_reached_ = true;
+      file_.close();
+      break;
+    }
+
+    Board board;
+    GameResult result = -1;
+
+    if (marlin_format_) {
+      data_gen::format::MarlinChessBoard marlin_board;
+      file_.read(reinterpret_cast<char*>(&marlin_board), sizeof(marlin_board));
+
+      auto& state = board.GetState();
+      state = BoardState{};
+
+      int i = 0;
+      for (Square square : BitBoard(marlin_board.occupied)) {
+        const U8 piece_data = marlin_board.pieces[i];
+        const auto color = (piece_data & 0x8) ? Color::kBlack : Color::kWhite;
+
+        auto piece_type = static_cast<PieceType>(piece_data & 0x7);
+
+        // Handle unmoved rook
+        if (piece_type == 6) {
+          if (square == Squares::kA1 || square == Squares::kH1) {
+            state.castle_rights.SetCanCastle(Color::kWhite,
+                                             square == Squares::kA1);
+          } else if (square == Squares::kA8 || square == Squares::kH8) {
+            state.castle_rights.SetCanCastle(Color::kBlack,
+                                             square == Squares::kA8);
+          }
+          piece_type = PieceType::kRook;
+        }
+
+        state.PlacePiece(square, piece_type, color);
+        ++i;
+      }
+
+      state.turn = (marlin_board.turn_and_en_passant & 0x80) ? Color::kBlack
+                                                             : Color::kWhite;
+
+      U8 en_passant_relative = marlin_board.turn_and_en_passant & 0x7F;
+      if (en_passant_relative != Squares::kNoSquare) {
+        state.en_passant =
+            Square(en_passant_relative).RelativeTo(FlipColor(state.turn));
+      } else {
+        state.en_passant = Squares::kNoSquare;
+      }
+
+      state.fifty_moves_clock = marlin_board.half_move_clock;
+
+      board.CalculateThreats();
+
+      result = marlin_board.wdl_outcome / 2.0;
+    } else if (std::getline(file_, line)) {
       const auto bracket_pos = line.find_last_of('[');
       if (bracket_pos != std::string::npos) {
         // Extract the FEN part of the line (everything before the last '[')
         const auto fen = line.substr(0, bracket_pos - 1);
-
-        Board board;
         board.SetFromFen(fen);
 
         // Extract the WDL marker (between the brackets)
@@ -45,7 +118,6 @@ void Tuner::LoadFromFile(const std::string& source_file) {
           const auto wdl =
               line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
 
-          GameResult result;
           if (wdl == "0.0") {
             result = kBlackWon;
           } else if (wdl == "0.5") {
@@ -53,29 +125,56 @@ void Tuner::LoadFromFile(const std::string& source_file) {
           } else if (wdl == "1.0") {
             result = kWhiteWon;
           }
-
-          TunerEntry entry = CreateEntry(board.GetState(), result);
-          entries_.push_back(entry);
-
-          const Score computed_eval = ComputeEvaluation(entry);
-          const Score deviation = abs(entry.static_eval - computed_eval);
-          if (deviation > 1) {
-            fmt::println("Tuner deviation detected: real {} coeff {}",
-                         entry.static_eval,
-                         computed_eval);
-          }
         }
       }
     }
-  } else {
-    fmt::println("Unable to open file");
+
+    if (result != -1) {
+      const auto entry = CreateEntry(board.GetState(), result);
+      entries_.push_back(entry);
+
+      if (batch_count_ == 1) {
+        const Score computed_eval = ComputeEvaluation(entry);
+        const Score deviation = abs(entry.static_eval - computed_eval);
+        if (deviation > 1) {
+          fmt::println("Tuner deviation detected: real {} coeff {}",
+                       entry.static_eval,
+                       computed_eval);
+          fmt::println("{}", loaded_entries);
+        }
+      }
+
+      loaded_entries++;
+
+      // Update percentage counter every 5%
+      int current_percentage = (loaded_entries * 100) / kBatchSize;
+      if (current_percentage >= last_percentage + 5) {
+        fmt::print("\rLoading progress: {}%", current_percentage);
+        std::cout.flush();
+        last_percentage = current_percentage;
+      }
+    } else {
+      break;
+    }
+
+    if (file_.eof() || !file_.good()) {
+      end_of_file_reached_ = true;
+      file_.close();
+    }
   }
 
-  file.close();
-  fmt::println("Loaded {} positions", entries_.size());
+  fmt::println("\nLoaded {} positions in this batch", entries_.size());
+
+  if (loaded_entries < kBatchSize) {
+    fmt::println(
+        "Warning: Loaded fewer positions than batch size. This may be the last "
+        "batch.");
+  }
+
+  return !entries_.empty();
 }
 
-void Tuner::Tune() {
+void Tuner::TuneBatch() {
   VectorPair momentum, velocity;
   momentum.resize(num_terms_);
   velocity.resize(num_terms_);
@@ -85,11 +184,11 @@ void Tuner::Tune() {
   const double K = ComputeOptimalK();
   fmt::println("Optimal K: {}", K);
 
-  double rate = kLearningRate;
   double error;
 
-  for (int epoch = 0; epoch < kMaxEpochs; epoch++) {
-    auto epoch_gradient = ComputeGradient(K);
+  for (int epoch = 0; epoch <= kMaxEpochs; epoch++) {
+    const auto start_time = search::GetCurrentTime();
+    auto epoch_gradient = ComputeGradient(K, 0, num_entries);
     for (int i = 0; i < num_terms_; i++) {
       double mg_grad = (-K / 200.0) * epoch_gradient[i][MG] / num_entries;
       double eg_grad = (-K / 200.0) * epoch_gradient[i][EG] / num_entries;
@@ -112,13 +211,47 @@ void Tuner::Tune() {
       parameters_[i][EG] -= eg_delta;
     }
 
+    const auto time_delta =
+        static_cast<double>(search::GetCurrentTime() - start_time) / 1000.0;
+
     error = TunedEvaluationErrors(K);
-    fmt::println("Epoch [{}] Error = [{}], Rate = [{}]", epoch, error, rate);
+    fmt::println(
+        "Epoch [{}] Error = [{}] LR = [{:.3f}] Speed = [{:.0f} pos/sec]",
+        epoch,
+        error,
+        rate,
+        num_entries / time_delta);
 
     // Pre-scheduled Learning Rate drops
-    if (epoch % kLearningStepRate == 0) rate = rate / kLearningDropRate;
-    if (epoch % 50 == 0) PrintParameters();
+    rate *= decay;
   }
+
+  PrintParameters();
+}
+
+void Tuner::LoadAndTune(const std::string& source_file) {
+  InitBaseParameters();
+
+  fmt::println("Opening data source...");
+
+  marlin_format_ = std::filesystem::path(source_file).extension() == ".mf";
+  file_.open(source_file, marlin_format_ ? std::ios::binary : std::ios::in);
+
+  if (!file_.is_open()) {
+    fmt::println("Unable to open file");
+    return;
+  }
+
+  fmt::println("File opened successfully. Starting batch processing.");
+
+  while (LoadNextBatch()) {
+    fmt::println("Processing batch {}", batch_count_);
+    TuneBatch();
+    batch_count_++;
+  }
+
+  fmt::println("Finished processing all batches. Total batches: {}",
+               batch_count_);
 }
 
 void Tuner::InitBaseParameters() {
@@ -217,13 +350,11 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
 
   for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back(
-          {static_cast<std::size_t>(i), coefficients[i]});
+      entry.coefficient_entries.push_back({static_cast<U32>(i), coefficients[i]});
     }
   }
 
   // Save some of the evaluation modifiers
-  entry.eval = trace.eval;
   entry.turn = state.turn;
 
   return entry;
@@ -253,8 +384,7 @@ double Tuner::ComputeOptimalK() const {
 
   return K;
 }
-
-VectorPair Tuner::ComputeGradient(double K) const {
+VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
   VectorPair local_gradient;
   local_gradient.resize(num_terms_);
 
@@ -263,10 +393,11 @@ VectorPair Tuner::ComputeGradient(double K) const {
 
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#pragma omp parallel shared(local_gradient, mutex) num_threads(6)
+#pragma omp parallel shared(local_gradient, mutex) num_threads(24)
   {
 #pragma omp for schedule(static)
-    for (const auto& entry : entries_) {
+    for (int i = start; i < end; ++i) {
+      const auto& entry = entries_[i];
       double E = ComputeEvaluation(entry);
       double S = Sigmoid(K, E);
       double X = (entry.result - S) * S * (1 - S);
@@ -296,7 +427,7 @@ VectorPair Tuner::ComputeGradient(double K) const {
 
 double Tuner::StaticEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(6)
+#pragma omp parallel shared(total) num_threads(24)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -308,7 +439,7 @@ double Tuner::StaticEvaluationErrors(double K) const {
 
 double Tuner::TunedEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(6)
+#pragma omp parallel shared(total) num_threads(24)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -369,6 +500,91 @@ void Print2DArray(std::size_t& index,
   }
 
   fmt::println("\n}}}};\n");
+}
+
+#include <cmath>
+
+void Print3DArray(std::size_t& index,
+                  int buckets,
+                  int pieces,
+                  int squares,
+                  const std::vector<TermPair>& parameters) {
+  std::cout << "{\n";
+
+  for (int b = 0; b < buckets; ++b) {
+    std::cout << "  { // Bucket " << b << "\n";
+    for (int p = 0; p < pieces; ++p) {
+      std::cout << "    { // Piece " << p << "\n      ";
+
+      for (int s = 0; s < squares; ++s) {
+        if (index < parameters.size()) {
+          const auto& param = parameters[index++];
+          int mg = static_cast<int>(std::round(param[MG]));
+          int eg = static_cast<int>(std::round(param[EG]));
+          std::cout << "Pair(" << mg << ", " << eg << ")";
+        } else {
+          std::cout << "Pair(0, 0)";
+        }
+
+        if (s < squares - 1) std::cout << ", ";
+        if ((s + 1) % 8 == 0 && s < squares - 1) std::cout << "\n      ";
+      }
+
+      std::cout << "\n    }";
+      if (p < pieces - 1) std::cout << ",";
+      std::cout << "\n";
+    }
+    std::cout << "  }";
+    if (b < buckets - 1) std::cout << ",";
+    std::cout << "\n";
+  }
+
+  std::cout << "}";
+}
+
+void Print4DArray(std::size_t& index,
+                  int dimensions,
+                  int buckets,
+                  int pieces,
+                  int squares,
+                  const std::vector<TermPair>& parameters) {
+  std::cout << "{{\n";
+
+  for (int d = 0; d < dimensions; ++d) {
+    std::cout << "  {{ // Bucket " << d << "\n";
+    for (int b = 0; b < buckets; ++b) {
+      std::cout << "    {{ // Bucket " << b << "\n";
+      for (int p = 0; p < pieces; ++p) {
+        std::cout << "      { // Piece " << p << "\n        ";
+
+        for (int s = 0; s < squares; ++s) {
+          if (index < parameters.size()) {
+            const auto& param = parameters[index++];
+            int mg = static_cast<int>(std::round(param[MG]));
+            int eg = static_cast<int>(std::round(param[EG]));
+            std::cout << "Pair(" << mg << ", " << eg << ")";
+          } else {
+            std::cout << "Pair(0, 0)";
+          }
+
+          if (s < squares - 1) std::cout << ", ";
+          if ((s + 1) % 8 == 0 && s < squares - 1) std::cout << "\n        ";
+        }
+
+        std::cout << "\n      }";
+        if (p < pieces - 1) std::cout << ",";
+        std::cout << "\n";
+      }
+      std::cout << "    }}";
+      if (b < buckets - 1) std::cout << ",";
+      std::cout << "\n";
+    }
+    std::cout << "  }}";
+    if (d < dimensions - 1) std::cout << ",";
+    std::cout << "\n";
+  }
+
+  std::cout << "}};\n\n";
 }
 
 void Tuner::PrintParameters() {

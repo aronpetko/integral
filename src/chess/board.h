@@ -39,6 +39,14 @@ class CastleRights {
     return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
+  constexpr void SetCanCastle(Color turn, bool queenside) {
+    if (queenside) {
+      SetCanQueensideCastle(turn, true);
+    } else {
+      SetCanQueensideCastle(turn, false);
+    }
+  }
+
   constexpr void SetCanKingsideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kKingsideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
@@ -268,12 +276,13 @@ class Board {
 
   [[nodiscard]] bool IsDraw(U16 ply);
 
- private:
-  void HandleCastling(Move move);
-
   void CalculateKingThreats();
 
   void CalculateThreats();
+
+ private:
+  void HandleCastling(Move move);
+
 
  private:
   BoardState state_;

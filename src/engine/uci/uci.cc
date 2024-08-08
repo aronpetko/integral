@@ -219,8 +219,7 @@ void AcceptCommands(int arg_count, char **args) {
 
 #ifdef TUNE
   Tuner tuner;
-  tuner.LoadFromFile(args[1]);
-  tuner.Tune();
+  tuner.LoadAndTune(args[1]);
 #endif
 
   listener.Listen();
