@@ -3,10 +3,12 @@
 #include <fmt/format.h>
 // #include <pthread.h>
 
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
 
+#include "../data_gen/format/binpack.h"
 #include "../engine/evaluation/evaluation.h"
 #include "../engine/search/time_mgmt.h"
 
@@ -46,60 +48,121 @@ bool Tuner::LoadNextBatch() {
   int loaded_entries = 0;
   int last_percentage = 0;
 
-  while (loaded_entries < kBatchSize && std::getline(file_, line)) {
-    const auto bracket_pos = line.find_last_of('[');
-    if (bracket_pos != std::string::npos) {
-      // Extract the FEN part of the line (everything before the last '[')
-      const auto fen = line.substr(0, bracket_pos - 1);
+  while (loaded_entries < kBatchSize) {
+    if (file_.eof() || !file_.good()) {
+      end_of_file_reached_ = true;
+      file_.close();
+      break;
+    }
 
-      Board board;
-      board.SetFromFen(fen);
+    Board board;
+    GameResult result = -1;
 
-      // Extract the WDL marker (between the brackets)
-      auto end_bracket_pos = line.find_last_of(']');
-      if (end_bracket_pos != std::string::npos &&
-          bracket_pos + 1 < end_bracket_pos) {
-        const auto wdl =
-            line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
+    if (marlin_format_) {
+      data_gen::format::MarlinChessBoard marlin_board;
+      file_.read(reinterpret_cast<char*>(&marlin_board), sizeof(marlin_board));
 
-        GameResult result;
-        if (wdl == "0.0") {
-          result = kBlackWon;
-        } else if (wdl == "0.5") {
-          result = kDrawn;
-        } else if (wdl == "1.0") {
-          result = kWhiteWon;
-        }
+      auto& state = board.GetState();
+      state = BoardState{};
 
-        const auto entry = CreateEntry(board.GetState(), result);
-        entries_.push_back(entry);
+      int i = 0;
+      for (Square square : BitBoard(marlin_board.occupied)) {
+        const U8 piece_data = marlin_board.pieces[i];
+        const auto color = (piece_data & 0x8) ? Color::kBlack : Color::kWhite;
 
-        if (batch_count_ == 1) {
-          const Score computed_eval = ComputeEvaluation(entry);
-          const Score deviation = abs(entry.static_eval - computed_eval);
-          if (deviation > 1) {
-            fmt::println("Tuner deviation detected: real {} coeff {}",
-                         entry.static_eval,
-                         computed_eval);
+        auto piece_type = static_cast<PieceType>(piece_data & 0x7);
+
+        // Handle unmoved rook
+        if (piece_type == 6) {
+          if (square == Squares::kA1 || square == Squares::kH1) {
+            state.castle_rights.SetCanCastle(Color::kWhite,
+                                             square == Squares::kA1);
+          } else if (square == Squares::kA8 || square == Squares::kH8) {
+            state.castle_rights.SetCanCastle(Color::kBlack,
+                                             square == Squares::kA8);
           }
+          piece_type = PieceType::kRook;
         }
 
-        loaded_entries++;
+        state.PlacePiece(square, piece_type, color);
+        ++i;
+      }
 
-        // Update percentage counter every 5%
-        int current_percentage = (loaded_entries * 100) / kBatchSize;
-        if (current_percentage >= last_percentage + 5) {
-          fmt::print("\rLoading progress: {}%", current_percentage);
-          std::cout.flush();
-          last_percentage = current_percentage;
+      state.turn = (marlin_board.turn_and_en_passant & 0x80) ? Color::kBlack
+                                                             : Color::kWhite;
+
+      U8 en_passant_relative = marlin_board.turn_and_en_passant & 0x7F;
+      if (en_passant_relative != Squares::kNoSquare) {
+        state.en_passant =
+            Square(en_passant_relative).RelativeTo(FlipColor(state.turn));
+      } else {
+        state.en_passant = Squares::kNoSquare;
+      }
+
+      state.fifty_moves_clock = marlin_board.half_move_clock;
+      state.half_moves = (marlin_board.full_move_number - 1) * 2 +
+                         (state.turn == Color::kBlack ? 1 : 0);
+
+      board.CalculateThreats();
+
+      result = marlin_board.wdl_outcome / 2.0;
+    } else if (std::getline(file_, line)) {
+      const auto bracket_pos = line.find_last_of('[');
+      if (bracket_pos != std::string::npos) {
+        // Extract the FEN part of the line (everything before the last '[')
+        const auto fen = line.substr(0, bracket_pos - 1);
+        board.SetFromFen(fen);
+
+        // Extract the WDL marker (between the brackets)
+        auto end_bracket_pos = line.find_last_of(']');
+        if (end_bracket_pos != std::string::npos &&
+            bracket_pos + 1 < end_bracket_pos) {
+          const auto wdl =
+              line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
+
+          if (wdl == "0.0") {
+            result = kBlackWon;
+          } else if (wdl == "0.5") {
+            result = kDrawn;
+          } else if (wdl == "1.0") {
+            result = kWhiteWon;
+          }
         }
       }
     }
-  }
 
-  if (file_.eof() || !file_.good()) {
-    end_of_file_reached_ = true;
-    file_.close();
+    if (result != -1) {
+      const auto entry = CreateEntry(board.GetState(), result);
+      entries_.push_back(entry);
+
+      if (batch_count_ == 1) {
+        const Score computed_eval = ComputeEvaluation(entry);
+        const Score deviation = abs(entry.static_eval - computed_eval);
+        if (deviation > 1) {
+          fmt::println("Tuner deviation detected: real {} coeff {}",
+                       entry.static_eval,
+                       computed_eval);
+          fmt::println("{}", loaded_entries);
+        }
+      }
+
+      loaded_entries++;
+
+      // Update percentage counter every 5%
+      int current_percentage = (loaded_entries * 100) / kBatchSize;
+      if (current_percentage >= last_percentage + 5) {
+        fmt::print("\rLoading progress: {}%", current_percentage);
+        std::cout.flush();
+        last_percentage = current_percentage;
+      }
+    } else {
+      break;
+    }
+
+    if (file_.eof() || !file_.good()) {
+      end_of_file_reached_ = true;
+      file_.close();
+    }
   }
 
   fmt::println("\nLoaded {} positions in this batch", entries_.size());
@@ -173,7 +236,9 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 
   fmt::println("Opening data source...");
 
-  file_.open(source_file);
+  marlin_format_ = std::filesystem::path(source_file).extension() == ".mf";
+  file_.open(source_file, marlin_format_ ? std::ios::binary : std::ios::in);
+
   if (!file_.is_open()) {
     fmt::println("Unable to open file");
     return;
@@ -295,7 +360,7 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
 
   for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back({static_cast<I16>(i), coefficients[i]});
+      entry.coefficient_entries.push_back({static_cast<U32>(i), coefficients[i]});
     }
   }
 

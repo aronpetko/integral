@@ -128,9 +128,10 @@ void GameLoop(const Config &config,
               std::ostream &output_stream) {
   RandomSeed(search::GetCurrentTime(), thread_id);
 
-  constexpr int kWinThreshold = 800;
-  constexpr int kDrawThreshold = 5;
-  constexpr int kPliesThreshold = 5;
+  constexpr int kWinThreshold = 2000;
+  constexpr int kDrawThreshold = 10;
+  constexpr int kPliesThreshold = 10;
+  constexpr int kInitialScoreThreshold = 1000;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};
@@ -154,10 +155,18 @@ void GameLoop(const Config &config,
     search.NewGame();
     thread->NewGame();
 
+    const auto [initial_score, _] = search.DataGenStart(
+        thread, search::TimeConfig{.depth = 10, .nodes = 1'000'000});
+    if (std::abs(initial_score) >= kInitialScoreThreshold) {
+      --i;
+      continue;
+    }
+
     U64 win_plies = 0, loss_plies = 0, draw_plies = 0;
 
     std::optional<double> wdl_outcome;
     while (!stop) {
+      // Score returned in white-relative
       const auto [score, best_move] = search.DataGenStart(thread, time_config);
 
       // The game has ended
@@ -167,22 +176,21 @@ void GameLoop(const Config &config,
       } else {
         if (std::abs(score) >= kTBWinScore - kMaxPlyFromRoot) {
           // Return the correct score depending on who is getting checkmated
-          wdl_outcome = (score < 0) == (state.turn == Color::kBlack);
-        } else if (state.turn == Color::kWhite) {
+          wdl_outcome = score > 0;
+        } else {
           if (score > kWinThreshold) {
             ++win_plies, loss_plies = draw_plies = 0;
           } else if (score < -kWinThreshold) {
             ++loss_plies, win_plies = draw_plies = 0;
-          } else if (std::abs(score) < kDrawThreshold &&
-                     state.half_moves > 50) {
+          } else if (std::abs(score) < kDrawThreshold) {
             ++draw_plies, win_plies = loss_plies = 0;
           }
 
-          if (win_plies > kPliesThreshold) {
+          if (win_plies >= kPliesThreshold) {
             wdl_outcome = 1.0;
-          } else if (loss_plies > kPliesThreshold) {
+          } else if (loss_plies >= kPliesThreshold) {
             wdl_outcome = 0.0;
-          } else if (draw_plies > kPliesThreshold) {
+          } else if (draw_plies >= kPliesThreshold) {
             wdl_outcome = 0.5;
           }
         }
@@ -207,7 +215,7 @@ void GameLoop(const Config &config,
     const auto completed =
         games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
 
-    if (completed % (config.num_games / 50) == 0 || completed == 1) {
+    if (completed % std::min(config.num_games / 50, 1000ULL) == 0 || completed == 1) {
       PrintProgress(config, completed, written);
     }
   }

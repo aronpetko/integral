@@ -39,6 +39,14 @@ class CastleRights {
     return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
+  constexpr void SetCanCastle(Color turn, bool queenside) {
+    if (queenside) {
+      SetCanQueensideCastle(turn, true);
+    } else {
+      SetCanQueensideCastle(turn, false);
+    }
+  }
+
   constexpr void SetCanKingsideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kKingsideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
@@ -78,7 +86,8 @@ struct BoardState {
         checkers(0ULL),
         pinned(0ULL),
         phase(0),
-        king_bucket({}) {
+        king_bucket({}),
+        half_moves(0) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -94,7 +103,8 @@ struct BoardState {
 
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    // piece_scores[color] += eval::kPawnPieceSquareTable[our_bucket][their_bucket]
+    // piece_scores[color] +=
+    // eval::kPawnPieceSquareTable[our_bucket][their_bucket]
     //                                               [piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
@@ -134,7 +144,8 @@ struct BoardState {
               their_bucket = king_bucket[FlipColor(color)];
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    // piece_scores[color] -= eval::kPawnPieceSquareTable[our_bucket][their_bucket]
+    // piece_scores[color] -=
+    // eval::kPawnPieceSquareTable[our_bucket][their_bucket]
     //                                               [piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
@@ -160,7 +171,7 @@ struct BoardState {
       piece_scores[color] += eval::kPieceValues[piece];
       piece_scores[color] +=
           eval::kPawnPieceSquareTable[our_bucket][their_bucket][piece]
-                                 [square.RelativeTo(color)];
+                                     [square.RelativeTo(color)];
     }
   }
 
@@ -298,12 +309,12 @@ class Board {
 
   [[nodiscard]] bool IsDraw(U16 ply);
 
- private:
-  void HandleCastling(Move move);
-
   void CalculateKingThreats();
 
   void CalculateThreats();
+
+ private:
+  void HandleCastling(Move move);
 
  private:
   BoardState state_;

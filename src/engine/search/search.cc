@@ -155,7 +155,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   if (thread.IsMainThread()) {
     // Don't report the best move until manually stopped with go infinite
-    if (time_mgmt_.GetType() == TimeType::kInfinite) {
+    if (time_mgmt_.IsInfinite()) {
       while (!stop_.load(std::memory_order_relaxed)) std::this_thread::yield();
     }
 
@@ -411,7 +411,7 @@ Score Search::PVSearch(Thread &thread,
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
-      state.Occupied().PopCount() <= 7 && depth <= syzygy::probe_depth &&
+      state.Occupied().PopCount() <= 7 && depth >= syzygy::probe_depth &&
       state.fifty_moves_clock == 0 &&
       !state.castle_rights.CanCastle(state.turn) &&
       !state.castle_rights.CanCastle(FlipColor(state.turn))) {
@@ -734,8 +734,10 @@ Score Search::PVSearch(Thread &thread,
     board.UndoMove();
 
     if (in_root && thread.IsMainThread()) {
-      U32 &nodes_spent = time_mgmt_.NodesSpent(move);
-      nodes_spent += thread.nodes_searched - prev_nodes_searched;
+      if (auto timed_limiter = time_mgmt_.GetTimedLimiter()) {
+        U64 &nodes_spent = timed_limiter->NodesSpent(move);
+        nodes_spent += thread.nodes_searched - prev_nodes_searched;
+      }
     }
 
     if (ShouldQuit(thread)) {

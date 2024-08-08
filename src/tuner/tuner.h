@@ -11,7 +11,8 @@
 // #define TUNE
 
 struct CoefficientEntry {
-  I16 index, value;
+  U32 index;
+  int value;
 };
 
 using GameResult = double;
@@ -21,8 +22,8 @@ constexpr GameResult kDrawn = 0.5;
 constexpr GameResult kWhiteWon = 1.0;
 
 struct TunerEntry {
-  I16 phase;
-  I16 static_eval;
+  int phase;
+  Score static_eval;
   Color turn;
   GameResult result;
   std::array<double, 2> phase_factors;
@@ -165,6 +166,7 @@ class Tuner {
   std::vector<TunerEntry> entries_;
   std::ifstream file_;
   bool end_of_file_reached_ = false;
+  bool marlin_format_ = false;
   VectorPair gradients_;
   int batch_count_;
 };
