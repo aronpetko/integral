@@ -258,8 +258,7 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
-  Add4DArrayParameter(kPawnPieceSquareTable);
-  Add2DArrayParameter(kNormalPieceSquareTable);
+  Add2DArrayParameter(kPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -308,8 +307,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_3D_ARRAY_COEFFICIENTS(arr4d[z])
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
-  GET_4D_ARRAY_COEFFICIENTS(kPawnPieceSquareTable);
-  GET_2D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
+  GET_2D_ARRAY_COEFFICIENTS(kPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
@@ -403,7 +401,7 @@ VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
 
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#pragma omp parallel shared(local_gradient, mutex) num_threads(12)
+#pragma omp parallel shared(local_gradient, mutex) num_threads(24)
   {
 #pragma omp for schedule(static)
     for (int i = start; i < end; ++i) {
@@ -437,7 +435,7 @@ VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
 
 double Tuner::StaticEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(12)
+#pragma omp parallel shared(total) num_threads(24)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -449,7 +447,7 @@ double Tuner::StaticEvaluationErrors(double K) const {
 
 double Tuner::TunedEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(12)
+#pragma omp parallel shared(total) num_threads(24)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -603,12 +601,8 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);
 
-  fmt::print("constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable = ");
-  Print4DArray(
-      index, 2, kSquareCount, kNumPieceTypes, kSquareCount, parameters_);
-
   fmt::print(
-      "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable = ");
+      "constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
   Print2DArray(index, kNumPieceTypes, kSquareCount, parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
