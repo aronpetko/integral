@@ -169,9 +169,6 @@ struct BoardState {
       const int our_bucket = king_bucket[color],
                 their_bucket = king_bucket[FlipColor(color)];
       piece_scores[color] += eval::kPieceValues[piece];
-      piece_scores[color] +=
-          eval::kPawnPieceSquareTable[our_bucket][their_bucket][piece]
-                                     [square.RelativeTo(color)];
     }
   }
 

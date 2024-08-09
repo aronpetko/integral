@@ -227,19 +227,9 @@ ScorePair Evaluation::EvaluatePawns() {
       TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
     }
 
-    const int kb = state_.king_bucket[us], their_kb = state_.king_bucket[them];
     for (Square square : our_pawns) {
       TRACE_INCREMENT(kPieceValues[kPawn], us);
-
-      for (Square pawn_square : state_.Pawns()) {
-        const Color pawn_color = state_.GetPieceColor(pawn_square);
-        score += kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
-            pawn_color)][kPawn][square.RelativeTo<us>()];
-        TRACE_INCREMENT(
-            kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
-                pawn_color)][kPawn][square.RelativeTo<us>()],
-            us);
-      }
+      TRACE_INCREMENT(kPieceSquareTable[kPawn][square.RelativeTo(us)], us);
 
       const int file = square.File();
       const int rank = square.RelativeRank<us>();
@@ -285,32 +275,6 @@ ScorePair Evaluation::EvaluatePawns() {
     passed_pawns = cached_pawn_structure_->passed_pawns[us];
   }
 
-  const auto AddPawnPSQT = [&](Square pawn_square, bool ours, PieceType piece) {
-    for (Square square : state_.piece_bbs[piece] & state_.side_bbs[us]) {
-      score += kPawnPieceSquareTable[ours][pawn_square][piece]
-                                    [square.RelativeTo<us>()];
-      TRACE_INCREMENT(kPawnPieceSquareTable[ours][pawn_square][piece]
-                                           [square.RelativeTo<us>()],
-                      us);
-    }
-  };
-
-  for (Square pawn_square : our_pawns) {
-    AddPawnPSQT(pawn_square.RelativeTo<us>(), true, kKnight);
-    AddPawnPSQT(pawn_square.RelativeTo<us>(), true, kBishop);
-    AddPawnPSQT(pawn_square.RelativeTo<us>(), true, kRook);
-    AddPawnPSQT(pawn_square.RelativeTo<us>(), true, kQueen);
-    AddPawnPSQT(pawn_square.RelativeTo<us>(), true, kKing);
-  }
-
-  for (Square pawn_square : their_pawns) {
-    AddPawnPSQT(pawn_square.RelativeTo<them>(), false, kKnight);
-    AddPawnPSQT(pawn_square.RelativeTo<them>(), false, kBishop);
-    AddPawnPSQT(pawn_square.RelativeTo<them>(), false, kRook);
-    AddPawnPSQT(pawn_square.RelativeTo<them>(), false, kQueen);
-    AddPawnPSQT(pawn_square.RelativeTo<them>(), false, kKing);
-  }
-
   // Don't cache the king/passed pawn proximity scores as it involves knowing
   // the position of the king, which the pawn cache doesn't store
   const Square king_square = state_.King(us).GetLsb();
@@ -336,7 +300,7 @@ ScorePair Evaluation::EvaluatePawns() {
   }
 
   return score;
-}  // namespace eval
+}
 
 template <Color us>
 ScorePair Evaluation::EvaluateKnights() {
@@ -346,11 +310,7 @@ ScorePair Evaluation::EvaluateKnights() {
 
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kKnight][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kKnight][square.RelativeTo<us>()],
-                      us);
-    }
+    TRACE_INCREMENT(kPieceSquareTable[kKnight][square.RelativeTo(us)], us);
 
     const BitBoard legal_moves =
         LegalizeMoves(kKnight, square, move_gen::KnightMoves(square), us);
@@ -395,11 +355,7 @@ ScorePair Evaluation::EvaluateBishops() {
 
   for (Square square : our_bishops) {
     TRACE_INCREMENT(kPieceValues[kBishop], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kBishop][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kBishop][square.RelativeTo<us>()],
-                      us);
-    }
+    TRACE_INCREMENT(kPieceSquareTable[kBishop][square.RelativeTo(us)], us);
 
     const BitBoard legal_moves = LegalizeMoves(
         kBishop, square, move_gen::BishopMoves(square, occupied), us);
@@ -441,11 +397,7 @@ ScorePair Evaluation::EvaluateRooks() {
 
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[kRook], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kRook][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kRook][square.RelativeTo<us>()],
-                      us);
-    }
+    TRACE_INCREMENT(kPieceSquareTable[kRook][square.RelativeTo(us)], us);
 
     const BitBoard legal_moves =
         LegalizeMoves(kRook, square, move_gen::RookMoves(square, occupied), us);
@@ -486,11 +438,7 @@ ScorePair Evaluation::EvaluateQueens() {
 
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kQueen][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kQueen][square.RelativeTo<us>()],
-                      us);
-    }
+    TRACE_INCREMENT(kPieceSquareTable[kQueen][square.RelativeTo(us)], us);
 
     const BitBoard legal_moves = LegalizeMoves(
         kQueen, square, move_gen::QueenMoves(square, occupied), us);
@@ -517,11 +465,7 @@ ScorePair Evaluation::EvaluateKing() {
   ScorePair score;
 
   const Square square = state_.King(us).GetLsb();
-  if (!state_.Pawns()) {
-    score += kNormalPieceSquareTable[kKing][square.RelativeTo<us>()];
-    TRACE_INCREMENT(kNormalPieceSquareTable[kKing][square.RelativeTo<us>()],
-                    us);
-  }
+  TRACE_INCREMENT(kPieceSquareTable[kKing][square.RelativeTo(us)], us);
 
   const Color them = FlipColor(us);
 
@@ -723,8 +667,8 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   const PieceType &from_piece = state.GetPieceType(from);
   // Ignore en passant captures and castling
-  if (move.IsEnPassant(state) ||
-      (from_piece == kKing && std::abs(static_cast<int>(from) - to) == 2)) {
+  if ((from_piece == kPawn && to == state.en_passant) ||
+      (from_piece == kKing && std::abs(from - to) == 2)) {
     return threshold <= 0;
   }
 
@@ -832,8 +776,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
       all_attackers |= (rook_attacks & (queens | rooks)) |
                        (bishop_attacks & (queens | bishops));
     } else {
-      // King: check if we capture a piece that our opponent is still
-      // attacking
+      // King: check if we capture a piece that our opponent is still attacking
       return (all_attackers & state.Occupied(FlipColor(turn)))
                ? state.turn != winner
                : state.turn == winner;
