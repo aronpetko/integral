@@ -25,7 +25,7 @@ struct TunerEntry {
   int phase;
   Score static_eval;
   Color turn;
-  GameResult result;
+  GameResult result, score;
   std::array<double, 2> phase_factors;
   std::vector<CoefficientEntry> coefficient_entries;
 };
