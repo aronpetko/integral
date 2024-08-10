@@ -107,6 +107,7 @@ struct BoardState {
     // eval::kPawnPieceSquareTable[our_bucket][their_bucket]
     //                                               [piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
+    piece_scores[color] += eval::kPieceSquareTable[piece_type][rel_square];
 
     // Incrementally update the current phase of the game
     phase += eval::kPhaseIncrements[piece_type];
@@ -148,6 +149,7 @@ struct BoardState {
     // eval::kPawnPieceSquareTable[our_bucket][their_bucket]
     //                                               [piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
+    piece_scores[color] -= eval::kPieceSquareTable[piece_type][rel_square];
 
     // Incrementally update the current phase of the game
     phase -= eval::kPhaseIncrements[piece_type];

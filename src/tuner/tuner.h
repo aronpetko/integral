@@ -159,6 +159,8 @@ class Tuner {
     }
   }
 
+  void NormalizePSQTs();
+
  private:
   int num_terms_;
   std::vector<TermPair> parameters_;
@@ -166,7 +168,7 @@ class Tuner {
   std::ifstream file_;
   bool end_of_file_reached_ = false;
   bool marlin_format_ = false;
-  VectorPair gradients_;
+  VectorPair gradients_, momentum_, velocity_;
   int batch_count_;
 };
 

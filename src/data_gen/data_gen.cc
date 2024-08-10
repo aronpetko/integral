@@ -128,9 +128,10 @@ void GameLoop(const Config &config,
               std::ostream &output_stream) {
   RandomSeed(search::GetCurrentTime(), thread_id);
 
-  constexpr int kWinThreshold = 2000;
-  constexpr int kDrawThreshold = 10;
-  constexpr int kPliesThreshold = 10;
+  constexpr int kWinThreshold = 5000;
+  constexpr int kWinPliesThreshold = 5;
+  constexpr int kDrawThreshold = 5;
+  constexpr int kDrawPliesThreshold = 10;
   constexpr int kInitialScoreThreshold = 1000;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
@@ -140,7 +141,7 @@ void GameLoop(const Config &config,
   Board board;
 
   search::Search search(board);
-  search.ResizeHash(16);
+  search.ResizeHash(64);
 
   auto thread = std::make_unique<search::Thread>(0);
 
@@ -178,19 +179,19 @@ void GameLoop(const Config &config,
           // Return the correct score depending on who is getting checkmated
           wdl_outcome = score > 0;
         } else {
-          if (score > kWinThreshold) {
+          if (score >= kWinThreshold) {
             ++win_plies, loss_plies = draw_plies = 0;
-          } else if (score < -kWinThreshold) {
+          } else if (score <= -kWinThreshold) {
             ++loss_plies, win_plies = draw_plies = 0;
-          } else if (std::abs(score) < kDrawThreshold) {
+          } else if (std::abs(score) <= kDrawThreshold && state.half_moves >= 60) {
             ++draw_plies, win_plies = loss_plies = 0;
           }
 
-          if (win_plies >= kPliesThreshold) {
+          if (win_plies >= kWinPliesThreshold) {
             wdl_outcome = 1.0;
-          } else if (loss_plies >= kPliesThreshold) {
+          } else if (loss_plies >= kWinPliesThreshold) {
             wdl_outcome = 0.0;
-          } else if (draw_plies >= kPliesThreshold) {
+          } else if (draw_plies >= kDrawPliesThreshold) {
             wdl_outcome = 0.5;
           }
         }
@@ -215,7 +216,8 @@ void GameLoop(const Config &config,
     const auto completed =
         games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
 
-    if (completed % std::min<U64>(config.num_games / 50, 1000ULL) == 0 || completed == 1) {
+    if (completed % std::min<U64>(config.num_games / 50, 1000ULL) == 0 ||
+        completed == 1) {
       PrintProgress(config, completed, written);
     }
   }

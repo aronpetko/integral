@@ -17,7 +17,7 @@ using namespace eval;
 constexpr int kMaxEpochs = 350;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kStartLearningRate = 1.0;
+constexpr double kStartLearningRate = 0.1;
 constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
@@ -177,10 +177,6 @@ bool Tuner::LoadNextBatch() {
 }
 
 void Tuner::TuneBatch() {
-  VectorPair momentum, velocity;
-  momentum.resize(num_terms_);
-  velocity.resize(num_terms_);
-
   const std::size_t num_entries = entries_.size();
 
   const double K = ComputeOptimalK();
@@ -195,20 +191,20 @@ void Tuner::TuneBatch() {
       double mg_grad = (-K / 200.0) * epoch_gradient[i][MG] / num_entries;
       double eg_grad = (-K / 200.0) * epoch_gradient[i][EG] / num_entries;
 
-      momentum[i][MG] =
-          kMomentumCoeff * momentum[i][MG] + (1.0 - kMomentumCoeff) * mg_grad;
-      momentum[i][EG] =
-          kMomentumCoeff * momentum[i][EG] + (1.0 - kMomentumCoeff) * eg_grad;
+      momentum_[i][MG] =
+          kMomentumCoeff * momentum_[i][MG] + (1.0 - kMomentumCoeff) * mg_grad;
+      momentum_[i][EG] =
+          kMomentumCoeff * momentum_[i][EG] + (1.0 - kMomentumCoeff) * eg_grad;
 
-      velocity[i][MG] = kVelocityCoeff * velocity[i][MG] +
-                        (1.0 - kVelocityCoeff) * pow(mg_grad, 2);
-      velocity[i][EG] = kVelocityCoeff * velocity[i][EG] +
-                        (1.0 - kVelocityCoeff) * pow(eg_grad, 2);
+      velocity_[i][MG] = kVelocityCoeff * velocity_[i][MG] +
+                         (1.0 - kVelocityCoeff) * pow(mg_grad, 2);
+      velocity_[i][EG] = kVelocityCoeff * velocity_[i][EG] +
+                         (1.0 - kVelocityCoeff) * pow(eg_grad, 2);
 
       const double mg_delta =
-          rate * momentum[i][MG] / (1e-8 + sqrt(velocity[i][MG]));
+          rate * momentum_[i][MG] / (1e-8 + sqrt(velocity_[i][MG]));
       const double eg_delta =
-          rate * momentum[i][EG] / (1e-8 + sqrt(velocity[i][EG]));
+          rate * momentum_[i][EG] / (1e-8 + sqrt(velocity_[i][EG]));
       parameters_[i][MG] -= mg_delta;
       parameters_[i][EG] -= eg_delta;
     }
@@ -224,11 +220,13 @@ void Tuner::TuneBatch() {
         rate,
         num_entries / time_delta);
 
+    if (epoch % 50 == 0) {
+      PrintParameters();
+    }
+
     // Pre-scheduled Learning Rate drops
     rate *= decay;
   }
-
-  PrintParameters();
 }
 
 void Tuner::LoadAndTune(const std::string& source_file) {
@@ -245,6 +243,9 @@ void Tuner::LoadAndTune(const std::string& source_file) {
   }
 
   fmt::println("File opened successfully. Starting batch processing.");
+
+  momentum_.resize(num_terms_);
+  velocity_.resize(num_terms_);
 
   while (LoadNextBatch()) {
     fmt::println("Processing batch {}", batch_count_);
@@ -358,7 +359,8 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
 
   for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back({static_cast<U32>(i), coefficients[i]});
+      entry.coefficient_entries.push_back(
+          {static_cast<U32>(i), coefficients[i]});
     }
   }
 
@@ -595,14 +597,48 @@ void Print4DArray(std::size_t& index,
   std::cout << "}};\n\n";
 }
 
+void Tuner::NormalizePSQTs() {
+  const auto offset = kPieceValues.size();
+  for (int piece = 0; piece < kNumPieceTypes; piece++) {
+    if (piece == kKing) continue;
+
+    double average_mg = 0, average_eg = 0;
+    double total_active_squares = 0;
+
+    for (int square = 0; square < kSquareCount; square++) {
+      const int idx = piece * kSquareCount + square + offset;
+      average_mg += parameters_[idx][MG];
+      average_eg += parameters_[idx][EG];
+
+      if (!(piece == kPawn && (square <= Squares::kH1 || square >= kA8)))
+        ++total_active_squares;
+    }
+
+    average_mg /= total_active_squares;
+    average_eg /= total_active_squares;
+
+    for (int square = 0; square < kSquareCount; square++) {
+      const int idx = piece * kSquareCount + square + offset;
+
+      if (!(piece == kPawn && (square <= Squares::kH1 || square >= kA8))) {
+        parameters_[idx][MG] -= average_mg;
+        parameters_[idx][EG] -= average_eg;
+      }
+    }
+
+    parameters_[piece][MG] += average_mg;
+    parameters_[piece][EG] += average_eg;
+  }
+}
+
 void Tuner::PrintParameters() {
+  NormalizePSQTs();
   std::size_t index = 0;
 
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);
 
-  fmt::print(
-      "constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
+  fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
   Print2DArray(index, kNumPieceTypes, kSquareCount, parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
