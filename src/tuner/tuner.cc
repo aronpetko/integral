@@ -632,7 +632,7 @@ void Tuner::NormalizePSQTs() {
 }
 
 void Tuner::PrintParameters() {
-  NormalizePSQTs();
+  // NormalizePSQTs();
   std::size_t index = 0;
 
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
