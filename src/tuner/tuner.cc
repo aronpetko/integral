@@ -21,6 +21,7 @@ constexpr double kStartLearningRate = 0.1;
 constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
+constexpr double kLambda = 0.8;
 
 double decay =
     pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
@@ -412,14 +413,10 @@ VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
   {
 #pragma omp for schedule(static)
     for (int i = start; i < end; ++i) {
-      constexpr double kLambda = 0.5;
-
       const auto& entry = entries_[i];
       double E = ComputeEvaluation(entry);
       double S = Sigmoid(K, E);
-      double X =
-          (std::lerp(Sigmoid(K, entry.score), entry.result, kLambda) - S) * S *
-          (1 - S);
+      double X = (entry.result - S) * S * (1 - S);
 
       double mg_base = X * (entry.phase / 24.0);
       double eg_base = X - mg_base;
@@ -457,7 +454,6 @@ double Tuner::StaticEvaluationErrors(double K) const {
 }
 
 double Tuner::TunedEvaluationErrors(double K) const {
-  constexpr double kLambda = 0.5;
   double total = 0.0;
 #pragma omp parallel shared(total) num_threads(24)
   {
@@ -465,7 +461,7 @@ double Tuner::TunedEvaluationErrors(double K) const {
     for (const auto& entry : entries_) {
       double E = ComputeEvaluation(entry);
       double S = Sigmoid(K, E);
-      double target = std::lerp(Sigmoid(K, entry.score), entry.result, kLambda);
+      double target = entry.result;
       total += pow(target - S, 2);
     }
   }
