@@ -735,8 +735,8 @@ Score Search::PVSearch(Thread &thread,
 
     if (in_root && thread.IsMainThread()) {
       if (auto timed_limiter = time_mgmt_.GetTimedLimiter()) {
-        U64 &nodes_spent = timed_limiter->NodesSpent(move);
-        nodes_spent += thread.nodes_searched - prev_nodes_searched;
+        timed_limiter->NodesSpent(move) +=
+            thread.nodes_searched - prev_nodes_searched;
       }
     }
 
