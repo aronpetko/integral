@@ -14,7 +14,7 @@
 
 using namespace eval;
 
-constexpr int kMaxEpochs = 350;
+constexpr int kMaxEpochs = 2000;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
 constexpr double kStartLearningRate = 0.1;
