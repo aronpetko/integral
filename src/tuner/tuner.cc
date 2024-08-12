@@ -468,7 +468,7 @@ double Tuner::TunedEvaluationErrors(double K) const {
 
       // Interpolate between result and sigmoid-ed score
       double score_sigmoid = Sigmoid(K, entry.score);
-      double target = std::lerp(entry.result, score_sigmoid, kLambda);
+      double target = std::lerp(score_sigmoid, entry.result, kLambda);
 
       total += pow(target - evaluation, 2);
     }
