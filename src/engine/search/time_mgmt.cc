@@ -127,6 +127,7 @@ bool TimedLimiter::TimesUp(U32 nodes_searched) {
 
 void TimedLimiter::Start() {
   start_time_ = GetCurrentTime();
+  nodes_spent_.fill(0);
 }
 
 void TimedLimiter::Stop() {
