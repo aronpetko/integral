@@ -37,156 +37,156 @@ template <typename T>
 using OutpostTable = std::array<T, 24>;
 
 constexpr PieceTable<ScorePair> kPieceValues = {
-  Pair(127, -31), Pair(442, -24), Pair(500, 40), Pair(675, 402), Pair(1294, 776), Pair(0, 0)
+  Pair(75, 141), Pair(301, 321), Pair(331, 356), Pair(439, 612), Pair(874, 1080), Pair(0, 0)
 };
 
 constexpr PieceSquareTable<ScorePair> kPieceSquareTable = {{
   {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0),
-      Pair(134, 25), Pair(59, 76), Pair(25, 82), Pair(41, 73), Pair(-10, 106), Pair(32, 87), Pair(-44, 103), Pair(125, -3),
-      Pair(17, 119), Pair(6, 140), Pair(22, 126), Pair(28, 125), Pair(34, 125), Pair(60, 114), Pair(18, 135), Pair(26, 106),
-      Pair(2, 118), Pair(19, 115), Pair(10, 106), Pair(20, 97), Pair(41, 101), Pair(26, 96), Pair(36, 108), Pair(6, 103),
-      Pair(-9, 107), Pair(-5, 116), Pair(10, 98), Pair(23, 94), Pair(20, 91), Pair(24, 97), Pair(17, 107), Pair(0, 101),
-      Pair(-12, 107), Pair(-2, 111), Pair(-11, 101), Pair(-5, 103), Pair(6, 94), Pair(2, 108), Pair(41, 96), Pair(5, 98),
-      Pair(-12, 120), Pair(10, 120), Pair(-11, 119), Pair(-1, 111), Pair(0, 107), Pair(31, 113), Pair(53, 106), Pair(8, 101),
+      Pair(44, 67), Pair(25, 70), Pair(14, 71), Pair(53, 28), Pair(47, 30), Pair(41, 43), Pair(-32, 86), Pair(-27, 83),
+      Pair(5, 0), Pair(-16, 21), Pair(19, -23), Pair(27, -53), Pair(43, -57), Pair(65, -43), Pair(18, 4), Pair(6, -4),
+      Pair(-19, -11), Pair(-22, -4), Pair(-13, -30), Pair(-10, -44), Pair(11, -46), Pair(6, -42), Pair(-15, -12), Pair(-10, -28),
+      Pair(-24, -26), Pair(-32, -5), Pair(-15, -34), Pair(-5, -41), Pair(-2, -42), Pair(-1, -41), Pair(-20, -16), Pair(-13, -39),
+      Pair(-34, -29), Pair(-39, -13), Pair(-26, -35), Pair(-21, -34), Pair(-14, -35), Pair(-19, -38), Pair(-19, -25), Pair(-18, -43),
+      Pair(-25, -25), Pair(-29, -8), Pair(-18, -28), Pair(-21, -32), Pair(-12, -25), Pair(1, -33), Pair(-4, -23), Pair(-17, -41),
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(-212, 139), Pair(-74, 92), Pair(-25, 67), Pair(89, 68), Pair(90, 55), Pair(1, 64), Pair(-44, 56), Pair(12, 90),
-      Pair(26, 55), Pair(49, 72), Pair(104, 47), Pair(137, 58), Pair(158, 44), Pair(125, 33), Pair(37, 72), Pair(60, 48),
-      Pair(54, 69), Pair(114, 56), Pair(92, 92), Pair(127, 63), Pair(144, 68), Pair(139, 78), Pair(87, 68), Pair(81, 58),
-      Pair(91, 66), Pair(91, 74), Pair(108, 80), Pair(111, 90), Pair(108, 70), Pair(137, 66), Pair(103, 63), Pair(107, 54),
-      Pair(84, 70), Pair(92, 53), Pair(102, 89), Pair(111, 89), Pair(117, 77), Pair(126, 69), Pair(127, 49), Pair(89, 87),
-      Pair(48, 55), Pair(84, 62), Pair(81, 82), Pair(100, 94), Pair(105, 81), Pair(93, 76), Pair(101, 55), Pair(71, 54),
-      Pair(39, 43), Pair(74, 80), Pair(71, 54), Pair(83, 65), Pair(84, 66), Pair(90, 46), Pair(63, 59), Pair(67, 48),
-      Pair(-16, 35), Pair(49, 48), Pair(61, 37), Pair(59, 50), Pair(79, 62), Pair(64, 46), Pair(52, 49), Pair(51, -3)
+      Pair(-131, -47), Pair(-101, -6), Pair(-69, 10), Pair(-26, -8), Pair(-8, -3), Pair(-39, -28), Pair(-106, -4), Pair(-99, -66),
+      Pair(-28, 4), Pair(-12, 16), Pair(-1, 11), Pair(9, 9), Pair(7, -2), Pair(39, -6), Pair(1, 7), Pair(-6, -14),
+      Pair(-6, 6), Pair(10, 14), Pair(7, 27), Pair(19, 19), Pair(27, 15), Pair(59, -9), Pair(7, 5), Pair(20, -13),
+      Pair(7, 18), Pair(16, 22), Pair(32, 25), Pair(39, 25), Pair(34, 27), Pair(44, 26), Pair(24, 22), Pair(33, 5),
+      Pair(-7, 20), Pair(15, 19), Pair(25, 31), Pair(31, 28), Pair(30, 34), Pair(42, 16), Pair(32, 15), Pair(8, 15),
+      Pair(-22, 7), Pair(-1, 15), Pair(10, 20), Pair(19, 31), Pair(31, 29), Pair(18, 14), Pair(18, 10), Pair(0, 12),
+      Pair(-31, 8), Pair(-18, 16), Pair(-7, 16), Pair(7, 16), Pair(9, 15), Pair(4, 13), Pair(3, 5), Pair(-3, 18),
+      Pair(-61, 13), Pair(-23, 8), Pair(-20, 12), Pair(-8, 17), Pair(0, 15), Pair(2, 4), Pair(-20, 14), Pair(-26, 5)
   },
   {
-      Pair(-42, 61), Pair(45, 56), Pair(41, 35), Pair(27, 43), Pair(39, 48), Pair(-84, 61), Pair(80, 45), Pair(22, 46),
-      Pair(29, 54), Pair(47, 55), Pair(42, 58), Pair(82, 41), Pair(38, 52), Pair(82, 45), Pair(47, 53), Pair(23, 45),
-      Pair(62, 49), Pair(83, 35), Pair(60, 64), Pair(86, 53), Pair(129, 27), Pair(83, 53), Pair(93, 24), Pair(58, 46),
-      Pair(50, 47), Pair(55, 56), Pair(67, 60), Pair(92, 68), Pair(67, 71), Pair(97, 29), Pair(50, 51), Pair(76, 30),
-      Pair(62, 31), Pair(63, 56), Pair(56, 66), Pair(55, 55), Pair(78, 46), Pair(52, 61), Pair(69, 42), Pair(64, 29),
-      Pair(47, 47), Pair(64, 49), Pair(58, 62), Pair(68, 56), Pair(60, 68), Pair(80, 51), Pair(75, 48), Pair(57, 42),
-      Pair(59, 42), Pair(63, 33), Pair(86, 16), Pair(55, 47), Pair(72, 42), Pair(74, 35), Pair(85, 29), Pair(78, 8),
-      Pair(50, 33), Pair(80, 22), Pair(43, 47), Pair(58, 31), Pair(71, 34), Pair(42, 49), Pair(65, 22), Pair(61, 22)
+      Pair(-29, 16), Pair(-52, 17), Pair(-53, 10), Pair(-87, 16), Pair(-84, 15), Pair(-73, 5), Pair(-38, 8), Pair(-62, 5),
+      Pair(-21, 0), Pair(-15, 10), Pair(-14, 6), Pair(-28, 10), Pair(-29, 5), Pair(-19, 4), Pair(-46, 17), Pair(-33, 1),
+      Pair(-8, 14), Pair(-2, 10), Pair(-12, 15), Pair(-8, 6), Pair(-14, 10), Pair(17, 15), Pair(11, 13), Pair(5, 14),
+      Pair(-18, 13), Pair(-4, 15), Pair(-2, 13), Pair(5, 18), Pair(2, 14), Pair(8, 16), Pair(-9, 15), Pair(-12, 11),
+      Pair(-14, 7), Pair(-24, 17), Pair(-6, 12), Pair(1, 12), Pair(2, 6), Pair(-6, 11), Pair(-14, 15), Pair(-3, 1),
+      Pair(-18, 8), Pair(6, 13), Pair(2, 13), Pair(-1, 17), Pair(2, 22), Pair(6, 13), Pair(10, 7), Pair(3, 0),
+      Pair(-3, 9), Pair(0, -5), Pair(8, -1), Pair(-7, 10), Pair(4, 9), Pair(11, 3), Pair(22, 0), Pair(11, -9),
+      Pair(-9, -4), Pair(8, 15), Pair(-9, 11), Pair(-10, 10), Pair(2, 5), Pair(-11, 16), Pair(4, 1), Pair(17, -22)
   },
   {
-      Pair(139, -59), Pair(146, -52), Pair(128, -40), Pair(149, -57), Pair(155, -65), Pair(245, -97), Pair(104, -49), Pair(118, -44),
-      Pair(96, -47), Pair(125, -49), Pair(127, -49), Pair(161, -65), Pair(147, -64), Pair(176, -72), Pair(93, -50), Pair(96, -50),
-      Pair(103, -60), Pair(158, -77), Pair(155, -68), Pair(138, -73), Pair(173, -81), Pair(199, -86), Pair(134, -65), Pair(103, -63),
-      Pair(94, -61), Pair(126, -63), Pair(146, -71), Pair(137, -69), Pair(171, -87), Pair(134, -67), Pair(115, -61), Pair(89, -58),
-      Pair(64, -51), Pair(84, -51), Pair(79, -42), Pair(88, -56), Pair(83, -66), Pair(82, -51), Pair(68, -45), Pair(57, -46),
-      Pair(55, -66), Pair(78, -60), Pair(65, -52), Pair(73, -58), Pair(94, -71), Pair(73, -70), Pair(71, -57), Pair(42, -51),
-      Pair(61, -78), Pair(67, -70), Pair(92, -77), Pair(93, -85), Pair(91, -86), Pair(98, -88), Pair(74, -81), Pair(12, -56),
-      Pair(77, -77), Pair(83, -78), Pair(83, -67), Pair(99, -89), Pair(106, -97), Pair(101, -90), Pair(51, -58), Pair(69, -73)
+      Pair(-19, 45), Pair(-22, 53), Pair(-23, 56), Pair(-28, 54), Pair(-18, 43), Pair(-2, 47), Pair(-10, 49), Pair(-27, 46),
+      Pair(-18, 41), Pair(-12, 51), Pair(-3, 49), Pair(13, 37), Pair(-3, 36), Pair(12, 39), Pair(16, 35), Pair(-8, 35),
+      Pair(-23, 40), Pair(9, 39), Pair(1, 38), Pair(-1, 33), Pair(22, 22), Pair(34, 22), Pair(50, 22), Pair(-3, 23),
+      Pair(-21, 42), Pair(1, 41), Pair(3, 41), Pair(-2, 38), Pair(8, 24), Pair(13, 25), Pair(13, 28), Pair(-14, 27),
+      Pair(-32, 36), Pair(-27, 44), Pair(-20, 38), Pair(-14, 37), Pair(-14, 30), Pair(-29, 39), Pair(-6, 27), Pair(-29, 24),
+      Pair(-36, 30), Pair(-28, 34), Pair(-23, 29), Pair(-24, 33), Pair(-15, 24), Pair(-18, 25), Pair(7, 8), Pair(-18, 6),
+      Pair(-37, 24), Pair(-29, 30), Pair(-17, 28), Pair(-18, 27), Pair(-11, 17), Pair(-15, 20), Pair(-2, 9), Pair(-36, 10),
+      Pair(-26, 27), Pair(-22, 25), Pair(-18, 28), Pair(-12, 22), Pair(-7, 14), Pair(-12, 21), Pair(-17, 18), Pair(-26, 13)
   },
   {
-      Pair(139, -110), Pair(161, -111), Pair(113, -81), Pair(178, -128), Pair(186, -128), Pair(215, -148), Pair(178, -114), Pair(150, -109),
-      Pair(110, -88), Pair(106, -63), Pair(128, -75), Pair(131, -76), Pair(175, -99), Pair(141, -81), Pair(112, -50), Pair(162, -105),
-      Pair(128, -116), Pair(137, -87), Pair(138, -52), Pair(145, -42), Pair(157, -50), Pair(167, -71), Pair(188, -123), Pair(142, -114),
-      Pair(126, -99), Pair(140, -89), Pair(149, -70), Pair(132, -40), Pair(129, -30), Pair(131, -71), Pair(144, -109), Pair(155, -129),
-      Pair(140, -143), Pair(138, -108), Pair(130, -85), Pair(128, -54), Pair(146, -80), Pair(143, -90), Pair(154, -113), Pair(141, -150),
-      Pair(131, -129), Pair(150, -124), Pair(141, -104), Pair(137, -107), Pair(145, -118), Pair(158, -138), Pair(153, -149), Pair(148, -168),
-      Pair(148, -178), Pair(154, -185), Pair(156, -176), Pair(152, -164), Pair(157, -160), Pair(165, -206), Pair(181, -227), Pair(154, -205),
-      Pair(154, -187), Pair(138, -192), Pair(136, -194), Pair(143, -182), Pair(141, -173), Pair(159, -245), Pair(130, -252), Pair(136, -191)
+      Pair(-39, 68), Pair(-35, 66), Pair(-28, 88), Pair(1, 75), Pair(-14, 84), Pair(-5, 81), Pair(36, 28), Pair(-13, 65),
+      Pair(-9, 57), Pair(-20, 76), Pair(-22, 107), Pair(-34, 119), Pair(-50, 142), Pair(-11, 104), Pair(-8, 85), Pair(30, 72),
+      Pair(-5, 61), Pair(-5, 70), Pair(-10, 100), Pair(-9, 103), Pair(-11, 114), Pair(19, 92), Pair(22, 68), Pair(16, 68),
+      Pair(-11, 67), Pair(-2, 79), Pair(-2, 88), Pair(-10, 105), Pair(-5, 104), Pair(10, 82), Pair(14, 83), Pair(14, 67),
+      Pair(-11, 65), Pair(-17, 96), Pair(-12, 95), Pair(-10, 110), Pair(-4, 99), Pair(-9, 91), Pair(7, 76), Pair(3, 72),
+      Pair(-9, 52), Pair(-7, 75), Pair(-9, 89), Pair(-13, 92), Pair(-9, 93), Pair(-1, 80), Pair(13, 62), Pair(6, 52),
+      Pair(-8, 48), Pair(-5, 51), Pair(-3, 55), Pair(-1, 66), Pair(0, 65), Pair(6, 38), Pair(15, 17), Pair(16, 4),
+      Pair(-18, 55), Pair(-15, 50), Pair(-11, 56), Pair(-9, 58), Pair(-4, 45), Pair(-13, 37), Pair(-10, 32), Pair(-1, 27)
   },
   {
-      Pair(-128, -27), Pair(-197, 200), Pair(69, 74), Pair(-88, 81), Pair(-38, 58), Pair(127, 22), Pair(-146, 91), Pair(-16, -46),
-      Pair(-242, 48), Pair(158, 26), Pair(172, -4), Pair(61, 14), Pair(117, 6), Pair(163, -28), Pair(217, -13), Pair(-99, -44),
-      Pair(146, -59), Pair(252, -22), Pair(163, -12), Pair(-80, 25), Pair(-34, 16), Pair(73, -11), Pair(289, -76), Pair(97, -50),
-      Pair(82, -59), Pair(151, -35), Pair(43, 14), Pair(-98, 25), Pair(-120, 24), Pair(15, -1), Pair(117, -41), Pair(-13, -46),
-      Pair(23, -82), Pair(81, -31), Pair(9, 3), Pair(-70, 21), Pair(-65, 16), Pair(2, -1), Pair(63, -35), Pair(-8, -44),
-      Pair(-20, -46), Pair(30, -19), Pair(4, -3), Pair(-45, 22), Pair(-45, 21), Pair(-23, 9), Pair(12, -16), Pair(-13, -35),
-      Pair(19, -35), Pair(-12, 1), Pair(-33, 10), Pair(-64, 26), Pair(-62, 27), Pair(-55, 27), Pair(-13, 2), Pair(-5, -23),
-      Pair(-63, 28), Pair(5, -9), Pair(-7, 2), Pair(-104, 15), Pair(-35, -4), Pair(-64, 14), Pair(-2, -4), Pair(-10, -8)
+      Pair(74, -91), Pair(82, -49), Pair(60, -27), Pair(-46, 9), Pair(-19, -7), Pair(-91, 11), Pair(-24, -7), Pair(101, -114),
+      Pair(-91, 6), Pair(-4, 27), Pair(-26, 33), Pair(68, 15), Pair(-5, 28), Pair(-36, 49), Pair(-34, 40), Pair(-97, 16),
+      Pair(-72, 6), Pair(68, 16), Pair(6, 32), Pair(-31, 45), Pair(5, 42), Pair(59, 31), Pair(-22, 37), Pair(-48, 4),
+      Pair(-36, -12), Pair(12, 5), Pair(-28, 26), Pair(-76, 43), Pair(-76, 37), Pair(-48, 30), Pair(-32, 9), Pair(-131, 6),
+      Pair(-43, -27), Pair(7, -7), Pair(-39, 18), Pair(-81, 38), Pair(-78, 32), Pair(-41, 13), Pair(-39, -3), Pair(-119, -10),
+      Pair(-26, -30), Pair(23, -14), Pair(-23, 9), Pair(-40, 24), Pair(-36, 19), Pair(-32, 7), Pair(-10, -13), Pair(-48, -25),
+      Pair(27, -42), Pair(2, -10), Pair(-3, 0), Pair(-24, 11), Pair(-29, 12), Pair(-18, 1), Pair(0, -17), Pair(12, -42),
+      Pair(12, -67), Pair(35, -40), Pair(26, -24), Pair(-37, -1), Pair(5, -24), Pair(-23, -11), Pair(18, -36), Pair(20, -75)
   }
 }};
 
 constexpr KnightMobilityTable<ScorePair> kKnightMobility = {
-  Pair(50, 36), Pair(68, 38), Pair(77, 55), Pair(85, 70), Pair(93, 77), Pair(97, 89), Pair(104, 78), Pair(110, 68),
-  Pair(122, 27)
+  Pair(-25, 8), Pair(-11, 4), Pair(-2, 24), Pair(3, 33), Pair(7, 39), Pair(11, 47), Pair(16, 46), Pair(19, 44),
+  Pair(21, 37)
 };
 
 constexpr BishopMobilityTable<ScorePair> kBishopMobility = {
-  Pair(34, 4), Pair(51, 3), Pair(58, 19), Pair(65, 29), Pair(70, 42), Pair(75, 46), Pair(77, 47), Pair(80, 47),
-  Pair(87, 42), Pair(98, 36), Pair(116, 26), Pair(117, 11), Pair(181, 4), Pair(77, -4)
+  Pair(-31, -16), Pair(-21, -24), Pair(-12, -8), Pair(-7, 4), Pair(-1, 13), Pair(2, 22), Pair(4, 26), Pair(6, 30),
+  Pair(7, 34), Pair(12, 32), Pair(21, 30), Pair(28, 32), Pair(29, 44), Pair(35, 27)
 };
 
 constexpr RookMobilityTable<ScorePair> kRookMobility = {
-  Pair(25, -117), Pair(39, -97), Pair(45, -78), Pair(54, -72), Pair(56, -58), Pair(60, -51), Pair(65, -50), Pair(71, -48),
-  Pair(73, -37), Pair(85, -42), Pair(93, -43), Pair(102, -45), Pair(106, -38), Pair(129, -56), Pair(224, -101)
+  Pair(-36, -31), Pair(-26, -4), Pair(-21, 1), Pair(-22, 16), Pair(-22, 20), Pair(-18, 23), Pair(-16, 28), Pair(-13, 31),
+  Pair(-9, 35), Pair(-7, 38), Pair(-3, 40), Pair(-2, 45), Pair(2, 47), Pair(4, 46), Pair(1, 45)
 };
 
 constexpr QueenMobilityTable<ScorePair> kQueenMobility = {
-  Pair(101, -100), Pair(104, -213), Pair(107, -161), Pair(111, -120), Pair(113, -88), Pair(113, -82), Pair(115, -65), Pair(116, -40),
-  Pair(120, -44), Pair(121, -34), Pair(125, -34), Pair(128, -32), Pair(131, -37), Pair(134, -36), Pair(134, -38), Pair(143, -49),
-  Pair(149, -63), Pair(160, -90), Pair(183, -115), Pair(195, -144), Pair(226, -177), Pair(290, -243), Pair(294, -242), Pair(303, -288),
-  Pair(287, -284), Pair(393, -362), Pair(58, -233), Pair(110, -253)
+  Pair(-69, -126), Pair(-15, -237), Pair(-22, -28), Pair(-16, 17), Pair(-16, 57), Pair(-14, 76), Pair(-11, 89), Pair(-10, 102),
+  Pair(-8, 110), Pair(-5, 111), Pair(-3, 116), Pair(-3, 123), Pair(1, 120), Pair(1, 124), Pair(3, 124), Pair(7, 121),
+  Pair(6, 125), Pair(9, 122), Pair(17, 112), Pair(30, 98), Pair(37, 90), Pair(77, 61), Pair(75, 55), Pair(91, 32),
+  Pair(135, 15), Pair(239, -65), Pair(160, -18), Pair(85, 1)
 };
 
 constexpr RankTable<ScorePair> kPassedPawnBonus = {
-  Pair(0, 0), Pair(-34, -59), Pair(-32, -45), Pair(-15, -24), Pair(11, 1), Pair(81, 12), Pair(161, 63), Pair(0, 0)
+  Pair(0, 0), Pair(-10, -74), Pair(-10, -60), Pair(-8, -28), Pair(18, 7), Pair(11, 75), Pair(28, 66), Pair(0, 0)
 };
 
 constexpr RankTable<ScorePair> kPawnPhalanxBonus = {
-  Pair(0, 0), Pair(5, 4), Pair(11, 3), Pair(22, 22), Pair(62, 50), Pair(231, 116), Pair(28, 349), Pair(0, 0)
+  Pair(0, 0), Pair(5, 1), Pair(12, 7), Pair(18, 17), Pair(44, 59), Pair(98, 192), Pair(-46, 414), Pair(0, 0)
 };
 
 constexpr RankTable<ScorePair> kDefendedPawnBonus = {
-  Pair(0, 0), Pair(0, 0), Pair(21, 8), Pair(16, 6), Pair(22, 12), Pair(60, 24), Pair(137, 12), Pair(0, 0)
+  Pair(0, 0), Pair(0, 0), Pair(20, 11), Pair(13, 7), Pair(13, 15), Pair(23, 43), Pair(150, 37), Pair(0, 0)
 };
 
 constexpr FileTable<ScorePair> kDoubledPawnPenalty = {
-  Pair(-71, -22), Pair(-22, -15), Pair(-22, -6), Pair(-24, 3), Pair(-28, 2), Pair(-29, -11), Pair(-14, -11), Pair(-64, 1)
+  Pair(-7, -45), Pair(13, -37), Pair(2, -25), Pair(1, -15), Pair(-8, -6), Pair(-7, -19), Pair(11, -32), Pair(-3, -49)
 };
 
 constexpr FileTable<ScorePair> kIsolatedPawnPenalty = {
-  Pair(8, -5), Pair(-5, -14), Pair(-10, -5), Pair(-18, -9), Pair(-25, -12), Pair(-4, -4), Pair(-19, 0), Pair(9, -11)
+  Pair(-8, 12), Pair(-1, -12), Pair(-11, -4), Pair(-7, -13), Pair(-11, -15), Pair(-4, -6), Pair(1, -12), Pair(-7, 8)
 };
 
 constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = {{
   {
-      Pair(43, -8), Pair(27, -5), Pair(24, -1), Pair(34, 0), Pair(32, 6), Pair(26, 6), Pair(60, -14), Pair(74, -14)
+      Pair(22, 5), Pair(19, 3), Pair(17, 9), Pair(18, 8), Pair(19, 13), Pair(31, 3), Pair(39, 3), Pair(66, -1)
   },
   {
-      Pair(34, 11), Pair(23, -11), Pair(29, -16), Pair(28, -12), Pair(29, -9), Pair(19, -10), Pair(50, -22), Pair(53, -17)
+      Pair(9, 33), Pair(9, 9), Pair(11, 9), Pair(18, 0), Pair(14, 1), Pair(14, -2), Pair(21, 0), Pair(16, 19)
   }
 }};
 
 constexpr std::array<ScorePair, 12> kPawnShelterTable = {
-  Pair(15, -10), Pair(12, -16), Pair(14, -8),
-  Pair(19, -10), Pair(12, -11), Pair(20, -11),
-  Pair(12, 5), Pair(0, 0), Pair(13, 3),
-  Pair(-17, 13), Pair(-53, 23), Pair(-36, 19)
+  Pair(13, -6), Pair(17, -6), Pair(9, -3),
+  Pair(21, -11), Pair(18, -11), Pair(20, -11),
+  Pair(31, -4), Pair(0, 0), Pair(28, -3),
+  Pair(-8, 5), Pair(-5, 0), Pair(-7, 7)
 };
 
 constexpr std::array<ScorePair, 21> kPawnStormTable = {
-  Pair(-13, 9), Pair(-20, 20), Pair(-14, 15),
-  Pair(-10, 5), Pair(-28, 24), Pair(-13, 10),
-  Pair(1, -5), Pair(-11, 7), Pair(-1, -4),
-  Pair(13, -7), Pair(-16, 2), Pair(13, -3),
-  Pair(21, -22), Pair(41, -12), Pair(29, -22),
-  Pair(0, 0), Pair(-97, 6), Pair(0, 0),
-  Pair(30, -47), Pair(0, 0), Pair(32, -49)
+  Pair(-6, 1), Pair(-13, 3), Pair(-7, 3),
+  Pair(-5, 0), Pair(-14, 5), Pair(-8, 3),
+  Pair(1, -7), Pair(-11, 0), Pair(0, -5),
+  Pair(14, -9), Pair(-2, -5), Pair(12, -6),
+  Pair(23, -9), Pair(24, 0), Pair(16, -9),
+  Pair(0, 0), Pair(15, -31), Pair(0, 0),
+  Pair(56, -49), Pair(0, 0), Pair(51, -47)
 };
 
 constexpr std::array<ScorePair, 8> kKingPPDistanceTable = {
-  Pair(0, 0), Pair(17, 38), Pair(-1, 37), Pair(0, 19), Pair(11, 8), Pair(-4, 15), Pair(18, 15), Pair(28, -3)
+  Pair(0, 0), Pair(-9, 63), Pair(-13, 48), Pair(-3, 27), Pair(0, 17), Pair(3, 15), Pair(15, 13), Pair(5, 10)
 };
 
 constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable = {
-  Pair(0, 0), Pair(20, -22), Pair(-4, 10), Pair(-2, 38), Pair(-6, 59), Pair(0, 68), Pair(2, 69), Pair(-3, 81)
+  Pair(0, 0), Pair(-76, 4), Pair(-11, 7), Pair(-7, 30), Pair(1, 37), Pair(3, 42), Pair(5, 47), Pair(-9, 44)
 };
 
-constexpr ScorePair kKingCantReachPPBonus = Pair(-288, 244);
+constexpr ScorePair kKingCantReachPPBonus = Pair(-344, 199);
 
 constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = {{
   {
-      Pair(-172, 81), Pair(-109, 8), Pair(-26, -24), Pair(5, -31), Pair(1, -29), Pair(-10, -27), Pair(-50, 3), Pair(-85, 32)
+      Pair(-55, -13), Pair(-67, -7), Pair(-37, -9), Pair(-24, -9), Pair(-20, -2), Pair(-36, 0), Pair(-49, 3), Pair(-34, 5)
   },
   {
-      Pair(-100, 61), Pair(-23, 12), Pair(-38, 12), Pair(-1, -5), Pair(-15, -8), Pair(-11, 7), Pair(-26, 26), Pair(-28, 42)
+      Pair(-3, 45), Pair(-31, 19), Pair(-17, 12), Pair(3, -5), Pair(-2, -7), Pair(-3, 3), Pair(-27, 23), Pair(-15, 34)
   }
 }};
 
@@ -195,16 +195,16 @@ constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = {{
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(15, -2), Pair(28, 2), Pair(72, -9), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+      Pair(0, 0), Pair(12, 0), Pair(27, -10), Pair(63, -30), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(12, 3), Pair(30, 6), Pair(56, 1), Pair(-18, 11), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+      Pair(0, 0), Pair(13, 1), Pair(29, -2), Pair(61, -11), Pair(68, -40), Pair(0, 0), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(16, -11), Pair(28, -11), Pair(55, -19), Pair(90, -24), Pair(87, -23), Pair(0, 0), Pair(0, 0)
+      Pair(0, 0), Pair(21, -21), Pair(36, -22), Pair(54, -16), Pair(81, -19), Pair(90, -29), Pair(0, 0), Pair(0, 0)
   },
   {
-      Pair(0, 0), Pair(2, 20), Pair(14, 33), Pair(43, 22), Pair(94, -1), Pair(166, -34), Pair(328, -112), Pair(434, -191)
+      Pair(0, 0), Pair(2, 12), Pair(12, 23), Pair(31, 28), Pair(75, 11), Pair(110, 6), Pair(169, -15), Pair(229, -62)
   },
   {
       Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
@@ -212,24 +212,24 @@ constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = {{
 }};
 
 constexpr PieceTable<ScorePair> kSafeCheckBonus = {
-  Pair(0, 0), Pair(32, -5), Pair(13, 10), Pair(70, -17), Pair(25, -3), Pair(0, 0)
+  Pair(0, 0), Pair(47, 7), Pair(19, 21), Pair(59, -2), Pair(28, 13), Pair(0, 0)
 };
 
 constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty = {{
   {
-      Pair(-16, 28), Pair(2, 22)
+      Pair(-17, 13), Pair(-11, 17)
   },
   {
-      Pair(-82, -6), Pair(-73, -6)
+      Pair(-66, -20), Pair(-66, -25)
   },
   {
-      Pair(-56, -31), Pair(-65, -50)
+      Pair(-55, -44), Pair(-64, -66)
   },
   {
-      Pair(-79, -27), Pair(-59, -37)
+      Pair(-91, 3), Pair(-79, -30)
   },
   {
-      Pair(-54, 13), Pair(-58, -1)
+      Pair(-74, 37), Pair(-82, 20)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -237,24 +237,24 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty = {{
 }};
 
 constexpr PieceTable<ScorePair> kPawnPushThreat = {
-  Pair(0, 0), Pair(20, 35), Pair(22, 23), Pair(30, 19), Pair(33, -27), Pair(50, 8)
+  Pair(0, 0), Pair(16, 30), Pair(21, 18), Pair(27, 10), Pair(23, -6), Pair(55, -6)
 };
 
 constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty = {{
   {
-      Pair(-4, -31), Pair(8, -14)
+      Pair(-1, -20), Pair(10, -12)
   },
   {
-      Pair(-9, -49), Pair(-1, -64)
+      Pair(-24, -43), Pair(-4, -59)
   },
   {
-      Pair(-50, -3), Pair(-46, -15)
+      Pair(-41, -31), Pair(-27, -33)
   },
   {
-      Pair(-74, 7), Pair(-71, -2)
+      Pair(-79, -4), Pair(-58, -27)
   },
   {
-      Pair(-46, 5), Pair(-42, -7)
+      Pair(-54, 30), Pair(-55, 17)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -263,19 +263,19 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty = {{
 
 constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty = {{
   {
-      Pair(-23, -26), Pair(-3, -8)
+      Pair(-10, -20), Pair(1, -9)
   },
   {
-      Pair(-49, 1), Pair(-24, -30)
+      Pair(-47, -23), Pair(-21, -24)
   },
   {
-      Pair(-24, -52), Pair(-13, -54)
+      Pair(16, -136), Pair(27, -130)
   },
   {
-      Pair(-56, -5), Pair(-58, -31)
+      Pair(-79, -7), Pair(-45, -36)
   },
   {
-      Pair(-57, -44), Pair(-53, -54)
+      Pair(-81, -16), Pair(-59, -85)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -284,19 +284,19 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty = {{
 
 constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty = {{
   {
-      Pair(-8, -27), Pair(14, -19)
+      Pair(-2, -25), Pair(10, -11)
   },
   {
-      Pair(-47, -9), Pair(-7, -17)
+      Pair(-42, -24), Pair(-3, -13)
   },
   {
-      Pair(-58, 1), Pair(-11, -9)
+      Pair(-30, -29), Pair(-14, -3)
   },
   {
-      Pair(18, -71), Pair(16, -52)
+      Pair(-3, -62), Pair(13, -38)
   },
   {
-      Pair(-65, -49), Pair(-57, -47)
+      Pair(-83, 9), Pair(-62, -38)
   },
   {
       Pair(0, 0), Pair(0, 0)
@@ -304,20 +304,20 @@ constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty = {{
 }};
 
 constexpr OutpostTable<ScorePair> kKnightOutpostTable = {
-  Pair(46, 32), Pair(10, 29), Pair(34, 25), Pair(31, 33), Pair(49, 27), Pair(-11, 27), Pair(48, 45), Pair(84, -17),
-  Pair(44, 11), Pair(11, 2), Pair(-13, 53), Pair(2, 39), Pair(12, 67), Pair(-29, 53), Pair(15, 11), Pair(4, 37),
-  Pair(4, -3), Pair(5, 40), Pair(-3, 22), Pair(15, 24), Pair(4, 18), Pair(-3, 19), Pair(-19, 40), Pair(14, -23)
+  Pair(18, 23), Pair(16, 13), Pair(36, 21), Pair(43, 22), Pair(47, 28), Pair(31, 43), Pair(43, 17), Pair(-3, 39),
+  Pair(1, 14), Pair(13, 16), Pair(17, 20), Pair(9, 34), Pair(13, 23), Pair(11, 19), Pair(14, 14), Pair(-4, 24),
+  Pair(9, 10), Pair(6, 3), Pair(2, 16), Pair(8, 18), Pair(7, 21), Pair(-7, 19), Pair(2, 9), Pair(1, 9)
 };
 
 constexpr OutpostTable<ScorePair> kBishopOutpostTable = {
-  Pair(-164, 15), Pair(9, 1), Pair(89, -25), Pair(37, -20), Pair(84, 2), Pair(-29, 15), Pair(49, 37), Pair(-112, 62),
-  Pair(36, -9), Pair(15, 12), Pair(18, 6), Pair(7, -6), Pair(10, 6), Pair(-22, 33), Pair(23, 26), Pair(-6, 42),
-  Pair(-50, 33), Pair(-26, 9), Pair(11, 16), Pair(30, 29), Pair(13, 28), Pair(2, 15), Pair(-14, 30), Pair(-31, 17)
+  Pair(-10, 15), Pair(20, 0), Pair(30, 2), Pair(42, 3), Pair(67, -14), Pair(45, 0), Pair(26, -10), Pair(-16, -26),
+  Pair(-20, -8), Pair(18, 7), Pair(11, 3), Pair(24, 13), Pair(16, 5), Pair(15, 1), Pair(14, 9), Pair(18, -21),
+  Pair(-23, 31), Pair(10, 6), Pair(3, 20), Pair(18, 14), Pair(23, 24), Pair(2, 10), Pair(14, 0), Pair(-47, 10)
 };
 
-constexpr ScorePair kBishopPairBonus = Pair(31, 50);
+constexpr ScorePair kBishopPairBonus = Pair(18, 58);
 
-constexpr ScorePair kTempoBonus = Pair(23, 0);
+constexpr ScorePair kTempoBonus = Pair(30, 27);
 
 constexpr std::array<int, kNumPieceTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
