@@ -21,7 +21,7 @@ constexpr double kStartLearningRate = 0.1;
 constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
-constexpr double kLambda = 0.25;
+constexpr double kLambda = 0.40;
 
 double decay =
     pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
@@ -649,7 +649,7 @@ void Tuner::NormalizePSQTs() {
 }
 
 void Tuner::PrintParameters() {
-  // NormalizePSQTs();
+  NormalizePSQTs();
   std::size_t index = 0;
 
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
