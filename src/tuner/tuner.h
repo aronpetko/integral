@@ -103,7 +103,8 @@ class Tuner {
   void PrintParameters();
 
   [[nodiscard]] TunerEntry CreateEntry(const BoardState& state,
-                                       GameResult result) const;
+                                       GameResult result,
+                                       Score score) const;
 
   [[nodiscard]] std::vector<I16> GetCoefficients() const;
 

@@ -21,7 +21,7 @@ constexpr double kStartLearningRate = 0.1;
 constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
-constexpr double kLambda = 0.8;
+constexpr double kLambda = 0.25;
 
 double decay =
     pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
@@ -105,8 +105,6 @@ bool Tuner::LoadNextBatch() {
       state.half_moves = (marlin_board.full_move_number - 1) * 2 +
                          (state.turn == Color::kBlack ? 1 : 0);
 
-      board.CalculateThreats();
-
       result = marlin_board.wdl_outcome / 2.0;
       score = marlin_board.evaluation;
     } else if (std::getline(file_, line)) {
@@ -137,8 +135,7 @@ bool Tuner::LoadNextBatch() {
     }
 
     if (result != -1) {
-      auto entry = CreateEntry(board.GetState(), result);
-      entry.score = score;
+      auto entry = CreateEntry(board.GetState(), result, score);
       entries_.push_back(entry);
 
       if (batch_count_ == 1) {
@@ -347,10 +344,12 @@ std::vector<I16> Tuner::GetCoefficients() const {
 }
 
 TunerEntry Tuner::CreateEntry(const BoardState& state,
-                              GameResult result) const {
+                              GameResult result,
+                              Score score) const {
   TunerEntry entry;
   entry.phase = std::min(state.phase, kMaxPhase);
   entry.result = result;
+  entry.score = score;
 
   // Save time by computing phase scalars now
   entry.phase_factors[0] = 0 + entry.phase / 24.0;
@@ -417,7 +416,12 @@ VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
       const auto& entry = entries_[i];
       double E = ComputeEvaluation(entry);
       double S = Sigmoid(K, E);
-      double X = (entry.result - S) * S * (1 - S);
+
+      // Apply sigmoid to the score
+      double score_sigmoid = Sigmoid(K, entry.score);
+      double target = std::lerp(score_sigmoid, static_cast<double>(entry.result), kLambda);
+
+      double X = (target - S) * S * (1 - S);
 
       double mg_base = X * (entry.phase / 24.0);
       double eg_base = X - mg_base;
@@ -460,10 +464,13 @@ double Tuner::TunedEvaluationErrors(double K) const {
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
-      double E = ComputeEvaluation(entry);
-      double S = Sigmoid(K, E);
-      double target = entry.result;
-      total += pow(target - S, 2);
+      double evaluation = Sigmoid(K, ComputeEvaluation(entry));
+
+      // Interpolate between result and sigmoid-ed score
+      double score_sigmoid = Sigmoid(K, entry.score);
+      double target = std::lerp(entry.result, score_sigmoid, kLambda);
+
+      total += pow(target - evaluation, 2);
     }
   }
   return total / (double)entries_.size();
