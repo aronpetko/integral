@@ -89,8 +89,10 @@ bool Tuner::LoadNextBatch() {
         ++i;
       }
 
-      state.turn = (marlin_board.turn_and_en_passant & 0x80) ? Color::kBlack
-                                                             : Color::kWhite;
+      state.turn = (marlin_board.turn_and_en_passant & (1 << 7))
+                     ? Color::kBlack
+                     : Color::kWhite;
+      fmt::println("{}", (int)state.turn);
 
       U8 en_passant_relative = marlin_board.turn_and_en_passant & 0x7F;
       if (en_passant_relative != Squares::kNoSquare) {
