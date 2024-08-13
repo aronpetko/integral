@@ -21,6 +21,7 @@ Board::Board() : history_({}) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
+  history_.Clear();
   CalculateThreats();
 }
 

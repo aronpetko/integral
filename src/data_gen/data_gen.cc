@@ -128,7 +128,7 @@ void PrintProgress(const Config &config, U64 completed, U64 written) {
 void GameLoop(const Config &config,
               int thread_id,
               std::ostream &output_stream) {
-  RandomSeed(search::GetCurrentTime(), thread_id);
+  RandomSeed(thread_id);
 
   constexpr int kWinThreshold = 5000;
   constexpr int kWinPliesThreshold = 5;
@@ -199,28 +199,32 @@ void GameLoop(const Config &config,
         }
       }
 
-      formatter.PushMove(best_move, state.turn, score);
       board.MakeMove(best_move);
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root
       if (board.IsDraw(0)) {
         wdl_outcome = 0.5;
+        break;
       }
+
+      formatter.PushMove(best_move, state.turn, score);
 
       if (wdl_outcome) {
         break;
       }
     }
 
-    const auto written = positions_written.fetch_add(
-        formatter.WriteOutcome(*wdl_outcome), std::memory_order_relaxed);
-    const auto completed =
-        games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (wdl_outcome) {
+      const auto written = positions_written.fetch_add(
+          formatter.WriteOutcome(*wdl_outcome), std::memory_order_relaxed);
+      const auto completed =
+          games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
 
-    if (completed % std::min<U64>(config.num_games / 50, 1000ULL) == 0 ||
-        completed == 1) {
-      PrintProgress(config, completed, written);
+      if (completed % std::min<U64>(config.num_games / 50, 1000ULL) == 0 ||
+          completed == 1) {
+        PrintProgress(config, completed, written);
+      }
     }
   }
 
