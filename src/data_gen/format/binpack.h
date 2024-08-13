@@ -155,9 +155,11 @@ class BinPackFormatter : public OutputFormatter {
     }
 
     const U8 turn = state.turn == Color::kBlack ? 0b10000000 : 0;
-    const U8 en_passant = state.en_passant == Squares::kNoSquare
-                            ? Squares::kNoSquare
-                            : state.en_passant.RelativeTo(state.turn);
+    const U8 en_passant =
+        state.en_passant == Squares::kNoSquare
+            ? Squares::kNoSquare
+            : Square::FromRankFile(state.turn == Color::kBlack ? 2 : 5,
+                                   state.en_passant.File());
     converted.turn_and_en_passant = turn | en_passant;
     converted.wdl_outcome = 0;
     converted.evaluation = 0;

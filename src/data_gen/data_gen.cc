@@ -34,7 +34,8 @@ void FindStartingPosition(Board &board, I32 plies) {
     auto legal_moves = GetLegalMoves(board);
     // Keep looping until we can find a legal move
     if (legal_moves.Empty()) {
-      board.UndoMove(), --current_ply;
+      current_ply = 0;
+      board.SetFromFen(fen::kStartFen);
       continue;
     }
 
@@ -43,7 +44,8 @@ void FindStartingPosition(Board &board, I32 plies) {
 
     // Prevent the last ply being checkmate/stalemate
     if (++current_ply == plies && GetLegalMoves(board).Empty()) {
-      board.UndoMove(), --current_ply;
+      current_ply = 0;
+      board.SetFromFen(fen::kStartFen);
     }
   }
 }

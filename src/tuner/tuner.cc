@@ -144,7 +144,6 @@ bool Tuner::LoadNextBatch() {
         fmt::println("Tuner deviation detected: real {} coeff {}",
                      entry.static_eval,
                      computed_eval);
-        fmt::println("{}", loaded_entries);
         entries_.pop_back();
       }
 
