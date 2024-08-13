@@ -126,8 +126,8 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
   });
 
   listener.RegisterCommand("datagen", CommandType::kUnordered, {
-    CreateArgument("soft_limit", ArgumentType::kRequired, LimitedInputProcessor<1>()),
-    CreateArgument("hard_limit", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("soft_limit", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("hard_limit", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("games", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("threads", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("random_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),

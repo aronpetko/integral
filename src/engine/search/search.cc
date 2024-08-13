@@ -83,9 +83,14 @@ void Search::IterativeDeepening(Thread &thread) {
     while (true) {
       const Score new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
+
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
+      }
+
+      if (ShouldQuit(thread)) {
+        break;
       }
 
       if (score <= alpha) {
@@ -124,7 +129,7 @@ void Search::IterativeDeepening(Thread &thread) {
     }
 
     if (thread.IsMainThread() && !stop_ && print_info) {
-      const bool is_mate = eval::IsMateScore(score);
+      const bool is_mate = eval::IsMateScore(root_stack->score);
       const auto nodes_searched = GetNodesSearched();
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
@@ -132,7 +137,7 @@ void Search::IterativeDeepening(Thread &thread) {
           depth,
           thread.sel_depth,
           is_mate ? "mate" : "cp",
-          is_mate ? eval::MateIn(score) : score,
+          is_mate ? eval::MateIn(root_stack->score) : root_stack->score,
           nodes_searched,
           time_mgmt_.TimeElapsed(),
           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
@@ -377,10 +382,6 @@ Score Search::PVSearch(Thread &thread,
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
       return alpha;
-    }
-
-    if (ShouldQuit(thread)) {
-      return 0;
     }
   }
 
