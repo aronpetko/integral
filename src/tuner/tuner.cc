@@ -138,15 +138,14 @@ bool Tuner::LoadNextBatch() {
       auto entry = CreateEntry(board.GetState(), result, score);
       entries_.push_back(entry);
 
-      if (batch_count_ == 1) {
-        const Score computed_eval = ComputeEvaluation(entry);
-        const Score deviation = abs(entry.static_eval - computed_eval);
-        if (deviation > 1) {
-          fmt::println("Tuner deviation detected: real {} coeff {}",
-                       entry.static_eval,
-                       computed_eval);
-          fmt::println("{}", loaded_entries);
-        }
+      const Score computed_eval = ComputeEvaluation(entry);
+      const Score deviation = abs(entry.static_eval - computed_eval);
+      if (deviation > 1) {
+        fmt::println("Tuner deviation detected: real {} coeff {}",
+                     entry.static_eval,
+                     computed_eval);
+        fmt::println("{}", loaded_entries);
+        entries_.pop_back();
       }
 
       loaded_entries++;
