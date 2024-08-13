@@ -21,7 +21,7 @@ constexpr double kStartLearningRate = 0.1;
 constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
-constexpr double kLambda = 0.40;
+constexpr double kLambda = 1.0;
 
 double decay =
     pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
