@@ -19,6 +19,8 @@ constexpr std::array<U8, 64> kCastlingRights = {
 
 Board::Board() : history_({}) {}
 
+Board::Board(const BoardState &state) : history_({}), state_(state) {}
+
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
   history_.Clear();
@@ -374,10 +376,9 @@ void Board::HandleCastling(Move move) {
 
   const auto from = move.GetFrom(), to = move.GetTo();
   const auto move_rook_for_castling = [this, &us](Square rook_from,
-                                                               Square rook_to) {
+                                                  Square rook_to) {
     state_.RemovePiece(rook_from, state_.turn);
-    state_.PlacePiece(
-        rook_to, PieceType::kRook, state_.turn);
+    state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
   };
 
   constexpr int kKingsideCastleDist = -2;
@@ -462,8 +463,7 @@ void Board::PrintPieces() {
     fmt::print("{} ", rank + 1);
     for (int file = 0; file < kNumFiles; file++) {
       const auto square = Square::FromRankFile(rank, file);
-      fmt::print("{}",
-                 fen::GetPieceChar(const_cast<BoardState &>(state_), square));
+      fmt::print("{}", fen::GetPieceChar(state_, square));
       if (file < kNumFiles - 1) fmt::print(" ");  // Space separator for clarity
     }
     fmt::print("\n");

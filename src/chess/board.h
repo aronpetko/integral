@@ -267,6 +267,8 @@ class Board {
  public:
   Board();
 
+  Board(const BoardState &state);
+
   inline BoardState &GetState() {
     return state_;
   }

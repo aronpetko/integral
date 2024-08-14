@@ -9,6 +9,7 @@
 #include "../chess/board.h"
 #include "../engine/search/search.h"
 #include "format/binpack.h"
+#include "format/fens.h"
 
 namespace data_gen {
 
@@ -138,7 +139,7 @@ void GameLoop(const Config &config,
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};
-  format::BinPackFormatter formatter(output_stream);
+  format::FenFormatter formatter(output_stream);
 
   Board board;
 
@@ -185,7 +186,8 @@ void GameLoop(const Config &config,
             ++win_plies, loss_plies = draw_plies = 0;
           } else if (score <= -kWinThreshold) {
             ++loss_plies, win_plies = draw_plies = 0;
-          } else if (std::abs(score) <= kDrawThreshold && state.half_moves >= 60) {
+          } else if (std::abs(score) <= kDrawThreshold &&
+                     state.half_moves >= 60) {
             ++draw_plies, win_plies = loss_plies = 0;
           }
 
@@ -268,7 +270,7 @@ void Generate(Config config) {
 
     threads.emplace_back([&config, thread_path = std::move(thread_path), i]() {
       std::ofstream output_stream(thread_path,
-                                  std::ios::binary | std::ios::app);
+                                  std::ios::app);
       if (!output_stream) {
         fmt::println("Error: Failed to open output file {} for thread {} '{}'",
                      thread_path,
