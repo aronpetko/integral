@@ -29,11 +29,16 @@ class FenFormatter : public OutputFormatter {
 
   U64 WriteOutcome(double wdl_outcome) override {
     // White Loss = 0  Draw = 1  White Win = 2
-    for (const auto& fen : fens_) {
-      output_stream_ << fen << fmt::format(" [{:.1f}]", wdl_outcome);
+    std::random_device rd;
+    std::mt19937 gen{rd()};
+    std::ranges::shuffle(fens_, gen);
+
+    for (int i = 0; i < 50 && i < fens_.size(); ++i) {
+      output_stream_ << fens_[i] << fmt::format(" [{:.1f}]", wdl_outcome);
       output_stream_ << "\n";
     }
-    return fens_.size();
+
+    return std::min<int>(50, fens_.size());
   }
 
  private:

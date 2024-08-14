@@ -131,10 +131,10 @@ void GameLoop(const Config &config,
               std::ostream &output_stream) {
   RandomSeed(thread_id);
 
-  constexpr int kWinThreshold = 5000;
-  constexpr int kWinPliesThreshold = 5;
+  constexpr int kWinThreshold = 1500;
+  constexpr int kWinPliesThreshold = 3;
   constexpr int kDrawThreshold = 5;
-  constexpr int kDrawPliesThreshold = 10;
+  constexpr int kDrawPliesThreshold = 5;
   constexpr int kInitialScoreThreshold = 1000;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
@@ -186,8 +186,7 @@ void GameLoop(const Config &config,
             ++win_plies, loss_plies = draw_plies = 0;
           } else if (score <= -kWinThreshold) {
             ++loss_plies, win_plies = draw_plies = 0;
-          } else if (std::abs(score) <= kDrawThreshold &&
-                     state.half_moves >= 60) {
+          } else if (std::abs(score) <= kDrawThreshold) {
             ++draw_plies, win_plies = loss_plies = 0;
           }
 
