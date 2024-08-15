@@ -269,7 +269,7 @@ void Generate(Config config) {
 
     threads.emplace_back([&config, thread_path = std::move(thread_path), i]() {
       std::ofstream output_stream(thread_path,
-                                  std::ios::app);
+                                  std::ios::binary | std::ios::app);
       if (!output_stream) {
         fmt::println("Error: Failed to open output file {} for thread {} '{}'",
                      thread_path,

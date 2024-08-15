@@ -8,7 +8,7 @@
 #include "../utils/string.h"
 #include "../utils/types.h"
 
-//  #define TUNE
+// #define TUNE
 
 struct CoefficientEntry {
   U32 index;
@@ -162,6 +162,13 @@ class Tuner {
   }
 
   void NormalizePSQTs();
+
+  void WriteCheckpoint(const std::string& filename);
+
+  void WriteArray(std::ofstream& file, const std::string& name, int size, int row_length, size_t& index);
+  void Write2DArray(std::ofstream& file, const std::string& name, int rows, int columns, int row_length, size_t& index);
+  void Write3DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, size_t& index);
+  void Write4DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, int dim4, size_t& index);
 
  private:
   int num_terms_;

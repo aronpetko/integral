@@ -14,10 +14,10 @@
 
 using namespace eval;
 
-constexpr int kMaxEpochs = 2000;
+constexpr int kMaxEpochs = 350;
 constexpr double kMomentumCoeff = 0.9;
 constexpr double kVelocityCoeff = 0.999;
-constexpr double kStartLearningRate = 0.1;
+constexpr double kStartLearningRate = 1.0;
 constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
@@ -105,6 +105,9 @@ bool Tuner::LoadNextBatch() {
       state.half_moves = (marlin_board.full_move_number - 1) * 2 +
                          (state.turn == Color::kBlack ? 1 : 0);
 
+      // We need to re-place the pieces because of king buckets
+      state.RecalculatePieceScores();
+
       result = marlin_board.wdl_outcome / 2.0;
       score = marlin_board.evaluation;
     } else if (std::getline(file_, line)) {
@@ -138,13 +141,15 @@ bool Tuner::LoadNextBatch() {
       auto entry = CreateEntry(board.GetState(), result, score);
       entries_.push_back(entry);
 
-      const Score computed_eval = ComputeEvaluation(entry);
-      const Score deviation = abs(entry.static_eval - computed_eval);
-      if (deviation > 1) {
-        fmt::println("Tuner deviation detected: real {} coeff {}",
-                     entry.static_eval,
-                     computed_eval);
-        entries_.pop_back();
+      if (batch_count_ == 1) {
+        const Score computed_eval = ComputeEvaluation(entry);
+        const Score deviation = abs(entry.static_eval - computed_eval);
+        if (deviation > 1) {
+          fmt::println("Tuner deviation detected: real {} coeff {}",
+                       entry.static_eval,
+                       computed_eval);
+          entries_.pop_back();
+        }
       }
 
       loaded_entries++;
@@ -222,7 +227,8 @@ void Tuner::TuneBatch() {
         num_entries / time_delta);
 
     if (epoch % 50 == 0) {
-      PrintParameters();
+      std::string checkpoint_filename = fmt::format("checkpoint_batch{}_epoch{}.txt", batch_count_, epoch);
+      WriteCheckpoint(checkpoint_filename);
     }
 
     // Pre-scheduled Learning Rate drops
@@ -254,6 +260,9 @@ void Tuner::LoadAndTune(const std::string& source_file) {
     batch_count_++;
   }
 
+  std::string final_checkpoint_filename = fmt::format("final_checkpoint_batch{}.txt", batch_count_);
+  WriteCheckpoint(final_checkpoint_filename);
+
   fmt::println("Finished processing all batches. Total batches: {}",
                batch_count_);
 }
@@ -261,7 +270,7 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
   Add4DArrayParameter(kPawnPieceSquareTable);
-  Add2DArrayParameter(kNormalPieceSquareTable);
+  Add4DArrayParameter(kNormalPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -311,7 +320,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
   GET_4D_ARRAY_COEFFICIENTS(kPawnPieceSquareTable);
-  GET_2D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
+  GET_4D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
@@ -419,7 +428,8 @@ VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
 
       // Apply sigmoid to the score
       double score_sigmoid = Sigmoid(K, entry.score);
-      double target = std::lerp(score_sigmoid, static_cast<double>(entry.result), kLambda);
+      double target =
+          std::lerp(score_sigmoid, static_cast<double>(entry.result), kLambda);
 
       double X = (target - S) * S * (1 - S);
 
@@ -655,8 +665,18 @@ void Tuner::PrintParameters() {
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
   PrintArray(index, kPieceValues.size(), parameters_);
 
-  fmt::print("constexpr PieceSquareTable<ScorePair> kPieceSquareTable = ");
-  Print2DArray(index, kNumPieceTypes, kSquareCount, parameters_);
+  fmt::print("constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable = ");
+  Print4DArray(
+      index, 2, kSquareCount, kNumPieceTypes, kSquareCount, parameters_);
+
+  fmt::print(
+      "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable = ");
+  Print4DArray(index,
+               kNumKingBuckets,
+               kNumKingBuckets,
+               kNumPieceTypes,
+               kSquareCount,
+               parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
   PrintArray(index, kKnightMobility.size(), parameters_);
@@ -759,4 +779,138 @@ void Tuner::PrintParameters() {
                  index,
                  parameters_.size());
   }
+}
+
+void Tuner::WriteCheckpoint(const std::string& filename) {
+  std::ofstream file(filename);
+  if (!file.is_open()) {
+    fmt::print(stderr, "Failed to open checkpoint file: {}\n", filename);
+    return;
+  }
+
+  file << std::fixed << std::setprecision(2);
+
+  size_t index = 0;
+
+  WriteArray(file, "constexpr PieceTable<ScorePair> kPieceValues", kPieceValues.size(), 8, index);
+  Write4DArray(file, "constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable", 2, kSquareCount, kNumPieceTypes, kSquareCount, index);
+  Write4DArray(file, "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable", kNumKingBuckets, kNumKingBuckets, kNumPieceTypes, kSquareCount, index);
+  WriteArray(file, "constexpr KnightMobilityTable<ScorePair> kKnightMobility", kKnightMobility.size(), 8, index);
+  WriteArray(file, "constexpr BishopMobilityTable<ScorePair> kBishopMobility", kBishopMobility.size(), 8, index);
+  WriteArray(file, "constexpr RookMobilityTable<ScorePair> kRookMobility", kRookMobility.size(), 8, index);
+  WriteArray(file, "constexpr QueenMobilityTable<ScorePair> kQueenMobility", kQueenMobility.size(), 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kPassedPawnBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kPawnPhalanxBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kDefendedPawnBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr FileTable<ScorePair> kDoubledPawnPenalty", kNumFiles, 8, index);
+  WriteArray(file, "constexpr FileTable<ScorePair> kIsolatedPawnPenalty", kNumFiles, 8, index);
+  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus", 2, kNumFiles, 8, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 12> kPawnShelterTable", kPawnShelterTable.size(), 3, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 21> kPawnStormTable", kPawnStormTable.size(), 3, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 8> kKingPPDistanceTable", kKingPPDistanceTable.size(), 8, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable", kEnemyKingPPDistanceTable.size(), 8, index);
+  file << "constexpr ScorePair kKingCantReachPPBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
+  index++;
+  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty", 2, kNumFiles, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower", kNumPieceTypes, 8, 8, index);
+  WriteArray(file, "constexpr PieceTable<ScorePair> kSafeCheckBonus", kNumPieceTypes, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty", kNumPieceTypes, 2, 8, index);
+  WriteArray(file, "constexpr PieceTable<ScorePair> kPawnPushThreat", kNumPieceTypes, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty", kNumPieceTypes, 2, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty", kNumPieceTypes, 2, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty", kNumPieceTypes, 2, 8, index);
+  WriteArray(file, "constexpr OutpostTable<ScorePair> kKnightOutpostTable", kKnightOutpostTable.size(), 8, index);
+  WriteArray(file, "constexpr OutpostTable<ScorePair> kBishopOutpostTable", kKnightOutpostTable.size(), 8, index);
+  file << "constexpr ScorePair kBishopPairBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
+  index++;
+  file << "constexpr ScorePair kTempoBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n";
+  index++;
+
+  if (index != parameters_.size()) {
+    fmt::print(stderr, "Failed to write all eval terms: {} written, {} expected\n", index, parameters_.size());
+  }
+
+  file.close();
+  fmt::print("Checkpoint written to: {}\n", filename);
+}
+
+void Tuner::WriteArray(std::ofstream& file, const std::string& name, int size, int row_length, size_t& index) {
+  file << name << " = {\n";
+  for (int i = 0; i < size; i++) {
+    if (i % row_length == 0) file << "  ";
+    file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+    if (i < size - 1) file << ", ";
+    if ((i + 1) % row_length == 0 || i == size - 1) file << "\n";
+    index++;
+  }
+  file << "};\n\n";
+}
+
+void Tuner::Write2DArray(std::ofstream& file, const std::string& name, int rows, int columns, int row_length, size_t& index) {
+  file << name << " = {\n";
+  for (int i = 0; i < rows; i++) {
+    file << "  {\n";
+    for (int j = 0; j < columns; j++) {
+      if (j % row_length == 0) file << "    ";
+      file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+      if (j < columns - 1) file << ", ";
+      if ((j + 1) % row_length == 0 || j == columns - 1) file << "\n";
+      index++;
+    }
+    file << "  }";
+    if (i < rows - 1) file << ",";
+    file << "\n";
+  }
+  file << "};\n\n";
+}
+
+void Tuner::Write3DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, size_t& index) {
+  file << name << " = {\n";
+  for (int i = 0; i < dim1; i++) {
+    file << "  {\n";
+    for (int j = 0; j < dim2; j++) {
+      file << "    {";
+      for (int k = 0; k < dim3; k++) {
+        file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+        if (k < dim3 - 1) file << ", ";
+        index++;
+      }
+      file << "}";
+      if (j < dim2 - 1) file << ",";
+      file << "\n";
+    }
+    file << "  }";
+    if (i < dim1 - 1) file << ",";
+    file << "\n";
+  }
+  file << "};\n\n";
+}
+
+void Tuner::Write4DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, int dim4, size_t& index) {
+  file << name << " = {{\n";
+  for (int d1 = 0; d1 < dim1; d1++) {
+    file << "  {{ // Bucket " << d1 << "\n";
+    for (int d2 = 0; d2 < dim2; d2++) {
+      file << "    {{ // Bucket " << d2 << "\n";
+      for (int d3 = 0; d3 < dim3; d3++) {
+        file << "      { // Piece " << d3 << "\n        ";
+        for (int d4 = 0; d4 < dim4; d4++) {
+          file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+          if (d4 < dim4 - 1) file << ", ";
+          if ((d4 + 1) % 8 == 0 && d4 < dim4 - 1) file << "\n        ";
+          index++;
+        }
+        file << "\n      }";
+        if (d3 < dim3 - 1) file << ",";
+        file << "\n";
+      }
+      file << "    }}";
+      if (d2 < dim2 - 1) file << ",";
+      file << "\n";
+    }
+    file << "  }}";
+    if (d1 < dim1 - 1) file << ",";
+    file << "\n";
+  }
+  file << "}};\n\n";
 }
