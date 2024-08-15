@@ -98,16 +98,9 @@ struct BoardState {
     side_bbs[color].SetBit(square);
     piece_on_square[square] = piece_type;
 
-    const int our_bucket = king_bucket[color],
-              their_bucket = king_bucket[FlipColor(color)];
-
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    // piece_scores[color] +=
-    // eval::kPawnPieceSquareTable[our_bucket][their_bucket]
-    //                                               [piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
-    piece_scores[color] += eval::kPieceSquareTable[piece_type][rel_square];
 
     // Incrementally update the current phase of the game
     phase += eval::kPhaseIncrements[piece_type];
@@ -141,15 +134,9 @@ struct BoardState {
     piece_bbs[piece_type].ClearBit(square);
     side_bbs[color].ClearBit(square);
 
-    const int our_bucket = king_bucket[color],
-              their_bucket = king_bucket[FlipColor(color)];
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    // piece_scores[color] -=
-    // eval::kPawnPieceSquareTable[our_bucket][their_bucket]
-    //                                               [piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
-    piece_scores[color] -= eval::kPieceSquareTable[piece_type][rel_square];
 
     // Incrementally update the current phase of the game
     phase -= eval::kPhaseIncrements[piece_type];

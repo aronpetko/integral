@@ -260,7 +260,8 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
-  Add2DArrayParameter(kPieceSquareTable);
+  Add4DArrayParameter(kPawnPieceSquareTable);
+  Add2DArrayParameter(kNormalPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -309,7 +310,8 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_3D_ARRAY_COEFFICIENTS(arr4d[z])
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
-  GET_2D_ARRAY_COEFFICIENTS(kPieceSquareTable);
+  GET_4D_ARRAY_COEFFICIENTS(kPawnPieceSquareTable);
+  GET_2D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);

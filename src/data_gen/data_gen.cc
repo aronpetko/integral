@@ -139,7 +139,7 @@ void GameLoop(const Config &config,
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};
-  format::FenFormatter formatter(output_stream);
+  format::BinPackFormatter formatter(output_stream);
 
   Board board;
 
