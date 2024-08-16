@@ -479,25 +479,8 @@ Score Search::PVSearch(Thread &thread,
   if (state.InCheck()) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
-    if (tt_static_eval != kScoreNone) {
-      raw_static_eval = tt_entry->static_eval;
-    } else {
-      raw_static_eval = eval::Evaluate(state);
-    }
-
-    if (!tt_hit) {
-      // Save static eval in TT if there's no tt hit
-      const TranspositionTableEntry new_tt_entry(
-          state.zobrist_key,
-          0,
-          TranspositionTableEntry::kLowerBound,
-          kScoreNone,
-          raw_static_eval,
-          Move::NullMove(),
-          tt_was_in_pv);
-      transposition_table.Save(
-          tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
-    }
+    raw_static_eval =
+        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(state);
 
     stack->static_eval =
         history.correction_history->CorrectStaticEval(state, raw_static_eval);

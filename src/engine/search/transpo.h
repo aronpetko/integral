@@ -12,6 +12,7 @@ namespace search {
 
 struct TranspositionTableEntry {
   enum Flag : U8 {
+    kNone,
     kExact,
     kLowerBound,
     kUpperBound
@@ -23,7 +24,9 @@ struct TranspositionTableEntry {
         score(kScoreNone),
         static_eval(0),
         move(Move::NullMove()),
-        bits(0) {}
+        bits(0) {
+    SetFlag(kNone);
+  }
 
   explicit TranspositionTableEntry(U64 key,
                                    U8 depth,
