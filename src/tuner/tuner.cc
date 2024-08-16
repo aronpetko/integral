@@ -93,14 +93,7 @@ bool Tuner::LoadNextBatch() {
                      ? Color::kBlack
                      : Color::kWhite;
 
-      U8 en_passant_relative = marlin_board.turn_and_en_passant & 0x7F;
-      if (en_passant_relative != Squares::kNoSquare) {
-        state.en_passant =
-            Square(en_passant_relative).RelativeTo(FlipColor(state.turn));
-      } else {
-        state.en_passant = Squares::kNoSquare;
-      }
-
+      state.en_passant = marlin_board.turn_and_en_passant & 0x7F;
       state.fifty_moves_clock = marlin_board.half_move_clock;
       state.half_moves = (marlin_board.full_move_number - 1) * 2 +
                          (state.turn == Color::kBlack ? 1 : 0);
