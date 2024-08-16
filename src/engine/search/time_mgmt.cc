@@ -120,7 +120,7 @@ bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
       (node_fraction_base - percent_searched) * node_fraction_scale;
   const double stability_scale = move_stability_scale[best_move_stability_];
   const U32 optimal_limit = std::min<U32>(
-      soft_limit_ * percent_scale_factor * stability_scale, hard_limit_);
+      soft_limit_ * stability_scale, hard_limit_);
 
   return TimeElapsed() >= optimal_limit;
 }

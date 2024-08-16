@@ -328,8 +328,14 @@ ScorePair Evaluation::EvaluatePawns() {
     const BitBoard enemy_non_pawn_king_pieces =
         state_.KinglessOccupied(them) & ~state_.Pawns(them);
     const int dist_to_promotion = kRank8 - square.RelativeRank<us>();
+    const Square promotion_square = Square::FromRankFile(
+        square.Rank() +
+            (us == Color::kWhite ? dist_to_promotion : -dist_to_promotion),
+        square.File());
+    const int enemy_dist_to_promotion =
+        enemy_king_square.DistanceTo(promotion_square);
     if (enemy_non_pawn_king_pieces == 0 &&
-        dist_to_promotion < dist_to_enemy_king - (state_.turn == them)) {
+        dist_to_promotion < enemy_dist_to_promotion - (state_.turn == them)) {
       score += kKingCantReachPPBonus;
       TRACE_INCREMENT(kKingCantReachPPBonus, us);
     }
