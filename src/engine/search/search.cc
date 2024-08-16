@@ -489,7 +489,7 @@ Score Search::PVSearch(Thread &thread,
       // Save static eval in TT if there's no tt hit
       const TranspositionTableEntry new_tt_entry(
           state.zobrist_key,
-          depth,
+          0,
           TranspositionTableEntry::kLowerBound,
           kScoreNone,
           raw_static_eval,
