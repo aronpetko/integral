@@ -18,13 +18,24 @@ struct TranspositionTableEntry {
   };
 
   TranspositionTableEntry()
-      : key(0), depth(0), score(kScoreNone), move(Move::NullMove()), bits(0) {}
+      : key(0),
+        depth(0),
+        score(kScoreNone),
+        static_eval(0),
+        move(Move::NullMove()),
+        bits(0) {}
 
-  explicit TranspositionTableEntry(
-      U64 key, U8 depth, Flag flag, Score score, Move move, bool was_in_pv)
+  explicit TranspositionTableEntry(U64 key,
+                                   U8 depth,
+                                   Flag flag,
+                                   Score score,
+                                   Score static_eval,
+                                   Move move,
+                                   bool was_in_pv)
       : key(static_cast<U16>(key)),
         depth(depth),
         score(score),
+        static_eval(static_eval),
         move(move),
         bits(0) {
     SetWasPV(was_in_pv);
@@ -57,7 +68,7 @@ struct TranspositionTableEntry {
   }
 
   U16 key;
-  I16 score;
+  I16 score, static_eval;
   Move move;
   U8 depth;
   union {
@@ -93,12 +104,13 @@ struct TranspositionTableEntry {
   }
 };
 
-static_assert(sizeof(TranspositionTableEntry) == 8);
+static_assert(sizeof(TranspositionTableEntry) == 10);
 
-constexpr int kTTClusterSize = 4;
+constexpr int kTTClusterSize = 3;
 
 struct TranspositionTableCluster {
   std::array<TranspositionTableEntry, kTTClusterSize> entries;
+  U16 padding;
 };
 
 constexpr int kMaxTTAge = 64;

@@ -207,10 +207,12 @@ Score Search::QuiescentSearch(Thread &thread,
 
   auto tt_move = Move::NullMove();
   bool tt_was_in_pv = in_pv_node;
+  Score tt_static_eval = kScoreNone;
 
   if (tt_hit) {
     tt_was_in_pv |= tt_entry->GetWasPV();
     tt_move = tt_entry->move;
+    tt_static_eval = tt_entry->static_eval;
   }
 
   // Use the TT entry's evaluation if possible
@@ -228,10 +230,17 @@ Score Search::QuiescentSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
+  Score raw_static_eval = kScoreNone;
+
+  if (tt_static_eval != kScoreNone) {
+    raw_static_eval = tt_static_eval;
+  } else {
+    raw_static_eval = eval::Evaluate(state);
+  }
 
   if (!state.InCheck()) {
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, eval::Evaluate(state));
+    stack->static_eval =
+        history.correction_history->CorrectStaticEval(state, raw_static_eval);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -325,6 +334,7 @@ Score Search::QuiescentSearch(Thread &thread,
                                              tt_depth,
                                              tt_flag,
                                              best_score,
+                                             raw_static_eval,
                                              Move::NullMove(),
                                              tt_was_in_pv);
   transposition_table.Save(
@@ -389,6 +399,7 @@ Score Search::PVSearch(Thread &thread,
   TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  Score tt_static_eval = kScoreNone;
 
   if (!stack->excluded_tt_move) {
     tt_entry = transposition_table.Probe(state.zobrist_key);
@@ -399,6 +410,7 @@ Score Search::PVSearch(Thread &thread,
       can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
       tt_was_in_pv |= tt_entry->GetWasPV();
       tt_move = tt_entry->move;
+      tt_static_eval = tt_entry->static_eval;
     }
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
@@ -441,6 +453,7 @@ Score Search::PVSearch(Thread &thread,
                                                    depth,
                                                    tt_flag,
                                                    score,
+                                                   tt_static_eval,
                                                    Move::NullMove(),
                                                    tt_was_in_pv);
         transposition_table.Save(
@@ -460,12 +473,34 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
+  Score raw_static_eval;
+
   // Approximate the current evaluation at this node
   if (state.InCheck()) {
-    stack->static_eval = stack->eval = kScoreNone;
+    stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, eval::Evaluate(state));
+    if (tt_static_eval != kScoreNone) {
+      raw_static_eval = tt_entry->static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(state);
+    }
+
+    if (!tt_hit) {
+      // Save static eval in TT if there's no tt hit
+      const TranspositionTableEntry new_tt_entry(
+          state.zobrist_key,
+          depth,
+          TranspositionTableEntry::kLowerBound,
+          kScoreNone,
+          raw_static_eval,
+          Move::NullMove(),
+          tt_was_in_pv);
+      transposition_table.Save(
+          tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+    }
+
+    stack->static_eval =
+        history.correction_history->CorrectStaticEval(state, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
@@ -805,8 +840,13 @@ Score Search::PVSearch(Thread &thread,
 
     // Attempt to update the transposition table with the evaluation of this
     // position
-    const TranspositionTableEntry new_tt_entry(
-        state.zobrist_key, depth, tt_flag, best_score, best_move, tt_was_in_pv);
+    const TranspositionTableEntry new_tt_entry(state.zobrist_key,
+                                               depth,
+                                               tt_flag,
+                                               best_score,
+                                               raw_static_eval,
+                                               best_move,
+                                               tt_was_in_pv);
     transposition_table.Save(
         tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
