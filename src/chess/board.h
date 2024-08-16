@@ -104,7 +104,7 @@ struct BoardState {
 
     const Square rel_square = square.RelativeTo(color);
     piece_scores[color] +=
-        eval::kNormalPieceSquareTable[our_bucket][their_bucket][piece_type]
+        eval::kNormalPieceSquareTable[our_bucket][piece_type]
                                      [rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
@@ -146,7 +146,7 @@ struct BoardState {
 
     const Square rel_square = square.RelativeTo(color);
     piece_scores[color] -=
-        eval::kNormalPieceSquareTable[our_bucket][their_bucket][piece_type]
+        eval::kNormalPieceSquareTable[our_bucket][piece_type]
                                      [rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
@@ -177,7 +177,7 @@ struct BoardState {
                 their_bucket = king_bucket[FlipColor(color)];
       piece_scores[color] += eval::kPieceValues[piece];
       piece_scores[color] +=
-          eval::kNormalPieceSquareTable[our_bucket][their_bucket][piece]
+          eval::kNormalPieceSquareTable[our_bucket][piece]
                                        [square.RelativeTo(color)];
     }
   }

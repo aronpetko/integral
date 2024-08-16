@@ -230,9 +230,7 @@ ScorePair Evaluation::EvaluatePawns() {
     const int kb = state_.king_bucket[us], their_kb = state_.king_bucket[them];
     for (Square square : our_pawns) {
       TRACE_INCREMENT(kPieceValues[kPawn], us);
-      TRACE_INCREMENT(
-          kNormalPieceSquareTable[kb][their_kb][kPawn][square.RelativeTo<us>()],
-          us);
+
 
       for (Square pawn_square : state_.Pawns()) {
         const Color pawn_color = state_.GetPieceColor(pawn_square);
@@ -352,7 +350,7 @@ ScorePair Evaluation::EvaluateKnights() {
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
     TRACE_INCREMENT(
-        kNormalPieceSquareTable[kb][their_kb][kKnight][square.RelativeTo<us>()],
+        kNormalPieceSquareTable[kb][kKnight][square.RelativeTo<us>()],
         us);
 
     const BitBoard legal_moves =
@@ -401,7 +399,7 @@ ScorePair Evaluation::EvaluateBishops() {
   for (Square square : our_bishops) {
     TRACE_INCREMENT(kPieceValues[kBishop], us);
     TRACE_INCREMENT(
-        kNormalPieceSquareTable[kb][their_kb][kBishop][square.RelativeTo<us>()],
+        kNormalPieceSquareTable[kb][kBishop][square.RelativeTo<us>()],
         us);
 
     const BitBoard legal_moves = LegalizeMoves(
@@ -447,7 +445,7 @@ ScorePair Evaluation::EvaluateRooks() {
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[kRook], us);
     TRACE_INCREMENT(
-        kNormalPieceSquareTable[kb][their_kb][kRook][square.RelativeTo<us>()],
+        kNormalPieceSquareTable[kb][kRook][square.RelativeTo<us>()],
         us);
 
     const BitBoard legal_moves =
@@ -492,7 +490,7 @@ ScorePair Evaluation::EvaluateQueens() {
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
     TRACE_INCREMENT(
-        kNormalPieceSquareTable[kb][their_kb][kQueen][square.RelativeTo<us>()],
+        kNormalPieceSquareTable[kb][kQueen][square.RelativeTo<us>()],
         us);
 
     const BitBoard legal_moves = LegalizeMoves(
@@ -524,7 +522,7 @@ ScorePair Evaluation::EvaluateKing() {
 
   const Square square = state_.King(us).GetLsb();
   TRACE_INCREMENT(
-      kNormalPieceSquareTable[kb][their_kb][kKing][square.RelativeTo<us>()],
+      kNormalPieceSquareTable[kb][kKing][square.RelativeTo<us>()],
       us);
 
   const Color them = FlipColor(us);
