@@ -75,6 +75,7 @@ struct BoardState {
         en_passant(Squares::kNoSquare),
         zobrist_key(0ULL),
         pawn_key(0ULL),
+        non_pawn_keys({}),
         checkers(0ULL),
         pinned(0ULL),
         phase(0),
@@ -89,13 +90,7 @@ struct BoardState {
     side_bbs[color].SetBit(square);
     piece_on_square[square] = piece_type;
 
-    const int our_bucket = king_bucket[color],
-              their_bucket = king_bucket[FlipColor(color)];
-
     // Incrementally update the piece/square scores
-    const Square rel_square = square.RelativeTo(color);
-    // piece_scores[color] += eval::kPawnPieceSquareTable[our_bucket][their_bucket]
-    //                                               [piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
@@ -108,6 +103,8 @@ struct BoardState {
 
       if (piece_type == PieceType::kPawn) {
         pawn_key ^= zobrist::pieces[colored_piece][square];
+      } else {
+        non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
       }
     }
   }
@@ -123,6 +120,8 @@ struct BoardState {
 
       if (piece_type == PieceType::kPawn) {
         pawn_key ^= zobrist::pieces[colored_piece][square];
+      } else {
+        non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
       }
     }
 
@@ -130,38 +129,14 @@ struct BoardState {
     piece_bbs[piece_type].ClearBit(square);
     side_bbs[color].ClearBit(square);
 
-    const int our_bucket = king_bucket[color],
-              their_bucket = king_bucket[FlipColor(color)];
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    // piece_scores[color] -= eval::kPawnPieceSquareTable[our_bucket][their_bucket]
-    //                                               [piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
     phase -= eval::kPhaseIncrements[piece_type];
 
     piece_type = PieceType::kNone;
-  }
-
-  void RecalculatePieceScores() {
-    const Square white_king_sq = King(Color::kWhite).GetLsb();
-    const Square black_king_sq = King(Color::kBlack).GetLsb();
-    king_bucket = {
-        eval::kKingBucketLayout[black_king_sq],
-        eval::kKingBucketLayout[white_king_sq.RelativeTo(Color::kWhite)]};
-    piece_scores = {};
-
-    for (Square square : Occupied()) {
-      const auto color = GetPieceColor(square);
-      const auto piece = GetPieceType(square);
-      const int our_bucket = king_bucket[color],
-                their_bucket = king_bucket[FlipColor(color)];
-      piece_scores[color] += eval::kPieceValues[piece];
-      piece_scores[color] +=
-          eval::kPawnPieceSquareTable[our_bucket][their_bucket][piece]
-                                 [square.RelativeTo(color)];
-    }
   }
 
   [[nodiscard]] constexpr Color GetPieceColor(U8 square) const {
@@ -259,8 +234,8 @@ struct BoardState {
   U8 fifty_moves_clock;
   Square en_passant;
   CastleRights castle_rights;
-  U64 zobrist_key;
-  U64 pawn_key;
+  U64 zobrist_key, pawn_key;
+  std::array<U64, 2> non_pawn_keys;
   BitBoard checkers;
   BitBoard threats;
   BitBoard pinned;
