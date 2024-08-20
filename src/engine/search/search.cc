@@ -706,7 +706,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
     if (state.InCheck()) {
-      extensions = std::min(extensions, 1);
+      extensions = std::max(extensions, 1);
     }
 
     // Set the currently searched move in the stack for continuation history
