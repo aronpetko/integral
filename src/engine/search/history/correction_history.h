@@ -19,46 +19,27 @@ class CorrectionHistory {
                    Score search_score,
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
-    if (!StaticEvalWithinBounds(stack->static_eval, search_score, score_type)) {
+    if (!IsStaticEvalWithinBounds(
+            stack->static_eval, search_score, score_type)) {
       return;
     }
 
-    const Score static_eval_error = search_score - stack->static_eval;
-    const int scaled_bonus =
-        static_eval_error * static_cast<int>(corr_history_scale);
-    const int weight = std::min(1 + depth, 16);
+    const int weight = CalculateWeight(depth);
+    const Score scaled_bonus =
+        CalculateScaledBonus(stack->static_eval, search_score);
 
+    // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
-    pawn_table_score = (pawn_table_score * (corr_history_scale - weight) +
-                        scaled_bonus * weight) /
-                       corr_history_scale;
-    pawn_table_score = std::clamp<Score>(pawn_table_score,
-                                         corr_history_scale * -max_corr_hist,
-                                         corr_history_scale * max_corr_hist);
+    pawn_table_score = UpdateTableScore(pawn_table_score, weight, scaled_bonus);
 
-    auto &non_pawn_table_white_score =
-        non_pawn_table_[state.turn][Color::kWhite]
-                       [GetNonPawnTableIndex(state, Color::kWhite)];
-    non_pawn_table_white_score =
-        (non_pawn_table_white_score * (corr_history_scale - weight) +
-         scaled_bonus * weight) /
-        corr_history_scale;
-    non_pawn_table_white_score =
-        std::clamp<Score>(non_pawn_table_white_score,
-                          corr_history_scale * -max_corr_hist,
-                          corr_history_scale * max_corr_hist);
-
-    auto &non_pawn_table_black_score =
-        non_pawn_table_[state.turn][Color::kBlack]
-                       [GetNonPawnTableIndex(state, Color::kBlack)];
-    non_pawn_table_black_score =
-        (non_pawn_table_black_score * (corr_history_scale - weight) +
-         scaled_bonus * weight) /
-        corr_history_scale;
-    non_pawn_table_black_score =
-        std::clamp<Score>(non_pawn_table_black_score,
-                          corr_history_scale * -max_corr_hist,
-                          corr_history_scale * max_corr_hist);
+    // Update non-pawn table scores for both colors
+    for (Color color : {Color::kWhite, Color::kBlack}) {
+      auto &non_pawn_table_score =
+          non_pawn_table_[state.turn][color]
+                         [GetNonPawnTableIndex(state, color)];
+      non_pawn_table_score =
+          UpdateTableScore(non_pawn_table_score, weight, scaled_bonus);
+    }
   }
 
   [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
@@ -83,7 +64,27 @@ class CorrectionHistory {
   }
 
  private:
-  [[nodiscard]] bool StaticEvalWithinBounds(
+  [[nodiscard]] int CalculateWeight(int depth) {
+    return std::min(1 + depth, 16);
+  }
+
+  [[nodiscard]] Score CalculateScaledBonus(Score static_eval,
+                                           Score search_score) {
+    return (search_score - static_eval) * static_cast<int>(corr_history_scale);
+  }
+
+  [[nodiscard]] Score UpdateTableScore(Score current_score,
+                                       int weight,
+                                       Score scaled_bonus) {
+    Score new_score = (current_score * (corr_history_scale - weight) +
+                       scaled_bonus * weight) /
+                      corr_history_scale;
+    return std::clamp<Score>(new_score,
+                             corr_history_scale * -max_corr_hist,
+                             corr_history_scale * max_corr_hist);
+  }
+
+  [[nodiscard]] bool IsStaticEvalWithinBounds(
       Score static_eval,
       Score search_score,
       TranspositionTableEntry::Flag score_type) const {
