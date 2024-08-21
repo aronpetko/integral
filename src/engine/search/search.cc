@@ -576,12 +576,17 @@ Score Search::PVSearch(Thread &thread,
       }
 
       const int probcut_beta = beta + 200;
+      const int probcut_see = probcut_beta - stack->eval;
       if (depth >= 5 &&
           (!tt_hit ||
            tt_entry->bits.flag == TranspositionTableEntry::kLowerBound ||
            tt_entry->score >= probcut_beta)) {
-        MovePicker move_picker(
-            MovePickerType::kQuiescence, board, tt_move, history, stack);
+        MovePicker move_picker(MovePickerType::kQuiescence,
+                               board,
+                               tt_move,
+                               history,
+                               stack,
+                               probcut_see);
         while (const auto move = move_picker.Next()) {
           if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys) {
             break;
@@ -614,7 +619,7 @@ Score Search::PVSearch(Thread &thread,
           board.UndoMove();
 
           if (score >= probcut_beta) {
-            return score - 160;
+            return score;
           }
         }
       }
