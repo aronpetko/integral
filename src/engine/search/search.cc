@@ -574,6 +574,50 @@ Score Search::PVSearch(Thread &thread,
           return score >= kMateScore - kMaxPlyFromRoot ? beta : score;
         }
       }
+
+      const int probcut_beta = beta + 200;
+      if (depth >= 5 &&
+          (!tt_hit ||
+           tt_entry->bits.flag == TranspositionTableEntry::kLowerBound ||
+           tt_entry->score >= probcut_beta)) {
+        MovePicker move_picker(
+            MovePickerType::kQuiescence, board, tt_move, history, stack);
+        while (const auto move = move_picker.Next()) {
+          if (move_picker.GetStage() >= MovePicker::Stage::kGoodNoisys) {
+            break;
+          }
+
+          if (!board.IsMoveLegal(move)) {
+            continue;
+          }
+
+          // Set the currently searched move in the stack for continuation
+          // history
+          stack->move = move;
+          stack->continuation_entry =
+              history.continuation_history->GetEntry(state, move);
+
+          board.MakeMove(move);
+
+          Score score = -QuiescentSearch<node_type>(
+              thread, -probcut_beta, -probcut_beta + 1, stack + 1);
+
+          if (score >= probcut_beta) {
+            score = -PVSearch<node_type>(thread,
+                                         depth - 4,
+                                         -probcut_beta,
+                                         -probcut_beta + 1,
+                                         stack + 1,
+                                         !cut_node);
+          }
+
+          board.UndoMove();
+
+          if (score >= probcut_beta) {
+            return score - 160;
+          }
+        }
+      }
     }
   }
 
