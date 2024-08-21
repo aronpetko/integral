@@ -628,7 +628,7 @@ Score Search::PVSearch(Thread &thread,
             const TranspositionTableEntry new_tt_entry(
                 state.zobrist_key,
                 depth - 3,
-                TranspositionTableEntry::kUpperBound,
+                TranspositionTableEntry::kLowerBound,
                 score,
                 raw_static_eval,
                 Move::NullMove(),
