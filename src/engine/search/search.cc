@@ -625,7 +625,7 @@ Score Search::PVSearch(Thread &thread,
           board.UndoMove();
 
           if (score >= probcut_beta) {
-            return score - 160;
+            return score;
           }
         }
       }
