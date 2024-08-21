@@ -132,7 +132,7 @@ void Search::IterativeDeepening(Thread &thread) {
           depth,
           thread.sel_depth,
           is_mate ? "mate" : "cp",
-          is_mate ? eval::MateIn(score) : score,
+          is_mate ? eval::MateIn(score) : MakeScorePrintable(score),
           nodes_searched,
           time_mgmt_.TimeElapsed(),
           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
@@ -174,6 +174,11 @@ void Search::IterativeDeepening(Thread &thread) {
   }
 }
 
+[[nodiscard]] Score DrawScore(Thread &thread) {
+  return 2 - static_cast<Score>(
+                 thread.nodes_searched.load(std::memory_order_relaxed) % 4);
+}
+
 template <NodeType node_type>
 Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
@@ -192,7 +197,7 @@ Score Search::QuiescentSearch(Thread &thread,
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
   if (board.IsDraw(stack->ply)) {
-    return kDrawScore;
+    return DrawScore(thread);
   }
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
@@ -376,7 +381,7 @@ Score Search::PVSearch(Thread &thread,
 
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
-      return kDrawScore;
+      return DrawScore(thread);
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
@@ -439,7 +444,7 @@ Score Search::PVSearch(Thread &thread,
         score = -kTBWinScore + stack->ply;
         tt_flag = TranspositionTableEntry::kUpperBound;
       } else {
-        score = kDrawScore;
+        score = DrawScore(thread);
         tt_flag = TranspositionTableEntry::kExact;
       }
 
