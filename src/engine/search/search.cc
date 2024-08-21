@@ -578,7 +578,7 @@ Score Search::PVSearch(Thread &thread,
       }
 
       const int probcut_beta = beta + 350;
-      const int probcut_see = probcut_beta - stack->static_eval;
+      const int probcut_see = probcut_beta - raw_static_eval;
       if (depth >= 5 && !eval::IsMateScore(beta) &&
           (!tt_hit || tt_entry->depth + 4 < depth ||
            tt_entry->score >= probcut_beta)) {
