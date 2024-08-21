@@ -583,7 +583,7 @@ Score Search::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kQuiescence, board, tt_move, history, stack);
         while (const auto move = move_picker.Next()) {
-          if (move_picker.GetStage() >= MovePicker::Stage::kGoodNoisys) {
+          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys) {
             break;
           }
 
