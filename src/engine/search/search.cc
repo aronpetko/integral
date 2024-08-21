@@ -625,6 +625,16 @@ Score Search::PVSearch(Thread &thread,
           board.UndoMove();
 
           if (score >= probcut_beta) {
+            const TranspositionTableEntry new_tt_entry(
+                state.zobrist_key,
+                depth - 3,
+                TranspositionTableEntry::kUpperBound,
+                score,
+                raw_static_eval,
+                Move::NullMove(),
+                tt_was_in_pv);
+            transposition_table.Save(
+                tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
             return score;
           }
         }
