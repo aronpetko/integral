@@ -533,10 +533,11 @@ Score Search::PVSearch(Thread &thread,
   stack->double_extensions = (stack - 1)->double_extensions;
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
+  if (!in_pv_node && !state.InCheck()) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot) {
+    if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot &&
+        !stack->excluded_tt_move) {
       const int futility_margin = depth * (improving ? 40 : 74);
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
@@ -545,7 +546,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() && stack->eval >= beta) {
+    if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
+        !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -594,7 +596,7 @@ Score Search::PVSearch(Thread &thread,
             break;
           }
 
-          if (!board.IsMoveLegal(move)) {
+          if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
             continue;
           }
 
