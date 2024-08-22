@@ -799,10 +799,15 @@ Score Search::PVSearch(Thread &thread,
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction += !in_pv_node - tt_was_in_pv;
-      reduction += cut_node;
-      reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
-      reduction -= state.InCheck();
+      if (is_quiet) {
+        reduction += !in_pv_node - tt_was_in_pv;
+        reduction += cut_node;
+        reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
+        reduction -= state.InCheck();
+      } else if (is_capture) {
+        // Reduce winning captures less
+        reduction -= move_picker.GetStage() > MovePicker::Stage::kGoodNoisys;
+      }
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
