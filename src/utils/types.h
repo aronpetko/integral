@@ -281,10 +281,6 @@ class ScorePair {
   return ScorePair(middle_game, end_game);
 }
 
-[[nodiscard]] static int MakeScorePrintable(Score score) {
-  return std::abs(score) <= 2 ? 0 : score;
-}
-
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<I16>::max() - 1;
 const Score kInfiniteScore = std::numeric_limits<I16>::max();
