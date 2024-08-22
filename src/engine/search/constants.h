@@ -49,6 +49,9 @@ Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
 Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
 Tunable sing_double_margin("sing_double_margin", 28, 10, 40, 5);
 
+Tunable probcut_beta_delta("probcut_beta_delta", 250, 150, 350, 15);
+
+
 }  // namespace search
 
 #endif  // INTEGRAL_CONSTANTS_H

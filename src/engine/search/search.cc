@@ -577,21 +577,21 @@ Score Search::PVSearch(Thread &thread,
         }
       }
 
-      const Score probcut_beta = beta + 250;
-      const int probcut_see = probcut_beta - raw_static_eval;
+      // ProbCut: When the current position's score is likely to cause a beta
+      // cutoff, we attempt a shallower quiescent-like search and prune early if
+      // possible
+      const Score pc_beta = beta + probcut_beta_delta;
       if (depth >= 5 && !eval::IsMateScore(beta) &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
-           tt_entry->score >= probcut_beta)) {
-        int moves_seen = 0;
+           tt_entry->score >= pc_beta)) {
+        const int pc_see = pc_beta - raw_static_eval;
+        const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
+                                  ? tt_move
+                                  : Move::NullMove();
 
-        MovePicker move_picker(MovePickerType::kQuiescence,
-                               board,
-                               eval::StaticExchange(tt_move, probcut_see, state)
-                                   ? tt_move
-                                   : Move::NullMove(),
-                               history,
-                               stack,
-                               probcut_see);
+        int moves_seen = 0;
+        MovePicker move_picker(
+            MovePickerType::kNoisy, board, tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
           if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
               moves_seen > 0) {
@@ -610,26 +610,28 @@ Score Search::PVSearch(Thread &thread,
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
 
+          const int probcut_depth = depth - 3;
+
           board.MakeMove(move);
 
           Score score = -QuiescentSearch<node_type>(
-              thread, -probcut_beta, -probcut_beta + 1, stack + 1);
+              thread, -pc_beta, -pc_beta + 1, stack + 1);
 
-          if (score >= probcut_beta) {
+          if (score >= pc_beta) {
             score = -PVSearch<node_type>(thread,
-                                         depth - 4,
-                                         -probcut_beta,
-                                         -probcut_beta + 1,
+                                         probcut_depth - 1,
+                                         -pc_beta,
+                                         -pc_beta + 1,
                                          stack + 1,
                                          !cut_node);
           }
 
           board.UndoMove();
 
-          if (score >= probcut_beta) {
+          if (score >= pc_beta) {
             const TranspositionTableEntry new_tt_entry(
                 state.zobrist_key,
-                depth - 3,
+                probcut_depth,
                 TranspositionTableEntry::kLowerBound,
                 score,
                 raw_static_eval,
