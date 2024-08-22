@@ -818,8 +818,11 @@ Score Search::PVSearch(Thread &thread,
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
-        new_depth += (score > best_score + 70);
-        new_depth -= (score < best_score + new_depth);
+        // Search deeper or shallower if the result of the shallower search
+        // indicates a promising score
+        const bool do_deeper_search = score > (best_score + 35 + 2 * new_depth);
+        const bool do_shallower_search = score < best_score + new_depth;
+        new_depth += do_deeper_search - do_shallower_search;
       }
     } else {
       // If we didn't perform late move reduction, then we search this move at
