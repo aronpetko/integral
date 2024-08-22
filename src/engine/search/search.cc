@@ -802,11 +802,11 @@ Score Search::PVSearch(Thread &thread,
       if (is_quiet) {
         reduction += !in_pv_node - tt_was_in_pv;
         reduction += cut_node;
-        reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
+        reduction -= history_score / static_cast<int>(lmr_hist_div);
         reduction -= state.InCheck();
       } else if (is_capture) {
         // Reduce winning captures less
-        reduction -= move_picker.GetStage() > MovePicker::Stage::kGoodNoisys;
+        reduction -= move_picker.GetStage() == MovePicker::Stage::kGoodNoisys;
       }
 
       // Ensure the reduction doesn't give us a depth below 0
