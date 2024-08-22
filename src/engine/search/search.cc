@@ -538,10 +538,11 @@ Score Search::PVSearch(Thread &thread,
   stack->double_extensions = (stack - 1)->double_extensions;
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !state.InCheck() && !stack->excluded_tt_move) {
+  if (!in_pv_node && !state.InCheck()) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot) {
+    if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot &&
+        !stack->excluded_tt_move) {
       const int futility_margin = depth * (improving ? 40 : 74);
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
@@ -550,7 +551,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() && stack->eval >= beta) {
+    if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
+        !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -577,6 +579,73 @@ Score Search::PVSearch(Thread &thread,
         // that the opponent still doesn't gain an advantage from the null move
         if (score >= beta) {
           return score >= kMateScore - kMaxPlyFromRoot ? beta : score;
+        }
+      }
+
+      // ProbCut: When the current position's score is likely to cause a beta
+      // cutoff, we attempt a shallower quiescent-like search and prune early if
+      // possible
+      const Score pc_beta = beta + probcut_beta_delta;
+      if (depth >= 5 && !eval::IsMateScore(beta) &&
+          (!tt_hit || tt_entry->depth + 3 < depth ||
+           tt_entry->score >= pc_beta)) {
+        const int pc_see = pc_beta - raw_static_eval;
+        const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
+                                  ? tt_move
+                                  : Move::NullMove();
+
+        int moves_seen = 0;
+        MovePicker move_picker(
+            MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
+        while (const auto move = move_picker.Next()) {
+          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+              moves_seen > 0) {
+            break;
+          }
+
+          if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
+            continue;
+          }
+
+          ++moves_seen;
+
+          // Set the currently searched move in the stack for continuation
+          // history
+          stack->move = move;
+          stack->continuation_entry =
+              history.continuation_history->GetEntry(state, move);
+
+          const int probcut_depth = depth - 3;
+
+          board.MakeMove(move);
+
+          Score score = -QuiescentSearch<node_type>(
+              thread, -pc_beta, -pc_beta + 1, stack + 1);
+
+          if (score >= pc_beta) {
+            score = -PVSearch<node_type>(thread,
+                                         probcut_depth - 1,
+                                         -pc_beta,
+                                         -pc_beta + 1,
+                                         stack + 1,
+                                         !cut_node);
+          }
+
+          board.UndoMove();
+
+          if (score >= pc_beta) {
+            const TranspositionTableEntry new_tt_entry(
+                state.zobrist_key,
+                probcut_depth,
+                TranspositionTableEntry::kLowerBound,
+                score,
+                raw_static_eval,
+                Move::NullMove(),
+                tt_was_in_pv);
+            transposition_table.Save(
+                tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+            return score;
+          }
         }
       }
     }

@@ -16,7 +16,8 @@ struct ScoredMove {
 
 enum class MovePickerType {
   kSearch,
-  kQuiescence
+  kQuiescence,
+  kNoisy = kQuiescence
 };
 
 class MovePicker {
@@ -36,7 +37,8 @@ class MovePicker {
              Board &board,
              Move tt_move,
              history::History &history,
-             StackEntry *stack);
+             StackEntry *stack,
+             int see_threshold = 0);
 
   Move Next();
 
@@ -64,6 +66,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
+  int see_threshold_;
 };
 
 }  // namespace search
