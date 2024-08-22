@@ -577,16 +577,18 @@ Score Search::PVSearch(Thread &thread,
         }
       }
 
-      const int probcut_beta = beta + 350;
+      const Score probcut_beta = beta + 250;
       const int probcut_see = probcut_beta - raw_static_eval;
       if (depth >= 5 && !eval::IsMateScore(beta) &&
-          (!tt_hit || tt_entry->depth + 4 < depth ||
+          (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= probcut_beta)) {
         int moves_seen = 0;
 
         MovePicker move_picker(MovePickerType::kQuiescence,
                                board,
-                               tt_move,
+                               eval::StaticExchange(tt_move, probcut_see, state)
+                                   ? tt_move
+                                   : Move::NullMove(),
                                history,
                                stack,
                                probcut_see);
