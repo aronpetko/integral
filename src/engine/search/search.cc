@@ -821,7 +821,7 @@ Score Search::PVSearch(Thread &thread,
         // Search deeper or shallower if the result of the shallower search
         // indicates a promising score
         const bool do_deeper_search = score > (best_score + 35 + 2 * new_depth);
-        const bool do_shallower_search = score < best_score + new_depth;
+        const bool do_shallower_search = score < best_score + 8;
         new_depth += do_deeper_search - do_shallower_search;
       }
     } else {
