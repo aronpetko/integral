@@ -176,7 +176,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
 [[nodiscard]] Score DrawScore(Thread &thread) {
   return 2 - static_cast<Score>(
-                 thread.nodes_searched.load(std::memory_order_relaxed) % 4);
+                 thread.nodes_searched.load(std::memory_order_relaxed) % 5);
 }
 
 template <NodeType node_type>
