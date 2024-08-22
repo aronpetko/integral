@@ -807,9 +807,8 @@ Score Search::PVSearch(Thread &thread,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
-      reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
+      reduction -= bhistory_score / static_cast<int>(lmr_hist_div);
       reduction -= gives_check;
-      reduction -= in_check;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
