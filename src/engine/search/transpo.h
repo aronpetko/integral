@@ -24,7 +24,7 @@ struct TranspositionTableEntry {
         score(kScoreNone),
         static_eval(0),
         move(Move::NullMove()),
-        bits(0) {
+        bits({}) {
     SetFlag(kNone);
   }
 
@@ -40,7 +40,7 @@ struct TranspositionTableEntry {
         score(score),
         static_eval(static_eval),
         move(move),
-        bits(0) {
+        bits({}) {
     SetWasPV(was_in_pv);
     SetFlag(flag);
   }
