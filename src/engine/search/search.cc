@@ -794,9 +794,9 @@ Score Search::PVSearch(Thread &thread,
     ++thread.nodes_searched;
 
     const U32 prev_nodes_searched = thread.nodes_searched;
-    const int new_depth = depth + extensions - 1;
 
     // Principal Variation Search (PVS)
+    int new_depth = depth + extensions - 1;
     bool needs_full_search;
     Score score;
 
@@ -807,7 +807,7 @@ Score Search::PVSearch(Thread &thread,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
-      reduction -= history_score / static_cast<int>(lmr_hist_div);
+      reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
       reduction -= gives_check;
 
       // Ensure the reduction doesn't give us a depth below 0
@@ -816,7 +816,11 @@ Score Search::PVSearch(Thread &thread,
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
-      needs_full_search = score > alpha && reduction != 0;
+
+      if ((needs_full_search = score > alpha && reduction != 0)) {
+        new_depth += (score > best_score + 70);
+        new_depth -= (score < best_score + new_depth);
+      }
     } else {
       // If we didn't perform late move reduction, then we search this move at
       // full depth with a null window search if we don't expect it to be a PV
