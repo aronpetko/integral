@@ -195,13 +195,15 @@ Score Search::QuiescentSearch(Thread &thread,
     return kDrawScore;
   }
 
+  const bool in_check = state.InCheck();
+
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  const int tt_depth = state.InCheck();
+  const int tt_depth = in_check;
   const auto tt_entry = transposition_table.Probe(state.zobrist_key);
   const bool tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
@@ -238,7 +240,7 @@ Score Search::QuiescentSearch(Thread &thread,
     raw_static_eval = eval::Evaluate(state);
   }
 
-  if (!state.InCheck()) {
+  if (!in_check) {
     stack->static_eval =
         history.correction_history->CorrectStaticEval(state, raw_static_eval);
 
@@ -276,7 +278,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
-    if (!state.InCheck() && move.IsCapture(state) && futility_score <= alpha &&
+    if (!in_check && move.IsCapture(state) && futility_score <= alpha &&
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
@@ -315,7 +317,7 @@ Score Search::QuiescentSearch(Thread &thread,
     }
   }
 
-  if (state.InCheck() && moves_seen == 0) {
+  if (in_check && moves_seen == 0) {
     return -kMateScore + stack->ply;
   }
 
@@ -367,6 +369,8 @@ Score Search::PVSearch(Thread &thread,
   if (depth == 0) {
     return QuiescentSearch<node_type>(thread, alpha, beta, stack);
   }
+
+  const bool in_check = state.InCheck();
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
@@ -476,7 +480,7 @@ Score Search::PVSearch(Thread &thread,
   Score raw_static_eval;
 
   // Approximate the current evaluation at this node
-  if (state.InCheck()) {
+  if (in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
@@ -521,7 +525,7 @@ Score Search::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (past_stack && !state.InCheck()) {
+  if (past_stack && !in_check) {
     improving = stack->static_eval > past_stack->static_eval;
     // Smoothen the improving rate from the static eval of our position in
     // previous turns
@@ -533,7 +537,7 @@ Score Search::PVSearch(Thread &thread,
   stack->double_extensions = (stack - 1)->double_extensions;
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !state.InCheck()) {
+  if (!in_pv_node && !in_check) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot &&
@@ -696,7 +700,7 @@ Score Search::PVSearch(Thread &thread,
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin = fut_margin_base + fut_margin_mult * depth;
-      if (depth <= fut_prune_depth && !state.InCheck() && is_quiet &&
+      if (depth <= fut_prune_depth && !in_check && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
@@ -774,7 +778,7 @@ Score Search::PVSearch(Thread &thread,
     }
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
-    if (state.InCheck()) {
+    if (in_check) {
       extensions++;
     }
 
@@ -785,12 +789,14 @@ Score Search::PVSearch(Thread &thread,
 
     board.MakeMove(move);
 
+    const bool gives_check = state.InCheck();
+
     ++thread.nodes_searched;
 
     const U32 prev_nodes_searched = thread.nodes_searched;
-    const int new_depth = depth + extensions - 1;
 
     // Principal Variation Search (PVS)
+    int new_depth = depth + extensions - 1;
     bool needs_full_search;
     Score score;
 
@@ -802,7 +808,7 @@ Score Search::PVSearch(Thread &thread,
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
       reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
-      reduction -= state.InCheck();
+      reduction -= gives_check;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
@@ -810,7 +816,14 @@ Score Search::PVSearch(Thread &thread,
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
-      needs_full_search = score > alpha && reduction != 0;
+
+      if ((needs_full_search = score > alpha && reduction != 0)) {
+        // Search deeper or shallower depending on if the result of the
+        // reduced-depth search indicates a promising score
+        const bool do_deeper_search = score > (best_score + 35 + 2 * new_depth);
+        const bool do_shallower_search = score < best_score + 8;
+        new_depth += do_deeper_search - do_shallower_search;
+      }
     } else {
       // If we didn't perform late move reduction, then we search this move at
       // full depth with a null window search if we don't expect it to be a PV
@@ -886,7 +899,7 @@ Score Search::PVSearch(Thread &thread,
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
-    return state.InCheck() ? -kMateScore + stack->ply : kDrawScore;
+    return in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
   if (syzygy::enabled) {
@@ -915,7 +928,7 @@ Score Search::PVSearch(Thread &thread,
     transposition_table.Save(
         tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
-    if (!state.InCheck() && (!best_move || !best_move.IsNoisy(state))) {
+    if (!in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }
