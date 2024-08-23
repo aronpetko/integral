@@ -689,9 +689,9 @@ Score Search::PVSearch(Thread &thread,
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((lmp_base + depth * depth) /
-                           (lmp_mult - std::clamp(stack->improving_rate, 0.0, 1.0)));
+      const int lmp_threshold = static_cast<int>(
+          (lmp_base + depth * depth) /
+          (lmp_mult - std::clamp(stack->improving_rate, 0.0, 1.0)));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -797,7 +797,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
-    bool needs_full_search, do_shallower_search = false;
+    bool needs_full_search, do_deeper_search = false,
+                            do_shallower_search = false;
     Score score;
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
@@ -820,7 +821,7 @@ Score Search::PVSearch(Thread &thread,
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
         // reduced-depth search indicates a promising score
-        const bool do_deeper_search = score > (best_score + 35 + 2 * new_depth);
+        do_deeper_search = score > (best_score + 35 + 2 * new_depth);
         do_shallower_search = score < best_score + 8;
         new_depth += do_deeper_search - do_shallower_search;
       }
@@ -840,7 +841,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
-      new_depth += do_shallower_search;
+      new_depth += do_deeper_search + do_shallower_search;
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
