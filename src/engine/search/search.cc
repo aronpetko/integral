@@ -691,7 +691,7 @@ Score Search::PVSearch(Thread &thread,
       // the most promising moves
       const int lmp_threshold =
           static_cast<int>((lmp_base + depth * depth) /
-                           (3 - improving));
+                           (2 - improving));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
