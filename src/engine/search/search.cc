@@ -228,7 +228,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
   // Keep track of the original alpha for bound determination when updating the
   // transposition table
-  const int original_alpha = alpha;
+  const Score original_alpha = alpha;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -425,7 +425,7 @@ Score Search::PVSearch(Thread &thread,
   }
 
   // Probe the Syzygy table bases
-  int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
+  Score syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
       state.Occupied().PopCount() <= 7 && depth <= syzygy::probe_depth &&
       state.fifty_moves_clock == 0 &&
@@ -659,7 +659,7 @@ Score Search::PVSearch(Thread &thread,
 
   // Keep track of the original alpha for bound determination when updating the
   // transposition table
-  const int original_alpha = alpha;
+  const Score original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
