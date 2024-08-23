@@ -737,7 +737,7 @@ Score Search::PVSearch(Thread &thread,
           tt_entry->bits.flag != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
 
-      if (is_accurate_tt_score && stack->improving_rate >= 0) {
+      if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
         const Score new_beta = tt_entry->score - depth * sing_ext_margin;
 
@@ -754,7 +754,7 @@ Score Search::PVSearch(Thread &thread,
         // move's search
         if (tt_move_excluded_score < new_beta) {
           // Double extend if the TT move is singular by a big margin
-          if (!in_pv_node &&
+          if ((!in_pv_node || in_pv_node && stack->improving_rate >= 0) &&
               tt_move_excluded_score < new_beta - sing_double_margin &&
               stack->double_extensions <= 8) {
             extensions = 2;
