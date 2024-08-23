@@ -560,13 +560,12 @@ Score Search::PVSearch(Thread &thread,
         stack->move = Move::NullMove();
         stack->continuation_entry = nullptr;
 
+        const int base_reduction = depth / null_move_rf + null_move_rb;
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / null_move_re);
-        const int reduction =
-            std::clamp<int>(depth / null_move_rf + null_move_rb +
-                                eval_reduction + std::min(state.phase, 24) / 8,
-                            0,
-                            depth);
+        const int phase_extension = (24 - std::min(state.phase, 24)) / 8;
+        const int reduction = std::clamp<int>(
+            base_reduction + eval_reduction - phase_extension, 0, depth);
 
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
