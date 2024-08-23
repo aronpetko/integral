@@ -562,8 +562,11 @@ Score Search::PVSearch(Thread &thread,
 
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / null_move_re);
-        const int reduction = std::clamp<int>(
-            depth / null_move_rf + null_move_rb + eval_reduction, 0, depth);
+        const int reduction =
+            std::clamp<int>(depth / null_move_rf + null_move_rb +
+                                eval_reduction + std::min(state.phase, 24) / 8,
+                            0,
+                            depth);
 
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
@@ -755,8 +758,7 @@ Score Search::PVSearch(Thread &thread,
         if (tt_move_excluded_score < new_beta) {
           // Double extend if the TT move is singular by a big margin
           if (!in_pv_node &&
-              tt_move_excluded_score <
-                  new_beta - sing_double_margin - 10 * !improving &&
+              tt_move_excluded_score < new_beta - sing_double_margin &&
               (stack->double_extensions <= 8)) {
             extensions = 2;
             stack->double_extensions++;
