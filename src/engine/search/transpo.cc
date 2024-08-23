@@ -15,7 +15,7 @@ namespace search {
       const auto entry = &cluster.entries[i];
       // If this entry is available, we can attempt to write to it
       if (entry->key == 0 || entry->CompareKey(key)) {
-        entry->SetAge(age_);
+        entry->bits.age = age_;
         return entry;
       }
       // Always prefer the lowest quality entry
@@ -40,7 +40,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
   }
 
   if (!old_entry->CompareKey(key) ||
-      new_entry.GetFlag() == TranspositionTableEntry::kExact ||
+      new_entry.bits.flag == TranspositionTableEntry::kExact ||
       new_entry.depth + 4 >= old_entry->depth) {
     new_entry.bits.age = age_;
 
@@ -55,7 +55,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
 
 U32 TranspositionTable::GetAgeDelta(
     const TranspositionTableEntry *entry) const {
-  return (kMaxTTAge + age_ - entry->GetAge()) % kMaxTTAge;
+  return (kMaxTTAge + age_ - entry->bits.age) % kMaxTTAge;
 }
 
 void TranspositionTable::Age() {

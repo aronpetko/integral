@@ -212,7 +212,7 @@ Score Search::QuiescentSearch(Thread &thread,
   Score tt_static_eval = kScoreNone;
 
   if (tt_hit) {
-    tt_was_in_pv |= tt_entry->GetWasPV();
+    tt_was_in_pv |= tt_entry->bits.was_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
   }
@@ -412,7 +412,7 @@ Score Search::PVSearch(Thread &thread,
     // Use the TT entry's evaluation if possible
     if (tt_hit) {
       can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-      tt_was_in_pv |= tt_entry->GetWasPV();
+      tt_was_in_pv |= tt_entry->bits.was_pv;
       tt_move = tt_entry->move;
       tt_static_eval = tt_entry->static_eval;
     }
@@ -734,10 +734,10 @@ Score Search::PVSearch(Thread &thread,
     if (!in_root && depth >= 8 && move == tt_move) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 4 >= depth &&
-          tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
+          tt_entry->bits.flag != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
 
-      if (is_accurate_tt_score) {
+      if (is_accurate_tt_score && stack->improving_rate >= 0) {
         const int reduced_depth = (depth - 1) / 2;
         const Score new_beta = tt_entry->score - depth * sing_ext_margin;
 
@@ -756,7 +756,7 @@ Score Search::PVSearch(Thread &thread,
           // Double extend if the TT move is singular by a big margin
           if (!in_pv_node &&
               tt_move_excluded_score < new_beta - sing_double_margin &&
-              (stack->double_extensions <= 8)) {
+              stack->double_extensions <= 8) {
             extensions = 2;
             stack->double_extensions++;
           } else {
