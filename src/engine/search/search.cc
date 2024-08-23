@@ -755,7 +755,8 @@ Score Search::PVSearch(Thread &thread,
         if (tt_move_excluded_score < new_beta) {
           // Double extend if the TT move is singular by a big margin
           if (!in_pv_node &&
-              tt_move_excluded_score < new_beta - sing_double_margin &&
+              tt_move_excluded_score <
+                  new_beta - sing_double_margin - 10 * improving &&
               (stack->double_extensions <= 8)) {
             extensions = 2;
             stack->double_extensions++;
@@ -841,7 +842,6 @@ Score Search::PVSearch(Thread &thread,
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
-      new_depth += do_deeper_search + do_shallower_search;
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
