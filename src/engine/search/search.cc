@@ -754,7 +754,7 @@ Score Search::PVSearch(Thread &thread,
         // move's search
         if (tt_move_excluded_score < new_beta) {
           // Double extend if the TT move is singular by a big margin
-          if ((!in_pv_node || in_pv_node && stack->improving_rate == 1) &&
+          if ((!in_pv_node || in_pv_node && improving) &&
               tt_move_excluded_score < new_beta - sing_double_margin &&
               stack->double_extensions <= 8) {
             extensions = 2;
