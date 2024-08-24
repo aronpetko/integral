@@ -563,7 +563,7 @@ Score Search::PVSearch(Thread &thread,
         const int base_reduction = depth / null_move_rf + null_move_rb;
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / null_move_re);
-        const int phase_reduction = std::min(state.phase, 24) / 9;
+        const int phase_reduction = std::min(state.phase, 24) / 8;
         const int reduction = std::clamp<int>(
             base_reduction + eval_reduction + phase_reduction, 0, depth);
 
