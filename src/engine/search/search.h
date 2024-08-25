@@ -55,7 +55,7 @@ struct Thread {
   history::History history;
   Stack stack;
   std::atomic<U64> nodes_searched;
-  U16 sel_depth;
+  U16 search_depth, sel_depth;
   U64 tb_hits;
 };
 

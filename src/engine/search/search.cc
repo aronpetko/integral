@@ -68,6 +68,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0;
+    thread.search_depth = depth;
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -731,54 +732,57 @@ Score Search::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= 8 && move == tt_move) {
-      const bool is_accurate_tt_score =
-          tt_entry->depth + 4 >= depth &&
-          tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
-          std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
+    if (!in_root && stack->ply < 2 * thread.search_depth &&
+        2 * stack->double_extensions < thread.search_depth) {
+      if (depth >= 8 && move == tt_move && !stack->excluded_tt_move) {
+        const bool is_accurate_tt_score =
+            tt_entry->depth + 4 >= depth &&
+            tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
+            std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
 
-      if (is_accurate_tt_score) {
-        const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry->score - depth * sing_ext_margin;
+        if (is_accurate_tt_score) {
+          const int reduced_depth = (depth - 1) / 2;
+          const Score new_beta = tt_entry->score - depth * sing_ext_margin;
 
-        stack->excluded_tt_move = tt_move;
-        const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
-            thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
-        stack->excluded_tt_move = Move::NullMove();
+          stack->excluded_tt_move = tt_move;
+          const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
+              thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
+          stack->excluded_tt_move = Move::NullMove();
 
-        if (ShouldQuit(thread)) {
-          return 0;
-        }
+          if (ShouldQuit(thread)) {
+            return 0;
+          }
 
-        // No move was able to beat the TT entries score, so we extend the TT
-        // move's search
-        if (tt_move_excluded_score < new_beta) {
-          // Double extend if the TT move is singular by a big margin
-          if (!in_pv_node &&
-              tt_move_excluded_score < new_beta - sing_double_margin &&
-              stack->double_extensions <= 8) {
-            extensions = 2;
-            stack->double_extensions++;
-          } else {
-            extensions = 1;
+          // No move was able to beat the TT entries score, so we extend the TT
+          // move's search
+          if (tt_move_excluded_score < new_beta) {
+            // Double extend if the TT move is singular by a big margin
+            if (!in_pv_node &&
+                tt_move_excluded_score < new_beta - sing_double_margin &&
+                stack->double_extensions <= 8) {
+              extensions = 2;
+              stack->double_extensions++;
+            } else {
+              extensions = 1;
+            }
+          }
+          // Multi-cut: The singular search had a beta cutoff, indicating that
+          // the TT move was not singular. Therefore, we prune if the same score
+          // would cause a cutoff based on our current search window
+          else if (new_beta >= beta) {
+            return new_beta;
+          }
+          // Negative Extensions: Search less since the TT move was not
+          // singular, and it might cause a beta cutoff again.
+          else if (tt_entry->score >= beta) {
+            extensions = -1;
           }
         }
-        // Multi-cut: The singular search had a beta cutoff, indicating that the
-        // TT move was not singular. Therefore, we prune if the same score would
-        // cause a cutoff based on our current search window
-        else if (new_beta >= beta) {
-          return new_beta;
-        }
-        // Negative Extensions: Search less since the TT move was not singular,
-        // and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta) {
-          extensions = -1;
-        }
       }
-    }
-    // Check Extensions: Integral's not yet strong enough to simplify this out
-    else if (in_check) {
-      extensions++;
+      // Check Extensions: Integral's not yet strong enough to simplify this out
+      else if (in_check) {
+        extensions++;
+      }
     }
 
     // Set the currently searched move in the stack for continuation history
