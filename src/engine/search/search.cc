@@ -776,10 +776,9 @@ Score Search::PVSearch(Thread &thread,
         }
       }
     }
-
     // Check Extensions: Integral's not yet strong enough to simplify this out
-    if (in_check) {
-      extensions = std::max(extensions, 1);
+    else if (in_check) {
+      extensions++;
     }
 
     // Set the currently searched move in the stack for continuation history
