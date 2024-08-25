@@ -773,15 +773,13 @@ Score Search::PVSearch(Thread &thread,
         // and it might cause a beta cutoff again.
         else if (tt_entry->score >= beta) {
           extensions = -1;
-        } else if (cut_node) {
-          extensions = -2;
         }
       }
     }
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
     if (in_check) {
-      extensions++;
+      extensions = std::max(extensions, 1);
     }
 
     // Set the currently searched move in the stack for continuation history
