@@ -541,7 +541,9 @@ Score Search::PVSearch(Thread &thread,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot &&
-        !stack->excluded_tt_move) {
+        !stack->excluded_tt_move &&
+        (!tt_move ||
+         history.GetMoveScore(state, tt_move, state.threats) > 5000)) {
       const int futility_margin = depth * (improving ? 40 : 74);
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
