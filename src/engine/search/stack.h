@@ -89,6 +89,7 @@ struct StackEntry {
       : ply(ply),
         static_eval(kScoreNone),
         eval(kScoreNone),
+        history_score(0),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
