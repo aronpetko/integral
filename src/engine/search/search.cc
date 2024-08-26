@@ -276,6 +276,11 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    // Late Move Pruning: Don't waste time on moves we don't care about
+    if (best_score >= -kTBWinScore + kMaxPlyFromRoot && moves_seen >= 2) {
+      break;
+    }
+
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
     if (!in_check && move.IsCapture(state) && futility_score <= alpha &&
