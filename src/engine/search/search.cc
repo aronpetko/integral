@@ -543,7 +543,7 @@ Score Search::PVSearch(Thread &thread,
     if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot &&
         stack->eval >= beta && !stack->excluded_tt_move) {
       const int futility_margin =
-          depth * (improving ? 40 : 74) - (stack - 1)->history_score / 128;
+          depth * (improving ? 40 : 74) + (stack - 1)->history_score / 128;
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
       }
