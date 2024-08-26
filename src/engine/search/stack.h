@@ -54,8 +54,8 @@ struct PVLine {
 struct StackEntry {
   // Number of ply from root
   U16 ply;
-  // Evaluation of the position at this ply
-  Score static_eval, eval;
+  // Scores at this ply
+  Score static_eval, eval, history_score;
   // Best moves following down this ply
   PVLine pv;
   // The move with the best score
