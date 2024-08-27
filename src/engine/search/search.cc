@@ -549,6 +549,17 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
+    // Razoring: At low depths, if this node seems like it might fail low, we do
+    // a quiescent search to determine if we should prune
+    if (!stack->excluded_tt_move && depth <= 3 &&
+        stack->eval <= alpha - 800 * depth) {
+      const Score razoring_score =
+          QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
+      if (razoring_score <= alpha) {
+        return razoring_score;
+      }
+    }
+
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
