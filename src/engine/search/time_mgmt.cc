@@ -71,13 +71,12 @@ void TimeManagement::SetConfig(const TimeConfig &config) {
 
 int TimeManagement::GetSearchDepth() const {
   switch (type_) {
-    case TimeType::kInfinite:
-      return std::numeric_limits<int>::max();
     case TimeType::kDepth:
       return config_.depth;
     case TimeType::kNodes:
       [[fallthrough]];
     case TimeType::kTimed:
+    case TimeType::kInfinite:
       return kMaxSearchDepth;
     default:
       // Silence compiler warnings

@@ -541,10 +541,9 @@ Score Search::PVSearch(Thread &thread,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot &&
-        !stack->excluded_tt_move &&
-        (!tt_move ||
-         history.GetMoveScore(state, tt_move, state.threats) > 5000)) {
-      const int futility_margin = depth * (improving ? 40 : 74);
+        !stack->excluded_tt_move && (!tt_move || tt_move.IsNoisy(state))) {
+      const int futility_margin =
+          depth * (improving ? 40 : 74) + (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
       }
@@ -553,6 +552,7 @@ Score Search::PVSearch(Thread &thread,
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
+        stack->static_eval >= beta + 170 - 24 * depth &&
         !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
@@ -683,7 +683,8 @@ Score Search::PVSearch(Thread &thread,
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
-    const int history_score =
+
+    stack->history_score =
         is_capture ? history.GetCaptureMoveScore(state, move)
                    : history.GetQuietMoveScore(state, move, threats, stack);
 
@@ -721,7 +722,8 @@ Score Search::PVSearch(Thread &thread,
       // near-leaf nodes
       if (is_quiet) {
         if (depth <= hist_prune_depth &&
-            history_score <= hist_thresh_base + hist_thresh_mult * depth) {
+            stack->history_score <=
+                hist_thresh_base + hist_thresh_mult * depth) {
           move_picker.SkipQuiets();
           continue;
         }
@@ -809,8 +811,9 @@ Score Search::PVSearch(Thread &thread,
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
-      reduction -= is_quiet * history_score / static_cast<int>(lmr_hist_div);
       reduction -= gives_check;
+      if (is_quiet)
+        reduction -= stack->history_score / static_cast<int>(lmr_hist_div);
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
