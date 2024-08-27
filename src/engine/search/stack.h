@@ -54,8 +54,9 @@ struct PVLine {
 struct StackEntry {
   // Number of ply from root
   U16 ply;
-  // Evaluation of the position at this ply
+  // Scores at this ply
   Score static_eval, eval;
+  I64 history_score;
   // Best moves following down this ply
   PVLine pv;
   // The move with the best score
@@ -89,6 +90,7 @@ struct StackEntry {
       : ply(ply),
         static_eval(kScoreNone),
         eval(kScoreNone),
+        history_score(0),
         best_move(Move::NullMove()),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
