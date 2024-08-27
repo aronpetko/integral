@@ -1,3 +1,4 @@
+#include "engine/evaluation/nnue/nnue.h"
 #include "engine/uci/uci.h"
 #ifdef WIN32
 #include <windows.h>
@@ -17,6 +18,8 @@ int main(int arg_count, char **args) {
   console_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
   SetConsoleMode(stdout_handle, console_mode);
 #endif
+
+  nnue::LoadFromIncBin();
 
   uci::AcceptCommands(arg_count, args);
 }

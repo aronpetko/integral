@@ -18,8 +18,8 @@ class CastleRights {
   static constexpr int kQueensideIndex = 1;
 
   static constexpr std::array<std::array<U8, 2>, 2> kMasks = {
-      {{CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside},
-       {CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside}}};
+      {{CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside},
+       {CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside}}};
 
   CastleRights() : rights_(0) {}
 

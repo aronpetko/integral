@@ -46,8 +46,8 @@ enum MoveGenType : U8 {
 };
 
 enum Color : U8 {
-  kBlack,
   kWhite,
+  kBlack,
   kNoColor,
   kNumColors = 2
 };
@@ -133,12 +133,12 @@ class Square {
   }
 
   [[nodiscard]] constexpr Square RelativeTo(Color side) const {
-    return square_ ^ (56 * side);
+    return square_ ^ (56 * !side);
   }
 
   template <Color side>
   [[nodiscard]] constexpr Square RelativeTo() const {
-    return square_ ^ (56 * side);
+    return square_ ^ (56 * !side);
   }
 
   template <Color side>

@@ -1,6 +1,7 @@
 #include "evaluation.h"
 
 #include "../../tuner/tuner.h"
+#include "nnue/nnue.h"
 
 namespace eval {
 
@@ -722,7 +723,8 @@ template <Color us>
 }
 
 Score Evaluate(const BoardState &state) {
-  return Evaluation(state).GetScore();
+  return nnue::Evaluate(state);
+  // return Evaluation(state).GetScore();
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
