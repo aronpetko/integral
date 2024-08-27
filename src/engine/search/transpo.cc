@@ -49,6 +49,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
         TranspositionTableEntry::CorrectScore(new_entry.score, -ply);
     old_entry->depth = new_entry.depth;
     old_entry->bits = new_entry.bits;
+    old_entry->static_eval = new_entry.static_eval;
   }
 }
 

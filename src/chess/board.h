@@ -75,9 +75,11 @@ struct BoardState {
         en_passant(Squares::kNoSquare),
         zobrist_key(0ULL),
         pawn_key(0ULL),
+        non_pawn_keys({}),
         checkers(0ULL),
         pinned(0ULL),
-        phase(0) {
+        phase(0),
+        king_bucket({}) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -89,8 +91,6 @@ struct BoardState {
     piece_on_square[square] = piece_type;
 
     // Incrementally update the piece/square scores
-    const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] += eval::kPieceSquareTable[piece_type][rel_square];
     piece_scores[color] += eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
@@ -103,6 +103,8 @@ struct BoardState {
 
       if (piece_type == PieceType::kPawn) {
         pawn_key ^= zobrist::pieces[colored_piece][square];
+      } else {
+        non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
       }
     }
   }
@@ -118,6 +120,8 @@ struct BoardState {
 
       if (piece_type == PieceType::kPawn) {
         pawn_key ^= zobrist::pieces[colored_piece][square];
+      } else {
+        non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
       }
     }
 
@@ -127,7 +131,6 @@ struct BoardState {
 
     // Incrementally update the piece/square scores
     const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] -= eval::kPieceSquareTable[piece_type][rel_square];
     piece_scores[color] -= eval::kPieceValues[piece_type];
 
     // Incrementally update the current phase of the game
@@ -231,13 +234,14 @@ struct BoardState {
   U8 fifty_moves_clock;
   Square en_passant;
   CastleRights castle_rights;
-  U64 zobrist_key;
-  U64 pawn_key;
+  U64 zobrist_key, pawn_key;
+  std::array<U64, 2> non_pawn_keys;
   BitBoard checkers;
   BitBoard threats;
   BitBoard pinned;
   SideTable<ScorePair> piece_scores;
   int phase;
+  SideTable<int> king_bucket;
 };
 
 class Board {

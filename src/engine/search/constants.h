@@ -19,7 +19,7 @@ Tunable qs_fut_margin("qs_fut_margin", 101, 50, 200, 10);
 Tunable rev_fut_depth("rev_fut_depth", 6, 4, 10, 1, true);
 Tunable rev_fut_margin("rev_fut_margin", 74, 50, 150, 8);
 
-Tunable null_move_rb("null_move_rb", 3, 1, 5, 0.5);
+Tunable null_move_rb("null_move_rb", 4, 1, 5, 0.5);
 Tunable null_move_rf("null_move_rf", 4, 2, 8, 1, true);
 Tunable null_move_re("null_move_re", 202, 100, 400, 20);
 
@@ -48,6 +48,9 @@ Tunable lmr_hist_div("lmr_hist_div", 11432, 5000, 20000, 750);
 Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
 Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
 Tunable sing_double_margin("sing_double_margin", 28, 10, 40, 5);
+
+Tunable probcut_beta_delta("probcut_beta_delta", 250, 150, 350, 15);
+
 
 }  // namespace search
 

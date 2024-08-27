@@ -49,7 +49,7 @@ enum Color : U8 {
   kBlack,
   kWhite,
   kNoColor,
-  kNumColors
+  kNumColors = 2
 };
 
 constexpr Color FlipColor(Color color) {
@@ -277,7 +277,7 @@ class ScorePair {
   I32 score_;
 };
 
-constexpr ScorePair Pair(Score middle_game, Score end_game) {
+[[nodiscard]] constexpr ScorePair Pair(Score middle_game, Score end_game) {
   return ScorePair(middle_game, end_game);
 }
 

@@ -44,6 +44,9 @@ BoardState StringToBoard(std::string_view fen_str) {
     square++;
   }
 
+  // We need to re-place the pieces because of king buckets
+  // state.RecalculatePieceScores();
+
   char turn;
   stream >> turn;
   state.turn = (turn == 'w' ? Color::kWhite : Color::kBlack);

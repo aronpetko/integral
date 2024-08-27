@@ -6,14 +6,16 @@ MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
                        history::History &history,
-                       StackEntry *stack)
+                       StackEntry *stack,
+                       int see_threshold)
     : board_(board),
       tt_move_(tt_move),
       type_(type),
       history_(history),
       stack_(stack),
       stage_(Stage::kTTMove),
-      moves_idx_(0) {}
+      moves_idx_(0),
+      see_threshold_(see_threshold) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
@@ -41,7 +43,8 @@ Move MovePicker::Next() {
 
       moves_idx_++;
 
-      const bool loses_material = !eval::StaticExchange(move, 0, state);
+      const bool loses_material =
+          !eval::StaticExchange(move, see_threshold_, state);
       if (!loses_material && !move.IsUnderPromotion()) {
         return move;
       }
