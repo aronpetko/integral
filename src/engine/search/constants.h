@@ -44,6 +44,7 @@ Tunable hist_thresh_base("hist_thresh_base", -480, -1000, 500, 100);
 Tunable hist_thresh_mult("hist_thresh_mult", -1695, -3000, -250, 300);
 
 Tunable lmr_hist_div("lmr_hist_div", 11432, 5000, 20000, 750);
+Tunable lmr_capt_hist_div("lmr_capt_hist_div", 13000, 5000, 20000, 750);
 
 Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
 Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
