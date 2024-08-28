@@ -145,10 +145,12 @@ void Search::IterativeDeepening(Thread &thread) {
 
   const auto SendStoppedSignal = [this]() {
     if constexpr (type == SearchType::kRegular) {
-      std::unique_lock lock(thread_stopped_mutex_);
-      // Wait on the other threads to finish before reporting the best move
-      --searching_threads_;
-      thread_stopped_signal_.notify_all();
+      {
+        std::unique_lock lock(thread_stopped_mutex_);
+        // Wait on the other threads to finish before reporting the best move
+        --searching_threads_;
+        thread_stopped_signal_.notify_all();
+      }
       search_end_barrier_.ArriveAndWait();
     }
   };
@@ -169,7 +171,7 @@ void Search::IterativeDeepening(Thread &thread) {
     if (print_info) {
       fmt::println("bestmove {}", best_move.ToString());
     }
-  } else if constexpr (type == SearchType::kRegular) {
+  } else {
     SendStoppedSignal();
   }
 }
@@ -908,16 +910,18 @@ Score Search::PVSearch(Thread &thread,
         quiets.Push(move);
       else if (is_capture)
         captures.Push(move);
-
-      // Since "good" captures are expected to be the best moves, we apply a
-      // penalty to all captures even in the case where the best move was quiet
-      history.capture_history->Penalize(state, depth, captures);
     }
   }
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
     return in_check ? -kMateScore + stack->ply : kDrawScore;
+  }
+
+  if (best_move) {
+    // Since "good" captures are expected to be the best moves, we apply a
+    // penalty to all captures even in the case where the best move was quiet
+    history.capture_history->Penalize(state, depth, captures);
   }
 
   if (syzygy::enabled) {
