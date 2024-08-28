@@ -5,7 +5,6 @@
 #include "../../../third-party/incbin/incbin.h"
 #include "../../../utils/multi_array.h"
 #include "../../../utils/types.h"
-#include "accumulator.h"
 
 namespace nnue {
 

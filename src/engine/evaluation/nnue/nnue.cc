@@ -27,21 +27,6 @@ void LoadFromIncBin() {
   std::memcpy(&network, gEVALData, sizeof(network));
 }
 
-I32 GetFeatureIndex(Square square,
-                    int piece,
-                    int piece_color,
-                    int perspective) {
-  constexpr int kColorStride =
-      Squares::kSquareCount * PieceType::kNumPieceTypes;
-  constexpr int kPieceStride = Squares::kSquareCount;
-  if (perspective == Color::kWhite) {
-    return piece_color * kColorStride + piece * kPieceStride + square;
-  } else {
-    return (piece_color ^ 1) * kColorStride + piece * kPieceStride +
-           (square ^ 56);
-  }
-}
-
 Score Evaluate(const BoardState &state) {
   // Initialize accumulator for both perspectives (White and Black)
   MultiArray<I32, 2, arch::kHiddenLayerSize> accumulator;
@@ -74,7 +59,7 @@ Score Evaluate(const BoardState &state) {
     const Score our_value =
         SquaredReLU(accumulator[state.turn][i]) * network.output_weights[0][i];
     const Score their_value =
-        SquaredReLU(accumulator[!state.turn][i]) * network.output_weights[0][i];
+        SquaredReLU(accumulator[!state.turn][i]) * network.output_weights[1][i];
     eval += our_value + their_value;
   }
 
@@ -90,7 +75,7 @@ Score Evaluate(const BoardState &state) {
   // De-quantize again
   eval /= arch::kHiddenLayerQuantization * arch::kOutputQuantization;
 
-  return eval;
+  return eval / 2;
 }
 
 }  // namespace nnue
