@@ -56,7 +56,7 @@ Search::~Search() {
   }
 }
 
-template<SearchType type>
+template <SearchType type>
 void Search::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
@@ -176,7 +176,7 @@ void Search::IterativeDeepening(Thread &thread) {
   }
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
@@ -347,7 +347,7 @@ Score Search::QuiescentSearch(Thread &thread,
   return best_score;
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 Score Search::PVSearch(Thread &thread,
                        int depth,
                        Score alpha,
@@ -605,8 +605,8 @@ Score Search::PVSearch(Thread &thread,
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - raw_static_eval;
         const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
-                                ? tt_move
-                                : Move::NullMove();
+                                  ? tt_move
+                                  : Move::NullMove();
 
         int moves_seen = 0;
         MovePicker move_picker(
@@ -736,7 +736,7 @@ Score Search::PVSearch(Thread &thread,
       if (is_quiet) {
         if (depth <= hist_prune_depth &&
             stack->history_score <=
-            hist_thresh_base + hist_thresh_mult * depth) {
+                hist_thresh_base + hist_thresh_mult * depth) {
           move_picker.SkipQuiets();
           continue;
         }
@@ -780,14 +780,14 @@ Score Search::PVSearch(Thread &thread,
             extensions = 1;
           }
         }
-          // Multi-cut: The singular search had a beta cutoff, indicating that the
-          // TT move was not singular. Therefore, we prune if the same score would
-          // cause a cutoff based on our current search window
+        // Multi-cut: The singular search had a beta cutoff, indicating that the
+        // TT move was not singular. Therefore, we prune if the same score would
+        // cause a cutoff based on our current search window
         else if (new_beta >= beta) {
           return new_beta;
         }
-          // Negative Extensions: Search less since the TT move was not singular,
-          // and it might cause a beta cutoff again.
+        // Negative Extensions: Search less since the TT move was not singular,
+        // and it might cause a beta cutoff again.
         else if (tt_entry->score >= beta) {
           extensions = -1;
         }
@@ -825,10 +825,9 @@ Score Search::PVSearch(Thread &thread,
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += cut_node;
       reduction -= gives_check;
-      if (is_quiet)
-        reduction -= stack->history_score / static_cast<int>(lmr_hist_div);
-      else
-        reduction -= stack->history_score / static_cast<int>(lmr_capt_hist_div);
+      reduction -=
+          stack->history_score /
+          static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
