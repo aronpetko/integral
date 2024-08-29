@@ -42,8 +42,8 @@ Tunable see_noisy_thresh("see_noisy_thresh", -119, -200, -50, 8);
 Tunable hist_prune_depth("hist_prune_depth", 5, 3, 8, 1, true);
 Tunable hist_thresh_base("hist_thresh_base", -480, -1000, 500, 100);
 Tunable hist_thresh_mult("hist_thresh_mult", -1695, -3000, -250, 300);
-Tunable capt_hist_thresh_base("hist_thresh_base", -480, -1000, 500, 100);
-Tunable capt_hist_thresh_mult("hist_thresh_mult", -1695, -3000, -250, 300);
+Tunable capt_hist_thresh_base("capt_hist_thresh_base", -480, -1000, 500, 100);
+Tunable capt_hist_thresh_mult("capt_hist_thresh_mult", -1000, -3000, -250, 300);
 
 Tunable lmr_hist_div("lmr_hist_div", 11432, 5000, 20000, 750);
 Tunable lmr_capt_hist_div("lmr_capt_hist_div", 11432, 5000, 20000, 750);
@@ -53,7 +53,6 @@ Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
 Tunable sing_double_margin("sing_double_margin", 28, 10, 40, 5);
 
 Tunable probcut_beta_delta("probcut_beta_delta", 250, 150, 350, 15);
-
 
 }  // namespace search
 
