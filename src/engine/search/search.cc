@@ -703,11 +703,11 @@ Score Search::PVSearch(Thread &thread,
 
     // Pruning guards
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
-      int lmr_reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      lmr_reduction -=
+      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      reduction -=
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
-      const int lmr_depth = depth - 1 - lmr_reduction;
+      const int lmr_depth = depth - 1 - reduction;
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
@@ -742,7 +742,8 @@ Score Search::PVSearch(Thread &thread,
       const int history_margin =
           is_quiet ? hist_thresh_base + hist_thresh_mult * depth
                    : capt_hist_thresh_base + capt_hist_thresh_mult * depth;
-      if (lmr_depth <= hist_prune_depth && stack->history_score <= history_margin) {
+      if (lmr_depth <= hist_prune_depth &&
+          stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
       }
