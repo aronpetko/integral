@@ -39,7 +39,7 @@ Tunable see_prune_depth("see_prune_depth", 8, 6, 12, 1, true);
 Tunable see_quiet_thresh("see_quiet_thresh", -64, -100, -20, 6);
 Tunable see_noisy_thresh("see_noisy_thresh", -119, -200, -50, 8);
 
-Tunable hist_prune_depth("hist_prune_depth", 3, 3, 8, 1, true);
+Tunable hist_prune_depth("hist_prune_depth", 2, 3, 8, 1, true);
 Tunable hist_thresh_base("hist_thresh_base", -480, -1000, 500, 100);
 Tunable hist_thresh_mult("hist_thresh_mult", -1695, -3000, -250, 300);
 Tunable capt_hist_thresh_base("capt_hist_thresh_base", -480, -1000, 500, 100);
