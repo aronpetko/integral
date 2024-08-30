@@ -776,7 +776,7 @@ Score Search::PVSearch(Thread &thread,
           // Double extend if the TT move is singular by a big margin
           if (!in_pv_node &&
               tt_move_excluded_score < new_beta - sing_double_margin &&
-              (stack->double_extensions <= 8)) {
+              stack->double_extensions <= 8) {
             extensions = 2;
             stack->double_extensions++;
           } else {
@@ -799,7 +799,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
     if (in_check) {
-      extensions++;
+      extensions = std::max(extensions, -1);
     }
 
     // Set the currently searched move in the stack for continuation history
