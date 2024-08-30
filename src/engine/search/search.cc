@@ -703,6 +703,12 @@ Score Search::PVSearch(Thread &thread,
 
     // Pruning guards
     if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
+      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      reduction -=
+          stack->history_score /
+          static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
+      const int lmr_depth = std::max(depth - reduction, 0);
+
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
@@ -715,8 +721,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = fut_margin_base + fut_margin_mult * depth;
-      if (depth <= fut_prune_depth && !in_check && is_quiet &&
+      const int futility_margin = fut_margin_base + fut_margin_mult * lmr_depth;
+      if (lmr_depth <= fut_prune_depth && !in_check && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
@@ -733,13 +739,12 @@ Score Search::PVSearch(Thread &thread,
 
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
-      if (is_quiet) {
-        if (depth <= hist_prune_depth &&
-            stack->history_score <=
-                hist_thresh_base + hist_thresh_mult * depth) {
-          move_picker.SkipQuiets();
-          continue;
-        }
+      const int history_margin =
+          is_quiet ? hist_thresh_base + hist_thresh_mult * depth
+                   : capt_hist_thresh_base + capt_hist_thresh_mult * depth;
+      if (depth <= hist_prune_depth && stack->history_score <= history_margin) {
+        move_picker.SkipQuiets();
+        continue;
       }
     }
 
@@ -788,7 +793,7 @@ Score Search::PVSearch(Thread &thread,
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta) {
+        else if (tt_entry->score >= beta || cut_node) {
           extensions = -1;
         }
       }
