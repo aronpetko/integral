@@ -501,7 +501,7 @@ Score Search::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
     }
 
-    stack->static_eval =
+    stack->eval = stack->static_eval =
         history.correction_history->CorrectStaticEval(state, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
