@@ -509,8 +509,6 @@ Score Search::PVSearch(Thread &thread,
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
-    } else {
-      stack->eval = stack->static_eval;
     }
   }
 
