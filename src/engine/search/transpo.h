@@ -12,19 +12,33 @@ namespace search {
 
 struct TranspositionTableEntry {
   enum Flag : U8 {
+    kNone,
     kExact,
     kLowerBound,
     kUpperBound
   };
 
   TranspositionTableEntry()
-      : key(0), depth(0), score(kScoreNone), move(Move::NullMove()), bits({}) {}
+      : key(0),
+        depth(0),
+        score(kScoreNone),
+        static_eval(0),
+        move(Move::NullMove()),
+        bits(0) {
+    SetFlag(kNone);
+  }
 
-  explicit TranspositionTableEntry(
-      U64 key, U8 depth, Flag flag, Score score, Move move, bool was_in_pv)
+  explicit TranspositionTableEntry(U64 key,
+                                   U8 depth,
+                                   Flag flag,
+                                   Score score,
+                                   Score static_eval,
+                                   Move move,
+                                   bool was_in_pv)
       : key(static_cast<U16>(key)),
         depth(depth),
         score(score),
+        static_eval(static_eval),
         move(move),
         bits({}) {
     SetWasPV(was_in_pv);
@@ -47,17 +61,16 @@ struct TranspositionTableEntry {
 
   // Adjusts mate scores to correctly indicate the ply until mate
   [[nodiscard]] static Score CorrectScore(Score score, U16 ply) {
-    constexpr int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
-    if (score >= kRoughlyMate) {
+    if (score >= kMateInMaxPlyScore) {
       score -= ply;
-    } else if (score <= -kRoughlyMate) {
+    } else if (score <= -kMateInMaxPlyScore) {
       score += ply;
     }
     return score;
   }
 
   U16 key;
-  I16 score;
+  I16 score, static_eval;
   Move move;
   U8 depth;
   union {
@@ -93,12 +106,13 @@ struct TranspositionTableEntry {
   }
 };
 
-static_assert(sizeof(TranspositionTableEntry) == 8);
+static_assert(sizeof(TranspositionTableEntry) == 10);
 
-constexpr int kTTClusterSize = 4;
+constexpr int kTTClusterSize = 3;
 
 struct TranspositionTableCluster {
   std::array<TranspositionTableEntry, kTTClusterSize> entries;
+  U16 padding;
 };
 
 constexpr int kMaxTTAge = 64;

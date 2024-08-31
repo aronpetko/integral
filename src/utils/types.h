@@ -285,14 +285,16 @@ class ScorePair {
   I32 score_;
 };
 
-constexpr ScorePair Pair(Score middle_game, Score end_game) {
+[[nodiscard]] constexpr ScorePair Pair(Score middle_game, Score end_game) {
   return ScorePair(middle_game, end_game);
 }
 
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<I16>::max() - 1;
+const Score kMateInMaxPlyScore = kMateScore - kMaxPlyFromRoot;
 const Score kInfiniteScore = std::numeric_limits<I16>::max();
 const Score kTBWinScore = kMateScore - kMaxPlyFromRoot - 1;
+const Score kTBWinInMaxPlyScore = kTBWinScore - kMaxPlyFromRoot;
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_
