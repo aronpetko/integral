@@ -752,7 +752,7 @@ Score Search::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= 8 && move == tt_move &&
+    if (!in_root && depth >= 6 && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 4 >= depth &&
@@ -761,7 +761,7 @@ Score Search::PVSearch(Thread &thread,
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry->score - depth;
+        const Score new_beta = tt_entry->score - depth * 2;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
