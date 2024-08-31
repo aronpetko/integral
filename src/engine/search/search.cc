@@ -67,7 +67,7 @@ void Search::IterativeDeepening(Thread &thread) {
   Score score = 0;
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
-    thread.sel_depth = 0;
+    thread.sel_depth = 0, thread.root_depth = depth;
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -536,7 +536,6 @@ Score Search::PVSearch(Thread &thread,
         past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
   }
 
-  stack->double_extensions = (stack - 1)->double_extensions;
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !in_check) {
@@ -753,7 +752,8 @@ Score Search::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= 8 && move == tt_move) {
+    if (!in_root && depth >= 6 && move == tt_move &&
+        stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 4 >= depth &&
           tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
@@ -761,7 +761,7 @@ Score Search::PVSearch(Thread &thread,
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry->score - depth * sing_ext_margin;
+        const Score new_beta = tt_entry->score - depth * 2;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
@@ -777,10 +777,8 @@ Score Search::PVSearch(Thread &thread,
         if (tt_move_excluded_score < new_beta) {
           // Double extend if the TT move is singular by a big margin
           if (!in_pv_node &&
-              tt_move_excluded_score < new_beta - sing_double_margin &&
-              (stack->double_extensions <= 8)) {
+              tt_move_excluded_score < new_beta - sing_double_margin) {
             extensions = 2;
-            stack->double_extensions++;
           } else {
             extensions = 1;
           }
@@ -801,7 +799,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
     if (in_check) {
-      extensions++;
+      ++extensions;
     }
 
     // Set the currently searched move in the stack for continuation history
