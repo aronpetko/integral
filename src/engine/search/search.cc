@@ -138,7 +138,7 @@ void Search::IterativeDeepening(Thread &thread) {
           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
           transposition_table.HashFull(),
           syzygy::enabled ? " tbhits " : "",
-          syzygy::enabled ? std::to_string(thread.tb_hits) + " " : "",
+          syzygy::enabled ? std::to_string(thread.tb_hits) : "",
           root_stack->pv.UCIFormat());
     }
   }
@@ -429,10 +429,7 @@ Score Search::PVSearch(Thread &thread,
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
-      state.Occupied().PopCount() <= 7 && depth <= syzygy::probe_depth &&
-      state.fifty_moves_clock == 0 &&
-      !state.castle_rights.CanCastle(state.turn) &&
-      !state.castle_rights.CanCastle(FlipColor(state.turn))) {
+      state.Occupied().PopCount() <= 7) {
     const auto tb_result = syzygy::ProbePosition(state);
     if (tb_result != syzygy::ProbeResult::kFailed) {
       Score score;
@@ -452,8 +449,8 @@ Score Search::PVSearch(Thread &thread,
       ++thread.tb_hits;
 
       if (tt_flag == TranspositionTableEntry::kExact ||
-          (tt_flag == TranspositionTableEntry::kLowerBound ? score >= beta
-                                                           : score <= alpha)) {
+          tt_flag == TranspositionTableEntry::kUpperBound && score <= alpha ||
+          tt_flag == TranspositionTableEntry::kLowerBound && score >= beta) {
         // Save the table base score to the transposition table
         const TranspositionTableEntry new_tt_entry(state.zobrist_key,
                                                    depth,
@@ -538,11 +535,10 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !in_check) {
+  if (!in_pv_node && !in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= rev_fut_depth && stack->eval < kMateScore - kMaxPlyFromRoot &&
-        !stack->excluded_tt_move) {
+    if (depth <= rev_fut_depth && !stack->excluded_tt_move) {
       const int futility_margin =
           depth * (improving ? 40 : 74) + (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
@@ -591,7 +587,7 @@ Score Search::PVSearch(Thread &thread,
         // Prune if the result from our null window search around beta indicates
         // that the opponent still doesn't gain an advantage from the null move
         if (score >= beta) {
-          return score >= kMateScore - kMaxPlyFromRoot ? beta : score;
+          return score >= kTBWinInMaxPlyScore ? beta : score;
         }
       }
 
@@ -599,7 +595,7 @@ Score Search::PVSearch(Thread &thread,
       // cutoff, we attempt a shallower quiescent-like search and prune early if
       // possible
       const Score pc_beta = beta + probcut_beta_delta;
-      if (depth >= 5 && !eval::IsMateScore(beta) &&
+      if (depth >= 5 && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - raw_static_eval;
@@ -701,7 +697,7 @@ Score Search::PVSearch(Thread &thread,
                    : history.GetQuietMoveScore(state, move, threats, stack);
 
     // Pruning guards
-    if (!in_root && best_score > -kMateScore + kMaxPlyFromRoot) {
+    if (!in_root && best_score > -kTBWinInMaxPlyScore) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction -=
           stack->history_score /
@@ -757,7 +753,7 @@ Score Search::PVSearch(Thread &thread,
       const bool is_accurate_tt_score =
           tt_entry->depth + 4 >= depth &&
           tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
-          std::abs(tt_entry->score) < kMateScore - kMaxPlyFromRoot;
+          std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;

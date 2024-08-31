@@ -61,10 +61,9 @@ struct TranspositionTableEntry {
 
   // Adjusts mate scores to correctly indicate the ply until mate
   [[nodiscard]] static Score CorrectScore(Score score, U16 ply) {
-    constexpr int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
-    if (score >= kRoughlyMate) {
+    if (score >= kMateInMaxPlyScore) {
       score -= ply;
-    } else if (score <= -kRoughlyMate) {
+    } else if (score <= -kMateInMaxPlyScore) {
       score += ply;
     }
     return score;

@@ -59,8 +59,8 @@ class CorrectionHistory {
         static_eval + correction / static_cast<int>(corr_history_scale);
     // Ensure no static evaluations are mate scores
     return std::clamp(adjusted_score,
-                      -kMateScore + kMaxPlyFromRoot + 1,
-                      kMateScore - kMaxPlyFromRoot - 1);
+                      -kMateInMaxPlyScore + 1,
+                      kMateInMaxPlyScore - 1);
   }
 
  private:
