@@ -535,7 +535,7 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !in_check && std::abs(beta) <= kTBWinInMaxPlyScore) {
+  if (!in_pv_node && !in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && !stack->excluded_tt_move) {
@@ -595,7 +595,7 @@ Score Search::PVSearch(Thread &thread,
       // cutoff, we attempt a shallower quiescent-like search and prune early if
       // possible
       const Score pc_beta = beta + probcut_beta_delta;
-      if (depth >= 5 && std::abs(beta) >= kTBWinInMaxPlyScore &&
+      if (depth >= 5 && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - raw_static_eval;
