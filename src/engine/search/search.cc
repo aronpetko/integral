@@ -89,10 +89,6 @@ void Search::IterativeDeepening(Thread &thread) {
         score = new_score;
       }
 
-      if (ShouldQuit(thread)) {
-        break;
-      }
-
       if (score <= alpha) {
         // Narrow beta to increase the chance of a fail high
         beta = (alpha + beta) / 2;
@@ -398,6 +394,10 @@ Score Search::PVSearch(Thread &thread,
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
       return alpha;
+    }
+
+    if (ShouldQuit(thread)) {
+      return 0;
     }
   }
 
