@@ -154,26 +154,6 @@ struct BoardState {
     return Color::kNoColor;
   }
 
-  void RecalculatePieceScores() {
-    const Square white_king_sq = King(Color::kWhite).GetLsb();
-    const Square black_king_sq = King(Color::kBlack).GetLsb();
-    king_bucket = {
-        eval::kKingBucketLayout[black_king_sq],
-        eval::kKingBucketLayout[white_king_sq.RelativeTo(Color::kWhite)]};
-    piece_scores = {};
-
-    for (Square square : Occupied()) {
-      const auto color = GetPieceColor(square);
-      const auto piece = GetPieceType(square);
-      const int our_bucket = king_bucket[color],
-                their_bucket = king_bucket[FlipColor(color)];
-      piece_scores[color] += eval::kPieceValues[piece];
-      piece_scores[color] +=
-          eval::kNormalPieceSquareTable[our_bucket][piece]
-                                       [square.RelativeTo(color)];
-    }
-  }
-
   [[nodiscard]] constexpr PieceType GetPieceType(U8 square) const {
     return piece_on_square[square];
   }

@@ -98,9 +98,6 @@ bool Tuner::LoadNextBatch() {
       state.half_moves = (marlin_board.full_move_number - 1) * 2 +
                          (state.turn == Color::kBlack ? 1 : 0);
 
-      // We need to re-place the pieces because of king buckets
-      state.RecalculatePieceScores();
-
       result = marlin_board.wdl_outcome / 2.0;
       score = marlin_board.evaluation;
     } else if (std::getline(file_, line)) {
@@ -263,7 +260,7 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
   Add4DArrayParameter(kPawnPieceSquareTable);
-  Add3DArrayParameter(kNormalPieceSquareTable);
+  Add2DArrayParameter(kNormalPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
@@ -313,7 +310,7 @@ std::vector<I16> Tuner::GetCoefficients() const {
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
   GET_4D_ARRAY_COEFFICIENTS(kPawnPieceSquareTable);
-  GET_3D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
+  GET_2D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
@@ -786,7 +783,7 @@ void Tuner::WriteCheckpoint(const std::string& filename) {
 
   WriteArray(file, "constexpr PieceTable<ScorePair> kPieceValues", kPieceValues.size(), 8, index);
   Write4DArray(file, "constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable", 2, kSquareCount, kNumPieceTypes, kSquareCount, index);
-  Write3DArray(file, "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable", kNumKingBuckets, kNumPieceTypes, kSquareCount, index);
+  Write2DArray(file, "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable", kNumPieceTypes, kSquareCount, 8, index);
   WriteArray(file, "constexpr KnightMobilityTable<ScorePair> kKnightMobility", kKnightMobility.size(), 8, index);
   WriteArray(file, "constexpr BishopMobilityTable<ScorePair> kBishopMobility", kBishopMobility.size(), 8, index);
   WriteArray(file, "constexpr RookMobilityTable<ScorePair> kRookMobility", kRookMobility.size(), 8, index);
