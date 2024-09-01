@@ -56,6 +56,10 @@ bool DepthLimiter::TimesUp(U32 nodes_searched) {
 void DepthLimiter::Start() {}
 void DepthLimiter::Stop() {}
 
+void DepthLimiter::Update(const TimeConfig& config) {
+  max_depth_ = config.depth;
+}
+
 // NodeLimiter implementation
 NodeLimiter::NodeLimiter(U64 max_nodes, U64 soft_max_nodes)
     : max_nodes_(max_nodes), soft_max_nodes_(soft_max_nodes) {}
@@ -74,6 +78,11 @@ bool NodeLimiter::TimesUp(U32 nodes_searched) {
 
 void NodeLimiter::Start() {}
 void NodeLimiter::Stop() {}
+
+void NodeLimiter::Update(const TimeConfig& config) {
+  max_nodes_ = config.nodes;
+  soft_max_nodes_ = config.soft_nodes;
+}
 
 // TimedLimiter implementation
 TimedLimiter::TimedLimiter(int time_left, int increment, int move_time)
@@ -134,7 +143,7 @@ void TimedLimiter::Stop() {
   end_time_ = GetCurrentTime();
 }
 
-[[nodiscard]] U64 TimedLimiter::TimeElapsed() const {
+U64 TimedLimiter::TimeElapsed() const {
   return std::max<U64>(1, GetCurrentTime() - start_time_);
 }
 
@@ -162,48 +171,66 @@ void TimedLimiter::CalculateLimits() {
   soft_limit_ = std::max(1, scaled_soft_limit);
 }
 
+void TimedLimiter::Update(const TimeConfig& config) {
+  time_left_ = config.time_left;
+  increment_ = config.increment;
+  move_time_ = config.move_time;
+  CalculateLimits();
+}
+
 // TimeManagement implementation
+TimeManagement::TimeManagement() = default;
+
 TimeManagement::TimeManagement(const TimeConfig& config) {
   SetConfig(config);
 }
 
 void TimeManagement::SetConfig(const TimeConfig& config) {
-  limiters_.clear();
   config_ = config;
   ConfigureLimiters(config);
 }
 
 void TimeManagement::ConfigureLimiters(const TimeConfig& config) {
   if (config.infinite) {
-    // No limiters for infinite search
+    depth_limiter_.reset();
+    node_limiter_.reset();
+    timed_limiter_.reset();
     return;
   }
 
   if (config.depth > 0) {
-    AddLimiter(std::make_unique<DepthLimiter>(config.depth));
+    if (depth_limiter_) {
+      depth_limiter_->Update(config);
+    } else {
+      depth_limiter_.emplace(config.depth);
+    }
+  } else {
+    depth_limiter_.reset();
   }
 
   if (config.nodes > 0 || config.soft_nodes > 0) {
-    AddLimiter(std::make_unique<NodeLimiter>(config.nodes, config.soft_nodes));
+    if (node_limiter_) {
+      node_limiter_->Update(config);
+    } else {
+      node_limiter_.emplace(config.nodes, config.soft_nodes);
+    }
+  } else {
+    node_limiter_.reset();
   }
 
   if (config.move_time > 0 || config.time_left > 0) {
-    AddLimiter(std::make_unique<TimedLimiter>(
-        config.time_left, config.increment, config.move_time));
+    if (timed_limiter_) {
+      timed_limiter_->Update(config);
+    } else {
+      timed_limiter_.emplace(config.time_left, config.increment, config.move_time);
+    }
+  } else {
+    timed_limiter_.reset();
   }
-}
-
-void TimeManagement::AddLimiter(std::unique_ptr<TimeLimiter> limiter) {
-  limiters_.push_back(std::move(limiter));
 }
 
 TimedLimiter* TimeManagement::GetTimedLimiter() {
-  for (auto& limiter : limiters_) {
-    if (auto* timed_limiter = dynamic_cast<TimedLimiter*>(limiter.get())) {
-      return timed_limiter;
-    }
-  }
-  return nullptr;
+  return timed_limiter_ ? &*timed_limiter_ : nullptr;
 }
 
 U64 TimeManagement::TimeElapsed() const {
@@ -212,8 +239,14 @@ U64 TimeManagement::TimeElapsed() const {
 
 int TimeManagement::GetSearchDepth() const {
   int min_depth = search::kMaxSearchDepth;
-  for (const auto& limiter : limiters_) {
-    min_depth = std::min(min_depth, limiter->GetSearchDepth());
+  if (depth_limiter_) {
+    min_depth = std::min(min_depth, depth_limiter_->GetSearchDepth());
+  }
+  if (node_limiter_) {
+    min_depth = std::min(min_depth, node_limiter_->GetSearchDepth());
+  }
+  if (timed_limiter_) {
+    min_depth = std::min(min_depth, timed_limiter_->GetSearchDepth());
   }
   return min_depth;
 }
@@ -224,34 +257,28 @@ bool TimeManagement::IsInfinite() const {
 
 void TimeManagement::Start() {
   start_time_ = GetCurrentTime();
-  for (auto& limiter : limiters_) {
-    limiter->Start();
-  }
+  if (depth_limiter_) depth_limiter_->Start();
+  if (node_limiter_) node_limiter_->Start();
+  if (timed_limiter_) timed_limiter_->Start();
 }
 
 void TimeManagement::Stop() {
   end_time_ = GetCurrentTime();
-  for (auto& limiter : limiters_) {
-    limiter->Stop();
-  }
+  if (depth_limiter_) depth_limiter_->Stop();
+  if (node_limiter_) node_limiter_->Stop();
+  if (timed_limiter_) timed_limiter_->Stop();
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
-  for (auto& limiter : limiters_) {
-    if (limiter->ShouldStop(best_move, depth, nodes_searched)) {
-      return true;
-    }
-  }
-  return false;
+  return (depth_limiter_ && depth_limiter_->ShouldStop(best_move, depth, nodes_searched)) ||
+         (node_limiter_ && node_limiter_->ShouldStop(best_move, depth, nodes_searched)) ||
+         (timed_limiter_ && timed_limiter_->ShouldStop(best_move, depth, nodes_searched));
 }
 
 bool TimeManagement::TimesUp(U32 nodes_searched) {
-  for (auto& limiter : limiters_) {
-    if (limiter->TimesUp(nodes_searched)) {
-      return true;
-    }
-  }
-  return false;
+  return (depth_limiter_ && depth_limiter_->TimesUp(nodes_searched)) ||
+         (node_limiter_ && node_limiter_->TimesUp(nodes_searched)) ||
+         (timed_limiter_ && timed_limiter_->TimesUp(nodes_searched));
 }
 
 }  // namespace search
