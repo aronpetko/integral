@@ -163,8 +163,16 @@ class Square {
     return square_ + other;
   }
 
+  constexpr Square operator+=(const int other) {
+    return square_ += other;
+  }
+
   constexpr Square operator-(const int other) const {
     return square_ - other;
+  }
+
+  constexpr Square operator-=(const int other) {
+    return square_ -= other;
   }
 
   constexpr Square operator*(const Square other) const {

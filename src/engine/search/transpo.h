@@ -24,7 +24,7 @@ struct TranspositionTableEntry {
         score(kScoreNone),
         static_eval(0),
         move(Move::NullMove()),
-        bits({}) {
+        bits(0) {
     SetFlag(kNone);
   }
 
@@ -143,8 +143,6 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  private:
   int age_;
 };
-
-inline TranspositionTable transposition_table;
 
 }  // namespace search
 

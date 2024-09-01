@@ -28,10 +28,6 @@ constexpr int DistanceToEdge(Square square) {
   }
 }
 
-// Helper type trait for the static_assert
-template <Direction>
-bool always_false = false;
-
 template <Direction dir>
 constexpr BitBoard SlidingAttacks(U8 from, const BitBoard &occupied) {
   BitBoard attacks;

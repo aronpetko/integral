@@ -19,8 +19,11 @@ constexpr std::array<U8, 64> kCastlingRights = {
 
 Board::Board() : history_({}) {}
 
+Board::Board(const BoardState &state) : history_({}), state_(state) {}
+
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
+  history_.Clear();
   CalculateThreats();
 }
 
@@ -219,17 +222,7 @@ void Board::MakeMove(Move move) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
   }
 
-  // Use updated king bucket if it changed
   state_.PlacePiece(to, new_piece, state_.turn);
-
-  // Must refresh all of our pieces if the king bucket changed
-  /* if (piece == kKing) {
-    const int new_bucket = eval::kKingBucketLayout[to.RelativeTo(us)];
-    if (new_bucket != bucket) {
-      state_.king_bucket[us] = new_bucket;
-      state_.RecalculatePieceScores();
-    }
-  } */
 
   // Update the castling rights depending on the piece that moved
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
@@ -240,6 +233,7 @@ void Board::MakeMove(Move move) {
   state_.zobrist_key ^= zobrist::turn;
 
   state_.fifty_moves_clock = new_fifty_move_clock;
+  ++state_.half_moves;
 
   CalculateThreats();
 }
@@ -372,10 +366,9 @@ void Board::HandleCastling(Move move) {
 
   const auto from = move.GetFrom(), to = move.GetTo();
   const auto move_rook_for_castling = [this, &us](Square rook_from,
-                                                               Square rook_to) {
+                                                  Square rook_to) {
     state_.RemovePiece(rook_from, state_.turn);
-    state_.PlacePiece(
-        rook_to, PieceType::kRook, state_.turn);
+    state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
   };
 
   constexpr int kKingsideCastleDist = -2;
@@ -460,8 +453,7 @@ void Board::PrintPieces() {
     fmt::print("{} ", rank + 1);
     for (int file = 0; file < kNumFiles; file++) {
       const auto square = Square::FromRankFile(rank, file);
-      fmt::print("{}",
-                 fen::GetPieceChar(const_cast<BoardState &>(state_), square));
+      fmt::print("{}", fen::GetPieceChar(state_, square));
       if (file < kNumFiles - 1) fmt::print(" ");  // Space separator for clarity
     }
     fmt::print("\n");

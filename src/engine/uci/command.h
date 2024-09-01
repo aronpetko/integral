@@ -142,7 +142,7 @@ class Command {
     // Check if all required arguments have been provided
     for (const auto &arg : args_) {
       if (arg.GetType() == ArgumentType::kRequired && arg.GetInput().empty()) {
-        fmt::println("error: missing argument '{}'", arg.GetName());
+        fmt::println("Error: missing argument '{}'", arg.GetName());
         return;
       }
     }
@@ -162,7 +162,7 @@ class Command {
       std::stringstream stream(argument->GetInput());
       T value;
       if (!(stream >> value)) {
-        fmt::println("error: invalid argument passed for '{}'",
+        fmt::println("Error: invalid argument passed for '{}'",
                      argument->GetName());
       } else {
         return value;
@@ -205,7 +205,7 @@ class Command {
         } else if (current_arg.GetType() == ArgumentType::kRequired) {
           // If we encounter a required argument that doesn't match, it's an
           // error
-          fmt::println("error: expected argument '{}', but got '{}'",
+          fmt::println("Error: expected argument '{}', but got '{}'",
                        current_arg.GetName(),
                        argument_name);
           return;
@@ -216,7 +216,7 @@ class Command {
       if (!argument_processed) {
         // If we've gone through all arguments and haven't found a match, it's
         // an unknown argument
-        fmt::println("error: unknown argument '{}'", argument_name);
+        fmt::println("Error: unknown argument '{}'", argument_name);
       }
 
       if (stream.fail()) {
@@ -228,7 +228,7 @@ class Command {
     // Check if any required arguments are missing
     for (size_t i = args_idx_; i < args_.size(); ++i) {
       if (args_[i].GetType() == ArgumentType::kRequired) {
-        fmt::println("error: missing required argument '{}'",
+        fmt::println("Error: missing required argument '{}'",
                      args_[i].GetName());
       }
     }

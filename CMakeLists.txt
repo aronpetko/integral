@@ -27,8 +27,8 @@ elseif (BUILD_NATIVE)
 endif ()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -O1")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -funroll-loops -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -g -O0")
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT LTO_SUPPORTED)
@@ -59,4 +59,4 @@ add_definitions(-DFMT_HEADER_ONLY)
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
 
 # Create the executable target
-add_executable(integral ${SOURCES} third-party/fathom/tbconfig.h third-party/fathom/tbprobe.h third-party/fathom/stdendian.h third-party/fathom/tbprobe.c)
+add_executable(integral ${SOURCES} third-party/fathom/tbconfig.h third-party/fathom/tbprobe.h third-party/fathom/stdendian.h third-party/fathom/tbprobe.c src/data_gen/data_gen.h src/data_gen/format/binpack.h)

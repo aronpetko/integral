@@ -4611,7 +4611,7 @@ static const char * TestPartResultTypeToString(TestPartResult::Type type) {
     case TestPartResult::kNonFatalFailure:
     case TestPartResult::kFatalFailure:
 #ifdef _MSC_VER
-      return "error: ";
+      return "Error: ";
 #else
       return "Failure\n";
 #endif

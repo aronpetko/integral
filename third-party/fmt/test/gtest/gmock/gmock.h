@@ -619,7 +619,7 @@ GTEST_API_ WithoutMatchers GetWithoutMatchers();
 // crashes).
 template <typename T>
 inline T Invalid() {
-  Assert(false, "", -1, "Internal error: attempt to return invalid value");
+  Assert(false, "", -1, "Internal Error: attempt to return invalid value");
   // This statement is unreachable, and would never terminate even if it
   // could be reached. It is provided only to placate compiler warnings
   // about missing return statements.
@@ -849,7 +849,7 @@ constexpr size_t Function<R(Args...)>::ArgumentCount;
 //
 // Implementation details:
 //
-// There is one case when it generates a compile error: if the argument is macro
+// There is one case when it generates a compile Error: if the argument is macro
 // that cannot be called with one argument.
 //
 //   #define M(a, b)  // it doesn't matter what it expands to
@@ -3679,7 +3679,7 @@ class NotNullMatcher {
 // only be instantiated with a reference type.  This prevents a user
 // from mistakenly using Ref(x) to match a non-reference function
 // argument.  For example, the following will righteously cause a
-// compiler error:
+// compiler Error:
 //
 //   int n;
 //   Matcher<int> m1 = Ref(n);   // This won't compile.

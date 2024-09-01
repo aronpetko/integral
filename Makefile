@@ -26,11 +26,7 @@ EXE ?= integral
 
 all: $(BUILD_DIR)
 	@echo Building $(EXE) with $(BUILD_TYPE)...
-ifeq ($(detected_OS),Windows)
-	@$(MAKE) -C $(BUILD_DIR) all > NUL 2>&1
-else
-	@$(MAKE) -C $(BUILD_DIR) all > /dev/null 2>&1
-endif
+	@$(MAKE) -C $(BUILD_DIR)
 	@echo Copying executable...
 	@$(MAKE) copy_executable
 

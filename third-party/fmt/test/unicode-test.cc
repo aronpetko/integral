@@ -26,7 +26,7 @@ TEST(unicode_test, legacy_locale) {
     s = fmt::format(loc, "Дзень тыдня: {:L}", fmt::weekday(1));
   } catch (const fmt::format_error& e) {
     // Formatting can fail due to an unsupported encoding.
-    fmt::print("Format error: {}\n", e.what());
+    fmt::print("Format Error: {}\n", e.what());
     return;
   }
 
