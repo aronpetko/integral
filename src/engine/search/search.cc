@@ -1060,6 +1060,8 @@ void Search::Start(TimeConfig time_config) {
   start_barrier_.ArriveAndWait();
 }
 
+#include <windows.h>
+
 std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
                                             TimeConfig time_config) {
   stop_.store(false, std::memory_order_relaxed);
