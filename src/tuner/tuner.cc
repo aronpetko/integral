@@ -40,8 +40,8 @@ inline double Sigmoid(double K, double E) {
 }
 
 bool Tuner::LoadNextBatch() {
-  constexpr size_t kBufferSize = 32 * 1024; // 8192 bytes, multiple of 32 and > 4KB
-  std::vector<char> buffer(kBufferSize);
+  constexpr size_t kBufferSize = 32 * 65536;
+  static std::vector<char> buffer(kBufferSize);
 
   if (current_position_ >= mmap_.size()) {
     return false;
@@ -147,8 +147,8 @@ bool Tuner::LoadNextBatch() {
       }
 
       if (result != -1) {
-        auto entry = CreateEntry(board.GetState(), result, score);
-        entries_.push_back(entry);
+        entries_.emplace_back(CreateEntry(board.GetState(), result, score));
+        auto &entry = entries_.back();
 
         if (batch_count_ == 1) {
           const Score computed_eval = ComputeEvaluation(entry);
@@ -353,6 +353,28 @@ void Tuner::InitBaseParameters() {
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
   AddArrayParameter(kQueenMobility);
+  AddArrayParameter(kPassedPawnBonus);
+  AddArrayParameter(kPawnPhalanxBonus);
+  AddArrayParameter(kDefendedPawnBonus);
+  AddArrayParameter(kDoubledPawnPenalty);
+  AddArrayParameter(kIsolatedPawnPenalty);
+  Add2DArrayParameter(kRookOnFileBonus);
+  AddArrayParameter(kPawnShelterTable);
+  AddArrayParameter(kPawnStormTable);
+  AddArrayParameter(kKingPPDistanceTable);
+  AddArrayParameter(kEnemyKingPPDistanceTable);
+  AddSingleParameter(kKingCantReachPPBonus);
+  Add2DArrayParameter(kKingOnFilePenalty);
+  Add2DArrayParameter(kAttackPower);
+  AddArrayParameter(kSafeCheckBonus);
+  Add2DArrayParameter(kThreatenedByPawnPenalty);
+  AddArrayParameter(kPawnPushThreat);
+  Add2DArrayParameter(kThreatenedByKnightPenalty);
+  Add2DArrayParameter(kThreatenedByBishopPenalty);
+  Add2DArrayParameter(kThreatenedByRookPenalty);
+  AddArrayParameter(kKnightOutpostTable);
+  AddArrayParameter(kBishopOutpostTable);
+  AddSingleParameter(kBishopPairBonus);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -381,6 +403,28 @@ std::vector<I16> Tuner::GetCoefficients() const {
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
+  GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
+  GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
+  GET_ARRAY_COEFFICIENTS(kDefendedPawnBonus);
+  GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
+  GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
+  GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
+  GET_ARRAY_COEFFICIENTS(kPawnStormTable);
+  GET_ARRAY_COEFFICIENTS(kKingPPDistanceTable);
+  GET_ARRAY_COEFFICIENTS(kEnemyKingPPDistanceTable);
+  GET_COEFFICIENT(kKingCantReachPPBonus);
+  GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
+  GET_ARRAY_COEFFICIENTS(kSafeCheckBonus);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);
+  GET_ARRAY_COEFFICIENTS(kPawnPushThreat);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByKnightPenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByBishopPenalty);
+  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByRookPenalty);
+  GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
+  GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
+  GET_COEFFICIENT(kBishopPairBonus);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -402,18 +446,7 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
   trace = EvalTrace{};
   entry.static_eval = Evaluate(state) * (state.turn == Color::kWhite ? 1 : -1);
 
-  const auto coefficients = GetCoefficients();
-  entry.coefficient_entries.reserve(num_terms_);
-
-  for (int i = 0; i < coefficients.size(); i++) {
-    if (coefficients[i] != 0) {
-      entry.coefficient_entries.push_back(
-          {static_cast<U32>(i), coefficients[i]});
-    }
-  }
-
-  // Save some of the evaluation modifiers
-  entry.turn = state.turn;
+  entry.coefficient_entries = std::move(trace.coefficient_entries);
 
   return entry;
 }
@@ -713,6 +746,30 @@ void Tuner::WriteCheckpoint(const std::string& filename) {
   WriteArray(file, "constexpr BishopMobilityTable<ScorePair> kBishopMobility", kBishopMobility.size(), 8, index);
   WriteArray(file, "constexpr RookMobilityTable<ScorePair> kRookMobility", kRookMobility.size(), 8, index);
   WriteArray(file, "constexpr QueenMobilityTable<ScorePair> kQueenMobility", kQueenMobility.size(), 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kPassedPawnBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kPawnPhalanxBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kDefendedPawnBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr FileTable<ScorePair> kDoubledPawnPenalty", kNumFiles, 8, index);
+  WriteArray(file, "constexpr FileTable<ScorePair> kIsolatedPawnPenalty", kNumFiles, 8, index);
+  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus", 2, kNumFiles, 8, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 12> kPawnShelterTable", kPawnShelterTable.size(), 3, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 21> kPawnStormTable", kPawnStormTable.size(), 3, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 8> kKingPPDistanceTable", kKingPPDistanceTable.size(), 8, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable", kEnemyKingPPDistanceTable.size(), 8, index);
+  file << "constexpr ScorePair kKingCantReachPPBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
+  index++;
+  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty", 2, kNumFiles, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower", kNumPieceTypes, 8, 8, index);
+  WriteArray(file, "constexpr PieceTable<ScorePair> kSafeCheckBonus", kNumPieceTypes, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty", kNumPieceTypes, 2, 8, index);
+  WriteArray(file, "constexpr PieceTable<ScorePair> kPawnPushThreat", kNumPieceTypes, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty", kNumPieceTypes, 2, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty", kNumPieceTypes, 2, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty", kNumPieceTypes, 2, 8, index);
+  WriteArray(file, "constexpr OutpostTable<ScorePair> kKnightOutpostTable", kKnightOutpostTable.size(), 8, index);
+  WriteArray(file, "constexpr OutpostTable<ScorePair> kBishopOutpostTable", kKnightOutpostTable.size(), 8, index);
+  file << "constexpr ScorePair kBishopPairBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
+  index++;
   file << "constexpr ScorePair kTempoBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n";
   index++;
 

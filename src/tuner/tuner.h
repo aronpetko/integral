@@ -9,11 +9,11 @@
 #include "../utils/string.h"
 #include "../utils/types.h"
 
-// #define TUNE
+#define TUNE
 
 struct CoefficientEntry {
   U32 index;
-  int value;
+  I16 value;
 };
 
 using GameResult = double;
@@ -25,7 +25,6 @@ constexpr GameResult kWhiteWon = 1.0;
 struct TunerEntry {
   int phase;
   Score static_eval;
-  Color turn;
   GameResult result, score;
   std::array<double, 2> phase_factors;
   std::vector<CoefficientEntry> coefficient_entries;
@@ -52,16 +51,111 @@ struct EvalTrace {
   eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
   eval::RookMobilityTable<TraceTerm> kRookMobility{};
   eval::QueenMobilityTable<TraceTerm> kQueenMobility{};
+  eval::RankTable<TraceTerm> kPassedPawnBonus{};
+  eval::RankTable<TraceTerm> kPawnPhalanxBonus{};
+  eval::RankTable<TraceTerm> kDefendedPawnBonus{};
+  eval::FileTable<TraceTerm> kDoubledPawnPenalty{};
+  eval::FileTable<TraceTerm> kIsolatedPawnPenalty{};
+  std::array<eval::FileTable<TraceTerm>, 2> kRookOnFileBonus{};
+  std::array<TraceTerm, 12> kPawnShelterTable{};
+  std::array<TraceTerm, 21> kPawnStormTable{};
+  std::array<TraceTerm, 8> kKingPPDistanceTable{};
+  std::array<TraceTerm, 8> kEnemyKingPPDistanceTable{};
+  TraceTerm kKingCantReachPPBonus{};
+  std::array<eval::FileTable<TraceTerm>, 2> kKingOnFilePenalty{};
+  eval::PieceTable<std::array<TraceTerm, 8>> kAttackPower{};
+  eval::PieceTable<TraceTerm> kSafeCheckBonus{};
+  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByPawnPenalty{};
+  eval::PieceTable<TraceTerm> kPawnPushThreat{};
+  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByKnightPenalty{};
+  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByBishopPenalty{};
+  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByRookPenalty{};
+  eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
+  eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
+  TraceTerm kBishopPairBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};
+  std::vector<CoefficientEntry> coefficient_entries;
+
+  EvalTrace() : coefficient_entries() {
+    coefficient_entries.reserve(calculate_num_terms());
+  }
+
+  static constexpr size_t calculate_num_terms() {
+    constexpr size_t kNumPieceTypes = 6;
+    constexpr size_t kNumSquares = 64;
+    constexpr size_t kNumSides = 2;
+    constexpr size_t kNumRanks = 8;
+    constexpr size_t kNumFiles = 8;
+
+    return
+        kNumPieceTypes +  // kPieceValues
+        kNumSides * kNumSquares * kNumPieceTypes * kNumSquares +  // kKingPieceSquareTable
+        kNumSides * kNumSquares * kNumPieceTypes * kNumSquares +  // kPawnPieceSquareTable
+        9 +  // kKnightMobility
+        14 +  // kBishopMobility
+        15 +  // kRookMobility
+        28 +  // kQueenMobility
+        kNumRanks +  // kPassedPawnBonus
+        kNumRanks +  // kPawnPhalanxBonus
+        kNumRanks +  // kDefendedPawnBonus
+        kNumFiles +  // kDoubledPawnPenalty
+        kNumFiles +  // kIsolatedPawnPenalty
+        kNumSides * kNumFiles +  // kRookOnFileBonus
+        12 +  // kPawnShelterTable
+        21 +  // kPawnStormTable
+        8 +  // kKingPPDistanceTable
+        8 +  // kEnemyKingPPDistanceTable
+        1 +  // kKingCantReachPPBonus
+        kNumSides * kNumFiles +  // kKingOnFilePenalty
+        kNumPieceTypes * 8 +  // kAttackPower
+        kNumPieceTypes +  // kSafeCheckBonus
+        kNumPieceTypes * kNumSides +  // kThreatenedByPawnPenalty
+        kNumPieceTypes +  // kPawnPushThreat
+        kNumPieceTypes * kNumSides +  // kThreatenedByKnightPenalty
+        kNumPieceTypes * kNumSides +  // kThreatenedByBishopPenalty
+        kNumPieceTypes * kNumSides +  // kThreatenedByRookPenalty
+        24 +  // kKnightOutpostTable
+        24 +  // kBishopOutpostTable
+        1 +  // kBishopPairBonus
+        1;   // kTempoBonus
+  }
 };
 
 inline EvalTrace trace;
 
 #ifdef TUNE
 
-#define TRACE_ADD(term, count, color) trace.term[color] += count
-#define TRACE_INCREMENT(term, color) trace.term[color]++
+// Add a function to get the index for a coefficient
+// Add a function to update or add a CoefficientEntry
+inline void update_coefficient_entry(const char* term, I16 value) {
+  static std::unordered_map<std::string, U32> term_indices;
+  static U32 next_index = 0;
+
+  auto it = term_indices.find(term);
+  U32 index;
+  if (it == term_indices.end()) {
+    index = next_index++;
+    term_indices[term] = index;
+  } else {
+    index = it->second;
+  }
+
+  for (auto& entry : trace.coefficient_entries) {
+    if (entry.index == index) {
+      entry.value += value;
+      return;
+    }
+  }
+  trace.coefficient_entries.emplace_back(CoefficientEntry{index, value});
+}
+
+#define TRACE_ADD(term, count, color) \
+    do { \
+        trace.term[color] += count; \
+        update_coefficient_entry(#term, (color == Color::kWhite ? count : -count)); \
+    } while(0)
+#define TRACE_INCREMENT(term, color) TRACE_ADD(term, 1, color)
 #define TRACE_SCALE(s) trace.scale = s
 #define TRACE_EVAL(e) trace.eval = e
 #else
@@ -70,6 +164,7 @@ inline EvalTrace trace;
 #define TRACE_SCALE(s)
 #define TRACE_EVAL(e)
 #endif
+
 
 class Tuner {
  public:
@@ -86,7 +181,7 @@ class Tuner {
                                        GameResult result,
                                        Score score) const;
 
-  [[nodiscard]] std::vector<I16> GetCoefficients() const;
+  std::vector<I16> GetCoefficients() const;
 
   [[nodiscard]] double ComputeEvaluation(const TunerEntry& entry) const;
 

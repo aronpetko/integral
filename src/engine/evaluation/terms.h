@@ -15944,28 +15944,220 @@ constexpr PieceRelativePSQT<ScorePair> kKingPieceSquareTable = {{
 }};
 
 constexpr KnightMobilityTable<ScorePair> kKnightMobility = {
-  Pair(-1, -137), Pair(13, -58), Pair(20, -29), Pair(25, -17), Pair(28, -10), Pair(32, -6), Pair(36, -10), Pair(39, -16),
-  Pair(43, -27)
+  Pair(12, 38), Pair(20, 24), Pair(22, 30), Pair(23, 36), Pair(24, 41), Pair(25, 51), Pair(27, 54), Pair(31, 52),
+  Pair(32, 48)
 };
 
 constexpr BishopMobilityTable<ScorePair> kBishopMobility = {
-  Pair(0, -88), Pair(10, -63), Pair(15, -48), Pair(18, -32), Pair(21, -26), Pair(23, -25), Pair(24, -27), Pair(24, -33),
-  Pair(26, -37), Pair(28, -46), Pair(21, -50), Pair(25, -60), Pair(4, -59), Pair(41, -76)
+  Pair(-8, 6), Pair(1, -32), Pair(4, -15), Pair(8, -4), Pair(10, 6), Pair(13, 17), Pair(13, 21), Pair(12, 23),
+  Pair(16, 27), Pair(21, 23), Pair(26, 22), Pair(38, 14), Pair(43, 30), Pair(95, -3)
 };
 
 constexpr RookMobilityTable<ScorePair> kRookMobility = {
-  Pair(-66, -203), Pair(-38, -159), Pair(-34, -132), Pair(-26, -115), Pair(-23, -104), Pair(-18, -96), Pair(-14, -92), Pair(-8, -90),
-  Pair(-4, -87), Pair(2, -89), Pair(9, -90), Pair(14, -90), Pair(30, -99), Pair(36, -103), Pair(49, -115)
+  Pair(-49, -99), Pair(-35, -88), Pair(-33, -57), Pair(-30, -26), Pair(-29, -9), Pair(-25, -5), Pair(-20, 1), Pair(-14, 5),
+  Pair(-11, 9), Pair(-7, 14), Pair(-4, 18), Pair(3, 20), Pair(6, 20), Pair(29, 8), Pair(66, -15)
 };
 
 constexpr QueenMobilityTable<ScorePair> kQueenMobility = {
-  Pair(-20, -111), Pair(-16, -99), Pair(-15, -64), Pair(-12, -37), Pair(-12, 3), Pair(-10, 21), Pair(-9, 35), Pair(-7, 45),
-  Pair(-5, 54), Pair(-2, 60), Pair(0, 68), Pair(2, 72), Pair(5, 71), Pair(7, 72), Pair(9, 68), Pair(12, 60),
-  Pair(17, 50), Pair(31, 30), Pair(37, 20), Pair(51, -6), Pair(86, -38), Pair(108, -66), Pair(131, -96), Pair(163, -131),
-  Pair(160, -149), Pair(389, -283), Pair(272, -247), Pair(316, -293)
+  Pair(-59, 236), Pair(-28, 145), Pair(-10, 104), Pair(-5, 84), Pair(-5, 108), Pair(-6, 127), Pair(-4, 139), Pair(-3, 157),
+  Pair(-2, 170), Pair(1, 170), Pair(3, 179), Pair(5, 180), Pair(6, 178), Pair(9, 175), Pair(6, 174), Pair(9, 170),
+  Pair(11, 164), Pair(11, 152), Pair(19, 135), Pair(36, 115), Pair(47, 97), Pair(64, 70), Pair(65, 65), Pair(100, 39),
+  Pair(80, 46), Pair(156, -4), Pair(171, -1), Pair(220, -19)
 };
 
-constexpr ScorePair kTempoBonus = Pair(17, 5);
+constexpr RankTable<ScorePair> kPassedPawnBonus = {
+  Pair(0, 0), Pair(-28, -101), Pair(-23, -85), Pair(-9, -56), Pair(19, -20), Pair(10, 30), Pair(154, 163), Pair(0, 0)
+};
+
+constexpr RankTable<ScorePair> kPawnPhalanxBonus = {
+  Pair(0, 0), Pair(9, 14), Pair(20, 17), Pair(23, 46), Pair(47, 98), Pair(112, 185), Pair(75, 244), Pair(0, 0)
+};
+
+constexpr RankTable<ScorePair> kDefendedPawnBonus = {
+  Pair(0, 0), Pair(0, 0), Pair(6, -8), Pair(4, 19), Pair(16, 37), Pair(54, 75), Pair(218, 112), Pair(0, 0)
+};
+
+constexpr FileTable<ScorePair> kDoubledPawnPenalty = {
+  Pair(-34, -61), Pair(-14, -15), Pair(-3, 11), Pair(-17, -10), Pair(-14, -6), Pair(-12, -9), Pair(-14, 6), Pair(-23, -45)
+};
+
+constexpr FileTable<ScorePair> kIsolatedPawnPenalty = {
+  Pair(-4, -3), Pair(-10, -10), Pair(-11, -6), Pair(-7, -2), Pair(-7, -6), Pair(0, -11), Pair(-7, -7), Pair(5, -5)
+};
+
+constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = {{
+  {
+      Pair(3, -13), Pair(15, -13), Pair(24, -11), Pair(36, -13), Pair(41, -13), Pair(63, -16), Pair(60, -20), Pair(16, -10)
+  },
+  {
+      Pair(-9, 3), Pair(0, -3), Pair(8, -7), Pair(22, -2), Pair(16, -8), Pair(25, -13), Pair(39, -19), Pair(-9, 1)
+  }
+}};
+
+constexpr std::array<ScorePair, 12> kPawnShelterTable = {
+  Pair(22, -11), Pair(37, -11), Pair(29, -10),
+  Pair(47, -11), Pair(48, -15), Pair(47, -13),
+  Pair(67, -2), Pair(0, 0), Pair(59, 1),
+  Pair(41, 24), Pair(19, 18), Pair(37, 26)
+};
+
+constexpr std::array<ScorePair, 21> kPawnStormTable = {
+  Pair(-6, -2), Pair(-18, 10), Pair(-6, -2),
+  Pair(-5, -5), Pair(-16, 4), Pair(-5, -6),
+  Pair(0, -13), Pair(-5, -9), Pair(4, -14),
+  Pair(18, -16), Pair(7, -14), Pair(24, -18),
+  Pair(72, -23), Pair(76, -23), Pair(68, -26),
+  Pair(44, -31), Pair(-18, -62), Pair(29, -18),
+  Pair(75, -81), Pair(0, 0), Pair(63, -79)
+};
+
+constexpr std::array<ScorePair, 8> kKingPPDistanceTable = {
+  Pair(0, 0), Pair(-2, 84), Pair(-6, 73), Pair(-6, 61), Pair(3, 50), Pair(1, 41), Pair(13, 33), Pair(11, 26)
+};
+
+constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable = {
+  Pair(0, 0), Pair(-15, 2), Pair(-22, 28), Pair(-4, 51), Pair(2, 62), Pair(13, 68), Pair(15, 74), Pair(12, 91)
+};
+
+constexpr ScorePair kKingCantReachPPBonus = Pair(-475, 103);
+
+constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = {{
+  {
+      Pair(-51, -57), Pair(-10, -32), Pair(-21, -19), Pair(-64, -4), Pair(-42, -2), Pair(-57, 3), Pair(-16, -2), Pair(-22, -29)
+  },
+  {
+      Pair(-45, 16), Pair(6, 10), Pair(-6, 12), Pair(-55, 29), Pair(-20, 18), Pair(-38, 17), Pair(2, 20), Pair(-18, 9)
+  }
+}};
+
+constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = {{
+  {
+      Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+  },
+  {
+      Pair(0, 0), Pair(24, 3), Pair(42, -3), Pair(107, -27), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+  },
+  {
+      Pair(0, 0), Pair(12, 1), Pair(35, -3), Pair(76, -10), Pair(101, -24), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+  },
+  {
+      Pair(0, 0), Pair(26, -13), Pair(43, -12), Pair(70, -12), Pair(123, -23), Pair(200, -45), Pair(0, 0), Pair(0, 0)
+  },
+  {
+      Pair(0, 0), Pair(8, 24), Pair(25, 51), Pair(53, 62), Pair(116, 54), Pair(171, 50), Pair(299, -1), Pair(370, -1)
+  },
+  {
+      Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0), Pair(0, 0)
+  }
+}};
+
+constexpr PieceTable<ScorePair> kSafeCheckBonus = {
+  Pair(0, 0), Pair(36, 3), Pair(11, 6), Pair(29, -2), Pair(19, 22), Pair(0, 0)
+};
+
+constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty = {{
+  {
+      Pair(3, 31), Pair(6, 39)
+  },
+  {
+      Pair(-44, -5), Pair(-31, -19)
+  },
+  {
+      Pair(-45, -13), Pair(-38, -36)
+  },
+  {
+      Pair(-76, 49), Pair(-63, 22)
+  },
+  {
+      Pair(-53, 54), Pair(-51, 34)
+  },
+  {
+      Pair(32, 38), Pair(-46, 33)
+  }
+}};
+
+constexpr PieceTable<ScorePair> kPawnPushThreat = {
+  Pair(0, 0), Pair(11, 33), Pair(11, 30), Pair(15, 26), Pair(12, 17), Pair(12, 0)
+};
+
+constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty = {{
+  {
+      Pair(-8, -30), Pair(2, -12)
+  },
+  {
+      Pair(-13, -24), Pair(-7, -39)
+  },
+  {
+      Pair(-28, -38), Pair(-26, -61)
+  },
+  {
+      Pair(-61, -21), Pair(-44, -44)
+  },
+  {
+      Pair(-44, -31), Pair(-41, -25)
+  },
+  {
+      Pair(-96, -13), Pair(-26, -61)
+  }
+}};
+
+constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty = {{
+  {
+      Pair(-9, -20), Pair(0, -1)
+  },
+  {
+      Pair(-42, -34), Pair(-23, -49)
+  },
+  {
+      Pair(-16, -50), Pair(-13, -65)
+  },
+  {
+      Pair(-55, -19), Pair(-37, -44)
+  },
+  {
+      Pair(-45, -17), Pair(-36, -34)
+  },
+  {
+      Pair(-21, -18), Pair(-9, -28)
+  }
+}};
+
+constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty = {{
+  {
+      Pair(-3, -17), Pair(4, 4)
+  },
+  {
+      Pair(-32, -23), Pair(0, -9)
+  },
+  {
+      Pair(-25, -25), Pair(-6, -5)
+  },
+  {
+      Pair(5, -20), Pair(9, -20)
+  },
+  {
+      Pair(-50, -13), Pair(-34, -34)
+  },
+  {
+      Pair(11, -33), Pair(-15, -38)
+  }
+}};
+
+constexpr OutpostTable<ScorePair> kKnightOutpostTable = {
+  Pair(5, 48), Pair(54, 23), Pair(7, 29), Pair(10, 29), Pair(24, 26), Pair(45, 18), Pair(49, 40), Pair(77, 51),
+  Pair(12, 35), Pair(13, 35), Pair(11, 25), Pair(17, 29), Pair(8, 25), Pair(2, 42), Pair(12, 29), Pair(40, 55),
+  Pair(-5, 19), Pair(-6, 17), Pair(7, 27), Pair(5, 18), Pair(-9, 33), Pair(9, 27), Pair(17, 17), Pair(-4, 30)
+};
+
+constexpr OutpostTable<ScorePair> kBishopOutpostTable = {
+  Pair(-21, -3), Pair(26, -7), Pair(10, 10), Pair(16, 2), Pair(13, -26), Pair(49, -20), Pair(85, 5), Pair(-19, -22),
+  Pair(-18, 27), Pair(17, 6), Pair(-13, 29), Pair(12, 36), Pair(12, 21), Pair(-16, 23), Pair(16, -12), Pair(58, 13),
+  Pair(23, 22), Pair(-1, 2), Pair(17, 10), Pair(-4, 22), Pair(-14, 15), Pair(6, 25), Pair(6, -13), Pair(9, 46)
+};
+
+constexpr ScorePair kBishopPairBonus = Pair(23, 85);
+
+constexpr ScorePair kTempoBonus = Pair(21, 23);
 
 constexpr std::array<int, kNumPieceTypes> kPhaseIncrements = {0, 1, 1, 2, 4, 0};
 // clang-format on
