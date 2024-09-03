@@ -53,10 +53,11 @@ endif ()
 
 include_directories(third-party/fathom)
 include_directories(third-party/fmt/include)
+include_directories(third-party/mio)
 add_definitions(-DFMT_HEADER_ONLY)
 
 # Collect source files
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
 
 # Create the executable target
-add_executable(integral ${SOURCES} third-party/fathom/tbconfig.h third-party/fathom/tbprobe.h third-party/fathom/stdendian.h third-party/fathom/tbprobe.c src/data_gen/data_gen.h src/data_gen/format/binpack.h)
+add_executable(integral ${SOURCES} third-party/mio/mio.hpp third-party/fathom/tbconfig.h third-party/fathom/tbprobe.h third-party/fathom/stdendian.h third-party/fathom/tbprobe.c src/data_gen/data_gen.h src/data_gen/format/binpack.h)

@@ -2,6 +2,7 @@
 #define INTEGRAL_TUNER_H
 
 #include <fstream>
+#include <mio.hpp>
 
 #include "../chess/board.h"
 #include "../engine/evaluation/terms.h"
@@ -45,34 +46,12 @@ struct EvalTrace {
   // The names, though they are not constant, must match the above names (for
   // ease of use with the tuner)
   eval::PieceTable<TraceTerm> kPieceValues{};
-  eval::PawnRelativePSQT<TraceTerm> kPawnPieceSquareTable{};
-  eval::PieceSquareTable<TraceTerm> kNormalPieceSquareTable{};
+  eval::PieceRelativePSQT<TraceTerm> kKingPieceSquareTable{};
+  eval::PieceRelativePSQT<TraceTerm> kPawnPieceSquareTable{};
   eval::KnightMobilityTable<TraceTerm> kKnightMobility{};
   eval::BishopMobilityTable<TraceTerm> kBishopMobility{};
   eval::RookMobilityTable<TraceTerm> kRookMobility{};
   eval::QueenMobilityTable<TraceTerm> kQueenMobility{};
-  eval::RankTable<TraceTerm> kPassedPawnBonus{};
-  eval::RankTable<TraceTerm> kPawnPhalanxBonus{};
-  eval::RankTable<TraceTerm> kDefendedPawnBonus{};
-  eval::FileTable<TraceTerm> kDoubledPawnPenalty{};
-  eval::FileTable<TraceTerm> kIsolatedPawnPenalty{};
-  std::array<eval::FileTable<TraceTerm>, 2> kRookOnFileBonus{};
-  std::array<TraceTerm, 12> kPawnShelterTable{};
-  std::array<TraceTerm, 21> kPawnStormTable{};
-  std::array<TraceTerm, 8> kKingPPDistanceTable{};
-  std::array<TraceTerm, 8> kEnemyKingPPDistanceTable{};
-  TraceTerm kKingCantReachPPBonus{};
-  std::array<eval::FileTable<TraceTerm>, 2> kKingOnFilePenalty{};
-  eval::PieceTable<std::array<TraceTerm, 8>> kAttackPower{};
-  eval::PieceTable<TraceTerm> kSafeCheckBonus{};
-  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByPawnPenalty{};
-  eval::PieceTable<TraceTerm> kPawnPushThreat{};
-  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByKnightPenalty{};
-  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByBishopPenalty{};
-  eval::PieceTable<std::array<TraceTerm, 2>> kThreatenedByRookPenalty{};
-  eval::OutpostTable<TraceTerm> kKnightOutpostTable{};
-  eval::OutpostTable<TraceTerm> kBishopOutpostTable{};
-  TraceTerm kBishopPairBonus{};
   TraceTerm kTempoBonus{};
   Score eval{};
 };
@@ -165,16 +144,37 @@ class Tuner {
 
   void WriteCheckpoint(const std::string& filename);
 
-  void WriteArray(std::ofstream& file, const std::string& name, int size, int row_length, size_t& index);
-  void Write2DArray(std::ofstream& file, const std::string& name, int rows, int columns, int row_length, size_t& index);
-  void Write3DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, size_t& index);
-  void Write4DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, int dim4, size_t& index);
+  void WriteArray(std::ofstream& file,
+                  const std::string& name,
+                  int size,
+                  int row_length,
+                  size_t& index);
+  void Write2DArray(std::ofstream& file,
+                    const std::string& name,
+                    int rows,
+                    int columns,
+                    int row_length,
+                    size_t& index);
+  void Write3DArray(std::ofstream& file,
+                    const std::string& name,
+                    int dim1,
+                    int dim2,
+                    int dim3,
+                    size_t& index);
+  void Write4DArray(std::ofstream& file,
+                    const std::string& name,
+                    int dim1,
+                    int dim2,
+                    int dim3,
+                    int dim4,
+                    size_t& index);
 
  private:
   int num_terms_;
   std::vector<TermPair> parameters_;
   std::vector<TunerEntry> entries_;
-  std::ifstream file_;
+  mio::mmap_source mmap_;
+  std::size_t current_position_ = 0;
   bool end_of_file_reached_ = false;
   bool marlin_format_ = false;
   VectorPair gradients_, momentum_, velocity_;

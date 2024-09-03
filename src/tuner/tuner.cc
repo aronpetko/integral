@@ -35,7 +35,7 @@ inline double Sigmoid(double K, double E) {
 }
 
 bool Tuner::LoadNextBatch() {
-  if (end_of_file_reached_) {
+  if (current_position_ >= mmap_.size()) {
     return false;
   }
 
@@ -45,30 +45,29 @@ bool Tuner::LoadNextBatch() {
 
   fmt::println("Loading next batch of {} positions ", kBatchSize);
 
-  std::string line;
   int loaded_entries = 0;
   int last_percentage = 0;
 
-  while (loaded_entries < kBatchSize) {
-    if (file_.eof() || !file_.good()) {
-      end_of_file_reached_ = true;
-      file_.close();
-      break;
-    }
-
+  while (loaded_entries < kBatchSize && current_position_ < mmap_.size()) {
     Board board;
     GameResult result = -1, score = result;
 
     if (marlin_format_) {
-      data_gen::format::MarlinChessBoard marlin_board;
-      file_.read(reinterpret_cast<char*>(&marlin_board), sizeof(marlin_board));
+      if (current_position_ + sizeof(data_gen::format::MarlinChessBoard) > mmap_.size()) {
+        fmt::println("Reached end of file while reading Marlin format.");
+        break;
+      }
+
+      const data_gen::format::MarlinChessBoard* marlin_board =
+          reinterpret_cast<const data_gen::format::MarlinChessBoard*>(mmap_.data() + current_position_);
+      current_position_ += sizeof(data_gen::format::MarlinChessBoard);
 
       auto& state = board.GetState();
       state = BoardState{};
 
       int i = 0;
-      for (Square square : BitBoard(marlin_board.occupied)) {
-        const U8 piece_data = marlin_board.pieces[i];
+      for (Square square : BitBoard(marlin_board->occupied)) {
+        const U8 piece_data = marlin_board->pieces[i];
         const auto color = (piece_data & 0x8) ? Color::kBlack : Color::kWhite;
 
         auto piece_type = static_cast<PieceType>(piece_data & 0x7);
@@ -89,18 +88,26 @@ bool Tuner::LoadNextBatch() {
         ++i;
       }
 
-      state.turn = (marlin_board.turn_and_en_passant & (1 << 7))
+      state.turn = (marlin_board->turn_and_en_passant & (1 << 7))
                      ? Color::kBlack
                      : Color::kWhite;
 
-      state.en_passant = marlin_board.turn_and_en_passant & 0x7F;
-      state.fifty_moves_clock = marlin_board.half_move_clock;
-      state.half_moves = (marlin_board.full_move_number - 1) * 2 +
+      state.en_passant = marlin_board->turn_and_en_passant & 0x7F;
+      state.fifty_moves_clock = marlin_board->half_move_clock;
+      state.half_moves = (marlin_board->full_move_number - 1) * 2 +
                          (state.turn == Color::kBlack ? 1 : 0);
 
-      result = marlin_board.wdl_outcome / 2.0;
-      score = marlin_board.evaluation;
-    } else if (std::getline(file_, line)) {
+      result = marlin_board->wdl_outcome / 2.0;
+      score = marlin_board->evaluation;
+    } else {
+      std::string line;
+      while (current_position_ < mmap_.size() && mmap_[current_position_] != '\n') {
+        line += mmap_[current_position_++];
+      }
+      if (current_position_ < mmap_.size()) {
+        current_position_++; // Skip the newline
+      }
+
       const auto bracket_pos = line.find_last_of('[');
       if (bracket_pos != std::string::npos) {
         // Extract the FEN part of the line (everything before the last '[')
@@ -151,13 +158,6 @@ bool Tuner::LoadNextBatch() {
         std::cout.flush();
         last_percentage = current_percentage;
       }
-    } else {
-      break;
-    }
-
-    if (file_.eof() || !file_.good()) {
-      end_of_file_reached_ = true;
-      file_.close();
     }
   }
 
@@ -232,14 +232,16 @@ void Tuner::LoadAndTune(const std::string& source_file) {
   fmt::println("Opening data source...");
 
   marlin_format_ = std::filesystem::path(source_file).extension() == ".mf";
-  file_.open(source_file, marlin_format_ ? std::ios::binary : std::ios::in);
 
-  if (!file_.is_open()) {
-    fmt::println("Unable to open file");
+  std::error_code error;
+  mmap_ = mio::make_mmap_source(source_file, error);
+
+  if (error) {
+    fmt::println("Error mapping file: {}", error.message());
     return;
   }
 
-  fmt::println("File opened successfully. Starting batch processing.");
+  fmt::println("File mapped successfully. Starting batch processing.");
 
   momentum_.resize(num_terms_);
   velocity_.resize(num_terms_);
@@ -253,40 +255,19 @@ void Tuner::LoadAndTune(const std::string& source_file) {
   std::string final_checkpoint_filename = fmt::format("final_checkpoint_batch{}.txt", batch_count_);
   WriteCheckpoint(final_checkpoint_filename);
 
-  fmt::println("Finished processing all batches. Total batches: {}",
-               batch_count_);
+  mmap_.unmap();
+
+  fmt::println("Finished processing all batches. Total batches: {}", batch_count_);
 }
 
 void Tuner::InitBaseParameters() {
   AddArrayParameter(kPieceValues);
   Add4DArrayParameter(kPawnPieceSquareTable);
-  Add2DArrayParameter(kNormalPieceSquareTable);
+  Add4DArrayParameter(kKingPieceSquareTable);
   AddArrayParameter(kKnightMobility);
   AddArrayParameter(kBishopMobility);
   AddArrayParameter(kRookMobility);
   AddArrayParameter(kQueenMobility);
-  AddArrayParameter(kPassedPawnBonus);
-  AddArrayParameter(kPawnPhalanxBonus);
-  AddArrayParameter(kDefendedPawnBonus);
-  AddArrayParameter(kDoubledPawnPenalty);
-  AddArrayParameter(kIsolatedPawnPenalty);
-  Add2DArrayParameter(kRookOnFileBonus);
-  AddArrayParameter(kPawnShelterTable);
-  AddArrayParameter(kPawnStormTable);
-  AddArrayParameter(kKingPPDistanceTable);
-  AddArrayParameter(kEnemyKingPPDistanceTable);
-  AddSingleParameter(kKingCantReachPPBonus);
-  Add2DArrayParameter(kKingOnFilePenalty);
-  Add2DArrayParameter(kAttackPower);
-  AddArrayParameter(kSafeCheckBonus);
-  Add2DArrayParameter(kThreatenedByPawnPenalty);
-  AddArrayParameter(kPawnPushThreat);
-  Add2DArrayParameter(kThreatenedByKnightPenalty);
-  Add2DArrayParameter(kThreatenedByBishopPenalty);
-  Add2DArrayParameter(kThreatenedByRookPenalty);
-  AddArrayParameter(kKnightOutpostTable);
-  AddArrayParameter(kBishopOutpostTable);
-  AddSingleParameter(kBishopPairBonus);
   AddSingleParameter(kTempoBonus);
 }
 
@@ -310,33 +291,11 @@ std::vector<I16> Tuner::GetCoefficients() const {
 
   GET_ARRAY_COEFFICIENTS(kPieceValues);
   GET_4D_ARRAY_COEFFICIENTS(kPawnPieceSquareTable);
-  GET_2D_ARRAY_COEFFICIENTS(kNormalPieceSquareTable);
+  GET_4D_ARRAY_COEFFICIENTS(kKingPieceSquareTable);
   GET_ARRAY_COEFFICIENTS(kKnightMobility);
   GET_ARRAY_COEFFICIENTS(kBishopMobility);
   GET_ARRAY_COEFFICIENTS(kRookMobility);
   GET_ARRAY_COEFFICIENTS(kQueenMobility);
-  GET_ARRAY_COEFFICIENTS(kPassedPawnBonus);
-  GET_ARRAY_COEFFICIENTS(kPawnPhalanxBonus);
-  GET_ARRAY_COEFFICIENTS(kDefendedPawnBonus);
-  GET_ARRAY_COEFFICIENTS(kDoubledPawnPenalty);
-  GET_ARRAY_COEFFICIENTS(kIsolatedPawnPenalty);
-  GET_2D_ARRAY_COEFFICIENTS(kRookOnFileBonus);
-  GET_ARRAY_COEFFICIENTS(kPawnShelterTable);
-  GET_ARRAY_COEFFICIENTS(kPawnStormTable);
-  GET_ARRAY_COEFFICIENTS(kKingPPDistanceTable);
-  GET_ARRAY_COEFFICIENTS(kEnemyKingPPDistanceTable);
-  GET_COEFFICIENT(kKingCantReachPPBonus);
-  GET_2D_ARRAY_COEFFICIENTS(kKingOnFilePenalty);
-  GET_2D_ARRAY_COEFFICIENTS(kAttackPower);
-  GET_ARRAY_COEFFICIENTS(kSafeCheckBonus);
-  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByPawnPenalty);
-  GET_ARRAY_COEFFICIENTS(kPawnPushThreat);
-  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByKnightPenalty);
-  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByBishopPenalty);
-  GET_2D_ARRAY_COEFFICIENTS(kThreatenedByRookPenalty);
-  GET_ARRAY_COEFFICIENTS(kKnightOutpostTable);
-  GET_ARRAY_COEFFICIENTS(kBishopOutpostTable);
-  GET_COEFFICIENT(kBishopPairBonus);
   GET_COEFFICIENT(kTempoBonus);
 
   return coefficients;
@@ -649,125 +608,6 @@ void Tuner::NormalizePSQTs() {
 }
 
 void Tuner::PrintParameters() {
-  // NormalizePSQTs();
-  std::size_t index = 0;
-
-  fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
-  PrintArray(index, kPieceValues.size(), parameters_);
-
-  fmt::print("constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable = ");
-  Print4DArray(
-      index, 2, kSquareCount, kNumPieceTypes, kSquareCount, parameters_);
-
-  fmt::print(
-      "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable = ");
-  Print3DArray(index,
-               kNumKingBuckets,
-               kNumPieceTypes,
-               kSquareCount,
-               parameters_);
-
-  fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
-  PrintArray(index, kKnightMobility.size(), parameters_);
-
-  fmt::print("constexpr BishopMobilityTable<ScorePair> kBishopMobility = ");
-  PrintArray(index, kBishopMobility.size(), parameters_);
-
-  fmt::print("constexpr RookMobilityTable<ScorePair> kRookMobility = ");
-  PrintArray(index, kRookMobility.size(), parameters_);
-
-  fmt::print("constexpr QueenMobilityTable<ScorePair> kQueenMobility = ");
-  PrintArray(index, kQueenMobility.size(), parameters_);
-
-  fmt::print("constexpr RankTable<ScorePair> kPassedPawnBonus = ");
-  PrintArray(index, kNumRanks, parameters_);
-
-  fmt::print("constexpr RankTable<ScorePair> kPawnPhalanxBonus = ");
-  PrintArray(index, kNumRanks, parameters_);
-
-  fmt::print("constexpr RankTable<ScorePair> kDefendedPawnBonus = ");
-  PrintArray(index, kNumRanks, parameters_);
-
-  fmt::print("constexpr FileTable<ScorePair> kDoubledPawnPenalty = ");
-  PrintArray(index, kNumFiles, parameters_);
-
-  fmt::print("constexpr FileTable<ScorePair> kIsolatedPawnPenalty = ");
-  PrintArray(index, kNumFiles, parameters_);
-
-  fmt::print(
-      "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus = ");
-  Print2DArray(index, 2, kNumFiles, parameters_);
-
-  fmt::print("constexpr std::array<ScorePair, 12> kPawnShelterTable = ");
-  PrintArray(index, kPawnShelterTable.size(), parameters_, 3);
-
-  fmt::print("constexpr std::array<ScorePair, 21> kPawnStormTable = ");
-  PrintArray(index, kPawnStormTable.size(), parameters_, 3);
-
-  fmt::print("constexpr std::array<ScorePair, 8> kKingPPDistanceTable = ");
-  PrintArray(index, kKingPPDistanceTable.size(), parameters_);
-
-  fmt::print(
-      "constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable "
-      "= ");
-  PrintArray(index, kEnemyKingPPDistanceTable.size(), parameters_);
-
-  fmt::print("constexpr ScorePair kKingCantReachPPBonus = ");
-  PrintTerm(index, parameters_);
-
-  fmt::println("");
-
-  fmt::print(
-      "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty = ");
-  Print2DArray(index, 2, kNumFiles, parameters_);
-
-  fmt::print("constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower = ");
-  Print2DArray(index, kNumPieceTypes, 8, parameters_);
-
-  fmt::print("constexpr PieceTable<ScorePair> kSafeCheckBonus = ");
-  PrintArray(index, kNumPieceTypes, parameters_);
-
-  fmt::print(
-      "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty "
-      "= ");
-  Print2DArray(index, kNumPieceTypes, 2, parameters_);
-
-  fmt::print("constexpr PieceTable<ScorePair> kPawnPushThreat = ");
-  PrintArray(index, kNumPieceTypes, parameters_);
-
-  fmt::print(
-      "constexpr PieceTable<std::array<ScorePair, 2>> "
-      "kThreatenedByKnightPenalty = ");
-  Print2DArray(index, kNumPieceTypes, 2, parameters_);
-
-  fmt::print(
-      "constexpr PieceTable<std::array<ScorePair, 2>> "
-      "kThreatenedByBishopPenalty = ");
-  Print2DArray(index, kNumPieceTypes, 2, parameters_);
-
-  fmt::print(
-      "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty "
-      "= ");
-  Print2DArray(index, kNumPieceTypes, 2, parameters_);
-
-  fmt::print("constexpr OutpostTable<ScorePair> kKnightOutpostTable = ");
-  PrintArray(index, kKnightOutpostTable.size(), parameters_);
-  fmt::print("constexpr OutpostTable<ScorePair> kBishopOutpostTable = ");
-  PrintArray(index, kKnightOutpostTable.size(), parameters_);
-
-  fmt::print("constexpr ScorePair kBishopPairBonus = ");
-  PrintTerm(index, parameters_);
-
-  fmt::println("");
-
-  fmt::print("constexpr ScorePair kTempoBonus = ");
-  PrintTerm(index, parameters_);
-
-  if (index != parameters_.size()) {
-    fmt::println("Failed to collect all eval terms: {} expected {}",
-                 index,
-                 parameters_.size());
-  }
 }
 
 void Tuner::WriteCheckpoint(const std::string& filename) {
@@ -782,36 +622,12 @@ void Tuner::WriteCheckpoint(const std::string& filename) {
   size_t index = 0;
 
   WriteArray(file, "constexpr PieceTable<ScorePair> kPieceValues", kPieceValues.size(), 8, index);
-  Write4DArray(file, "constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable", 2, kSquareCount, kNumPieceTypes, kSquareCount, index);
-  Write2DArray(file, "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable", kNumPieceTypes, kSquareCount, 8, index);
+  Write4DArray(file, "constexpr PieceRelativePSQT<ScorePair> kPawnPieceSquareTable", 2, kSquareCount, kNumPieceTypes, kSquareCount, index);
+  Write4DArray(file, "constexpr PieceRelativePSQT<ScorePair> kKingPieceSquareTable", 2, kSquareCount, kNumPieceTypes, kSquareCount, index);
   WriteArray(file, "constexpr KnightMobilityTable<ScorePair> kKnightMobility", kKnightMobility.size(), 8, index);
   WriteArray(file, "constexpr BishopMobilityTable<ScorePair> kBishopMobility", kBishopMobility.size(), 8, index);
   WriteArray(file, "constexpr RookMobilityTable<ScorePair> kRookMobility", kRookMobility.size(), 8, index);
   WriteArray(file, "constexpr QueenMobilityTable<ScorePair> kQueenMobility", kQueenMobility.size(), 8, index);
-  WriteArray(file, "constexpr RankTable<ScorePair> kPassedPawnBonus", kNumRanks, 8, index);
-  WriteArray(file, "constexpr RankTable<ScorePair> kPawnPhalanxBonus", kNumRanks, 8, index);
-  WriteArray(file, "constexpr RankTable<ScorePair> kDefendedPawnBonus", kNumRanks, 8, index);
-  WriteArray(file, "constexpr FileTable<ScorePair> kDoubledPawnPenalty", kNumFiles, 8, index);
-  WriteArray(file, "constexpr FileTable<ScorePair> kIsolatedPawnPenalty", kNumFiles, 8, index);
-  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus", 2, kNumFiles, 8, index);
-  WriteArray(file, "constexpr std::array<ScorePair, 12> kPawnShelterTable", kPawnShelterTable.size(), 3, index);
-  WriteArray(file, "constexpr std::array<ScorePair, 21> kPawnStormTable", kPawnStormTable.size(), 3, index);
-  WriteArray(file, "constexpr std::array<ScorePair, 8> kKingPPDistanceTable", kKingPPDistanceTable.size(), 8, index);
-  WriteArray(file, "constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable", kEnemyKingPPDistanceTable.size(), 8, index);
-  file << "constexpr ScorePair kKingCantReachPPBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
-  index++;
-  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty", 2, kNumFiles, 8, index);
-  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower", kNumPieceTypes, 8, 8, index);
-  WriteArray(file, "constexpr PieceTable<ScorePair> kSafeCheckBonus", kNumPieceTypes, 8, index);
-  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty", kNumPieceTypes, 2, 8, index);
-  WriteArray(file, "constexpr PieceTable<ScorePair> kPawnPushThreat", kNumPieceTypes, 8, index);
-  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty", kNumPieceTypes, 2, 8, index);
-  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty", kNumPieceTypes, 2, 8, index);
-  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty", kNumPieceTypes, 2, 8, index);
-  WriteArray(file, "constexpr OutpostTable<ScorePair> kKnightOutpostTable", kKnightOutpostTable.size(), 8, index);
-  WriteArray(file, "constexpr OutpostTable<ScorePair> kBishopOutpostTable", kKnightOutpostTable.size(), 8, index);
-  file << "constexpr ScorePair kBishopPairBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
-  index++;
   file << "constexpr ScorePair kTempoBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n";
   index++;
 

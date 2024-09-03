@@ -159,23 +159,6 @@ void Evaluation::Initialize() {
       ~(state_.Occupied(Color::kWhite) | pawn_attacks_[Color::kBlack]);
   mobility_zone_[Color::kBlack] =
       ~(state_.Occupied(Color::kBlack) | pawn_attacks_[Color::kWhite]);
-
-  // King's + adjacent files forward from the king
-  auto &white_pawn_storm_zone = pawn_storm_zone_[Color::kWhite];
-  auto &black_pawn_storm_zone = pawn_storm_zone_[Color::kBlack];
-
-  white_pawn_storm_zone =
-      masks::forward_file_adjacent[Color::kWhite][white_king_square];
-  black_pawn_storm_zone =
-      masks::forward_file_adjacent[Color::kBlack][black_king_square];
-
-  // Add in the squares next to the king
-  white_pawn_storm_zone |= Shift<Direction::kSouth>(white_pawn_storm_zone);
-  black_pawn_storm_zone |= Shift<Direction::kNorth>(black_pawn_storm_zone);
-
-  // Probe the pawn structure cache
-  cached_pawn_structure_ = &pawn_cache[state_.pawn_key];
-  has_pawn_structure_cache_ = cached_pawn_structure_->key == state_.pawn_key;
 }
 
 Score Evaluation::GetScore() {
@@ -216,73 +199,18 @@ ScorePair Evaluation::EvaluatePawns() {
   const BitBoard our_pawns = state_.Pawns(us);
   const BitBoard their_pawns = state_.Pawns(them);
 
-  BitBoard passed_pawns;
+  for (Square square : our_pawns) {
+    TRACE_INCREMENT(kPieceValues[kPawn], us);
 
-  if (!has_pawn_structure_cache_) {
-    // Pawn phalanxes
-    const BitBoard connected_pawns =
-        Shift<Direction::kEast>(our_pawns) & our_pawns;
-    for (Square square : connected_pawns) {
-      score += kPawnPhalanxBonus[square.RelativeRank<us>()];
-      TRACE_INCREMENT(kPawnPhalanxBonus[square.RelativeRank<us>()], us);
+    for (Square pawn_square : state_.Pawns()) {
+      const Color pawn_color = state_.GetPieceColor(pawn_square);
+      score += kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
+          pawn_color)][kPawn][square.RelativeTo<us>()];
+      TRACE_INCREMENT(
+          kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
+              pawn_color)][kPawn][square.RelativeTo<us>()],
+          us);
     }
-
-    const int kb = state_.king_bucket[us], their_kb = state_.king_bucket[them];
-    for (Square square : our_pawns) {
-      TRACE_INCREMENT(kPieceValues[kPawn], us);
-
-      for (Square pawn_square : state_.Pawns()) {
-        const Color pawn_color = state_.GetPieceColor(pawn_square);
-        score += kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
-            pawn_color)][kPawn][square.RelativeTo<us>()];
-        TRACE_INCREMENT(
-            kPawnPieceSquareTable[pawn_color == us][pawn_square.RelativeTo(
-                pawn_color)][kPawn][square.RelativeTo<us>()],
-            us);
-      }
-
-      const int file = square.File();
-      const int rank = square.RelativeRank<us>();
-
-      // Passed pawns
-      const BitBoard their_pawns_ahead =
-          masks::forward_file_adjacent[us][square] & their_pawns;
-      if (!their_pawns_ahead) {
-        passed_pawns.SetBit(square);
-
-        score += kPassedPawnBonus[rank];
-        TRACE_INCREMENT(kPassedPawnBonus[rank], us);
-      }
-
-      if (IsDefendedByPawn<us>(square)) {
-        score += kDefendedPawnBonus[rank];
-        TRACE_INCREMENT(kDefendedPawnBonus[rank], us);
-      }
-
-      // Doubled pawns
-      const BitBoard pawns_ahead_on_file =
-          our_pawns & masks::forward_file[us][square];
-      if (pawns_ahead_on_file) {
-        score += kDoubledPawnPenalty[file];
-        TRACE_INCREMENT(kDoubledPawnPenalty[file], us);
-      }
-
-      // Isolated pawns
-      const BitBoard adjacent_pawns = masks::adjacent_files[square] & our_pawns;
-      if (!adjacent_pawns) {
-        score += kIsolatedPawnPenalty[file];
-        TRACE_INCREMENT(kIsolatedPawnPenalty[file], us);
-      }
-    }
-
-#ifndef TUNE
-    cached_pawn_structure_->key = state_.pawn_key;
-    cached_pawn_structure_->score[us] = score;
-    cached_pawn_structure_->passed_pawns[us] = passed_pawns;
-#endif
-  } else {
-    score = cached_pawn_structure_->score[us];
-    passed_pawns = cached_pawn_structure_->passed_pawns[us];
   }
 
   const auto AddPawnPSQT = [&](Square pawn_square, bool ours, PieceType piece) {
@@ -311,30 +239,6 @@ ScorePair Evaluation::EvaluatePawns() {
     AddPawnPSQT(pawn_square.RelativeTo<them>(), false, kKing);
   }
 
-  // Don't cache the king/passed pawn proximity scores as it involves knowing
-  // the position of the king, which the pawn cache doesn't store
-  const Square king_square = state_.King(us).GetLsb();
-  const Square enemy_king_square = state_.King(them).GetLsb();
-  for (Square square : passed_pawns) {
-    score += kKingPPDistanceTable[square.DistanceTo(king_square)];
-    TRACE_INCREMENT(kKingPPDistanceTable[square.DistanceTo(king_square)], us);
-
-    const int dist_to_enemy_king = square.DistanceTo(enemy_king_square);
-
-    score += kEnemyKingPPDistanceTable[dist_to_enemy_king];
-    TRACE_INCREMENT(kEnemyKingPPDistanceTable[dist_to_enemy_king], us);
-
-    // Square rule for passed pawns
-    const BitBoard enemy_non_pawn_king_pieces =
-        state_.KinglessOccupied(them) & ~state_.Pawns(them);
-    const int dist_to_promotion = kRank8 - square.RelativeRank<us>();
-    if (enemy_non_pawn_king_pieces == 0 &&
-        dist_to_promotion < dist_to_enemy_king - (state_.turn == them)) {
-      score += kKingCantReachPPBonus;
-      TRACE_INCREMENT(kKingCantReachPPBonus, us);
-    }
-  }
-
   return score;
 }  // namespace eval
 
@@ -348,11 +252,6 @@ ScorePair Evaluation::EvaluateKnights() {
 
   for (Square square : our_knights) {
     TRACE_INCREMENT(kPieceValues[kKnight], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kKnight][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kKnight][square.RelativeTo<us>()],
-                      us);
-    }
 
     const BitBoard legal_moves =
         LegalizeMoves(kKnight, square, move_gen::KnightMoves(square), us);
@@ -360,23 +259,6 @@ ScorePair Evaluation::EvaluateKnights() {
 
     score += kKnightMobility[mobility.PopCount()];
     TRACE_INCREMENT(kKnightMobility[mobility.PopCount()], us);
-
-    knight_attacks_[us] |= legal_moves;
-
-    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
-    if (enemy_king_attacks) {
-      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
-      attack_power_[us] += kAttackPower[kKnight][king_attack_count];
-      TRACE_INCREMENT(kAttackPower[kKnight][king_attack_count], us);
-    }
-
-    if (IsOutpostSquare<us>(square)) {
-      const int square_offset = 16 * (us == Color::kBlack ? -1 : 1);
-      const int relative_square = (square + square_offset).RelativeTo(us);
-
-      score += kKnightOutpostTable[relative_square];
-      TRACE_INCREMENT(kKnightOutpostTable[relative_square], us);
-    }
   }
 
   return score;
@@ -389,21 +271,9 @@ ScorePair Evaluation::EvaluateBishops() {
   const BitBoard our_bishops = state_.Bishops(us);
   const BitBoard occupied =
       state_.Occupied() ^ state_.Queens(us) ^ state_.Bishops(us);
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
-
-  if (our_bishops.MoreThanOne()) {
-    score += kBishopPairBonus;
-    TRACE_INCREMENT(kBishopPairBonus, us);
-  }
 
   for (Square square : our_bishops) {
     TRACE_INCREMENT(kPieceValues[kBishop], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kBishop][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kBishop][square.RelativeTo<us>()],
-                      us);
-    }
 
     const BitBoard legal_moves = LegalizeMoves(
         kBishop, square, move_gen::BishopMoves(square, occupied), us);
@@ -411,23 +281,6 @@ ScorePair Evaluation::EvaluateBishops() {
 
     score += kBishopMobility[mobility.PopCount()];
     TRACE_INCREMENT(kBishopMobility[mobility.PopCount()], us);
-
-    bishop_attacks_[us] |= legal_moves;
-
-    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
-    if (enemy_king_attacks) {
-      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
-      attack_power_[us] += kAttackPower[kBishop][king_attack_count];
-      TRACE_INCREMENT(kAttackPower[kBishop][king_attack_count], us);
-    }
-
-    if (IsOutpostSquare<us>(square)) {
-      const int square_offset = 16 * (us == Color::kBlack ? -1 : 1);
-      const int relative_square = (square + square_offset).RelativeTo(us);
-
-      score += kBishopOutpostTable[relative_square];
-      TRACE_INCREMENT(kBishopOutpostTable[relative_square], us);
-    }
   }
 
   return score;
@@ -442,16 +295,9 @@ ScorePair Evaluation::EvaluateRooks() {
   const BitBoard their_pawns = state_.Pawns(FlipColor(us));
   const BitBoard occupied =
       state_.Occupied() ^ state_.Queens(us) ^ state_.Rooks(us);
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
 
   for (Square square : our_rooks) {
     TRACE_INCREMENT(kPieceValues[kRook], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kRook][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kRook][square.RelativeTo<us>()],
-                      us);
-    }
 
     const BitBoard legal_moves =
         LegalizeMoves(kRook, square, move_gen::RookMoves(square, occupied), us);
@@ -459,24 +305,6 @@ ScorePair Evaluation::EvaluateRooks() {
 
     score += kRookMobility[mobility.PopCount()];
     TRACE_INCREMENT(kRookMobility[mobility.PopCount()], us);
-
-    rook_attacks_[us] |= legal_moves;
-
-    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
-    if (enemy_king_attacks) {
-      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
-      attack_power_[us] += kAttackPower[kRook][king_attack_count];
-      TRACE_INCREMENT(kAttackPower[kRook][king_attack_count], us);
-    }
-
-    const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
-    if (!our_pawns_on_file) {
-      const BitBoard their_pawns_on_file = their_pawns & masks::files[square];
-      const bool semi_open_file = their_pawns_on_file != 0;
-
-      score += kRookOnFileBonus[semi_open_file][square.File()];
-      TRACE_INCREMENT(kRookOnFileBonus[semi_open_file][square.File()], us);
-    }
   }
 
   return score;
@@ -489,16 +317,9 @@ ScorePair Evaluation::EvaluateQueens() {
   const BitBoard our_queens = state_.Queens(us);
   const BitBoard occupied =
       state_.Occupied() ^ state_.Bishops(us) ^ state_.Rooks(us);
-  const int kb = state_.king_bucket[us],
-            their_kb = state_.king_bucket[FlipColor(us)];
 
   for (Square square : our_queens) {
     TRACE_INCREMENT(kPieceValues[kQueen], us);
-    if (!state_.Pawns()) {
-      score += kNormalPieceSquareTable[kQueen][square.RelativeTo<us>()];
-      TRACE_INCREMENT(kNormalPieceSquareTable[kQueen][square.RelativeTo<us>()],
-                      us);
-    }
 
     const BitBoard legal_moves = LegalizeMoves(
         kQueen, square, move_gen::QueenMoves(square, occupied), us);
@@ -506,15 +327,6 @@ ScorePair Evaluation::EvaluateQueens() {
 
     score += kQueenMobility[mobility.PopCount()];
     TRACE_INCREMENT(kQueenMobility[mobility.PopCount()], us);
-
-    queen_attacks_[us] |= legal_moves;
-
-    const BitBoard enemy_king_attacks = mobility & king_zone_[FlipColor(us)];
-    if (enemy_king_attacks) {
-      const int king_attack_count = std::min(7, enemy_king_attacks.PopCount());
-      attack_power_[us] += kAttackPower[kQueen][king_attack_count];
-      TRACE_INCREMENT(kAttackPower[kQueen][king_attack_count], us);
-    }
   }
 
   return score;
@@ -524,72 +336,32 @@ template <Color us>
 ScorePair Evaluation::EvaluateKing() {
   ScorePair score;
 
-  const Square square = state_.King(us).GetLsb();
-  if (!state_.Pawns()) {
-    score += kNormalPieceSquareTable[kKing][square.RelativeTo<us>()];
-    TRACE_INCREMENT(kNormalPieceSquareTable[kKing][square.RelativeTo<us>()],
-                    us);
+  const auto AddKingPSQT = [&](Square king_square, bool ours, PieceType piece) {
+    for (Square square : state_.piece_bbs[piece] & state_.side_bbs[us]) {
+      score += kKingPieceSquareTable[ours][king_square][piece]
+                                    [square.RelativeTo<us>()];
+      TRACE_INCREMENT(kKingPieceSquareTable[ours][king_square][piece]
+                                           [square.RelativeTo<us>()],
+                      us);
+    }
+  };
+  
+  for (Square king_square : state_.King(us)) {
+    AddKingPSQT(king_square.RelativeTo<us>(), true, kKnight);
+    AddKingPSQT(king_square.RelativeTo<us>(), true, kBishop);
+    AddKingPSQT(king_square.RelativeTo<us>(), true, kRook);
+    AddKingPSQT(king_square.RelativeTo<us>(), true, kQueen);
+    AddKingPSQT(king_square.RelativeTo<us>(), true, kKing);
   }
 
   const Color them = FlipColor(us);
-
-  const BitBoard our_pawns = state_.Pawns(us);
-  const BitBoard their_pawns = state_.Pawns(them);
-
-  const int king_rank = square.Rank();
-  const int king_file = square.File();
-
-  const BitBoard our_pawns_in_safety_zone = our_pawns & king_zone_[us];
-  for (const Square pawn_square : our_pawns_in_safety_zone) {
-    const int pawn_rank = pawn_square.Rank();
-    const int pawn_file = pawn_square.File();
-
-    constexpr int kKingIndexInZone = 7;
-    constexpr int kZoneWidth = 3;
-
-    const int rank_diff = (pawn_rank - king_rank);
-    const int file_diff = (pawn_file - king_file);
-
-    const int idx = kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
-                                           (us == Color::kBlack ? -1 : 1);
-
-    score += kPawnShelterTable[idx];
-    TRACE_INCREMENT(kPawnShelterTable[idx], us);
+  for (Square king_square : state_.King(FlipColor(them))) {
+    AddKingPSQT(king_square.RelativeTo<them>(), false, kKnight);
+    AddKingPSQT(king_square.RelativeTo<them>(), false, kBishop);
+    AddKingPSQT(king_square.RelativeTo<them>(), false, kRook);
+    AddKingPSQT(king_square.RelativeTo<them>(), false, kQueen);
+    AddKingPSQT(king_square.RelativeTo<them>(), false, kKing);
   }
-
-  const Square their_king_square = state_.King(them).GetLsb();
-  const int their_king_rank = their_king_square.Rank();
-  const int their_king_file = their_king_square.File();
-
-  const BitBoard storming_pawns = our_pawns & pawn_storm_zone_[them];
-  for (const Square pawn_square : storming_pawns) {
-    const int pawn_rank = pawn_square.Rank();
-    const int pawn_file = pawn_square.File();
-
-    constexpr int kKingIndexInZone = 19;
-    constexpr int kZoneWidth = 3;
-
-    const int rank_diff = (pawn_rank - their_king_rank);
-    const int file_diff = (pawn_file - their_king_file);
-
-    const int idx = kKingIndexInZone - (rank_diff * kZoneWidth + file_diff) *
-                                           (them == Color::kBlack ? -1 : 1);
-
-    score += kPawnStormTable[idx];
-    TRACE_INCREMENT(kPawnStormTable[idx], us);
-  }
-
-  const BitBoard our_pawns_on_file = our_pawns & masks::files[square];
-  if (!our_pawns_on_file) {
-    const BitBoard their_pawns_on_file = their_pawns & masks::files[square];
-    const bool semi_open_file = their_pawns_on_file != 0;
-
-    score += kKingOnFilePenalty[semi_open_file][square.File()];
-    TRACE_INCREMENT(kKingOnFilePenalty[semi_open_file][square.File()], us);
-  }
-
-  // King danger
-  score -= attack_power_[them];
 
   return score;
 }
@@ -597,91 +369,6 @@ ScorePair Evaluation::EvaluateKing() {
 template <Color us>
 ScorePair Evaluation::EvaluateThreats() {
   ScorePair score;
-
-  const Color them = FlipColor(us);
-  const BitBoard our_pieces = state_.Occupied(us);
-  const BitBoard our_attacks = pawn_attacks_[us] | knight_attacks_[us] |
-                               bishop_attacks_[us] | rook_attacks_[us] |
-                               queen_attacks_[us];
-
-  for (Square square : knight_attacks_[them] & our_pieces) {
-    const auto threatened_piece = state_.GetPieceType(square);
-    const bool defended = our_attacks.IsSet(square);
-    score += kThreatenedByKnightPenalty[threatened_piece][defended];
-    TRACE_INCREMENT(kThreatenedByKnightPenalty[threatened_piece][defended], us);
-  }
-
-  for (Square square : bishop_attacks_[them] & our_pieces) {
-    const auto threatened_piece = state_.GetPieceType(square);
-    const bool defended = our_attacks.IsSet(square);
-    score += kThreatenedByBishopPenalty[threatened_piece][defended];
-    TRACE_INCREMENT(kThreatenedByBishopPenalty[threatened_piece][defended], us);
-  }
-
-  for (Square square : rook_attacks_[them] & our_pieces) {
-    const auto threatened_piece = state_.GetPieceType(square);
-    const bool defended = our_attacks.IsSet(square);
-    score += kThreatenedByRookPenalty[threatened_piece][defended];
-    TRACE_INCREMENT(kThreatenedByRookPenalty[threatened_piece][defended], us);
-  }
-
-  for (Square square : pawn_attacks_[them] & our_pieces) {
-    const auto threatened_piece = state_.GetPieceType(square);
-    const bool defended = our_attacks.IsSet(square);
-    score += kThreatenedByPawnPenalty[threatened_piece][defended];
-    TRACE_INCREMENT(kThreatenedByPawnPenalty[threatened_piece][defended], us);
-  }
-
-  // Calculate all squares defended by the enemy, excluding squares that are
-  // defended by our pawn(s) and not attacked by their pawn(s)
-  const BitBoard enemy_defended_squares =
-      pawn_attacks_[them] | ((knight_attacks_[them] | bishop_attacks_[them] |
-                              rook_attacks_[them] | queen_attacks_[them]) &
-                             ~pawn_attacks_[us]);
-  const BitBoard safe_pawn_pushes = move_gen::PawnPushes(state_.Pawns(us), us) &
-                                    ~state_.Occupied() &
-                                    ~enemy_defended_squares;
-
-  // Calculate which piece would be threatened if we pushed our pawn's here
-  const BitBoard pawn_push_threats =
-      move_gen::PawnAttacks(safe_pawn_pushes, us) & state_.Occupied(them) &
-      ~state_.Pawns(them);
-  for (Square square : pawn_push_threats) {
-    const auto threatened = state_.GetPieceType(square);
-    score += kPawnPushThreat[threatened];
-    TRACE_INCREMENT(kPawnPushThreat[threatened], us);
-  }
-
-  // Count the number of squares that our pieces can make to place the enemy
-  // king in check
-  const BitBoard occupied = state_.Occupied();
-  const Square their_king_square = state_.King(them).GetLsb();
-
-  const BitBoard rook_checks = move_gen::RookMoves(their_king_square, occupied);
-  const BitBoard bishop_checks =
-      move_gen::BishopMoves(their_king_square, occupied);
-
-  const BitBoard safe =
-      ~(pawn_attacks_[them] | knight_attacks_[them] | bishop_attacks_[them] |
-        rook_attacks_[them] | move_gen::KingAttacks(their_king_square));
-  const BitBoard safe_knight_checks =
-      safe & knight_attacks_[us] & move_gen::KnightMoves(their_king_square);
-  const BitBoard safe_bishop_checks =
-      safe & bishop_attacks_[us] & bishop_checks;
-  const BitBoard safe_rook_checks = safe & rook_attacks_[us] & rook_checks;
-  const BitBoard safe_queen_checks =
-      safe & queen_attacks_[us] & (bishop_checks | rook_checks);
-
-  score += kSafeCheckBonus[kKnight] * safe_knight_checks.PopCount();
-  score += kSafeCheckBonus[kBishop] * safe_bishop_checks.PopCount();
-  score += kSafeCheckBonus[kRook] * safe_rook_checks.PopCount();
-  score += kSafeCheckBonus[kQueen] * safe_queen_checks.PopCount();
-
-  TRACE_ADD(kSafeCheckBonus[kKnight], safe_knight_checks.PopCount(), us);
-  TRACE_ADD(kSafeCheckBonus[kBishop], safe_bishop_checks.PopCount(), us);
-  TRACE_ADD(kSafeCheckBonus[kRook], safe_rook_checks.PopCount(), us);
-  TRACE_ADD(kSafeCheckBonus[kQueen], safe_queen_checks.PopCount(), us);
-
   return score;
 }
 
