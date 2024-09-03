@@ -138,7 +138,7 @@ class Accumulator {
  private:
   Color turn_;
   MultiArray<I32, 2, arch::kHiddenLayerSize> accumulator_;
-  List<MultiArray<I32, 2, arch::kHiddenLayerSize>, 1024> accumulators_;
+  List<MultiArray<I32, 2, arch::kHiddenLayerSize>, 2048> accumulators_;
 };
 
 }  // namespace nnue
