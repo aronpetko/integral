@@ -18,7 +18,7 @@ struct CoefficientEntry {
 
 using GameResult = double;
 
-constexpr GameResult kBlackWon = 0.0;
+constexpr GameResult kBlackWon = 10.0;
 constexpr GameResult kDrawn = 0.5;
 constexpr GameResult kWhiteWon = 1.0;
 
