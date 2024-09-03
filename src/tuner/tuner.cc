@@ -3,6 +3,11 @@
 #include <fmt/format.h>
 // #include <pthread.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <fcntl.h>
+#endif
+
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -35,12 +40,14 @@ inline double Sigmoid(double K, double E) {
 }
 
 bool Tuner::LoadNextBatch() {
+  constexpr size_t kBufferSize = 32 * 1024; // 8192 bytes, multiple of 32 and > 4KB
+  std::vector<char> buffer(kBufferSize);
+
   if (current_position_ >= mmap_.size()) {
     return false;
   }
 
   entries_.clear();
-  entries_.shrink_to_fit();
   entries_.reserve(kBatchSize);
 
   fmt::println("Loading next batch of {} positions ", kBatchSize);
@@ -49,116 +56,124 @@ bool Tuner::LoadNextBatch() {
   int last_percentage = 0;
 
   while (loaded_entries < kBatchSize && current_position_ < mmap_.size()) {
-    Board board;
-    GameResult result = -1, score = result;
+    size_t bytes_to_read = std::min(kBufferSize, mmap_.size() - current_position_);
+    std::memcpy(buffer.data(), mmap_.data() + current_position_, bytes_to_read);
+    size_t buffer_pos = 0;
 
-    if (marlin_format_) {
-      if (current_position_ + sizeof(data_gen::format::MarlinChessBoard) > mmap_.size()) {
-        fmt::println("Reached end of file while reading Marlin format.");
-        break;
-      }
+    while (buffer_pos < bytes_to_read && loaded_entries < kBatchSize) {
+      Board board;
+      GameResult result = -1, score = result;
 
-      const data_gen::format::MarlinChessBoard* marlin_board =
-          reinterpret_cast<const data_gen::format::MarlinChessBoard*>(mmap_.data() + current_position_);
-      current_position_ += sizeof(data_gen::format::MarlinChessBoard);
-
-      auto& state = board.GetState();
-      state = BoardState{};
-
-      int i = 0;
-      for (Square square : BitBoard(marlin_board->occupied)) {
-        const U8 piece_data = marlin_board->pieces[i];
-        const auto color = (piece_data & 0x8) ? Color::kBlack : Color::kWhite;
-
-        auto piece_type = static_cast<PieceType>(piece_data & 0x7);
-
-        // Handle unmoved rook
-        if (piece_type == 6) {
-          if (square == Squares::kA1 || square == Squares::kH1) {
-            state.castle_rights.SetCanCastle(Color::kWhite,
-                                             square == Squares::kA1);
-          } else if (square == Squares::kA8 || square == Squares::kH8) {
-            state.castle_rights.SetCanCastle(Color::kBlack,
-                                             square == Squares::kA8);
-          }
-          piece_type = PieceType::kRook;
+      if (marlin_format_) {
+        if (buffer_pos + sizeof(data_gen::format::MarlinChessBoard) > bytes_to_read) {
+          // Not enough data in the buffer, move to the next chunk
+          break;
         }
 
-        state.PlacePiece(square, piece_type, color);
-        ++i;
-      }
+        const data_gen::format::MarlinChessBoard* marlin_board =
+            reinterpret_cast<const data_gen::format::MarlinChessBoard*>(buffer.data() + buffer_pos);
+        buffer_pos += sizeof(data_gen::format::MarlinChessBoard);
 
-      state.turn = (marlin_board->turn_and_en_passant & (1 << 7))
-                     ? Color::kBlack
-                     : Color::kWhite;
+        auto& state = board.GetState();
+        state = BoardState{};
 
-      state.en_passant = marlin_board->turn_and_en_passant & 0x7F;
-      state.fifty_moves_clock = marlin_board->half_move_clock;
-      state.half_moves = (marlin_board->full_move_number - 1) * 2 +
-                         (state.turn == Color::kBlack ? 1 : 0);
+        int i = 0;
+        for (Square square : BitBoard(marlin_board->occupied)) {
+          const U8 piece_data = marlin_board->pieces[i];
+          const auto color = (piece_data & 0x8) ? Color::kBlack : Color::kWhite;
 
-      result = marlin_board->wdl_outcome / 2.0;
-      score = marlin_board->evaluation;
-    } else {
-      std::string line;
-      while (current_position_ < mmap_.size() && mmap_[current_position_] != '\n') {
-        line += mmap_[current_position_++];
-      }
-      if (current_position_ < mmap_.size()) {
-        current_position_++; // Skip the newline
-      }
+          auto piece_type = static_cast<PieceType>(piece_data & 0x7);
 
-      const auto bracket_pos = line.find_last_of('[');
-      if (bracket_pos != std::string::npos) {
-        // Extract the FEN part of the line (everything before the last '[')
-        const auto fen = line.substr(0, bracket_pos - 1);
-        board.SetFromFen(fen);
-
-        // Extract the WDL marker (between the brackets)
-        auto end_bracket_pos = line.find_last_of(']');
-        if (end_bracket_pos != std::string::npos &&
-            bracket_pos + 1 < end_bracket_pos) {
-          const auto wdl =
-              line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
-
-          if (wdl == "0.0") {
-            result = kBlackWon;
-          } else if (wdl == "0.5") {
-            result = kDrawn;
-          } else if (wdl == "1.0") {
-            result = kWhiteWon;
+          // Handle unmoved rook
+          if (piece_type == 6) {
+            if (square == Squares::kA1 || square == Squares::kH1) {
+              state.castle_rights.SetCanCastle(Color::kWhite,
+                                               square == Squares::kA1);
+            } else if (square == Squares::kA8 || square == Squares::kH8) {
+              state.castle_rights.SetCanCastle(Color::kBlack,
+                                               square == Squares::kA8);
+            }
+            piece_type = PieceType::kRook;
           }
 
-          score = result;
+          state.PlacePiece(square, piece_type, color);
+          ++i;
+        }
+
+        state.turn = (marlin_board->turn_and_en_passant & (1 << 7))
+                       ? Color::kBlack
+                       : Color::kWhite;
+
+        state.en_passant = marlin_board->turn_and_en_passant & 0x7F;
+        state.fifty_moves_clock = marlin_board->half_move_clock;
+        state.half_moves = (marlin_board->full_move_number - 1) * 2 +
+                           (state.turn == Color::kBlack ? 1 : 0);
+
+        result = marlin_board->wdl_outcome / 2.0;
+        score = marlin_board->evaluation;
+      } else {
+        std::string line;
+        while (buffer_pos < bytes_to_read && buffer[buffer_pos] != '\n') {
+          line += buffer[buffer_pos++];
+        }
+        if (buffer_pos < bytes_to_read) {
+          buffer_pos++; // Skip the newline
+        }
+
+        const auto bracket_pos = line.find_last_of('[');
+        if (bracket_pos != std::string::npos) {
+          // Extract the FEN part of the line (everything before the last '[')
+          const auto fen = line.substr(0, bracket_pos - 1);
+          board.SetFromFen(fen);
+
+          // Extract the WDL marker (between the brackets)
+          auto end_bracket_pos = line.find_last_of(']');
+          if (end_bracket_pos != std::string::npos &&
+              bracket_pos + 1 < end_bracket_pos) {
+            const auto wdl =
+                line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
+
+            if (wdl == "0.0") {
+              result = kBlackWon;
+            } else if (wdl == "0.5") {
+              result = kDrawn;
+            } else if (wdl == "1.0") {
+              result = kWhiteWon;
+            }
+
+            score = result;
+          }
+        }
+      }
+
+      if (result != -1) {
+        auto entry = CreateEntry(board.GetState(), result, score);
+        entries_.push_back(entry);
+
+        if (batch_count_ == 1) {
+          const Score computed_eval = ComputeEvaluation(entry);
+          const Score deviation = abs(entry.static_eval - computed_eval);
+          if (deviation > 1) {
+            fmt::println("Tuner deviation detected: real {} coeff {}",
+                         entry.static_eval,
+                         computed_eval);
+            entries_.pop_back();
+          }
+        }
+
+        loaded_entries++;
+
+        // Update percentage counter every 5%
+        int current_percentage = (loaded_entries * 100) / kBatchSize;
+        if (current_percentage >= last_percentage + 5) {
+          fmt::print("\rLoading progress: {}%", current_percentage);
+          std::cout.flush();
+          last_percentage = current_percentage;
         }
       }
     }
 
-    if (result != -1) {
-      auto entry = CreateEntry(board.GetState(), result, score);
-      entries_.push_back(entry);
-
-      if (batch_count_ == 1) {
-        const Score computed_eval = ComputeEvaluation(entry);
-        const Score deviation = abs(entry.static_eval - computed_eval);
-        if (deviation > 1) {
-          fmt::println("Tuner deviation detected: real {} coeff {}",
-                       entry.static_eval,
-                       computed_eval);
-          entries_.pop_back();
-        }
-      }
-
-      loaded_entries++;
-
-      // Update percentage counter every 5%
-      int current_percentage = (loaded_entries * 100) / kBatchSize;
-      if (current_percentage >= last_percentage + 5) {
-        fmt::print("\rLoading progress: {}%", current_percentage);
-        std::cout.flush();
-        last_percentage = current_percentage;
-      }
-    }
+    current_position_ += bytes_to_read;
   }
 
   fmt::println("\nLoaded {} positions in this batch", entries_.size());
@@ -226,38 +241,108 @@ void Tuner::TuneBatch() {
   }
 }
 
+
 void Tuner::LoadAndTune(const std::string& source_file) {
-  InitBaseParameters();
+  try {
+    InitBaseParameters();
 
-  fmt::println("Opening data source...");
+    fmt::println("Opening data source: {}", source_file);
 
-  marlin_format_ = std::filesystem::path(source_file).extension() == ".mf";
+    std::filesystem::path file_path(source_file);
+    marlin_format_ = file_path.extension() == ".mf";
 
-  std::error_code error;
-  mmap_ = mio::make_mmap_source(source_file, error);
+    if (!std::filesystem::exists(file_path)) {
+      throw std::runtime_error(fmt::format("File does not exist: {}", source_file));
+    }
 
-  if (error) {
-    fmt::println("Error mapping file: {}", error.message());
-    return;
+    fmt::println("File exists. Absolute path: {}", std::filesystem::absolute(file_path).string());
+
+    // Open the file
+    mio::file_handle_type file_handle;
+#ifdef _WIN32
+    file_handle = CreateFileW(
+        file_path.wstring().c_str(),
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        NULL,
+        OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+    if (file_handle == INVALID_HANDLE_VALUE) {
+      throw std::system_error(GetLastError(), std::system_category(), "Error opening file");
+    }
+#else
+    file_handle = open(file_path.c_str(), O_RDONLY);
+    if (file_handle == -1) {
+      throw std::system_error(errno, std::system_category(), "Error opening file");
+    }
+#endif
+
+    fmt::println("File opened successfully.");
+
+    // Get file size
+    uint64_t file_size;
+#ifdef _WIN32
+    LARGE_INTEGER size;
+    if (!GetFileSizeEx(file_handle, &size)) {
+      CloseHandle(file_handle);
+      throw std::system_error(GetLastError(), std::system_category(), "Error getting file size");
+    }
+    file_size = size.QuadPart;
+#else
+    file_size = lseek(file_handle, 0, SEEK_END);
+    lseek(file_handle, 0, SEEK_SET);  // Reset file pointer to beginning
+    if (file_size == static_cast<uint64_t>(-1)) {
+      close(file_handle);
+      throw std::system_error(errno, std::system_category(), "Error getting file size");
+    }
+#endif
+
+    // Create mmap
+    std::error_code error;
+#ifdef _WIN32
+    mmap_ = mio::make_mmap_source(file_handle, error);
+#else
+    mmap_ = mio::make_mmap_source(file_handle, 0, file_size, error);
+#endif
+
+    if (error) {
+#ifdef _WIN32
+      CloseHandle(file_handle);
+#else
+      close(file_handle);
+#endif
+      throw std::system_error(error, "Error mapping file");
+    }
+
+    fmt::println("File mapped successfully. Size: {} bytes", mmap_.size());
+
+    momentum_.resize(num_terms_);
+    velocity_.resize(num_terms_);
+
+    while (LoadNextBatch()) {
+      fmt::println("Processing batch {}", batch_count_);
+      TuneBatch();
+      batch_count_++;
+    }
+
+    std::string final_checkpoint_filename = fmt::format("final_checkpoint_batch{}.txt", batch_count_);
+    WriteCheckpoint(final_checkpoint_filename);
+
+    // The mmap_ object will automatically unmap when it goes out of scope
+
+#ifdef _WIN32
+    CloseHandle(file_handle);
+#else
+    close(file_handle);
+#endif
+
+    fmt::println("Finished processing all batches. Total batches: {}", batch_count_);
+  } catch (const std::exception& e) {
+    fmt::println(stderr, "Error in LoadAndTune: {}", e.what());
+    // You might want to add additional error handling or rethrow the exception depending on your needs
   }
-
-  fmt::println("File mapped successfully. Starting batch processing.");
-
-  momentum_.resize(num_terms_);
-  velocity_.resize(num_terms_);
-
-  while (LoadNextBatch()) {
-    fmt::println("Processing batch {}", batch_count_);
-    TuneBatch();
-    batch_count_++;
-  }
-
-  std::string final_checkpoint_filename = fmt::format("final_checkpoint_batch{}.txt", batch_count_);
-  WriteCheckpoint(final_checkpoint_filename);
-
-  mmap_.unmap();
-
-  fmt::println("Finished processing all batches. Total batches: {}", batch_count_);
 }
 
 void Tuner::InitBaseParameters() {

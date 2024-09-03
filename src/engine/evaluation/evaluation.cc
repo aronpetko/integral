@@ -336,6 +336,8 @@ template <Color us>
 ScorePair Evaluation::EvaluateKing() {
   ScorePair score;
 
+  const Color them = FlipColor(us);
+
   const auto AddKingPSQT = [&](Square king_square, bool ours, PieceType piece) {
     for (Square square : state_.piece_bbs[piece] & state_.side_bbs[us]) {
       score += kKingPieceSquareTable[ours][king_square][piece]
@@ -345,7 +347,10 @@ ScorePair Evaluation::EvaluateKing() {
                       us);
     }
   };
-  
+
+  const Square our_king_square = state_.King(us).GetLsb();
+  const Square their_king_square = state_.King(them).GetLsb();
+
   for (Square king_square : state_.King(us)) {
     AddKingPSQT(king_square.RelativeTo<us>(), true, kKnight);
     AddKingPSQT(king_square.RelativeTo<us>(), true, kBishop);
@@ -354,7 +359,6 @@ ScorePair Evaluation::EvaluateKing() {
     AddKingPSQT(king_square.RelativeTo<us>(), true, kKing);
   }
 
-  const Color them = FlipColor(us);
   for (Square king_square : state_.King(FlipColor(them))) {
     AddKingPSQT(king_square.RelativeTo<them>(), false, kKnight);
     AddKingPSQT(king_square.RelativeTo<them>(), false, kBishop);
