@@ -163,8 +163,16 @@ class Square {
     return square_ + other;
   }
 
+  constexpr Square operator+=(const int other) {
+    return square_ += other;
+  }
+
   constexpr Square operator-(const int other) const {
     return square_ - other;
+  }
+
+  constexpr Square operator-=(const int other) {
+    return square_ -= other;
   }
 
   constexpr Square operator*(const Square other) const {
@@ -283,8 +291,10 @@ class ScorePair {
 
 const Score kDrawScore = 0;
 const Score kMateScore = std::numeric_limits<I16>::max() - 1;
+const Score kMateInMaxPlyScore = kMateScore - kMaxPlyFromRoot;
 const Score kInfiniteScore = std::numeric_limits<I16>::max();
 const Score kTBWinScore = kMateScore - kMaxPlyFromRoot - 1;
+const Score kTBWinInMaxPlyScore = kTBWinScore - kMaxPlyFromRoot;
 const Score kScoreNone = -kInfiniteScore;
 
 #endif  // INTEGRAL_TYPES_H_

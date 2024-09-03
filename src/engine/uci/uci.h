@@ -14,7 +14,7 @@ namespace uci {
 
 namespace constants {
 
-constexpr std::string_view kEngineName = "Integral v3";
+constexpr std::string_view kEngineName = "Integral v3-dev";
 constexpr std::string_view kEngineAuthor = "Aron Petkovski";
 
 }  // namespace constants
@@ -37,7 +37,7 @@ class Listener {
         command->ProcessLine(ss);
         command->Execute();
       } else {
-        fmt::println("error: unknown command: '{}'", command_name);
+        fmt::println("Error: unknown command: '{}'", command_name);
       }
     }
   }

@@ -11,8 +11,8 @@
 // #define TUNE
 
 struct CoefficientEntry {
-  std::size_t index;
-  I16 value;
+  U32 index;
+  int value;
 };
 
 using GameResult = double;
@@ -24,9 +24,8 @@ constexpr GameResult kWhiteWon = 1.0;
 struct TunerEntry {
   int phase;
   Score static_eval;
-  Score eval;
   Color turn;
-  GameResult result;
+  GameResult result, score;
   std::array<double, 2> phase_factors;
   std::vector<CoefficientEntry> coefficient_entries;
 };
@@ -105,7 +104,8 @@ class Tuner {
   void PrintParameters();
 
   [[nodiscard]] TunerEntry CreateEntry(const BoardState& state,
-                                       GameResult result) const;
+                                       GameResult result,
+                                       Score score) const;
 
   [[nodiscard]] std::vector<I16> GetCoefficients() const;
 
@@ -161,13 +161,23 @@ class Tuner {
     }
   }
 
+  void NormalizePSQTs();
+
+  void WriteCheckpoint(const std::string& filename);
+
+  void WriteArray(std::ofstream& file, const std::string& name, int size, int row_length, size_t& index);
+  void Write2DArray(std::ofstream& file, const std::string& name, int rows, int columns, int row_length, size_t& index);
+  void Write3DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, size_t& index);
+  void Write4DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, int dim4, size_t& index);
+
  private:
   int num_terms_;
   std::vector<TermPair> parameters_;
   std::vector<TunerEntry> entries_;
   std::ifstream file_;
   bool end_of_file_reached_ = false;
-  VectorPair gradients_;
+  bool marlin_format_ = false;
+  VectorPair gradients_, momentum_, velocity_;
   int batch_count_;
 };
 

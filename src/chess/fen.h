@@ -34,11 +34,11 @@ const std::unordered_map<PieceType, char> kPieceTypeToChar = {
     {PieceType::kKing, 'k'},
 };
 
-char GetPieceChar(BoardState &state, Square square);
+char GetPieceChar(const BoardState &state, Square square);
 
 BoardState StringToBoard(std::string_view fen_str = kStartFen);
 
-std::string BoardToString(BoardState &state);
+std::string BoardToString(const BoardState &state);
 
 }  // namespace fen
 

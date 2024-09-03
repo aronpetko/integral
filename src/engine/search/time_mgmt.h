@@ -3,91 +3,125 @@
 
 #include <array>
 #include <chrono>
-#include <condition_variable>
+#include <memory>
+#include <optional>
+#include <vector>
 
 #include "../../chess/board.h"
 #include "../../utils/types.h"
 
 namespace search {
 
-using std::chrono::duration_cast;
+using TimeStamp = U64;
+
+U64 GetCurrentTime();
 
 struct TimeConfig {
   bool infinite = false;
   int depth = 0;
-  int nodes = 0;
+  U64 nodes = 0, soft_nodes = 0;
   int move_time = 0;
   int time_left = 0;
   int increment = 0;
 
-  [[nodiscard]] bool HasBeenModified() const {
-    static const TimeConfig default_config;
-    return !(*this == default_config);
-  }
-
-  bool operator==(const TimeConfig &other) const {
-    return infinite == other.infinite && depth == other.depth &&
-           move_time == other.move_time && time_left == other.time_left &&
-           increment == other.increment && nodes == other.nodes;
-  }
+  [[nodiscard]] bool HasBeenModified() const;
+  bool operator==(const TimeConfig& other) const;
 };
 
-using SteadyClock = std::chrono::steady_clock;
-using TimeStamp = U64;
+class TimeLimiter {
+ public:
+  virtual ~TimeLimiter() = default;
 
-[[maybe_unused]] static U64 GetCurrentTime() {
-  const auto duration = SteadyClock::now().time_since_epoch();
-  return duration_cast<std::chrono::milliseconds>(duration).count();
-}
+  virtual bool ShouldStop(Move best_move, int depth, U32 nodes_searched) = 0;
+  virtual bool TimesUp(U32 nodes_searched) = 0;
+  virtual void Start() = 0;
+  virtual void Stop() = 0;
+  [[nodiscard]] virtual int GetSearchDepth() const = 0;
+  virtual void Update(const TimeConfig& config) = 0;
+};
 
-enum class TimeType {
-  // Search in accordance with the time parameters passed
-  kTimed,
-  // Search up to a certain depth
-  kDepth,
-  // Search up to a specific number of nodes
-  kNodes,
-  // Search until a "stop" command
-  kInfinite
+class DepthLimiter : public TimeLimiter {
+ public:
+  explicit DepthLimiter(int max_depth);
+
+  bool ShouldStop(Move best_move, int depth, U32 nodes_searched) override;
+  bool TimesUp(U32 nodes_searched) override;
+  void Start() override;
+  void Stop() override;
+  [[nodiscard]] int GetSearchDepth() const override;
+  void Update(const TimeConfig& config) override;
+
+ private:
+  int max_depth_;
+};
+
+class NodeLimiter : public TimeLimiter {
+ public:
+  NodeLimiter(U64 max_nodes, U64 soft_max_nodes);
+
+  bool ShouldStop(Move best_move, int depth, U32 nodes_searched) override;
+  bool TimesUp(U32 nodes_searched) override;
+  void Start() override;
+  void Stop() override;
+  [[nodiscard]] int GetSearchDepth() const override;
+  void Update(const TimeConfig& config) override;
+
+ private:
+  U64 max_nodes_;
+  U64 soft_max_nodes_;
+};
+
+class TimedLimiter : public TimeLimiter {
+ public:
+  TimedLimiter(int time_left, int increment, int move_time);
+
+  bool ShouldStop(Move best_move, int depth, U32 nodes_searched) override;
+  bool TimesUp(U32 nodes_searched) override;
+  void Start() override;
+  void Stop() override;
+  [[nodiscard]] U64& NodesSpent(Move move);
+  [[nodiscard]] U64 TimeElapsed() const;
+  [[nodiscard]] int GetSearchDepth() const override;
+  void Update(const TimeConfig& config) override;
+
+ private:
+  void CalculateLimits();
+
+  int time_left_;
+  int increment_;
+  int move_time_;
+  TimeStamp hard_limit_;
+  TimeStamp soft_limit_;
+  TimeStamp start_time_, end_time_;
+  Move previous_best_move_;
+  int best_move_stability_;
+  std::array<U64, 4096> nodes_spent_;
 };
 
 class TimeManagement {
  public:
-  [[maybe_unused]] explicit TimeManagement(const TimeConfig &config);
+  TimeManagement();
+  explicit TimeManagement(const TimeConfig& config);
 
-  TimeManagement() = default;
-
+  void SetConfig(const TimeConfig& config);
   void Start();
-
   void Stop();
-
-  void SetConfig(const TimeConfig &config);
-
-  // Determines if the search should end if we are confident that this move
-  // shouldn't be searched further (soft limit)
-  [[nodiscard]] bool ShouldStop(Move best_move, int depth, U32 nodes_searched);
-
-  // Determine if the search must give up now to avoid losing
-  [[nodiscard]] bool TimesUp(U32 nodes_searched);
-
-  [[nodiscard]] int GetSearchDepth() const;
-
-  [[nodiscard]] U32 &NodesSpent(Move move);
-
+  bool ShouldStop(Move best_move, int depth, U32 nodes_searched);
+  bool TimesUp(U32 nodes_searched);
+  TimedLimiter* GetTimedLimiter();
   [[nodiscard]] U64 TimeElapsed() const;
-
-  [[nodiscard]] TimeType GetType() const;
+  [[nodiscard]] int GetSearchDepth() const;
+  [[nodiscard]] bool IsInfinite() const;
 
  private:
+  void ConfigureLimiters(const TimeConfig& config);
+
   TimeConfig config_;
-  TimeType type_;
-  std::atomic<TimeStamp> start_time_, end_time_;
-  std::atomic<TimeStamp> hard_limit_, soft_limit_;
-  // Table that keeps track of how many nodes were spent searching a particular
-  // move
-  std::array<U32, 4096> nodes_spent_;
-  Move previous_best_move_;
-  int best_move_stability_;
+  std::optional<DepthLimiter> depth_limiter_;
+  std::optional<NodeLimiter> node_limiter_;
+  std::optional<TimedLimiter> timed_limiter_;
+  TimeStamp start_time_ = 0;
+  TimeStamp end_time_ = 0;
 };
 
 }  // namespace search

@@ -6,6 +6,7 @@
 
 #include "../../ascii_logo.h"
 #include "../../chess/move_gen.h"
+#include "../../data_gen/data_gen.h"
 #include "../../engine/evaluation/pawn_structure_cache.h"
 #include "../../tests/tests.h"
 #include "../../tuner/tuner.h"
@@ -19,8 +20,8 @@ namespace options {
 
 void Initialize(search::Search &search) {
   // clang-format off
-  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [](const Option &option) {
-    search::transposition_table.Resize(option.GetValue<int>());
+  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&search](const Option &option) {
+    search.ResizeHash(option.GetValue<int>());
   });
   listener.AddOption<OptionVisibility::kPublic>("PawnCache", 1, 1, 16, [](const Option &option) {
     eval::pawn_cache.Resize(option.GetValue<int>());
@@ -42,8 +43,7 @@ void Initialize(search::Search &search) {
 
 namespace commands {
 
-void Initialize(Board &board, search::Search &search) {
-  // clang-format off
+void Initialize(Board &board, search::Search &search) {  // clang-format off
   listener.RegisterCommand("position", CommandType::kOrdered, {
     CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
     CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
@@ -63,7 +63,7 @@ void Initialize(Board &board, search::Search &search) {
       while (stream >> move_str) {
         const auto move = Move::FromStr(move_str, board.GetState());
         if (move) board.MakeMove(move);
-        else fmt::println("error: invalid move '{}'", move_str);
+        else fmt::println("Error: invalid move '{}'", move_str);
       }
     }
   });
@@ -74,6 +74,7 @@ void Initialize(Board &board, search::Search &search) {
     CreateArgument("movetime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("depth", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("soft_nodes", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("wtime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
@@ -110,6 +111,9 @@ void Initialize(Board &board, search::Search &search) {
     const auto nodes = cmd->ParseArgument<int>("nodes");
     if (nodes) time_config.nodes = *nodes;
 
+    const auto soft_nodes = cmd->ParseArgument<int>("soft_nodes");
+    if (soft_nodes) time_config.soft_nodes = *soft_nodes;
+
     const Color turn = board.GetState().turn;
     time_config.time_left = time_left[turn];
     time_config.increment = increment[turn];
@@ -121,8 +125,32 @@ void Initialize(Board &board, search::Search &search) {
     search.Start(time_config);
   });
 
-  listener.RegisterCommand("stop", CommandType::kUnordered, {}, [&search](Command *cmd) {
+  listener.RegisterCommand("datagen", CommandType::kUnordered, {
+    CreateArgument("soft_limit", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("hard_limit", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("games", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("threads", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("random_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("out", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+  }, [](Command *cmd) {
+    data_gen::Config config{
+      .soft_node_limit = *cmd->ParseArgument<U64>("soft_limit"),
+      .hard_node_limit = *cmd->ParseArgument<U64>("hard_limit"),
+      .num_games = *cmd->ParseArgument<U64>("games"),
+      .num_threads = *cmd->ParseArgument<I32>("threads"),
+      .random_move_plies = *cmd->ParseArgument<I32>("random_moves"),
+      .output_file = *cmd->ParseArgument<std::string>("out"),
+    };
+    data_gen::Generate(config);
+  });
+
+  listener.RegisterCommand("stop", CommandType::kUnordered, {
+    CreateArgument("datagen", ArgumentType::kOptional, NoInputProcessor()),
+  }, [&search](Command *cmd) {
     search.Stop();
+    if (cmd->ArgumentExists("datagen")) {
+      data_gen::stop = true;
+    }
   });
 
   listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {

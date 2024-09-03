@@ -330,7 +330,7 @@ jQuery.extend( {
 	// Assume jQuery is ready without the ready module
 	isReady: true,
 
-	error: function( msg ) {
+	Error: function( msg ) {
 		throw new Error( msg );
 	},
 
@@ -9261,7 +9261,7 @@ function ajaxConvert( s, response, jqXHR, isSuccess ) {
 						} catch ( e ) {
 							return {
 								state: "parsererror",
-								error: conv ? e : "No conversion from " + prev + " to " + current
+								Error: conv ? e : "No conversion from " + prev + " to " + current
 							};
 						}
 					}

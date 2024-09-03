@@ -39,6 +39,14 @@ class CastleRights {
     return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
+  constexpr void SetCanCastle(Color turn, bool queenside) {
+    if (queenside) {
+      SetCanQueensideCastle(turn, true);
+    } else {
+      SetCanQueensideCastle(turn, false);
+    }
+  }
+
   constexpr void SetCanKingsideCastle(Color turn, bool value) {
     const U8 mask = kMasks[turn][kKingsideIndex];
     value ? rights_ |= mask : rights_ &= ~mask;
@@ -79,7 +87,8 @@ struct BoardState {
         checkers(0ULL),
         pinned(0ULL),
         phase(0),
-        king_bucket({}) {
+        king_bucket({}),
+        half_moves(0) {
     piece_on_square.fill(PieceType::kNone);
   }
 
@@ -231,7 +240,8 @@ struct BoardState {
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, kSquareCount> piece_on_square;
   Color turn;
-  U8 fifty_moves_clock;
+  U16 fifty_moves_clock;
+  U16 half_moves;
   Square en_passant;
   CastleRights castle_rights;
   U64 zobrist_key, pawn_key;
@@ -247,6 +257,8 @@ struct BoardState {
 class Board {
  public:
   Board();
+
+  Board(const BoardState &state);
 
   inline BoardState &GetState() {
     return state_;
@@ -272,12 +284,12 @@ class Board {
 
   [[nodiscard]] bool IsDraw(U16 ply);
 
- private:
-  void HandleCastling(Move move);
-
   void CalculateKingThreats();
 
   void CalculateThreats();
+
+ private:
+  void HandleCastling(Move move);
 
  private:
   BoardState state_;

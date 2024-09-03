@@ -3,10 +3,12 @@
 #include <fmt/format.h>
 // #include <pthread.h>
 
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
 
+#include "../data_gen/format/binpack.h"
 #include "../engine/evaluation/evaluation.h"
 #include "../engine/search/time_mgmt.h"
 
@@ -19,13 +21,14 @@ constexpr double kStartLearningRate = 1.0;
 constexpr double kEndLearningRate = 0.1;
 constexpr double kLearningDropRate = 1.00;
 constexpr int kLearningStepRate = 250;
+constexpr double kLambda = 1.0;
 
 double decay =
     pow(kEndLearningRate / kStartLearningRate, 1.0 / float(kMaxEpochs * 3));
 double rate = kStartLearningRate;
 
 // New constant for batch size
-constexpr int kBatchSize = 5'000'000;
+constexpr int kBatchSize = 10'000'000;
 
 inline double Sigmoid(double K, double E) {
   return 1.0 / (1.0 + exp(-K * E / 400.0));
@@ -46,60 +49,116 @@ bool Tuner::LoadNextBatch() {
   int loaded_entries = 0;
   int last_percentage = 0;
 
-  while (loaded_entries < kBatchSize && std::getline(file_, line)) {
-    const auto bracket_pos = line.find_last_of('[');
-    if (bracket_pos != std::string::npos) {
-      // Extract the FEN part of the line (everything before the last '[')
-      const auto fen = line.substr(0, bracket_pos - 1);
+  while (loaded_entries < kBatchSize) {
+    if (file_.eof() || !file_.good()) {
+      end_of_file_reached_ = true;
+      file_.close();
+      break;
+    }
 
-      Board board;
-      board.SetFromFen(fen);
+    Board board;
+    GameResult result = -1, score = result;
 
-      // Extract the WDL marker (between the brackets)
-      auto end_bracket_pos = line.find_last_of(']');
-      if (end_bracket_pos != std::string::npos &&
-          bracket_pos + 1 < end_bracket_pos) {
-        const auto wdl =
-            line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
+    if (marlin_format_) {
+      data_gen::format::MarlinChessBoard marlin_board;
+      file_.read(reinterpret_cast<char*>(&marlin_board), sizeof(marlin_board));
 
-        GameResult result;
-        if (wdl == "0.0") {
-          result = kBlackWon;
-        } else if (wdl == "0.5") {
-          result = kDrawn;
-        } else if (wdl == "1.0") {
-          result = kWhiteWon;
-        }
+      auto& state = board.GetState();
+      state = BoardState{};
 
-        const auto entry = CreateEntry(board.GetState(), result);
-        entries_.push_back(entry);
+      int i = 0;
+      for (Square square : BitBoard(marlin_board.occupied)) {
+        const U8 piece_data = marlin_board.pieces[i];
+        const auto color = (piece_data & 0x8) ? Color::kBlack : Color::kWhite;
 
-        if (batch_count_ == 1) {
-          const Score computed_eval = ComputeEvaluation(entry);
-          const Score deviation = abs(entry.static_eval - computed_eval);
-          if (deviation > 1) {
-            fmt::println("Tuner deviation detected: real {} coeff {}",
-                         entry.static_eval,
-                         computed_eval);
+        auto piece_type = static_cast<PieceType>(piece_data & 0x7);
+
+        // Handle unmoved rook
+        if (piece_type == 6) {
+          if (square == Squares::kA1 || square == Squares::kH1) {
+            state.castle_rights.SetCanCastle(Color::kWhite,
+                                             square == Squares::kA1);
+          } else if (square == Squares::kA8 || square == Squares::kH8) {
+            state.castle_rights.SetCanCastle(Color::kBlack,
+                                             square == Squares::kA8);
           }
+          piece_type = PieceType::kRook;
         }
 
-        loaded_entries++;
+        state.PlacePiece(square, piece_type, color);
+        ++i;
+      }
 
-        // Update percentage counter every 5%
-        int current_percentage = (loaded_entries * 100) / kBatchSize;
-        if (current_percentage >= last_percentage + 5) {
-          fmt::print("\rLoading progress: {}%", current_percentage);
-          std::cout.flush();
-          last_percentage = current_percentage;
+      state.turn = (marlin_board.turn_and_en_passant & (1 << 7))
+                     ? Color::kBlack
+                     : Color::kWhite;
+
+      state.en_passant = marlin_board.turn_and_en_passant & 0x7F;
+      state.fifty_moves_clock = marlin_board.half_move_clock;
+      state.half_moves = (marlin_board.full_move_number - 1) * 2 +
+                         (state.turn == Color::kBlack ? 1 : 0);
+
+      result = marlin_board.wdl_outcome / 2.0;
+      score = marlin_board.evaluation;
+    } else if (std::getline(file_, line)) {
+      const auto bracket_pos = line.find_last_of('[');
+      if (bracket_pos != std::string::npos) {
+        // Extract the FEN part of the line (everything before the last '[')
+        const auto fen = line.substr(0, bracket_pos - 1);
+        board.SetFromFen(fen);
+
+        // Extract the WDL marker (between the brackets)
+        auto end_bracket_pos = line.find_last_of(']');
+        if (end_bracket_pos != std::string::npos &&
+            bracket_pos + 1 < end_bracket_pos) {
+          const auto wdl =
+              line.substr(bracket_pos + 1, end_bracket_pos - bracket_pos - 1);
+
+          if (wdl == "0.0") {
+            result = kBlackWon;
+          } else if (wdl == "0.5") {
+            result = kDrawn;
+          } else if (wdl == "1.0") {
+            result = kWhiteWon;
+          }
+
+          score = result;
         }
       }
     }
-  }
 
-  if (file_.eof() || !file_.good()) {
-    end_of_file_reached_ = true;
-    file_.close();
+    if (result != -1) {
+      auto entry = CreateEntry(board.GetState(), result, score);
+      entries_.push_back(entry);
+
+      if (batch_count_ == 1) {
+        const Score computed_eval = ComputeEvaluation(entry);
+        const Score deviation = abs(entry.static_eval - computed_eval);
+        if (deviation > 1) {
+          fmt::println("Tuner deviation detected: real {} coeff {}",
+                       entry.static_eval,
+                       computed_eval);
+          entries_.pop_back();
+        }
+      }
+
+      loaded_entries++;
+
+      // Update percentage counter every 5%
+      int current_percentage = (loaded_entries * 100) / kBatchSize;
+      if (current_percentage >= last_percentage + 5) {
+        fmt::print("\rLoading progress: {}%", current_percentage);
+        std::cout.flush();
+        last_percentage = current_percentage;
+      }
+    } else {
+      break;
+    }
+
+    if (file_.eof() || !file_.good()) {
+      end_of_file_reached_ = true;
+      file_.close();
+    }
   }
 
   fmt::println("\nLoaded {} positions in this batch", entries_.size());
@@ -114,10 +173,6 @@ bool Tuner::LoadNextBatch() {
 }
 
 void Tuner::TuneBatch() {
-  VectorPair momentum, velocity;
-  momentum.resize(num_terms_);
-  velocity.resize(num_terms_);
-
   const std::size_t num_entries = entries_.size();
 
   const double K = ComputeOptimalK();
@@ -132,20 +187,20 @@ void Tuner::TuneBatch() {
       double mg_grad = (-K / 200.0) * epoch_gradient[i][MG] / num_entries;
       double eg_grad = (-K / 200.0) * epoch_gradient[i][EG] / num_entries;
 
-      momentum[i][MG] =
-          kMomentumCoeff * momentum[i][MG] + (1.0 - kMomentumCoeff) * mg_grad;
-      momentum[i][EG] =
-          kMomentumCoeff * momentum[i][EG] + (1.0 - kMomentumCoeff) * eg_grad;
+      momentum_[i][MG] =
+          kMomentumCoeff * momentum_[i][MG] + (1.0 - kMomentumCoeff) * mg_grad;
+      momentum_[i][EG] =
+          kMomentumCoeff * momentum_[i][EG] + (1.0 - kMomentumCoeff) * eg_grad;
 
-      velocity[i][MG] = kVelocityCoeff * velocity[i][MG] +
-                        (1.0 - kVelocityCoeff) * pow(mg_grad, 2);
-      velocity[i][EG] = kVelocityCoeff * velocity[i][EG] +
-                        (1.0 - kVelocityCoeff) * pow(eg_grad, 2);
+      velocity_[i][MG] = kVelocityCoeff * velocity_[i][MG] +
+                         (1.0 - kVelocityCoeff) * pow(mg_grad, 2);
+      velocity_[i][EG] = kVelocityCoeff * velocity_[i][EG] +
+                         (1.0 - kVelocityCoeff) * pow(eg_grad, 2);
 
       const double mg_delta =
-          rate * momentum[i][MG] / (1e-8 + sqrt(velocity[i][MG]));
+          rate * momentum_[i][MG] / (1e-8 + sqrt(velocity_[i][MG]));
       const double eg_delta =
-          rate * momentum[i][EG] / (1e-8 + sqrt(velocity[i][EG]));
+          rate * momentum_[i][EG] / (1e-8 + sqrt(velocity_[i][EG]));
       parameters_[i][MG] -= mg_delta;
       parameters_[i][EG] -= eg_delta;
     }
@@ -161,11 +216,14 @@ void Tuner::TuneBatch() {
         rate,
         num_entries / time_delta);
 
+    if (epoch % 50 == 0) {
+      std::string checkpoint_filename = fmt::format("checkpoint_batch{}_epoch{}.txt", batch_count_, epoch);
+      WriteCheckpoint(checkpoint_filename);
+    }
+
     // Pre-scheduled Learning Rate drops
     rate *= decay;
   }
-
-  PrintParameters();
 }
 
 void Tuner::LoadAndTune(const std::string& source_file) {
@@ -173,7 +231,9 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 
   fmt::println("Opening data source...");
 
-  file_.open(source_file);
+  marlin_format_ = std::filesystem::path(source_file).extension() == ".mf";
+  file_.open(source_file, marlin_format_ ? std::ios::binary : std::ios::in);
+
   if (!file_.is_open()) {
     fmt::println("Unable to open file");
     return;
@@ -181,11 +241,17 @@ void Tuner::LoadAndTune(const std::string& source_file) {
 
   fmt::println("File opened successfully. Starting batch processing.");
 
+  momentum_.resize(num_terms_);
+  velocity_.resize(num_terms_);
+
   while (LoadNextBatch()) {
     fmt::println("Processing batch {}", batch_count_);
     TuneBatch();
     batch_count_++;
   }
+
+  std::string final_checkpoint_filename = fmt::format("final_checkpoint_batch{}.txt", batch_count_);
+  WriteCheckpoint(final_checkpoint_filename);
 
   fmt::println("Finished processing all batches. Total batches: {}",
                batch_count_);
@@ -277,10 +343,12 @@ std::vector<I16> Tuner::GetCoefficients() const {
 }
 
 TunerEntry Tuner::CreateEntry(const BoardState& state,
-                              GameResult result) const {
+                              GameResult result,
+                              Score score) const {
   TunerEntry entry;
   entry.phase = std::min(state.phase, kMaxPhase);
   entry.result = result;
+  entry.score = score;
 
   // Save time by computing phase scalars now
   entry.phase_factors[0] = 0 + entry.phase / 24.0;
@@ -296,12 +364,11 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
   for (int i = 0; i < coefficients.size(); i++) {
     if (coefficients[i] != 0) {
       entry.coefficient_entries.push_back(
-          {static_cast<std::size_t>(i), coefficients[i]});
+          {static_cast<U32>(i), coefficients[i]});
     }
   }
 
   // Save some of the evaluation modifiers
-  entry.eval = trace.eval;
   entry.turn = state.turn;
 
   return entry;
@@ -331,6 +398,7 @@ double Tuner::ComputeOptimalK() const {
 
   return K;
 }
+
 VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
   VectorPair local_gradient;
   local_gradient.resize(num_terms_);
@@ -340,14 +408,20 @@ VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
 
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#pragma omp parallel shared(local_gradient, mutex) num_threads(12)
+#pragma omp parallel shared(local_gradient, mutex) num_threads(24)
   {
 #pragma omp for schedule(static)
     for (int i = start; i < end; ++i) {
       const auto& entry = entries_[i];
       double E = ComputeEvaluation(entry);
       double S = Sigmoid(K, E);
-      double X = (entry.result - S) * S * (1 - S);
+
+      // Apply sigmoid to the score
+      double score_sigmoid = Sigmoid(K, entry.score);
+      double target =
+          std::lerp(score_sigmoid, static_cast<double>(entry.result), kLambda);
+
+      double X = (target - S) * S * (1 - S);
 
       double mg_base = X * (entry.phase / 24.0);
       double eg_base = X - mg_base;
@@ -374,7 +448,7 @@ VectorPair Tuner::ComputeGradient(double K, int start, int end) const {
 
 double Tuner::StaticEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(12)
+#pragma omp parallel shared(total) num_threads(24)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
@@ -386,11 +460,17 @@ double Tuner::StaticEvaluationErrors(double K) const {
 
 double Tuner::TunedEvaluationErrors(double K) const {
   double total = 0.0;
-#pragma omp parallel shared(total) num_threads(12)
+#pragma omp parallel shared(total) num_threads(24)
   {
 #pragma omp for schedule(static) reduction(+ : total)
     for (const auto& entry : entries_) {
-      total += pow(entry.result - Sigmoid(K, ComputeEvaluation(entry)), 2);
+      double evaluation = Sigmoid(K, ComputeEvaluation(entry));
+
+      // Interpolate between result and sigmoid-ed score
+      double score_sigmoid = Sigmoid(K, entry.score);
+      double target = std::lerp(score_sigmoid, entry.result, kLambda);
+
+      total += pow(target - evaluation, 2);
     }
   }
   return total / (double)entries_.size();
@@ -534,7 +614,42 @@ void Print4DArray(std::size_t& index,
   std::cout << "}};\n\n";
 }
 
+void Tuner::NormalizePSQTs() {
+  const auto offset = kPieceValues.size();
+  for (int piece = 0; piece < kNumPieceTypes; piece++) {
+    if (piece == kKing) continue;
+
+    double average_mg = 0, average_eg = 0;
+    double total_active_squares = 0;
+
+    for (int square = 0; square < kSquareCount; square++) {
+      const int idx = piece * kSquareCount + square + offset;
+      average_mg += parameters_[idx][MG];
+      average_eg += parameters_[idx][EG];
+
+      if (!(piece == kPawn && (square <= Squares::kH1 || square >= kA8)))
+        ++total_active_squares;
+    }
+
+    average_mg /= total_active_squares;
+    average_eg /= total_active_squares;
+
+    for (int square = 0; square < kSquareCount; square++) {
+      const int idx = piece * kSquareCount + square + offset;
+
+      if (!(piece == kPawn && (square <= Squares::kH1 || square >= kA8))) {
+        parameters_[idx][MG] -= average_mg;
+        parameters_[idx][EG] -= average_eg;
+      }
+    }
+
+    parameters_[piece][MG] += average_mg;
+    parameters_[piece][EG] += average_eg;
+  }
+}
+
 void Tuner::PrintParameters() {
+  // NormalizePSQTs();
   std::size_t index = 0;
 
   fmt::print("constexpr PieceTable<ScorePair> kPieceValues = ");
@@ -546,7 +661,11 @@ void Tuner::PrintParameters() {
 
   fmt::print(
       "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable = ");
-  Print2DArray(index, kNumPieceTypes, kSquareCount, parameters_);
+  Print3DArray(index,
+               kNumKingBuckets,
+               kNumPieceTypes,
+               kSquareCount,
+               parameters_);
 
   fmt::print("constexpr KnightMobilityTable<ScorePair> kKnightMobility = ");
   PrintArray(index, kKnightMobility.size(), parameters_);
@@ -649,4 +768,138 @@ void Tuner::PrintParameters() {
                  index,
                  parameters_.size());
   }
+}
+
+void Tuner::WriteCheckpoint(const std::string& filename) {
+  std::ofstream file(filename);
+  if (!file.is_open()) {
+    fmt::print(stderr, "Failed to open checkpoint file: {}\n", filename);
+    return;
+  }
+
+  file << std::fixed << std::setprecision(2);
+
+  size_t index = 0;
+
+  WriteArray(file, "constexpr PieceTable<ScorePair> kPieceValues", kPieceValues.size(), 8, index);
+  Write4DArray(file, "constexpr PawnRelativePSQT<ScorePair> kPawnPieceSquareTable", 2, kSquareCount, kNumPieceTypes, kSquareCount, index);
+  Write2DArray(file, "constexpr PieceSquareTable<ScorePair> kNormalPieceSquareTable", kNumPieceTypes, kSquareCount, 8, index);
+  WriteArray(file, "constexpr KnightMobilityTable<ScorePair> kKnightMobility", kKnightMobility.size(), 8, index);
+  WriteArray(file, "constexpr BishopMobilityTable<ScorePair> kBishopMobility", kBishopMobility.size(), 8, index);
+  WriteArray(file, "constexpr RookMobilityTable<ScorePair> kRookMobility", kRookMobility.size(), 8, index);
+  WriteArray(file, "constexpr QueenMobilityTable<ScorePair> kQueenMobility", kQueenMobility.size(), 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kPassedPawnBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kPawnPhalanxBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr RankTable<ScorePair> kDefendedPawnBonus", kNumRanks, 8, index);
+  WriteArray(file, "constexpr FileTable<ScorePair> kDoubledPawnPenalty", kNumFiles, 8, index);
+  WriteArray(file, "constexpr FileTable<ScorePair> kIsolatedPawnPenalty", kNumFiles, 8, index);
+  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kRookOnFileBonus", 2, kNumFiles, 8, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 12> kPawnShelterTable", kPawnShelterTable.size(), 3, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 21> kPawnStormTable", kPawnStormTable.size(), 3, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 8> kKingPPDistanceTable", kKingPPDistanceTable.size(), 8, index);
+  WriteArray(file, "constexpr std::array<ScorePair, 8> kEnemyKingPPDistanceTable", kEnemyKingPPDistanceTable.size(), 8, index);
+  file << "constexpr ScorePair kKingCantReachPPBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
+  index++;
+  Write2DArray(file, "constexpr std::array<FileTable<ScorePair>, 2> kKingOnFilePenalty", 2, kNumFiles, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 8>> kAttackPower", kNumPieceTypes, 8, 8, index);
+  WriteArray(file, "constexpr PieceTable<ScorePair> kSafeCheckBonus", kNumPieceTypes, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByPawnPenalty", kNumPieceTypes, 2, 8, index);
+  WriteArray(file, "constexpr PieceTable<ScorePair> kPawnPushThreat", kNumPieceTypes, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByKnightPenalty", kNumPieceTypes, 2, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByBishopPenalty", kNumPieceTypes, 2, 8, index);
+  Write2DArray(file, "constexpr PieceTable<std::array<ScorePair, 2>> kThreatenedByRookPenalty", kNumPieceTypes, 2, 8, index);
+  WriteArray(file, "constexpr OutpostTable<ScorePair> kKnightOutpostTable", kKnightOutpostTable.size(), 8, index);
+  WriteArray(file, "constexpr OutpostTable<ScorePair> kBishopOutpostTable", kKnightOutpostTable.size(), 8, index);
+  file << "constexpr ScorePair kBishopPairBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n\n";
+  index++;
+  file << "constexpr ScorePair kTempoBonus = Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ");\n";
+  index++;
+
+  if (index != parameters_.size()) {
+    fmt::print(stderr, "Failed to write all eval terms: {} written, {} expected\n", index, parameters_.size());
+  }
+
+  file.close();
+  fmt::print("Checkpoint written to: {}\n", filename);
+}
+
+void Tuner::WriteArray(std::ofstream& file, const std::string& name, int size, int row_length, size_t& index) {
+  file << name << " = {\n";
+  for (int i = 0; i < size; i++) {
+    if (i % row_length == 0) file << "  ";
+    file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+    if (i < size - 1) file << ", ";
+    if ((i + 1) % row_length == 0 || i == size - 1) file << "\n";
+    index++;
+  }
+  file << "};\n\n";
+}
+
+void Tuner::Write2DArray(std::ofstream& file, const std::string& name, int rows, int columns, int row_length, size_t& index) {
+  file << name << " = {\n";
+  for (int i = 0; i < rows; i++) {
+    file << "  {\n";
+    for (int j = 0; j < columns; j++) {
+      if (j % row_length == 0) file << "    ";
+      file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+      if (j < columns - 1) file << ", ";
+      if ((j + 1) % row_length == 0 || j == columns - 1) file << "\n";
+      index++;
+    }
+    file << "  }";
+    if (i < rows - 1) file << ",";
+    file << "\n";
+  }
+  file << "};\n\n";
+}
+
+void Tuner::Write3DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, size_t& index) {
+  file << name << " = {\n";
+  for (int i = 0; i < dim1; i++) {
+    file << "  {\n";
+    for (int j = 0; j < dim2; j++) {
+      file << "    {";
+      for (int k = 0; k < dim3; k++) {
+        file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+        if (k < dim3 - 1) file << ", ";
+        index++;
+      }
+      file << "}";
+      if (j < dim2 - 1) file << ",";
+      file << "\n";
+    }
+    file << "  }";
+    if (i < dim1 - 1) file << ",";
+    file << "\n";
+  }
+  file << "};\n\n";
+}
+
+void Tuner::Write4DArray(std::ofstream& file, const std::string& name, int dim1, int dim2, int dim3, int dim4, size_t& index) {
+  file << name << " = {{\n";
+  for (int d1 = 0; d1 < dim1; d1++) {
+    file << "  {{ // Bucket " << d1 << "\n";
+    for (int d2 = 0; d2 < dim2; d2++) {
+      file << "    {{ // Bucket " << d2 << "\n";
+      for (int d3 = 0; d3 < dim3; d3++) {
+        file << "      { // Piece " << d3 << "\n        ";
+        for (int d4 = 0; d4 < dim4; d4++) {
+          file << "Pair(" << Round(parameters_[index][MG]) << ", " << Round(parameters_[index][EG]) << ")";
+          if (d4 < dim4 - 1) file << ", ";
+          if ((d4 + 1) % 8 == 0 && d4 < dim4 - 1) file << "\n        ";
+          index++;
+        }
+        file << "\n      }";
+        if (d3 < dim3 - 1) file << ",";
+        file << "\n";
+      }
+      file << "    }}";
+      if (d2 < dim2 - 1) file << ",";
+      file << "\n";
+    }
+    file << "  }}";
+    if (d1 < dim1 - 1) file << ",";
+    file << "\n";
+  }
+  file << "}};\n\n";
 }

@@ -2400,7 +2400,7 @@
 
     Error ([godbolt](https://godbolt.org/z/GoxM4e)):
 
-    `fmt/core.h:1438:3: error: static_assert failed due to requirement 'fmt::v7::formattable<how_about_no>()' "Cannot format an argument. To make type T formattable provide a formatter<T> specialization: https://fmt.dev/latest/api.html#udt" ...`
+    `fmt/core.h:1438:3: Error: static_assert failed due to requirement 'fmt::v7::formattable<how_about_no>()' "Cannot format an argument. To make type T formattable provide a formatter<T> specialization: https://fmt.dev/latest/api.html#udt" ...`
 
 -   Added the
     [make_args_checked](https://fmt.dev/7.1.0/api.html#argument-lists)
@@ -2766,7 +2766,7 @@
     now gives a compilation error because argument 1 doesn\'t exist:
 
         In file included from test.cc:1:
-        include/fmt/format.h:2726:27: error: constexpr variable 'invalid_format' must be
+        include/fmt/format.h:2726:27: Error: constexpr variable 'invalid_format' must be
         initialized by a constant expression
           FMT_CONSTEXPR_DECL bool invalid_format =
                                   ^
@@ -2934,7 +2934,7 @@
 
     now gives:
 
-        include/fmt/core.h:1015:5: error: static_assert failed due to requirement
+        include/fmt/core.h:1015:5: Error: static_assert failed due to requirement
         'formattable' "Cannot format argument. To make type T formattable provide a
         formatter<T> specialization:
         https://fmt.dev/latest/api.html#formatting-user-defined-types"
@@ -3826,7 +3826,7 @@
     (https://github.com/fmtlib/fmt/pull/924):
 
     ```c++
-    print(fmt(L"{:f}"), 42); // compile-time error: invalid type specifier
+    print(fmt(L"{:f}"), 42); // compile-time Error: invalid type specifier
     ```
 
     Thanks @XZiar.
@@ -3992,7 +3992,7 @@
 
     ```c++
     fmt::memory_buffer buf;
-    // Compile-time error: invalid type specifier.
+    // Compile-time Error: invalid type specifier.
     fmt::format_to(buf, fmt("{:d}"), "foo");
     ```
 
@@ -4206,7 +4206,7 @@
     ([godbolt](https://godbolt.org/g/2jQ1Dv)):
 
         ...
-        <source>:12:45: error: expression '<throw-expression>' is not a constant expression
+        <source>:12:45: Error: expression '<throw-expression>' is not a constant expression
                throw format_error("invalid specifier");
 
 -   Added [iterator

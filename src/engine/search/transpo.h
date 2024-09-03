@@ -24,7 +24,7 @@ struct TranspositionTableEntry {
         score(kScoreNone),
         static_eval(0),
         move(Move::NullMove()),
-        bits({}) {
+        bits(0) {
     SetFlag(kNone);
   }
 
@@ -61,10 +61,9 @@ struct TranspositionTableEntry {
 
   // Adjusts mate scores to correctly indicate the ply until mate
   [[nodiscard]] static Score CorrectScore(Score score, U16 ply) {
-    constexpr int kRoughlyMate = kMateScore - kMaxPlyFromRoot;
-    if (score >= kRoughlyMate) {
+    if (score >= kMateInMaxPlyScore) {
       score -= ply;
-    } else if (score <= -kRoughlyMate) {
+    } else if (score <= -kMateInMaxPlyScore) {
       score += ply;
     }
     return score;
@@ -144,8 +143,6 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  private:
   int age_;
 };
-
-inline TranspositionTable transposition_table;
 
 }  // namespace search
 
