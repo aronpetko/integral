@@ -44,14 +44,30 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
 
     // Probabilities for selecting a move based on the piece type
     constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
-        35, 25, 25, 10, 5, 0};
+        35, 25, 25, 5, 10, 0};
 
     // Bucket for moves categorized by the piece type
     std::array<MoveList, kNumPieceTypes> piece_moves;
     for (int i = 0; i < legal_moves.Size(); i++) {
-      const auto moving_piece =
-          board.GetState().GetPieceType(legal_moves[i].GetFrom());
-      piece_moves[moving_piece].Push(legal_moves[i]);
+      const auto move = legal_moves[i];
+      if (eval::StaticExchange(move, 0, board.GetState())) {
+        const auto moving_piece = board.GetState().GetPieceType(move.GetFrom());
+        piece_moves[moving_piece].Push(move);
+      }
+    }
+
+    bool found_valid_move = false;
+    for (const auto &moves : piece_moves) {
+      if (!moves.Empty()) {
+        found_valid_move = true;
+        break;
+      }
+    }
+
+    if (!found_valid_move) {
+      current_ply = 0;
+      board.SetFromFen(fen::kStartFen);
+      continue;
     }
 
     // Calculate the total probability for choosing a piece with legal moves
@@ -245,7 +261,8 @@ void GameLoop(const Config &config,
             wdl_outcome = 1.0;
           } else if (loss_plies >= kWinPliesThreshold) {
             wdl_outcome = 0.0;
-          } else if (draw_plies >= kDrawPliesThreshold || state.half_moves >= 200) {
+          } else if (draw_plies >= kDrawPliesThreshold ||
+                     state.half_moves >= 200) {
             wdl_outcome = 0.5;
           }
         }
