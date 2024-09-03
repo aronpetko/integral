@@ -6,12 +6,12 @@
 namespace nnue::arch {
 
 constexpr std::size_t kInputLayerSize = 768;
-constexpr std::size_t kHiddenLayerSize = 1024;
+constexpr std::size_t kHiddenLayerSize = 128;
 
 constexpr std::int32_t kHiddenLayerQuantization = 255;
 constexpr std::int32_t kOutputQuantization = 64;
 
-constexpr std::int32_t kEvalScale = 400;
+constexpr std::int32_t kEvalScale = 200;
 
 };  // namespace nnue::arch
 

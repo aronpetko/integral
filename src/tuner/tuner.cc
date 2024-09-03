@@ -356,7 +356,7 @@ TunerEntry Tuner::CreateEntry(const BoardState& state,
 
   // Save a white POV static evaluation
   trace = EvalTrace{};
-  entry.static_eval = Evaluate(state) * (state.turn == Color::kWhite ? 1 : -1);
+  // entry.static_eval = Evaluate(state) * (state.turn == Color::kWhite ? 1 : -1);
 
   const auto coefficients = GetCoefficients();
   entry.coefficient_entries.reserve(num_terms_);

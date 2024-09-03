@@ -1,5 +1,6 @@
 #include "board.h"
 
+#include "../engine/evaluation/nnue/accumulator.h"
 #include "fen.h"
 #include "move.h"
 #include "move_gen.h"
@@ -23,7 +24,12 @@ Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
+
+  accumulator_ = std::make_shared<nnue::Accumulator>();
+  accumulator_->SetFromState(state_);
+
   history_.Clear();
+
   CalculateThreats();
 }
 
@@ -179,6 +185,7 @@ bool Board::IsMoveLegal(Move move) {
 void Board::MakeMove(Move move) {
   // Create new board state
   history_.Push(state_);
+  accumulator_->MakeMove(state_, move);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -239,11 +246,13 @@ void Board::MakeMove(Move move) {
 }
 
 void Board::UndoMove() {
+  accumulator_->UndoMove();
   state_ = history_.PopBack();
 }
 
 void Board::MakeNullMove() {
   history_.Push(state_);
+  accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {

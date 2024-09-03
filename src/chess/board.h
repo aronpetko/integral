@@ -12,6 +12,12 @@
 #include "bitboard.h"
 #include "fen.h"
 
+namespace nnue {
+
+class Accumulator;
+
+}
+
 class CastleRights {
  public:
   static constexpr int kKingsideIndex = 0;
@@ -264,6 +270,10 @@ class Board {
     return state_;
   }
 
+  inline std::shared_ptr<nnue::Accumulator> &GetAccumulator() {
+    return accumulator_;
+  }
+
   void SetFromFen(std::string_view fen_str);
 
   void MakeMove(Move move);
@@ -294,6 +304,7 @@ class Board {
  private:
   BoardState state_;
   List<BoardState, kMaxGamePly> history_;
+  std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 
 #endif  // INTEGRAL_BOARD_H_

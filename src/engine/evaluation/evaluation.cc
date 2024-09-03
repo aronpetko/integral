@@ -722,8 +722,8 @@ template <Color us>
   return masks::outposts[us].IsSet(square) && safe_from_pawns;
 }
 
-Score Evaluate(const BoardState &state) {
-  return nnue::Evaluate(state);
+Score Evaluate(Board &board) {
+  return nnue::Evaluate(board.GetAccumulator());
   // return Evaluation(state).GetScore();
 }
 

@@ -5,8 +5,11 @@
 #include "../../../third-party/incbin/incbin.h"
 #include "../../../utils/multi_array.h"
 #include "../../../utils/types.h"
+#include "arch.h"
 
 namespace nnue {
+
+class Accumulator;
 
 struct Network {
   MultiArray<I16, arch::kInputLayerSize, arch::kHiddenLayerSize>
@@ -20,7 +23,7 @@ void LoadFromFile(std::string_view path);
 
 void LoadFromIncBin();
 
-Score Evaluate(const BoardState &state);
+Score Evaluate(std::shared_ptr<Accumulator> &accumulator);
 
 inline Network network;
 

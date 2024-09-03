@@ -189,7 +189,7 @@ Score Search::QuiescentSearch(Thread &thread,
   stack->pv.Clear();
 
   if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(state);
+    return eval::Evaluate(board);
   }
 
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
@@ -240,7 +240,7 @@ Score Search::QuiescentSearch(Thread &thread,
   if (tt_static_eval != kScoreNone) {
     raw_static_eval = tt_static_eval;
   } else {
-    raw_static_eval = eval::Evaluate(state);
+    raw_static_eval = eval::Evaluate(board);
   }
 
   if (!in_check) {
@@ -362,7 +362,7 @@ Score Search::PVSearch(Thread &thread,
   stack->pv.Clear();
 
   if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(state);
+    return eval::Evaluate(board);
   }
 
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
@@ -487,7 +487,7 @@ Score Search::PVSearch(Thread &thread,
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
-        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(state);
+        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
 
     // Save the static eval in the TT if we have nothing yet
     if (!tt_hit) {

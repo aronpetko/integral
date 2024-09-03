@@ -1,5 +1,7 @@
 #include "nnue.h"
 
+#include "accumulator.h"
+
 // This macro invocation will declare the following three variables
 //     const unsigned char        gEVALData[];  // a pointer to the embedded
 //     data const unsigned char *const gEVALEnd;     // a marker to the end
@@ -27,39 +29,15 @@ void LoadFromIncBin() {
   std::memcpy(&network, gEVALData, sizeof(network));
 }
 
-Score Evaluate(const BoardState &state) {
-  // Initialize accumulator for both perspectives (White and Black)
-  MultiArray<I32, 2, arch::kHiddenLayerSize> accumulator;
-  for (int perspective = Color::kWhite; perspective <= Color::kBlack;
-       perspective++) {
-    for (int i = 0; i < arch::kHiddenLayerSize; i++) {
-      // Initialize with feature biases
-      accumulator[perspective][i] = network.feature_biases[i];
-    }
-  }
-
-  for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
-    // Loop through all pieces that belong to this color
-    for (Square square : state.piece_bbs[piece]) {
-      const auto piece_color = state.GetPieceColor(square);
-      for (int perspective = Color::kWhite; perspective <= Color::kBlack;
-           perspective++) {
-        // Update accumulator for the current perspective
-        for (int i = 0; i < arch::kHiddenLayerSize; i++) {
-          const int index =
-              GetFeatureIndex(square, piece, piece_color, perspective);
-          accumulator[perspective][i] += network.feature_weights[index][i];
-        }
-      }
-    }
-  }
+Score Evaluate(std::shared_ptr<Accumulator> &accumulator) {
+  const Color turn = accumulator->GetTurn();
 
   Score eval = 0;
   for (int i = 0; i < arch::kHiddenLayerSize; i++) {
     const Score our_value =
-        SquaredReLU(accumulator[state.turn][i]) * network.output_weights[0][i];
+        SquaredReLU((*accumulator)[turn][i]) * network.output_weights[0][i];
     const Score their_value =
-        SquaredReLU(accumulator[!state.turn][i]) * network.output_weights[1][i];
+        SquaredReLU((*accumulator)[!turn][i]) * network.output_weights[1][i];
     eval += our_value + their_value;
   }
 

@@ -158,7 +158,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
   });
 
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
-    fmt::println("info cp {}", eval::Evaluate(board.GetState()));
+    fmt::println("info cp {}", eval::Evaluate(board));
   });
 
   listener.RegisterCommand("print", CommandType::kUnordered, {}, [&board](Command *cmd) {
