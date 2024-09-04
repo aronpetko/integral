@@ -565,7 +565,7 @@ Score Search::PVSearch(Thread &thread,
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
         stack->static_eval >= beta + 170 - 24 * depth &&
-        !stack->excluded_tt_move) {
+        !stack->excluded_tt_move && false) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);

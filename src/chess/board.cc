@@ -182,10 +182,17 @@ bool Board::IsMoveLegal(Move move) {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
+template void Board::MakeMove<true>(Move move);
+template void Board::MakeMove<false>(Move move);
+
+template <bool do_updates>
 void Board::MakeMove(Move move) {
-  // Create new board state
-  history_.Push(state_);
-  accumulator_->MakeMove(state_, move);
+  key_history_.Push(state_.zobrist_key);
+
+  if constexpr (do_updates) {
+    history_.Push(state_);
+    accumulator_->MakeMove(state_, move);
+  }
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -193,8 +200,6 @@ void Board::MakeMove(Move move) {
   const auto piece = state_.GetPieceType(from),
              captured = state_.GetPieceType(to);
   const auto move_type = move.GetType();
-  const int bucket = state_.king_bucket[us],
-            their_bucket = state_.king_bucket[them];
 
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
@@ -247,6 +252,7 @@ void Board::MakeMove(Move move) {
 
 void Board::UndoMove() {
   accumulator_->UndoMove();
+  key_history_.PopBack();
   state_ = history_.PopBack();
 }
 
@@ -314,11 +320,12 @@ U64 Board::PredictKeyAfter(Move move) {
 }
 
 bool Board::HasRepeated(U16 ply) {
-  const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
+  const int max_dist =
+      std::min<int>(state_.fifty_moves_clock, key_history_.Size());
 
   bool hit_before_root = false;
   for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
+    if (state_.zobrist_key == key_history_[key_history_.Size() - i]) {
       if (ply >= i) return true;
       if (hit_before_root) return true;
       hit_before_root = true;

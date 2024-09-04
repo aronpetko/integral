@@ -105,12 +105,6 @@ struct BoardState {
     side_bbs[color].SetBit(square);
     piece_on_square[square] = piece_type;
 
-    // Incrementally update the piece/square scores
-    piece_scores[color] += eval::kPieceValues[piece_type];
-
-    // Incrementally update the current phase of the game
-    phase += eval::kPhaseIncrements[piece_type];
-
     // Insert the piece to the hash
     if constexpr (update_key) {
       const int colored_piece = piece_type * 2 + color;
@@ -143,13 +137,6 @@ struct BoardState {
     // Clear the piece from the bitboards
     piece_bbs[piece_type].ClearBit(square);
     side_bbs[color].ClearBit(square);
-
-    // Incrementally update the piece/square scores
-    const Square rel_square = square.RelativeTo(color);
-    piece_scores[color] -= eval::kPieceValues[piece_type];
-
-    // Incrementally update the current phase of the game
-    phase -= eval::kPhaseIncrements[piece_type];
 
     piece_type = PieceType::kNone;
   }
@@ -276,6 +263,7 @@ class Board {
 
   void SetFromFen(std::string_view fen_str);
 
+  template <bool do_updates = true>
   void MakeMove(Move move);
 
   void MakeNullMove();
@@ -303,7 +291,8 @@ class Board {
 
  private:
   BoardState state_;
-  List<BoardState, kMaxGamePly> history_;
+  List<BoardState, kMaxPlyFromRoot> history_;
+  List<U64, kMaxGamePly> key_history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 
