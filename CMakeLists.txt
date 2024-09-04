@@ -27,7 +27,7 @@ elseif (BUILD_NATIVE)
 endif ()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -funroll-loops -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O0 -g")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -g -O0")
 
 include(CheckIPOSupported)
@@ -48,7 +48,7 @@ if (WIN32)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,/STACK:8388608")
     endif ()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static -Wl,--stack,8388608")
 endif ()
 
 include_directories(third-party/fathom)

@@ -47,7 +47,7 @@ SOFTWARE.
 
 #ifndef _WIN32
 #include <fcntl.h>
-#include <pthread.h>
+#include <pthread->h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>

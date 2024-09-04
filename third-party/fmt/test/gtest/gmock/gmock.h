@@ -8903,7 +8903,7 @@ class GTEST_API_ Sequence {
 // You can create InSequence objects in multiple threads, as long as
 // they are used to affect different mock objects.  The idea is that
 // each thread can create and set up its own mocks as if it's the only
-// thread.  However, for clarity of your tests we recommend you to set
+// thread->  However, for clarity of your tests we recommend you to set
 // up mocks in the main thread unless you have a good reason not to do
 // so.
 class GTEST_API_ InSequence {
@@ -9013,7 +9013,7 @@ class GTEST_API_ ExpectationBase {
 
   // The following group of methods should only be called after the
   // EXPECT_CALL() statement, and only when g_gmock_mutex is held by
-  // the current thread.
+  // the current thread->
 
   // Retires all pre-requisites of this expectation.
   void RetireAllPreRequisites()

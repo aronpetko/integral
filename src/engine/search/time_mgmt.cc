@@ -192,45 +192,31 @@ void TimeManagement::SetConfig(const TimeConfig& config) {
 
 void TimeManagement::ConfigureLimiters(const TimeConfig& config) {
   if (config.infinite) {
-    depth_limiter_.reset();
-    node_limiter_.reset();
-    timed_limiter_.reset();
     return;
   }
 
   if (config.depth > 0) {
-    if (depth_limiter_) {
-      depth_limiter_->Update(config);
-    } else {
-      depth_limiter_.emplace(config.depth);
-    }
-  } else {
-    depth_limiter_.reset();
+    limiters_.push_back(std::make_unique<DepthLimiter>(config.depth));
   }
 
   if (config.nodes > 0 || config.soft_nodes > 0) {
-    if (node_limiter_) {
-      node_limiter_->Update(config);
-    } else {
-      node_limiter_.emplace(config.nodes, config.soft_nodes);
-    }
-  } else {
-    node_limiter_.reset();
+    limiters_.push_back(
+        std::make_unique<NodeLimiter>(config.nodes, config.soft_nodes));
   }
 
   if (config.move_time > 0 || config.time_left > 0) {
-    if (timed_limiter_) {
-      timed_limiter_->Update(config);
-    } else {
-      timed_limiter_.emplace(config.time_left, config.increment, config.move_time);
-    }
-  } else {
-    timed_limiter_.reset();
+    limiters_.push_back(std::make_unique<TimedLimiter>(
+        config.time_left, config.increment, config.move_time));
   }
 }
 
 TimedLimiter* TimeManagement::GetTimedLimiter() {
-  return timed_limiter_ ? &*timed_limiter_ : nullptr;
+  for (const auto& limiter : limiters_) {
+    if (auto timed_limiter = dynamic_cast<TimedLimiter*>(limiter.get())) {
+      return timed_limiter;
+    }
+  }
+  return nullptr;
 }
 
 U64 TimeManagement::TimeElapsed() const {
@@ -239,15 +225,10 @@ U64 TimeManagement::TimeElapsed() const {
 
 int TimeManagement::GetSearchDepth() const {
   int min_depth = search::kMaxSearchDepth;
-  if (depth_limiter_) {
-    min_depth = std::min(min_depth, depth_limiter_->GetSearchDepth());
+  for (const auto& limiter : limiters_) {
+    min_depth = std::min(min_depth, limiter->GetSearchDepth());
   }
-  if (node_limiter_) {
-    min_depth = std::min(min_depth, node_limiter_->GetSearchDepth());
-  }
-  if (timed_limiter_) {
-    min_depth = std::min(min_depth, timed_limiter_->GetSearchDepth());
-  }
+
   return min_depth;
 }
 
@@ -257,28 +238,34 @@ bool TimeManagement::IsInfinite() const {
 
 void TimeManagement::Start() {
   start_time_ = GetCurrentTime();
-  if (depth_limiter_) depth_limiter_->Start();
-  if (node_limiter_) node_limiter_->Start();
-  if (timed_limiter_) timed_limiter_->Start();
+  for (const auto& limiter : limiters_) {
+    limiter->Start();
+  }
 }
 
 void TimeManagement::Stop() {
   end_time_ = GetCurrentTime();
-  if (depth_limiter_) depth_limiter_->Stop();
-  if (node_limiter_) node_limiter_->Stop();
-  if (timed_limiter_) timed_limiter_->Stop();
+  for (const auto& limiter : limiters_) {
+    limiter->Stop();
+  }
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
-  return (depth_limiter_ && depth_limiter_->ShouldStop(best_move, depth, nodes_searched)) ||
-         (node_limiter_ && node_limiter_->ShouldStop(best_move, depth, nodes_searched)) ||
-         (timed_limiter_ && timed_limiter_->ShouldStop(best_move, depth, nodes_searched));
+  for (const auto& limiter : limiters_) {
+    if (limiter->ShouldStop(best_move, depth, nodes_searched)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool TimeManagement::TimesUp(U32 nodes_searched) {
-  return (depth_limiter_ && depth_limiter_->TimesUp(nodes_searched)) ||
-         (node_limiter_ && node_limiter_->TimesUp(nodes_searched)) ||
-         (timed_limiter_ && timed_limiter_->TimesUp(nodes_searched));
+  for (const auto& limiter : limiters_) {
+    if (limiter->TimesUp(nodes_searched)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace search

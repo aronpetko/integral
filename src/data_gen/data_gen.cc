@@ -8,6 +8,7 @@
 
 #include "../chess/board.h"
 #include "../engine/search/search.h"
+#include "../engine/uci/option.h"
 #include "format/binpack.h"
 #include "format/fens.h"
 
@@ -27,24 +28,86 @@ MoveList GetLegalMoves(Board &board) {
   return legal_move_list;
 }
 
-void FindStartingPosition(Board &board, I32 plies) {
+void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
   board.SetFromFen(fen::kStartFen);
 
-  I32 current_ply = 0;
-  while (current_ply < plies) {
+  I32 current_ply = 0, target_plies = RandomU64(min_plies, max_plies);
+  while (current_ply < target_plies) {
     auto legal_moves = GetLegalMoves(board);
-    // Keep looping until we can find a legal move
+
+    // If no legal moves are available, reset the board
     if (legal_moves.Empty()) {
       current_ply = 0;
       board.SetFromFen(fen::kStartFen);
       continue;
     }
 
-    const auto move = legal_moves[RandomU64(0, legal_moves.Size() - 1)];
-    board.MakeMove(move);
+    // Probabilities for selecting a move based on the piece type
+    constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
+        35, 25, 25, 5, 10, 0};
 
-    // Prevent the last ply being checkmate/stalemate
-    if (++current_ply == plies && GetLegalMoves(board).Empty()) {
+    // Bucket for moves categorized by the piece type
+    std::array<MoveList, kNumPieceTypes> piece_moves;
+    for (int i = 0; i < legal_moves.Size(); i++) {
+      const auto move = legal_moves[i];
+      if (eval::StaticExchange(move, 0, board.GetState())) {
+        const auto moving_piece = board.GetState().GetPieceType(move.GetFrom());
+        piece_moves[moving_piece].Push(move);
+      }
+    }
+
+    bool found_valid_move = false;
+    for (const auto &moves : piece_moves) {
+      if (!moves.Empty()) {
+        found_valid_move = true;
+        break;
+      }
+    }
+
+    if (!found_valid_move) {
+      current_ply = 0;
+      board.SetFromFen(fen::kStartFen);
+      continue;
+    }
+
+    // Calculate the total probability for choosing a piece with legal moves
+    int total_probability = 0;
+    for (int i = 0; i < kNumPieceTypes; ++i) {
+      if (!piece_moves[i].Empty()) {
+        total_probability += kPieceProbabilities[i];
+      }
+    }
+
+    // Select a piece type to move based on the weighted probability
+    int chosen_piece = -1;
+    int random_value = RandomU64(0, total_probability - 1);
+
+    for (int i = 0; i < kNumPieceTypes; ++i) {
+      if (!piece_moves[i].Empty()) {
+        if (random_value < kPieceProbabilities[i]) {
+          chosen_piece = i;
+          break;
+        }
+        random_value -= kPieceProbabilities[i];
+      }
+    }
+
+    // Fallback: if no piece was chosen, pick the first piece with legal moves
+    if (chosen_piece == -1 || piece_moves[chosen_piece].Empty()) {
+      chosen_piece = 0;
+      while (piece_moves[chosen_piece].Empty()) {
+        ++chosen_piece;
+      }
+    }
+
+    // Choose a random move for the selected piece type
+    auto &chosen_moves = piece_moves[chosen_piece];
+    const auto random_move =
+        chosen_moves[RandomU64(0, chosen_moves.Size() - 1)];
+    board.MakeMove<false>(random_move);
+
+    // Prevent the last ply from being a checkmate/stalemate
+    if (++current_ply == target_plies && GetLegalMoves(board).Empty()) {
       current_ply = 0;
       board.SetFromFen(fen::kStartFen);
     }
@@ -60,7 +123,7 @@ void PrintProgress(const Config &config, U64 completed, U64 written) {
   auto current_time = search::GetCurrentTime();
   auto elapsed_time = current_time - start_time;
   auto games_left = config.num_games - completed;
-  auto time_per_game = elapsed_time / completed;
+  auto time_per_game = elapsed_time / std::max<U64>(1, completed);
   auto time_remaining = time_per_game * games_left;
 
   // Calculate progress bar
@@ -129,12 +192,12 @@ void PrintProgress(const Config &config, U64 completed, U64 written) {
 void GameLoop(const Config &config,
               int thread_id,
               std::ostream &output_stream) {
-  RandomSeed(thread_id);
+  RandomSeed(thread_id, search::GetCurrentTime());
 
   constexpr int kWinThreshold = 1500;
-  constexpr int kWinPliesThreshold = 3;
-  constexpr int kDrawThreshold = 5;
-  constexpr int kDrawPliesThreshold = 5;
+  constexpr int kWinPliesThreshold = 5;
+  constexpr int kDrawThreshold = 2;
+  constexpr int kDrawPliesThreshold = 10;
   constexpr int kInitialScoreThreshold = 1000;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
@@ -144,14 +207,14 @@ void GameLoop(const Config &config,
   Board board;
 
   search::Search search(board);
-  search.ResizeHash(64);
+  search.ResizeHash(16);
 
   auto thread = std::make_unique<search::Thread>(0);
 
   const int workload = config.num_games / config.num_threads;
   for (int i = 0; i < workload && !stop; i++) {
     // Find a valid legal position to play the game from
-    FindStartingPosition(board, config.random_move_plies);
+    FindStartingPosition(board, config.min_move_plies, config.max_move_plies);
 
     const auto &state = board.GetState();
     formatter.SetPosition(state);
@@ -161,6 +224,7 @@ void GameLoop(const Config &config,
 
     const auto [initial_score, _] = search.DataGenStart(
         thread, search::TimeConfig{.depth = 10, .nodes = 1'000'000});
+
     if (std::abs(initial_score) >= kInitialScoreThreshold) {
       --i;
       continue;
@@ -178,13 +242,16 @@ void GameLoop(const Config &config,
         wdl_outcome = state.InCheck() ? state.turn == Color::kBlack : 0.5;
         break;
       } else {
-        if (std::abs(score) >= kTBWinScore - kMaxPlyFromRoot) {
+        if (std::abs(score) >= kTBWinInMaxPlyScore) {
           // Return the correct score depending on who is getting checkmated
           wdl_outcome = score > 0;
         } else {
-          if (score >= kWinThreshold) {
+          const int scaled_win_threshold =
+              kWinThreshold -
+              800 * std::clamp<double>(state.half_moves, 0, 200) / 200;
+          if (score >= scaled_win_threshold) {
             ++win_plies, loss_plies = draw_plies = 0;
-          } else if (score <= -kWinThreshold) {
+          } else if (score <= -scaled_win_threshold) {
             ++loss_plies, win_plies = draw_plies = 0;
           } else if (std::abs(score) <= kDrawThreshold) {
             ++draw_plies, win_plies = loss_plies = 0;
@@ -194,13 +261,14 @@ void GameLoop(const Config &config,
             wdl_outcome = 1.0;
           } else if (loss_plies >= kWinPliesThreshold) {
             wdl_outcome = 0.0;
-          } else if (draw_plies >= kDrawPliesThreshold) {
+          } else if (draw_plies >= kDrawPliesThreshold ||
+                     state.half_moves >= 200) {
             wdl_outcome = 0.5;
           }
         }
       }
 
-      board.MakeMove(best_move);
+      board.MakeMove<false>(best_move);
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root

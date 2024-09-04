@@ -62,7 +62,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       std::string move_str;
       while (stream >> move_str) {
         const auto move = Move::FromStr(move_str, board.GetState());
-        if (move) board.MakeMove<false>(move);
+        if (move) board.MakeMove(move);
         else fmt::println("Error: invalid move '{}'", move_str);
       }
     }
@@ -130,7 +130,8 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     CreateArgument("hard_limit", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("games", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("threads", ArgumentType::kRequired, LimitedInputProcessor<1>()),
-    CreateArgument("random_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("min_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("max_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("out", ArgumentType::kRequired, LimitedInputProcessor<1>()),
   }, [](Command *cmd) {
     data_gen::Config config{
@@ -138,7 +139,8 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       .hard_node_limit = *cmd->ParseArgument<U64>("hard_limit"),
       .num_games = *cmd->ParseArgument<U64>("games"),
       .num_threads = *cmd->ParseArgument<I32>("threads"),
-      .random_move_plies = *cmd->ParseArgument<I32>("random_moves"),
+      .min_move_plies = *cmd->ParseArgument<I32>("min_moves"),
+      .max_move_plies = *cmd->ParseArgument<I32>("max_moves"),
       .output_file = *cmd->ParseArgument<std::string>("out"),
     };
     data_gen::Generate(config);
