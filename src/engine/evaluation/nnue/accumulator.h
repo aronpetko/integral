@@ -11,6 +11,7 @@ class Accumulator {
  public:
   void SetFromState(const BoardState& state) {
     accumulators_.clear();
+    accumulators_.shrink_to_fit();
     accumulators_.reserve(kMaxGamePly);
 
     for (int perspective = Color::kWhite; perspective <= Color::kBlack;

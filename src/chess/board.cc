@@ -254,10 +254,6 @@ void Board::MakeMove(Move move) {
 
 void Board::UndoMove() {
   key_history_.PopBack();
-  if (history_.Empty()) {
-    PrintPieces();
-    throw std::runtime_error{"bruh"};
-  }
   state_ = history_.PopBack();
   accumulator_->UndoMove();
 }
