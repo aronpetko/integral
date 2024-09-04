@@ -10,6 +10,9 @@ namespace nnue {
 class Accumulator {
  public:
   void SetFromState(const BoardState& state) {
+    accumulators_.clear();
+    accumulators_.reserve(kMaxGamePly);
+
     for (int perspective = Color::kWhite; perspective <= Color::kBlack;
          perspective++) {
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
@@ -27,7 +30,7 @@ class Accumulator {
   }
 
   void MakeMove(const BoardState& state, Move move) {
-    accumulators_.Push(accumulator_);
+    accumulators_.push_back(accumulator_);
 
     turn_ = FlipColor(state.turn);
     // Account for null moves
@@ -88,11 +91,12 @@ class Accumulator {
   }
 
   void UndoMove() {
-    if (accumulators_.Empty()) {
+    if (accumulators_.empty()) {
       throw std::runtime_error(
           "attempt to undo move with empty accumulator stack");
     }
-    accumulator_ = accumulators_.PopBack();
+    accumulator_ = accumulators_.back();
+    accumulators_.pop_back();
   }
 
   [[nodiscard]] Color GetTurn() const {
@@ -138,8 +142,7 @@ class Accumulator {
  private:
   Color turn_;
   MultiArray<I32, 2, arch::kHiddenLayerSize> accumulator_;
-  List<MultiArray<I32, 2, arch::kHiddenLayerSize>, kMaxPlyFromRoot>
-      accumulators_;
+  std::vector<MultiArray<I32, 2, arch::kHiddenLayerSize>> accumulators_;
 };
 
 }  // namespace nnue

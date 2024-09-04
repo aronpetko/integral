@@ -20,7 +20,8 @@ constexpr std::array<U8, 64> kCastlingRights = {
 
 Board::Board() : history_({}) {}
 
-Board::Board(const BoardState &state) : history_({}), state_(state) {}
+Board::Board(const BoardState &state)
+    : history_({}), key_history_({}), state_(state) {}
 
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
@@ -29,6 +30,7 @@ void Board::SetFromFen(std::string_view fen_str) {
   accumulator_->SetFromState(state_);
 
   history_.Clear();
+  key_history_.Clear();
 
   CalculateThreats();
 }
@@ -188,10 +190,10 @@ template void Board::MakeMove<false>(Move move);
 template <bool do_updates>
 void Board::MakeMove(Move move) {
   key_history_.Push(state_.zobrist_key);
+  accumulator_->MakeMove(state_, move);
 
   if constexpr (do_updates) {
     history_.Push(state_);
-    accumulator_->MakeMove(state_, move);
   }
 
   const Color us = state_.turn, them = FlipColor(us);
@@ -251,13 +253,18 @@ void Board::MakeMove(Move move) {
 }
 
 void Board::UndoMove() {
-  accumulator_->UndoMove();
   key_history_.PopBack();
+  if (history_.Empty()) {
+    PrintPieces();
+    throw std::runtime_error{"bruh"};
+  }
   state_ = history_.PopBack();
+  accumulator_->UndoMove();
 }
 
 void Board::MakeNullMove() {
   history_.Push(state_);
+  key_history_.Push(state_.zobrist_key);
   accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
