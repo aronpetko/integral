@@ -9,23 +9,31 @@
 
 namespace nnue {
 
-class Accumulator;
-
-struct Network {
+struct alignas(64) RawNetwork {
   MultiArray<I16, arch::kInputLayerSize, arch::kHiddenLayerSize>
       feature_weights;
   MultiArray<I16, arch::kHiddenLayerSize> feature_biases;
-  MultiArray<I16, 2, arch::kHiddenLayerSize> output_weights;
-  I16 output_bias;
+  MultiArray<I16, 2, arch::kOutputBucketCount, arch::kHiddenLayerSize>
+      output_weights;
+  MultiArray<I16, arch::kOutputBucketCount> output_biases;
 };
 
-void LoadFromFile(std::string_view path);
+struct alignas(64) TransposedNetwork {
+  MultiArray<I16, arch::kInputLayerSize, arch::kHiddenLayerSize>
+      feature_weights;
+  MultiArray<I16, arch::kHiddenLayerSize> feature_biases;
+  MultiArray<I16, arch::kOutputBucketCount, 2, arch::kHiddenLayerSize>
+      output_weights;
+  MultiArray<I16, arch::kOutputBucketCount> output_biases;
+};
+
+inline TransposedNetwork network;
+
+class Accumulator;
 
 void LoadFromIncBin();
 
 Score Evaluate(std::shared_ptr<Accumulator> &accumulator);
-
-inline Network network;
 
 }  // namespace nnue
 

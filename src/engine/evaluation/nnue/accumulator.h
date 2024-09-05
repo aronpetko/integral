@@ -8,6 +8,9 @@
 namespace nnue {
 
 class Accumulator {
+  static constexpr U8 kBucketDivisor =
+      (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;
+
  public:
   void SetFromState(const BoardState& state) {
     accumulators_.clear();
@@ -104,6 +107,10 @@ class Accumulator {
     return turn_;
   }
 
+  [[nodiscard]] int GetOutputBucket() const {
+    return (num_pieces_ - 2) / kBucketDivisor;
+  }
+
   MultiArray<I32, arch::kHiddenLayerSize>& operator[](int perspective) {
     return accumulator_[perspective];
   }
@@ -124,6 +131,7 @@ class Accumulator {
             delta * network.feature_weights[index][i];
       }
     }
+    num_pieces_ += delta;
   }
 
   I32 GetFeatureIndex(Square square,
@@ -142,6 +150,7 @@ class Accumulator {
 
  private:
   Color turn_;
+  int num_pieces_;
   MultiArray<I32, 2, arch::kHiddenLayerSize> accumulator_;
   std::vector<MultiArray<I32, 2, arch::kHiddenLayerSize>> accumulators_;
 };
