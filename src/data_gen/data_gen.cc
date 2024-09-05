@@ -32,6 +32,9 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
   board.SetFromFen(fen::kStartFen);
 
   I32 current_ply = 0, target_plies = RandomU64(min_plies, max_plies);
+  constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
+      35, 25, 25, 5, 10, 0};
+
   while (current_ply < target_plies) {
     auto legal_moves = GetLegalMoves(board);
 
@@ -42,61 +45,39 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
       continue;
     }
 
-    // Probabilities for selecting a move based on the piece type
-    constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
-        35, 25, 25, 5, 10, 0};
-
     // Bucket for moves categorized by the piece type
     std::array<MoveList, kNumPieceTypes> piece_moves;
+    std::vector<int> valid_pieces;
+    int total_probability = 0;
+
     for (int i = 0; i < legal_moves.Size(); i++) {
       const auto move = legal_moves[i];
       if (eval::StaticExchange(move, 0, board.GetState())) {
         const auto moving_piece = board.GetState().GetPieceType(move.GetFrom());
+        if (piece_moves[moving_piece].Empty()) {
+          valid_pieces.push_back(moving_piece);
+          total_probability += kPieceProbabilities[moving_piece];
+        }
         piece_moves[moving_piece].Push(move);
       }
     }
 
-    bool found_valid_move = false;
-    for (const auto &moves : piece_moves) {
-      if (!moves.Empty()) {
-        found_valid_move = true;
-        break;
-      }
-    }
-
-    if (!found_valid_move) {
+    if (valid_pieces.empty()) {
       current_ply = 0;
       board.SetFromFen(fen::kStartFen);
       continue;
     }
 
-    // Calculate the total probability for choosing a piece with legal moves
-    int total_probability = 0;
-    for (int i = 0; i < kNumPieceTypes; ++i) {
-      if (!piece_moves[i].Empty()) {
-        total_probability += kPieceProbabilities[i];
-      }
-    }
-
     // Select a piece type to move based on the weighted probability
-    int chosen_piece = -1;
-    int random_value = RandomU64(0, total_probability - 1);
-
-    for (int i = 0; i < kNumPieceTypes; ++i) {
-      if (!piece_moves[i].Empty()) {
-        if (random_value < kPieceProbabilities[i]) {
-          chosen_piece = i;
+    int chosen_piece = valid_pieces.back();  // Default to last valid piece
+    if (valid_pieces.size() > 1) {
+      int random_value = RandomU64(0, total_probability - 1);
+      for (int piece : valid_pieces) {
+        if (random_value < kPieceProbabilities[piece]) {
+          chosen_piece = piece;
           break;
         }
-        random_value -= kPieceProbabilities[i];
-      }
-    }
-
-    // Fallback: if no piece was chosen, pick the first piece with legal moves
-    if (chosen_piece == -1 || piece_moves[chosen_piece].Empty()) {
-      chosen_piece = 0;
-      while (piece_moves[chosen_piece].Empty()) {
-        ++chosen_piece;
+        random_value -= kPieceProbabilities[piece];
       }
     }
 
@@ -108,8 +89,8 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
 
     // Prevent the last ply from being a checkmate/stalemate
     if (++current_ply == target_plies && GetLegalMoves(board).Empty()) {
-      current_ply = 0;
-      board.SetFromFen(fen::kStartFen);
+      board.UndoMove();
+      --current_ply;
     }
   }
 }
@@ -212,7 +193,8 @@ void GameLoop(const Config &config,
   const int workload = config.num_games / config.num_threads;
   for (int i = 0; i < workload && !stop; i++) {
     // Find a valid legal position to play the game from
-    FindStartingPosition(thread->board, config.min_move_plies, config.max_move_plies);
+    FindStartingPosition(
+        thread->board, config.min_move_plies, config.max_move_plies);
 
     const auto &state = thread->board.GetState();
     formatter.SetPosition(state);

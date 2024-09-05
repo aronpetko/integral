@@ -31,7 +31,7 @@ void Board::SetFromFen(std::string_view fen_str) {
   accumulator_ = std::make_shared<nnue::Accumulator>();
   accumulator_->SetFromState(state_);
 
-  history_.clear();
+  history_.Clear();
 
   CalculateThreats();
 }
@@ -191,7 +191,7 @@ template void Board::MakeMove<false>(Move move);
 template <bool do_updates>
 void Board::MakeMove(Move move) {
   accumulator_->MakeMove(state_, move);
-  history_.push_back(state_);
+  history_.Push(state_);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -250,13 +250,12 @@ void Board::MakeMove(Move move) {
 }
 
 void Board::UndoMove() {
-  state_ = history_.back();
-  history_.pop_back();
+  state_ = history_.PopBack();
   accumulator_->UndoMove();
 }
 
 void Board::MakeNullMove() {
-  history_.push_back(state_);
+  history_.Push(state_);
   accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
@@ -320,11 +319,11 @@ U64 Board::PredictKeyAfter(Move move) {
 
 bool Board::HasRepeated(U16 ply) {
   const int max_dist =
-      std::min<int>(state_.fifty_moves_clock, history_.size());
+      std::min<int>(state_.fifty_moves_clock, history_.Size());
 
   bool hit_before_root = false;
   for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == history_[history_.size() - i].zobrist_key) {
+    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
       if (ply >= i) return true;
       if (hit_before_root) return true;
       hit_before_root = true;

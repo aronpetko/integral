@@ -1053,7 +1053,8 @@ void Search::Start(TimeConfig time_config) {
   searching_threads_.store(static_cast<U16>(threads_.size()),
                            std::memory_order_seq_cst);
   for (auto &thread : threads_) {
-    thread->Reset(board_);
+    thread->Reset();
+    thread->SetBoard(board_);
   }
 
   // Wait until all search threads have received the signal
@@ -1067,7 +1068,9 @@ std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
-  thread->Reset(board_);
+  // The thread's board gets directly modified, so we don't need to call
+  // SetBoard
+  thread->Reset();
 
   IterativeDeepening<SearchType::kBench>(*thread);
 
@@ -1084,7 +1087,8 @@ U64 Search::Bench(int depth) {
   stop_.store(false, std::memory_order_seq_cst);
 
   auto thread = std::make_unique<Thread>(0);
-  thread->Reset(board_);
+  thread->Reset();
+  thread->SetBoard(board_);
 
   IterativeDeepening<SearchType::kBench>(*thread);
   return thread->nodes_searched;

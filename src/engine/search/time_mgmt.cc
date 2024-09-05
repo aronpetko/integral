@@ -191,6 +191,8 @@ void TimeManagement::SetConfig(const TimeConfig& config) {
 }
 
 void TimeManagement::ConfigureLimiters(const TimeConfig& config) {
+  limiters_.clear();
+
   if (config.infinite) {
     return;
   }
