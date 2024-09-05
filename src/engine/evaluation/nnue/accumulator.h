@@ -16,12 +16,13 @@ class Accumulator {
     accumulators_.clear();
     accumulators_.shrink_to_fit();
     accumulators_.reserve(kMaxGamePly);
+    accumulator_.num_pieces = 0;
 
     for (int perspective = Color::kWhite; perspective <= Color::kBlack;
          perspective++) {
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
         // Initialize with feature biases
-        accumulator_[perspective][i] = network.feature_biases[i];
+        accumulator_.active[perspective][i] = network.feature_biases[i];
       }
     }
 
@@ -108,16 +109,16 @@ class Accumulator {
   }
 
   [[nodiscard]] int GetOutputBucket() const {
-    return (num_pieces_ - 2) / kBucketDivisor;
+    return (accumulator_.num_pieces - 2) / kBucketDivisor;
   }
 
   MultiArray<I32, arch::kHiddenLayerSize>& operator[](int perspective) {
-    return accumulator_[perspective];
+    return accumulator_.active[perspective];
   }
 
   const MultiArray<I32, arch::kHiddenLayerSize>& operator[](
       int perspective) const {
-    return accumulator_[perspective];
+    return accumulator_.active[perspective];
   }
 
  private:
@@ -127,11 +128,11 @@ class Accumulator {
       const int index =
           GetFeatureIndex(square, piece, piece_color, perspective);
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
-        accumulator_[perspective][i] +=
+        accumulator_.active[perspective][i] +=
             delta * network.feature_weights[index][i];
       }
     }
-    num_pieces_ += delta;
+    accumulator_.num_pieces += delta;
   }
 
   I32 GetFeatureIndex(Square square,
@@ -149,10 +150,17 @@ class Accumulator {
   }
 
  private:
+  using AccumulatorContainer = MultiArray<I32, 2, arch::kHiddenLayerSize>;
+
+  struct AccumulatorEntry {
+    int num_pieces;
+    AccumulatorContainer active;
+  };
+
+ private:
   Color turn_;
-  int num_pieces_;
-  MultiArray<I32, 2, arch::kHiddenLayerSize> accumulator_;
-  std::vector<MultiArray<I32, 2, arch::kHiddenLayerSize>> accumulators_;
+  AccumulatorEntry accumulator_;
+  std::vector<AccumulatorEntry> accumulators_;
 };
 
 }  // namespace nnue

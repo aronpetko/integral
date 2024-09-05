@@ -39,11 +39,12 @@ void LoadFromIncBin() {
     for (Color perspective : {Color::kBlack, Color::kWhite}) {
       for (int weight = 0; weight < arch::kHiddenLayerSize; weight++) {
         transposed_output_weights[bucket][perspective][weight] =
-            raw_network.output_weights[perspective][bucket][weight];
+            raw_network.output_weights[perspective][weight][bucket];
       }
     }
   }
 
+  network.output_weights = transposed_output_weights;
   network.output_biases = raw_network.output_biases;
 }
 
@@ -72,7 +73,7 @@ Score Evaluate(std::shared_ptr<Accumulator> &accumulator) {
   // De-quantize again
   eval /= arch::kHiddenLayerQuantization * arch::kOutputQuantization;
 
-  return eval / 2;
+  return eval;
 }
 
 }  // namespace nnue
