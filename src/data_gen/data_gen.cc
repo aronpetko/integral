@@ -204,19 +204,17 @@ void GameLoop(const Config &config,
                                  .soft_nodes = config.soft_node_limit};
   format::BinPackFormatter formatter(output_stream);
 
-  Board board;
-
-  search::Search search(board);
-  search.ResizeHash(16);
-
   auto thread = std::make_unique<search::Thread>(0);
+
+  search::Search search(thread->board);
+  search.ResizeHash(16);
 
   const int workload = config.num_games / config.num_threads;
   for (int i = 0; i < workload && !stop; i++) {
     // Find a valid legal position to play the game from
-    FindStartingPosition(board, config.min_move_plies, config.max_move_plies);
+    FindStartingPosition(thread->board, config.min_move_plies, config.max_move_plies);
 
-    const auto &state = board.GetState();
+    const auto &state = thread->board.GetState();
     formatter.SetPosition(state);
 
     search.NewGame();
@@ -268,11 +266,11 @@ void GameLoop(const Config &config,
         }
       }
 
-      board.MakeMove<false>(best_move);
+      thread->board.MakeMove<false>(best_move);
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root
-      if (board.IsDraw(0)) {
+      if (thread->board.IsDraw(0)) {
         wdl_outcome = 0.5;
         break;
       }
