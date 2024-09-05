@@ -292,7 +292,6 @@ class Board {
  private:
   BoardState state_;
   std::vector<BoardState> history_;
-  std::vector<U64> key_history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 

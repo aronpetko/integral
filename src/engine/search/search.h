@@ -40,7 +40,7 @@ struct Thread {
   }
 
   void Reset(Board &new_board) {
-    board = new_board;
+    // board = new_board;
     stack.Reset();
 
     // Reset info data
