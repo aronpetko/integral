@@ -53,7 +53,7 @@ Score Evaluate(std::shared_ptr<Accumulator> &accumulator) {
   // De-quantize again
   eval /= arch::kHiddenLayerQuantization * arch::kOutputQuantization;
 
-  return eval / 2;
+  return eval;
 }
 
 }  // namespace nnue
