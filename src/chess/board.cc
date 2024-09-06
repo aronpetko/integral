@@ -18,10 +18,12 @@ constexpr std::array<U8, 64> kCastlingRights = {
 };
 // clang-format on
 
-Board::Board() : history_({}) {}
+Board::Board() : history_({}) {
+}
 
 Board::Board(const BoardState &state)
-    : history_({}), key_history_({}), state_(state) {}
+    : history_({}), state_(state) {
+}
 
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
@@ -30,7 +32,6 @@ void Board::SetFromFen(std::string_view fen_str) {
   accumulator_->SetFromState(state_);
 
   history_.Clear();
-  key_history_.Clear();
 
   CalculateThreats();
 }
@@ -189,12 +190,8 @@ template void Board::MakeMove<false>(Move move);
 
 template <bool do_updates>
 void Board::MakeMove(Move move) {
-  key_history_.Push(state_.zobrist_key);
   accumulator_->MakeMove(state_, move);
-
-  if constexpr (do_updates) {
-    history_.Push(state_);
-  }
+  history_.Push(state_);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -253,14 +250,12 @@ void Board::MakeMove(Move move) {
 }
 
 void Board::UndoMove() {
-  key_history_.PopBack();
   state_ = history_.PopBack();
   accumulator_->UndoMove();
 }
 
 void Board::MakeNullMove() {
   history_.Push(state_);
-  key_history_.Push(state_.zobrist_key);
   accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
@@ -324,11 +319,11 @@ U64 Board::PredictKeyAfter(Move move) {
 
 bool Board::HasRepeated(U16 ply) {
   const int max_dist =
-      std::min<int>(state_.fifty_moves_clock, key_history_.Size());
+      std::min<int>(state_.fifty_moves_clock, history_.Size());
 
   bool hit_before_root = false;
   for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == key_history_[key_history_.Size() - i]) {
+    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
       if (ply >= i) return true;
       if (hit_before_root) return true;
       hit_before_root = true;
