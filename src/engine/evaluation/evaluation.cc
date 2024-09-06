@@ -1,6 +1,7 @@
 #include "evaluation.h"
 
 #include "../../tuner/tuner.h"
+#include "nnue/nnue.h"
 
 namespace eval {
 
@@ -721,8 +722,9 @@ template <Color us>
   return masks::outposts[us].IsSet(square) && safe_from_pawns;
 }
 
-Score Evaluate(const BoardState &state) {
-  return Evaluation(state).GetScore();
+Score Evaluate(Board &board) {
+  return nnue::Evaluate(board.GetAccumulator());
+  // return Evaluation(state).GetScore();
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {

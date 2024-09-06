@@ -46,7 +46,7 @@ constexpr int kMaxPhase = 24;
 
 bool StaticExchange(Move move, int threshold, const BoardState &state);
 
-Score Evaluate(const BoardState &state);
+Score Evaluate(Board &board);
 
 }  // namespace eval
 

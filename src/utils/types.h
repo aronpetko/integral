@@ -19,7 +19,7 @@ using I64 = std::int64_t;
 using U128 = unsigned __int128;
 
 constexpr int kMaxPlyFromRoot = 256;
-constexpr int kMaxGamePly = 1024;
+constexpr int kMaxGamePly = 512;
 
 enum PieceType : U8 {
   kPawn,
@@ -46,8 +46,8 @@ enum MoveGenType : U8 {
 };
 
 enum Color : U8 {
-  kBlack,
   kWhite,
+  kBlack,
   kNoColor,
   kNumColors = 2
 };
@@ -133,12 +133,12 @@ class Square {
   }
 
   [[nodiscard]] constexpr Square RelativeTo(Color side) const {
-    return square_ ^ (56 * side);
+    return square_ ^ (56 * !side);
   }
 
   template <Color side>
   [[nodiscard]] constexpr Square RelativeTo() const {
-    return square_ ^ (56 * side);
+    return square_ ^ (56 * !side);
   }
 
   template <Color side>

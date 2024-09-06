@@ -62,7 +62,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       std::string move_str;
       while (stream >> move_str) {
         const auto move = Move::FromStr(move_str, board.GetState());
-        if (move) board.MakeMove(move);
+        if (move) board.MakeMove<false>(move);
         else fmt::println("Error: invalid move '{}'", move_str);
       }
     }
@@ -158,7 +158,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
   });
 
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
-    fmt::println("info cp {}", eval::Evaluate(board.GetState()));
+    fmt::println("info cp {}", eval::Evaluate(board));
   });
 
   listener.RegisterCommand("print", CommandType::kUnordered, {}, [&board](Command *cmd) {
