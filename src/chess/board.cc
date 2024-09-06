@@ -191,7 +191,11 @@ template void Board::MakeMove<false>(Move move);
 template <bool do_updates>
 void Board::MakeMove(Move move) {
   accumulator_->MakeMove(state_, move);
-  history_.Push(state_);
+  key_history_.Push(state_.zobrist_key);
+
+  if constexpr (do_updates) {
+    history_.Push(state_);
+  }
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -251,11 +255,13 @@ void Board::MakeMove(Move move) {
 
 void Board::UndoMove() {
   state_ = history_.PopBack();
+  key_history_.PopBack();
   accumulator_->UndoMove();
 }
 
 void Board::MakeNullMove() {
   history_.Push(state_);
+  key_history_.Push(state_.zobrist_key);
   accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
