@@ -46,11 +46,18 @@ class Accumulator {
     const auto captured_piece = state.GetPieceType(to);
 
     switch (type) {
-      case MoveType::kPromotion:
-        AddSubSubFeatures(to, static_cast<int>(move.GetPromotionType()) + 1, state.turn,
-                          from, moving_piece, state.turn,
-                          to, captured_piece, FlipColor(state.turn));
+      case MoveType::kPromotion: {
+        auto promotion_piece = static_cast<PieceType>(static_cast<int>(move.GetPromotionType()) + 1);
+        if (captured_piece != PieceType::kNone) {
+          AddSubSubFeatures(to, promotion_piece, state.turn,
+                            from, moving_piece, state.turn,
+                            to, captured_piece, FlipColor(state.turn));
+        } else {
+          AddSubFeatures(to, promotion_piece, state.turn,
+                         from, moving_piece, state.turn);
+        }
         break;
+      }
       case MoveType::kCastle: {
         const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
         const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
@@ -95,7 +102,8 @@ class Accumulator {
   [[nodiscard]] Color GetTurn() const { return turn_; }
 
   [[nodiscard]] int GetOutputBucket() const {
-    return (accumulator_.num_pieces - 2) / kBucketDivisor;
+    return std::min((accumulator_.num_pieces - 2) / kBucketDivisor,
+                    static_cast<int>(arch::kOutputBucketCount - 1));
   }
 
   MultiArray<I32, arch::kHiddenLayerSize>& operator[](int perspective) {
