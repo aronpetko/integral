@@ -59,6 +59,10 @@ class Accumulator {
                        PieceType(static_cast<int>(move.GetPromotionType()) + 1),
                        state.turn,
                        1);
+        // Remove the captured piece, if any
+        if (captured_piece != PieceType::kNone) {
+          UpdateFeatures(to, captured_piece, FlipColor(state.turn), -1);
+        }
         break;
       }
       case MoveType::kCastle: {
