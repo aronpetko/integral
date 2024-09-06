@@ -13,18 +13,26 @@ struct alignas(64) RawNetwork {
   MultiArray<I16, arch::kInputLayerSize, arch::kHiddenLayerSize>
       feature_weights;
   MultiArray<I16, arch::kHiddenLayerSize> feature_biases;
-  MultiArray<I16, 2, arch::kHiddenLayerSize, arch::kOutputBucketCount>
+  MultiArray<I16,
+             2,
+             arch::kHiddenLayerSize,
+             arch::kOutputBucketCount * arch::kOutputBucketCount>
       output_weights;
-  MultiArray<I16, arch::kOutputBucketCount> output_biases;
+  MultiArray<I16, arch::kOutputBucketCount * arch::kOutputBucketCount>
+      output_biases;
 };
 
 struct alignas(64) TransposedNetwork {
   MultiArray<I16, arch::kInputLayerSize, arch::kHiddenLayerSize>
       feature_weights;
   MultiArray<I16, arch::kHiddenLayerSize> feature_biases;
-  MultiArray<I16, arch::kOutputBucketCount, 2, arch::kHiddenLayerSize>
+  MultiArray<I16,
+             arch::kOutputBucketCount * arch::kOutputBucketCount,
+             2,
+             arch::kHiddenLayerSize>
       output_weights;
-  MultiArray<I16, arch::kOutputBucketCount> output_biases;
+  MultiArray<I16, arch::kOutputBucketCount * arch::kOutputBucketCount>
+      output_biases;
 };
 
 inline TransposedNetwork network;

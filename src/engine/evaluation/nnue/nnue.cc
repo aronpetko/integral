@@ -33,9 +33,14 @@ void LoadFromIncBin() {
 
   // We transpose the output weights from Bullet since we get better cache hits
   // with this layout
-  MultiArray<I16, arch::kOutputBucketCount, 2, arch::kHiddenLayerSize>
+  MultiArray<I16,
+             arch::kOutputBucketCount * arch::kOutputBucketCount,
+             2,
+             arch::kHiddenLayerSize>
       transposed_output_weights;
-  for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
+  for (int bucket = 0;
+       bucket < arch::kOutputBucketCount * arch::kOutputBucketCount;
+       bucket++) {
     for (Color perspective : {Color::kBlack, Color::kWhite}) {
       for (int weight = 0; weight < arch::kHiddenLayerSize; weight++) {
         transposed_output_weights[bucket][perspective][weight] =

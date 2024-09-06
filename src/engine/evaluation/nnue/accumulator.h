@@ -16,7 +16,7 @@ class Accumulator {
     accumulators_.clear();
     accumulators_.shrink_to_fit();
     accumulators_.reserve(kMaxGamePly);
-    accumulator_.num_pieces = 0;
+    accumulator_.num_pieces.fill(0);
 
     for (int perspective = Color::kWhite; perspective <= Color::kBlack;
          perspective++) {
@@ -108,8 +108,10 @@ class Accumulator {
     return turn_;
   }
 
-  [[nodiscard]] int GetOutputBucket() const {
-    return (accumulator_.num_pieces - 2) / kBucketDivisor;
+  [[nodiscard]] U8 GetOutputBucket() const {
+    return (accumulator_.num_pieces[turn_] - 2) / kBucketDivisor *
+               arch::kOutputBucketCount +
+           (accumulator_.num_pieces[!turn_] - 2) / kBucketDivisor;
   }
 
   MultiArray<I32, arch::kHiddenLayerSize>& operator[](int perspective) {
@@ -132,7 +134,7 @@ class Accumulator {
             delta * network.feature_weights[index][i];
       }
     }
-    accumulator_.num_pieces += delta;
+    accumulator_.num_pieces[piece_color] += delta;
   }
 
   I32 GetFeatureIndex(Square square,
@@ -153,7 +155,7 @@ class Accumulator {
   using AccumulatorContainer = MultiArray<I32, 2, arch::kHiddenLayerSize>;
 
   struct AccumulatorEntry {
-    int num_pieces;
+    SideTable<U8> num_pieces;
     AccumulatorContainer active;
   };
 
