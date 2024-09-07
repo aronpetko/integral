@@ -291,7 +291,8 @@ class Board {
 
  private:
   BoardState state_;
-  List<BoardState, 1024> history_;
+  List<BoardState, kMaxGamePly> history_;
+  List<U64, kMaxGamePly * 2> key_history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 
