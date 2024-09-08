@@ -2,7 +2,6 @@
 #define INTEGRAL_SPSA_H
 
 #include "../engine/uci/uci.h"
-#include "tuner.h"
 
 // #define SPSA_TUNE
 
