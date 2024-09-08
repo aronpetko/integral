@@ -18,7 +18,7 @@ struct Config {
   U64 hard_node_limit = 0;
   U64 num_games = 0;
   I32 num_threads = 0;
-  I32 random_move_plies = 8;
+  I32 min_move_plies = 8, max_move_plies = 9;
   std::string output_file;
 };
 

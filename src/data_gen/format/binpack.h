@@ -91,6 +91,8 @@ class BinPackFormatter : public OutputFormatter {
   void SetPosition(const BoardState& state) override {
     start_pos_ = ConvertBoardState(state);
     moves_.clear();
+    moves_.shrink_to_fit();
+    moves_.reserve(256);
   }
 
   void PushMove(Move move, Color turn, Score score) override {

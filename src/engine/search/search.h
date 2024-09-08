@@ -39,8 +39,11 @@ struct Thread {
     return id == 0;
   }
 
-  void Reset(Board &new_board) {
+  void SetBoard(Board &new_board) {
     board = new_board;
+  }
+
+  void Reset() {
     stack.Reset();
 
     // Reset info data

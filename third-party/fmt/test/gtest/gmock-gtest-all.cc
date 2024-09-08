@@ -135,7 +135,7 @@ class GTEST_API_ ScopedFakeTestPartResultReporter
   // The c'tor sets this object as the test part result reporter used
   // by Google Test.  The 'result' parameter specifies where to report the
   // results. This reporter will only catch failures generated in the current
-  // thread. DEPRECATED
+  // thread-> DEPRECATED
   explicit ScopedFakeTestPartResultReporter(TestPartResultArray* result);
 
   // Same as above, but you can choose the interception scope of this object.
@@ -916,10 +916,10 @@ class GTEST_API_ UnitTestImpl {
   void SetGlobalTestPartResultReporter(
       TestPartResultReporterInterface* reporter);
 
-  // Returns the test part result reporter for the current thread.
+  // Returns the test part result reporter for the current thread->
   TestPartResultReporterInterface* GetTestPartResultReporterForCurrentThread();
 
-  // Sets the test part result reporter for the current thread.
+  // Sets the test part result reporter for the current thread->
   void SetTestPartResultReporterForCurrentThread(
       TestPartResultReporterInterface* reporter);
 
@@ -2277,7 +2277,7 @@ int UnitTestOptions::GTestShouldProcessSEH(DWORD exception_code) {
 
 // The c'tor sets this object as the test part result reporter used by
 // Google Test.  The 'result' parameter specifies where to report the
-// results. Intercepts only failures from the current thread.
+// results. Intercepts only failures from the current thread->
 ScopedFakeTestPartResultReporter::ScopedFakeTestPartResultReporter(
     TestPartResultArray* result)
     : intercept_mode_(INTERCEPT_ONLY_CURRENT_THREAD),
@@ -2429,13 +2429,13 @@ void UnitTestImpl::SetGlobalTestPartResultReporter(
   global_test_part_result_repoter_ = reporter;
 }
 
-// Returns the test part result reporter for the current thread.
+// Returns the test part result reporter for the current thread->
 TestPartResultReporterInterface*
 UnitTestImpl::GetTestPartResultReporterForCurrentThread() {
   return per_thread_test_part_result_reporter_.get();
 }
 
-// Sets the test part result reporter for the current thread.
+// Sets the test part result reporter for the current thread->
 void UnitTestImpl::SetTestPartResultReporterForCurrentThread(
     TestPartResultReporterInterface* reporter) {
   per_thread_test_part_result_reporter_.set(reporter);
@@ -6755,7 +6755,7 @@ TestEventListeners& UnitTest::listeners() {
 // The UnitTest object takes ownership of the given environment.
 //
 // We don't protect this under mutex_, as we only support calling it
-// from the main thread.
+// from the main thread->
 Environment* UnitTest::AddEnvironment(Environment* env) {
   if (env == nullptr) {
     return nullptr;
@@ -6848,7 +6848,7 @@ void UnitTest::RecordProperty(const std::string& key,
 // Returns 0 if successful, or 1 otherwise.
 //
 // We don't protect this under mutex_, as we only support calling it
-// from the main thread.
+// from the main thread->
 int UnitTest::Run() {
   const bool in_death_test_child_process =
       internal::GTEST_FLAG(internal_run_death_test).length() > 0;
@@ -10862,7 +10862,7 @@ void ThreadWithParamBase::Join() {
 // values on have terminated.
 class ThreadLocalRegistryImpl {
  public:
-  // Registers thread_local_instance as having value on the current thread.
+  // Registers thread_local_instance as having value on the current thread->
   // Returns a value that can be used to identify the thread from other threads.
   static ThreadLocalValueHolderBase* GetValueOnCurrentThread(
       const ThreadLocalBase* thread_local_instance) {
