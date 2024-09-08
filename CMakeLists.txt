@@ -23,7 +23,7 @@ elseif (BUILD_X86_64_MODERN)
 elseif (BUILD_X86_64_BMI2)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=haswell -mavx2 -mbmi2")
 elseif (BUILD_NATIVE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -DSIMD")
 endif ()
 
 # Set debug and release specific flags
