@@ -5,10 +5,10 @@
 
 #include <csignal>
 #include <filesystem>
+#include <fstream>
 
 #include "../chess/board.h"
 #include "../engine/search/search.h"
-#include "../engine/uci/option.h"
 #include "format/binpack.h"
 #include "format/fens.h"
 
@@ -85,7 +85,7 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
     auto &chosen_moves = piece_moves[chosen_piece];
     const auto random_move =
         chosen_moves[RandomU64(0, chosen_moves.Size() - 1)];
-    board.MakeMove<false>(random_move);
+    board.MakeMove(random_move);
 
     // Prevent the last ply from being a checkmate/stalemate
     if (++current_ply == target_plies && GetLegalMoves(board).Empty()) {
@@ -214,7 +214,7 @@ void GameLoop(const Config &config,
 
     std::optional<double> wdl_outcome;
     while (!stop) {
-      // Score returned in white-relative
+      // Score returned as white-relative
       const auto [score, best_move] = search.DataGenStart(thread, time_config);
 
       // The game has ended
@@ -248,7 +248,7 @@ void GameLoop(const Config &config,
         }
       }
 
-      thread->board.MakeMove<false>(best_move);
+      thread->board.MakeMove(best_move);
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root

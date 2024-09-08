@@ -9,7 +9,6 @@
 #include "../../data_gen/data_gen.h"
 #include "../../engine/evaluation/pawn_structure_cache.h"
 #include "../../tests/tests.h"
-#include "../../tuner/tuner.h"
 #include "../search/search.h"
 #include "../search/syzygy/syzygy.h"
 #include "fmt/format.h"
@@ -62,7 +61,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       std::string move_str;
       while (stream >> move_str) {
         const auto move = Move::FromStr(move_str, board.GetState());
-        if (move) board.MakeMove<false>(move);
+        if (move) board.MakeMove(move);
         else fmt::println("Error: invalid move '{}'", move_str);
       }
     }
@@ -246,11 +245,6 @@ void AcceptCommands(int arg_count, char **args) {
   PrintAsciiLogo();
   fmt::println(
       "    {} by {}\n", constants::kEngineName, constants::kEngineAuthor);
-
-#ifdef TUNE
-  Tuner tuner;
-  tuner.LoadAndTune(args[1]);
-#endif
 
   listener.Listen();
 }
