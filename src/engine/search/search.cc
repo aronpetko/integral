@@ -41,7 +41,7 @@ const LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
 
 const std::array<Score, kNumPieceTypes> kPieceValues = {
-    100, 300, 305, 500, 900};
+    100, 300, 305, 500, 900, 0};
 
 }  // namespace tables
 
@@ -283,7 +283,7 @@ Score Search::QuiescentSearch(Thread &thread,
     }
 
     // Don't prune if we haven't found a legal first move
-    if (moves_seen > 0) {
+    if (moves_seen > 0 && !in_check) {
       // QS Futility Pruning: Prune capture moves that have a low chance of
       // raising alpha
       if (move.IsCapture(state)) {
