@@ -1,5 +1,5 @@
-#ifndef INTEGRAL_SH_SIMD_H_
-#define INTEGRAL_SH_SIMD_H_
+#ifndef INTEGRAL_SIMD_H_
+#define INTEGRAL_SIMD_H_
 
 #include "types.h"
 
@@ -119,7 +119,7 @@ inline int ReduceAddEpi32(Vepi32 vector) {
   auto sum128 = _mm_add_epi32(high128, low128);
   auto high64 = _mm_unpackhi_epi64(sum128, sum128);
   auto sum64 = _mm_add_epi32(sum128, high64);
-  const auto high32 = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));
+  const auto high32 = _mmuffle_epi32(sum64, _MMUFFLE(2, 3, 0, 1));
   const auto sum32 = _mm_add_epi32(sum64, high32);
 
   return _mm_cvtsi128_si32(sum32);
@@ -129,4 +129,4 @@ inline int ReduceAddEpi32(Vepi32 vector) {
 
 }  // namespace simd
 
-#endif  // INTEGRAL_SH_SIMD_H_
+#endif  // INTEGRAL_SIMD_H_
