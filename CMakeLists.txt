@@ -44,22 +44,6 @@ function(check_avx_support)
             message(STATUS "Compiler supports AVX2")
             return()
         endif()
-<<<<<<< HEAD
-
-        # Check for AVX support
-        check_cxx_compiler_flag("-mavx" COMPILER_SUPPORTS_AVX)
-
-        if(COMPILER_SUPPORTS_AVX)
-            set(AVX_FLAGS "-mavx" PARENT_SCOPE)
-            set(AVX_DEFINES "-DSIMD -DAVX" PARENT_SCOPE)
-            message(STATUS "Compiler supports AVX")
-            return()
-        endif()
-
-        # No AVX support found
-        message(STATUS "Compiler does not support AVX, AVX2, or AVX512")
-=======
->>>>>>> main
     else()
         message(WARNING "AVX support check skipped for unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
