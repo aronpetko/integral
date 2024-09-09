@@ -898,8 +898,8 @@ Score Search::PVSearch(Thread &thread,
 
             // Adjust history bonus and penalties based on if the evaluation
             // mis-predicted a fail-low
-            const int bonus_depth = depth + stack->eval <= alpha;
-            const int penalty_depth = depth - stack->eval <= alpha;
+            const int bonus_depth = depth + stack->eval <= alpha - stack->eval >= beta;
+            const int penalty_depth = depth - stack->eval <= alpha + stack->eval >= beta;
 
             history.quiet_history->UpdateScore(
                 state, stack, bonus_depth, penalty_depth, threats, quiets);
