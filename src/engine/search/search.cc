@@ -891,6 +891,7 @@ Score Search::PVSearch(Thread &thread,
         stack->pv.Push(move);
         stack->pv.AppendPV((stack + 1)->pv);
 
+        const int previous_alpha = alpha;
         alpha = score;
         if (alpha >= beta) {
           if (is_quiet) {
@@ -898,8 +899,10 @@ Score Search::PVSearch(Thread &thread,
 
             // Adjust history bonus and penalties based on if the evaluation
             // mis-predicted a fail-low
-            const int bonus_depth = depth + stack->eval <= alpha - stack->eval >= beta;
-            const int penalty_depth = depth - stack->eval <= alpha + stack->eval >= beta;
+            const int bonus_depth =
+                depth + stack->eval <= previous_alpha - stack->eval >= beta;
+            const int penalty_depth =
+                depth - stack->eval <= previous_alpha + stack->eval >= beta;
 
             history.quiet_history->UpdateScore(
                 state, stack, bonus_depth, penalty_depth, threats, quiets);
