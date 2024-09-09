@@ -13,6 +13,25 @@ option(BUILD_X86_64_BMI2 "Build with x86-64 bmi2 optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 option(BUILD_NATIVE "Build with native optimizations" ON)
 
+# Function to check for AVX support
+function(check_avx_support)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686|i386")
+        # Check for AVX512 support
+        check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512)
+        if(COMPILER_SUPPORTS_AVX512)
+            set(AVX_FLAGS "-mavx512f" PARENT_SCOPE)
+            set(AVX_DEFINES "-DSIMD -DAVX512" PARENT_SCOPE)
+        else()
+            # Check for AVX2 support
+            check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
+            if(COMPILER_SUPPORTS_AVX2)
+                set(AVX_FLAGS "-mavx2 -mavx" PARENT_SCOPE)
+                set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
+            endif()
+        endif()
+    endif()
+endfunction()
+
 # Set the build type
 if (BUILD_DEBUG)
     set(CMAKE_BUILD_TYPE Debug)
@@ -23,7 +42,9 @@ elseif (BUILD_X86_64_MODERN)
 elseif (BUILD_X86_64_BMI2)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=haswell -mavx2 -mbmi2")
 elseif (BUILD_NATIVE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    check_avx_support()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native ${AVX_FLAGS}")
+    add_definitions(${AVX_DEFINES})
 endif ()
 
 # Set debug and release specific flags

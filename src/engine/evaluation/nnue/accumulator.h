@@ -135,11 +135,11 @@ class Accumulator {
                     static_cast<int>(arch::kOutputBucketCount - 1));
   }
 
-  MultiArray<I32, arch::kHiddenLayerSize>& operator[](int perspective) {
+  MultiArray<I16, arch::kHiddenLayerSize>& operator[](int perspective) {
     return accumulator_.active[perspective];
   }
 
-  const MultiArray<I32, arch::kHiddenLayerSize>& operator[](
+  const MultiArray<I16, arch::kHiddenLayerSize>& operator[](
       int perspective) const {
     return accumulator_.active[perspective];
   }
@@ -237,7 +237,7 @@ class Accumulator {
     }
   }
 
-  I32 GetFeatureIndex(Square square,
+  I16 GetFeatureIndex(Square square,
                       int piece,
                       int piece_color,
                       int perspective) const {
@@ -252,11 +252,11 @@ class Accumulator {
   }
 
  private:
-  using AccumulatorContainer = MultiArray<I32, 2, arch::kHiddenLayerSize>;
+  using AccumulatorContainer = MultiArray<I16, 2, arch::kHiddenLayerSize>;
 
   struct AccumulatorEntry {
     int num_pieces;
-    AccumulatorContainer active;
+    alignas(64) AccumulatorContainer active;
   };
 
  private:
