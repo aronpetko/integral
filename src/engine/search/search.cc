@@ -40,6 +40,9 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
 const LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
 
+const std::array<Score, kNumPieceTypes> kPieceValues = {
+    100, 300, 305, 500, 900};
+
 }  // namespace tables
 
 Search::Search(Board &board)
@@ -279,10 +282,20 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    // QS Futility Pruning: Prune capture moves that don't win material if the
-    // static eval is behind alpha by some margin
-    if (!in_check && move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1, state)) {
+    // QS Futility Pruning: Prune capture moves that have a low chance of
+    // raising alpha
+    if (move.IsCapture(state)) {
+      const Score capture_score =
+          futility_score +
+          tables::kPieceValues[state.GetPieceType(move.GetTo())];
+      if (!in_check && capture_score <= alpha) {
+        best_score = std::max(best_score, capture_score);
+        continue;
+      }
+    }
+
+    // Futility SEE Pruning: Prune this move is unlikely to raise alpha
+    if (futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
     }
