@@ -15,37 +15,52 @@ option(BUILD_NATIVE "Build with native optimizations" ON)
 
 function(check_avx_support)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686|i386")
+        include(CheckCXXCompilerFlag)
+
         # Check for AVX512 support
-        check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512)
-        if(COMPILER_SUPPORTS_AVX512)
-            set(AVX_FLAGS "-mavx512f" PARENT_SCOPE)
+        check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512F)
+        check_cxx_compiler_flag("-mavx512dq" COMPILER_SUPPORTS_AVX512DQ)
+        check_cxx_compiler_flag("-mavx512bw" COMPILER_SUPPORTS_AVX512BW)
+        check_cxx_compiler_flag("-mavx512vl" COMPILER_SUPPORTS_AVX512VL)
+
+        if(COMPILER_SUPPORTS_AVX512F AND COMPILER_SUPPORTS_AVX512DQ AND
+                COMPILER_SUPPORTS_AVX512BW AND COMPILER_SUPPORTS_AVX512VL)
+            set(AVX_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl" PARENT_SCOPE)
             set(AVX_DEFINES "-DSIMD -DAVX512" PARENT_SCOPE)
-            return()  # Stop further checks once AVX-512 is found
+            message(STATUS "Compiler supports AVX512")
+            return()
         endif()
 
         # Check for AVX2 support
         check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
+        check_cxx_compiler_flag("-mfma" COMPILER_SUPPORTS_FMA)
+
         if(COMPILER_SUPPORTS_AVX2)
-            set(AVX_FLAGS "-mavx2 -mavx" PARENT_SCOPE)
+            set(AVX_FLAGS "-mavx2" PARENT_SCOPE)
             set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
+            if(COMPILER_SUPPORTS_FMA)
+                set(AVX_FLAGS "${AVX_FLAGS} -mfma" PARENT_SCOPE)
+            endif()
+            message(STATUS "Compiler supports AVX2")
             return()
         endif()
 
         # Check for AVX support
         check_cxx_compiler_flag("-mavx" COMPILER_SUPPORTS_AVX)
+
         if(COMPILER_SUPPORTS_AVX)
             set(AVX_FLAGS "-mavx" PARENT_SCOPE)
             set(AVX_DEFINES "-DSIMD -DAVX" PARENT_SCOPE)
+            message(STATUS "Compiler supports AVX")
             return()
         endif()
 
         # No AVX support found
-        message(WARNING "AVX, AVX2, and AVX512 are not supported on this platform.")
+        message(STATUS "Compiler does not support AVX, AVX2, or AVX512")
     else()
         message(WARNING "AVX support check skipped for unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 endfunction()
-
 
 # Set the build type
 if (BUILD_DEBUG)
