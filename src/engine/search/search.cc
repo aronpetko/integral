@@ -282,22 +282,25 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    // QS Futility Pruning: Prune capture moves that have a low chance of
-    // raising alpha
-    if (move.IsCapture(state)) {
-      const Score capture_score =
-          futility_score +
-          tables::kPieceValues[state.GetPieceType(move.GetTo())];
-      if (!in_check && capture_score <= alpha) {
-        best_score = std::max(best_score, capture_score);
+    // Don't prune if we haven't found a legal first move
+    if (moves_seen > 0) {
+      // QS Futility Pruning: Prune capture moves that have a low chance of
+      // raising alpha
+      if (move.IsCapture(state)) {
+        const Score capture_score =
+            futility_score +
+            tables::kPieceValues[state.GetPieceType(move.GetTo())];
+        if (capture_score <= alpha) {
+          best_score = std::max(best_score, capture_score);
+          continue;
+        }
+      }
+
+      // Futility SEE Pruning: Prune this move is unlikely to raise alpha
+      if (futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
+        best_score = std::max(best_score, futility_score);
         continue;
       }
-    }
-
-    // Futility SEE Pruning: Prune this move is unlikely to raise alpha
-    if (futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
-      best_score = std::max(best_score, futility_score);
-      continue;
     }
 
     // Prefetch the TT entry for the next move as early as possible
