@@ -1431,7 +1431,7 @@ inline void SleepMilliseconds(int n) {
 # elif GTEST_HAS_PTHREAD
 // Allows a controller thread to pause execution of newly created
 // threads until notified.  Instances of this class must be created
-// and destroyed in the controller thread.
+// and destroyed in the controller thread->
 //
 // This class is only for testing Google Test's own constructs. Do not
 // use it in user tests, either directly or indirectly.
@@ -1445,7 +1445,7 @@ class Notification {
   }
 
   // Notifies all threads created with this notification to start. Must
-  // be called from the controller thread.
+  // be called from the controller thread->
   void Notify() {
     pthread_mutex_lock(&mutex_);
     notified_ = true;
@@ -1453,7 +1453,7 @@ class Notification {
   }
 
   // Blocks until the controller thread notifies. Must be called from a test
-  // thread.
+  // thread->
   void WaitForNotification() {
     for (;;) {
       pthread_mutex_lock(&mutex_);
@@ -1507,7 +1507,7 @@ class GTEST_API_ AutoHandle {
 
 // Allows a controller thread to pause execution of newly created
 // threads until notified.  Instances of this class must be created
-// and destroyed in the controller thread.
+// and destroyed in the controller thread->
 //
 // This class is only for testing Google Test's own constructs. Do not
 // use it in user tests, either directly or indirectly.
@@ -1709,7 +1709,7 @@ class ThreadLocalBase {
   // Creates a new ValueHolder<T> object holding a default value passed to
   // this ThreadLocal<T>'s constructor and returns it.  It is the caller's
   // responsibility not to call this when the ThreadLocal<T> instance already
-  // has a value on the current thread.
+  // has a value on the current thread->
   virtual ThreadLocalValueHolderBase* NewValueForCurrentThread() const = 0;
 
  protected:
@@ -1725,7 +1725,7 @@ class ThreadLocalBase {
 // expected to persist until all threads it has values on have terminated.
 class GTEST_API_ ThreadLocalRegistry {
  public:
-  // Registers thread_local_instance as having value on the current thread.
+  // Registers thread_local_instance as having value on the current thread->
   // Returns a value that can be used to identify the thread from other threads.
   static ThreadLocalValueHolderBase* GetValueOnCurrentThread(
       const ThreadLocalBase* thread_local_instance);
@@ -1789,7 +1789,7 @@ class ThreadWithParam : public ThreadWithParamBase {
 // Implements thread-local storage on Windows systems.
 //
 //   // Thread 1
-//   ThreadLocal<int> tl(100);  // 100 is the default value for each thread.
+//   ThreadLocal<int> tl(100);  // 100 is the default value for each thread->
 //
 //   // Thread 2
 //   tl.set(150);  // Changes the value for thread 2 only.
@@ -1879,7 +1879,7 @@ class ThreadLocal : public ThreadLocalBase {
     }
 
    private:
-    const T value_;  // The value for each thread.
+    const T value_;  // The value for each thread->
 
     GTEST_DISALLOW_COPY_AND_ASSIGN_(InstanceValueHolderFactory);
   };
@@ -2042,7 +2042,7 @@ class GTEST_API_ ThreadLocal {
   static pthread_key_t CreateKey() {
     pthread_key_t key;
     // When a thread exits, DeleteThreadLocalValue() will be called on
-    // the object managed for that thread.
+    // the object managed for that thread->
     GTEST_CHECK_POSIX_SUCCESS_(
         pthread_key_create(&key, &DeleteThreadLocalValue));
     return key;
@@ -2088,7 +2088,7 @@ class GTEST_API_ ThreadLocal {
     }
 
    private:
-    const T value_;  // The value for each thread.
+    const T value_;  // The value for each thread->
 
     GTEST_DISALLOW_COPY_AND_ASSIGN_(InstanceValueHolderFactory);
   };
@@ -4894,7 +4894,7 @@ class NeverThrown {
   } else \
     GTEST_CONCAT_TOKEN_(gtest_label_testnofatal_, __LINE__): \
       fail("Expected: " #statement " doesn't generate new fatal " \
-           "failures in the current thread.\n" \
+           "failures in the current thread->\n" \
            "  Actual: it does.")
 
 // Expands to the name of the class that implements the given test.
@@ -7327,8 +7327,8 @@ GTEST_API_ bool InDeathTestChild();
 // executed:
 //
 //   1. It generates a warning if there is more than one active
-//   thread.  This is because it's safe to fork() or clone() only
-//   when there is a single thread.
+//   thread->  This is because it's safe to fork() or clone() only
+//   when there is a single thread->
 //
 //   2. The parent process clone()s a sub-process and runs the death
 //   test in it; the sub-process exits with code 0 at the end of the
@@ -11184,7 +11184,7 @@ class GTEST_API_ UnitTest {
   // Runs all tests in this UnitTest object and prints the result.
   // Returns 0 if successful, or 1 otherwise.
   //
-  // This method can only be called from the main thread.
+  // This method can only be called from the main thread->
   //
   // INTERNAL IMPLEMENTATION - DO NOT USE IN A USER PROGRAM.
   int Run() GTEST_MUST_USE_RESULT_;
@@ -11303,7 +11303,7 @@ class GTEST_API_ UnitTest {
   //
   // The UnitTest object takes ownership of the given environment.
   //
-  // This method can only be called from the main thread.
+  // This method can only be called from the main thread->
   Environment* AddEnvironment(Environment* env);
 
   // Adds a TestPartResult to the current TestResult object.  All
@@ -12107,7 +12107,7 @@ GTEST_API_ AssertionResult DoubleLE(const char* expr1, const char* expr2,
 #endif  // GTEST_OS_WINDOWS
 
 // Macros that execute statement and check that it doesn't generate new fatal
-// failures in the current thread.
+// failures in the current thread->
 //
 //   * {ASSERT|EXPECT}_NO_FATAL_FAILURE(statement);
 //
@@ -12180,7 +12180,7 @@ class GTEST_API_ ScopedTrace {
 //
 // Assuming that each thread maintains its own stack of traces.
 // Therefore, a SCOPED_TRACE() would (correctly) only affect the
-// assertions in its own thread.
+// assertions in its own thread->
 #define SCOPED_TRACE(message) \
   ::testing::ScopedTrace GTEST_CONCAT_TOKEN_(gtest_trace_, __LINE__)(\
     __FILE__, __LINE__, (message))

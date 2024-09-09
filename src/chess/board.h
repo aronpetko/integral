@@ -92,8 +92,6 @@ struct BoardState {
         non_pawn_keys({}),
         checkers(0ULL),
         pinned(0ULL),
-        phase(0),
-        king_bucket({}),
         half_moves(0) {
     piece_on_square.fill(PieceType::kNone);
   }
@@ -242,9 +240,6 @@ struct BoardState {
   BitBoard checkers;
   BitBoard threats;
   BitBoard pinned;
-  SideTable<ScorePair> piece_scores;
-  int phase;
-  SideTable<int> king_bucket;
 };
 
 class Board {
@@ -263,7 +258,6 @@ class Board {
 
   void SetFromFen(std::string_view fen_str);
 
-  template <bool do_updates = true>
   void MakeMove(Move move);
 
   void MakeNullMove();
@@ -291,8 +285,7 @@ class Board {
 
  private:
   BoardState state_;
-  List<BoardState, kMaxGamePly> history_;
-  List<U64, kMaxGamePly * 2> key_history_;
+  List<BoardState, 1024> history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 

@@ -256,7 +256,7 @@ class Accumulator {
 
   struct AccumulatorEntry {
     int num_pieces;
-    alignas(32) AccumulatorContainer active;
+    alignas(64) AccumulatorContainer active;
   };
 
  private:
