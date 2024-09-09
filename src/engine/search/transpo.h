@@ -24,7 +24,7 @@ struct TranspositionTableEntry {
         score(kScoreNone),
         static_eval(0),
         move(Move::NullMove()),
-        bits(0) {
+        bits({}) {
     SetFlag(kNone);
   }
 

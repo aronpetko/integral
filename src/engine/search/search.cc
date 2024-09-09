@@ -69,7 +69,7 @@ void Search::IterativeDeepening(Thread &thread) {
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
 
-    int window = static_cast<int>(asp_window_delta + score * score / 16384);
+    int window = static_cast<int>(asp_window_delta + score * score / 1300);
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
