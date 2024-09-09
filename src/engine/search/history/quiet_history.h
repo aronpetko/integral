@@ -13,14 +13,15 @@ class QuietHistory {
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
-                   int depth,
+                   int bonus_depth,
+                   int penalty_depth,
                    BitBoard threats,
-                   MoveList &quiets,
-                   bool cutnode) {
+                   MoveList &quiets) {
     const Color turn = state.turn;
     const Move move = stack->move;
 
-    const int bonus = HistoryBonus(depth + (cutnode && depth <= 3));
+    const int bonus = HistoryBonus(bonus_depth);
+    const int penalty = -HistoryBonus(penalty_depth);
 
     // Apply a linear dampening to the bonus as the depth increases
     int &score =
@@ -34,7 +35,7 @@ class QuietHistory {
       int &bad_quiet_score =
           table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()]
                 [ThreatIndex(bad_quiet, threats)];
-      bad_quiet_score += ScaleBonus(bad_quiet_score, -bonus);
+      bad_quiet_score += ScaleBonus(bad_quiet_score, penalty);
     }
   }
 

@@ -895,8 +895,14 @@ Score Search::PVSearch(Thread &thread,
         if (alpha >= beta) {
           if (is_quiet) {
             stack->AddKillerMove(move);
+
+            // Adjust history bonus and penalties based on if the evaluation
+            // mis-predicted a fail-low
+            const int bonus_depth = depth + stack->eval <= alpha;
+            const int penalty_depth = depth - stack->eval <= alpha;
+
             history.quiet_history->UpdateScore(
-                state, stack, depth, threats, quiets, cut_node);
+                state, stack, bonus_depth, penalty_depth, threats, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
           } else if (is_capture) {
