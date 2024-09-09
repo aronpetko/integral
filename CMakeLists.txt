@@ -13,7 +13,6 @@ option(BUILD_X86_64_BMI2 "Build with x86-64 bmi2 optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 option(BUILD_NATIVE "Build with native optimizations" ON)
 
-# Function to check for AVX support
 function(check_avx_support)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686|i386")
         # Check for AVX512 support
@@ -21,16 +20,32 @@ function(check_avx_support)
         if(COMPILER_SUPPORTS_AVX512)
             set(AVX_FLAGS "-mavx512f" PARENT_SCOPE)
             set(AVX_DEFINES "-DSIMD -DAVX512" PARENT_SCOPE)
-        else()
-            # Check for AVX2 support
-            check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
-            if(COMPILER_SUPPORTS_AVX2)
-                set(AVX_FLAGS "-mavx2 -mavx" PARENT_SCOPE)
-                set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
-            endif()
+            return()  # Stop further checks once AVX-512 is found
         endif()
+
+        # Check for AVX2 support
+        check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
+        if(COMPILER_SUPPORTS_AVX2)
+            set(AVX_FLAGS "-mavx2 -mavx" PARENT_SCOPE)
+            set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
+            return()
+        endif()
+
+        # Check for AVX support
+        check_cxx_compiler_flag("-mavx" COMPILER_SUPPORTS_AVX)
+        if(COMPILER_SUPPORTS_AVX)
+            set(AVX_FLAGS "-mavx" PARENT_SCOPE)
+            set(AVX_DEFINES "-DSIMD -DAVX" PARENT_SCOPE)
+            return()
+        endif()
+
+        # No AVX support found
+        message(WARNING "AVX, AVX2, and AVX512 are not supported on this platform.")
+    else()
+        message(WARNING "AVX support check skipped for unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 endfunction()
+
 
 # Set the build type
 if (BUILD_DEBUG)

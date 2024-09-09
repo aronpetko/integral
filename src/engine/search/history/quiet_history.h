@@ -15,11 +15,12 @@ class QuietHistory {
                    StackEntry *stack,
                    int depth,
                    BitBoard threats,
-                   MoveList &quiets) {
+                   MoveList &quiets,
+                   bool cutnode) {
     const Color turn = state.turn;
     const Move move = stack->move;
 
-    const int bonus = HistoryBonus(depth);
+    const int bonus = HistoryBonus(depth + (cutnode && depth <= 3));
 
     // Apply a linear dampening to the bonus as the depth increases
     int &score =

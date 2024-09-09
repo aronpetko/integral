@@ -896,7 +896,7 @@ Score Search::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, depth, threats, quiets);
+                state, stack, depth, threats, quiets, cut_node);
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
           } else if (is_capture) {

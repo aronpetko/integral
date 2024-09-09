@@ -117,11 +117,21 @@ inline int ReduceAddEpi32(Vepi32 vector) {
   auto low128 = _mm256_castsi256_si128(vector);
 
   auto sum128 = _mm_add_epi32(high128, low128);
+  // copies the highest 64 bits twice into a 128 vector
   auto high64 = _mm_unpackhi_epi64(sum128, sum128);
+
+  // we sum together the 64 least significant bits because those are the ones that matter
+  // bottom 64 bits store the 2 important numbers
   auto sum64 = _mm_add_epi32(sum128, high64);
-  const auto high32 = _mmuffle_epi32(sum64, _MMUFFLE(2, 3, 0, 1));
+
+  // take the highest 32 bits and places thin into the least significant 32 bits in a 128 vector
+  // the shuffle operation does this
+  const auto high32 = _mm_shuffle_epi32(sum64, _MM_SHUFFLE(2, 3, 0, 1));
+
+  // adds the two important numbers up
   const auto sum32 = _mm_add_epi32(sum64, high32);
 
+  // extracts the sum
   return _mm_cvtsi128_si32(sum32);
 }
 
