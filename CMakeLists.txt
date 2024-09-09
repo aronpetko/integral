@@ -25,7 +25,7 @@ function(check_avx_support)
             # Check for AVX2 support
             check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
             if(COMPILER_SUPPORTS_AVX2)
-                set(AVX_FLAGS "-mavx2" PARENT_SCOPE)
+                set(AVX_FLAGS "-mavx2 -mavx" PARENT_SCOPE)
                 set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
             endif()
         endif()
