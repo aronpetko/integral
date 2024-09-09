@@ -900,14 +900,14 @@ Score Search::PVSearch(Thread &thread,
             // Adjust history bonus and penalties based on if the evaluation
             // mis-predicted a fail-low
             const int bonus_depth =
-                depth + !in_check && ((stack->eval <= previous_alpha) - (stack->eval >= beta));
+                depth + ((stack->eval <= previous_alpha) - (stack->eval >= beta));
             const int penalty_depth =
-                depth - !in_check && ((stack->eval <= previous_alpha) + (stack->eval >= beta));
+                depth - ((stack->eval <= previous_alpha) + (stack->eval >= beta));
 
             history.quiet_history->UpdateScore(
-                state, stack, bonus_depth, penalty_depth, threats, quiets);
+                state, stack, in_check ? depth : bonus_depth, in_check ? depth : penalty_depth, threats, quiets);
             history.continuation_history->UpdateScore(
-                state, stack, bonus_depth, penalty_depth, quiets);
+                state, stack, in_check ? depth : bonus_depth, in_check ? depth : penalty_depth, quiets);
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, depth);
           }
