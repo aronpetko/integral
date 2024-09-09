@@ -56,7 +56,7 @@ Search::~Search() {
   }
 }
 
-template<SearchType type>
+template <SearchType type>
 void Search::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
@@ -177,7 +177,7 @@ void Search::IterativeDeepening(Thread &thread) {
   }
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
@@ -348,7 +348,7 @@ Score Search::QuiescentSearch(Thread &thread,
   return best_score;
 }
 
-template<NodeType node_type>
+template <NodeType node_type>
 Score Search::PVSearch(Thread &thread,
                        int depth,
                        Score alpha,
@@ -553,7 +553,7 @@ Score Search::PVSearch(Thread &thread,
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
     if (!stack->excluded_tt_move && depth <= 4 &&
-        stack->static_eval + 450 * std::max(0.0, depth + std::clamp(stack->improving_rate, -1.0, 0.0)) < alpha) {
+        stack->static_eval + 450 * depth + 200 * stack->improving_rate < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
@@ -604,8 +604,8 @@ Score Search::PVSearch(Thread &thread,
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - raw_static_eval;
         const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
-                                ? tt_move
-                                : Move::NullMove();
+                                  ? tt_move
+                                  : Move::NullMove();
 
         int moves_seen = 0;
         MovePicker move_picker(
@@ -783,14 +783,14 @@ Score Search::PVSearch(Thread &thread,
             extensions = 1;
           }
         }
-          // Multi-cut: The singular search had a beta cutoff, indicating that the
-          // TT move was not singular. Therefore, we prune if the same score would
-          // cause a cutoff based on our current search window
+        // Multi-cut: The singular search had a beta cutoff, indicating that the
+        // TT move was not singular. Therefore, we prune if the same score would
+        // cause a cutoff based on our current search window
         else if (new_beta >= beta) {
           return new_beta;
         }
-          // Negative Extensions: Search less since the TT move was not singular,
-          // and it might cause a beta cutoff again.
+        // Negative Extensions: Search less since the TT move was not singular,
+        // and it might cause a beta cutoff again.
         else if (tt_entry->score >= beta || cut_node) {
           extensions = -1;
         }
