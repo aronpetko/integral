@@ -16,21 +16,23 @@ class ContinuationHistory {
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
-                   int depth,
+                   int bonus_depth,
+                   int penalty_depth,
                    MoveList &quiets) {
     const Move move = stack->move;
 
-    const int bonus = HistoryBonus(depth);
+    const int bonus = HistoryBonus(bonus_depth);
     UpdateIndividualScore(state, move, bonus, stack - 1);
     UpdateIndividualScore(state, move, bonus, stack - 2);
     UpdateIndividualScore(state, move, bonus, stack - 4);
 
     // Lower the score of the quiet moves that failed to raise alpha
+    const int penalty = -HistoryBonus(penalty_depth);
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      UpdateIndividualScore(state, quiets[i], -bonus, stack - 1);
-      UpdateIndividualScore(state, quiets[i], -bonus, stack - 2);
-      UpdateIndividualScore(state, quiets[i], -bonus, stack - 4);
+      UpdateIndividualScore(state, quiets[i], penalty, stack - 1);
+      UpdateIndividualScore(state, quiets[i], penalty, stack - 2);
+      UpdateIndividualScore(state, quiets[i], penalty, stack - 4);
     }
   }
 

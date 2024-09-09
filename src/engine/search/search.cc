@@ -907,7 +907,7 @@ Score Search::PVSearch(Thread &thread,
             history.quiet_history->UpdateScore(
                 state, stack, bonus_depth, penalty_depth, threats, quiets);
             history.continuation_history->UpdateScore(
-                state, stack, depth, quiets);
+                state, stack, bonus_depth, penalty_depth, quiets);
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, depth);
           }
