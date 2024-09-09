@@ -1,14 +1,12 @@
 #include "nnue.h"
 
-#include <immintrin.h>
-
 #include "accumulator.h"
 #include "arch.h"
 
 #define SIMD
 
 #if defined(SIMD)
-#include <immintrin.h>
+#include "../../../utils/simd.h"
 #endif
 
 // This macro invocation will declare the following three variables
@@ -27,7 +25,7 @@ const unsigned int gEVALSize = 1;
 namespace nnue {
 
 #if defined(SIMD)
-I32 HorizontalSum(__m256i vector) {
+I32 HorizontalSum(vepi32 vector) {
   auto high128 = _mm256_extracti128_si256(vector, 1);
   auto low128 = _mm256_castsi256_si128(vector);
 
@@ -50,7 +48,7 @@ I32 HorizontalSum(__m256i vector) {
   return _mm_cvtsi128_si32(sum32);
 }
 #else
-I16 SquaredReLU(I16 value) {
+I16 SquaredCReLU(I16 value) {
   const I16 clipped = std::clamp<I16>(
       static_cast<I16>(value), 0, arch::kHiddenLayerQuantization);
   return clipped * clipped;
@@ -90,52 +88,46 @@ Score Evaluate(std::shared_ptr<Accumulator> &accumulator) {
 #if defined(SIMD)
   constexpr int kChunkSize = sizeof(__m256i) / sizeof(I16);
 
-  __m256i sum = _mm256_setzero_si256();
-  const __m256i zero = _mm256_setzero_si256();
-  const __m256i max_value = _mm256_set1_epi16(arch::kHiddenLayerQuantization);
+  auto sum = zero_epi32();
 
   // Compute evaluation from our perspective
   for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
-    const __m256i accumulator_value = _mm256_load_si256(
-        reinterpret_cast<__m256i *>(&(*accumulator)[turn][i]));
-    const __m256i weight_value = _mm256_load_si256(
-        reinterpret_cast<__m256i *>(&network.output_weights[bucket][0][i]));
+    const auto accumulator_value = load_epi16(&(*accumulator)[turn][i]);
+    const auto weight_value = load_epi16(&network.output_weights[bucket][0][i]);
 
     // Clip the accumulator values
-    const __m256i clipped =
-        _mm256_min_epi16(_mm256_max_epi16(accumulator_value, zero), max_value);
+    const auto clipped =
+        clip(accumulator_value, arch::kHiddenLayerQuantization);
 
     // Multiply weights by clipped values (still in i16, no overflow)
-    const __m256i product = _mm256_mullo_epi16(clipped, weight_value);
+    const auto product = multiply_epi16(clipped, weight_value);
 
     // Perform the second multiplication with widening to i32, accumulating the
     // result
-    const __m256i result = _mm256_madd_epi16(product, clipped);
+    const auto result = multiply_add_epi16(product, clipped);
 
     // Accumulate the results in 32-bit integers
-    sum = _mm256_add_epi32(sum, result);
+    sum = add_epi32(sum, result);
   }
 
   // Compute evaluation from their perspective
   for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
-    const __m256i accumulator_value = _mm256_load_si256(
-        reinterpret_cast<__m256i *>(&(*accumulator)[!turn][i]));
-    const __m256i weight_value = _mm256_load_si256(
-        reinterpret_cast<__m256i *>(&network.output_weights[bucket][1][i]));
+    const auto accumulator_value = load_epi16(&(*accumulator)[!turn][i]);
+    const auto weight_value = load_epi16(&network.output_weights[bucket][1][i]);
 
     // Clip the accumulator values
-    const __m256i clipped =
-        _mm256_min_epi16(_mm256_max_epi16(accumulator_value, zero), max_value);
+    const auto clipped =
+        clip(accumulator_value, arch::kHiddenLayerQuantization);
 
     // Multiply weights by clipped values (still in i16, no overflow)
-    const __m256i product = _mm256_mullo_epi16(clipped, weight_value);
+    const auto product = multiply_epi16(clipped, weight_value);
 
     // Perform the second multiplication with widening to i32, accumulating the
     // result
-    const __m256i result = _mm256_madd_epi16(product, clipped);
+    const auto result = multiply_add_epi16(product, clipped);
 
     // Accumulate the results in 32-bit integers
-    sum = _mm256_add_epi32(sum, result);
+    sum = add_epi32(sum, result);
   }
 
   // Perform a horizontal sum to get the final result
