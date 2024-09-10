@@ -8,7 +8,7 @@
 namespace search::history {
 
 using ContinuationEntry =
-    MultiArray<I32, kNumColors, kNumPieceTypes, kSquareCount>;
+    MultiArray<I32, kNumColors, 2, kNumPieceTypes, kSquareCount>;
 
 class ContinuationHistory {
  public:
@@ -37,7 +37,8 @@ class ContinuationHistory {
   [[nodiscard]] ContinuationEntry *GetEntry(const BoardState &state,
                                             Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &table_[state.turn][state.GetPieceType(from)][to];
+    return &table_[state.turn][move.IsCapture(state)][state.GetPieceType(from)]
+                  [to];
   }
 
   [[nodiscard]] int GetScore(const BoardState &state,
@@ -52,7 +53,7 @@ class ContinuationHistory {
 
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
-    return entry[state.turn][piece][to];
+    return entry[state.turn][move.IsCapture(state)][piece][to];
   }
 
  private:
@@ -70,12 +71,12 @@ class ContinuationHistory {
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
 
-    int &score = entry[state.turn][piece][to];
+    int &score = entry[state.turn][move.IsCapture(state)][piece][to];
     score += ScaleBonus(score, bonus);
   }
 
  private:
-  MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount>
+  MultiArray<ContinuationEntry, kNumColors, 2, kNumPieceTypes, kSquareCount>
       table_;
 };
 
