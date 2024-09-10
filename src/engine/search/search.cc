@@ -68,6 +68,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
+    root_stack->tb_score = kScoreNone;
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -434,7 +435,7 @@ Score Search::PVSearch(Thread &thread,
 
   // Probe the Syzygy table bases
   Score syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
-  if (syzygy::enabled &&  !stack->excluded_tt_move &&
+  if (syzygy::enabled && !stack->excluded_tt_move &&
       state.Occupied().PopCount() <= 7 && depth >= syzygy::probe_depth &&
       state.fifty_moves_clock == 0 &&
       !state.castle_rights.CanCastle(state.turn) &&

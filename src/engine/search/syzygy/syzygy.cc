@@ -64,76 +64,82 @@ Move ConvertTbMove(TbMove move, const BoardState &state) {
 }
 
 std::pair<ProbeResult, MoveList> ProbeRoot(const BoardState &state) {
-  MoveList root_moves;
-  TbRootMoves tb_root_moves{};
+  if (state.Occupied().PopCount() <= 7 && state.fifty_moves_clock == 0 &&
+      !state.castle_rights.CanCastle(state.turn) &&
+      !state.castle_rights.CanCastle(FlipColor(state.turn))) {
+    MoveList root_moves;
+    TbRootMoves tb_root_moves{};
 
-  const Square en_passant =
-      state.en_passant != Squares::kNoSquare ? state.en_passant : Square(0);
-  auto result = tb_probe_root_dtz(state.Occupied(Color::kWhite).AsU64(),
-                                  state.Occupied(Color::kBlack).AsU64(),
-                                  state.Kings().AsU64(),
-                                  state.Queens().AsU64(),
-                                  state.Rooks().AsU64(),
-                                  state.Bishops().AsU64(),
-                                  state.Knights().AsU64(),
-                                  state.Pawns().AsU64(),
-                                  state.fifty_moves_clock,
-                                  0,
-                                  en_passant,
-                                  state.turn == Color::kWhite,
-                                  false,
-                                  true,
-                                  &tb_root_moves);
+    const Square en_passant =
+        state.en_passant != Squares::kNoSquare ? state.en_passant : Square(0);
+    auto result = tb_probe_root_dtz(state.Occupied(Color::kWhite).AsU64(),
+                                    state.Occupied(Color::kBlack).AsU64(),
+                                    state.Kings().AsU64(),
+                                    state.Queens().AsU64(),
+                                    state.Rooks().AsU64(),
+                                    state.Bishops().AsU64(),
+                                    state.Knights().AsU64(),
+                                    state.Pawns().AsU64(),
+                                    state.fifty_moves_clock,
+                                    0,
+                                    en_passant,
+                                    state.turn == Color::kWhite,
+                                    false,
+                                    true,
+                                    &tb_root_moves);
 
-  // DTZ tables are unavailable
-  if (result == 0) {
-    result = tb_probe_root_wdl(state.Occupied(Color::kWhite).AsU64(),
-                               state.Occupied(Color::kBlack).AsU64(),
-                               state.Kings().AsU64(),
-                               state.Queens().AsU64(),
-                               state.Rooks().AsU64(),
-                               state.Bishops().AsU64(),
-                               state.Knights().AsU64(),
-                               state.Pawns().AsU64(),
-                               state.fifty_moves_clock,
-                               0,
-                               en_passant,
-                               state.turn == Color::kWhite,
-                               true,
-                               &tb_root_moves);
-  }
-
-  if (result == 0 || tb_root_moves.size == 0) {
-    return {ProbeResult::kFailed, root_moves};
-  }
-
-  // Sort the TB root moves based on their scores
-  std::sort(&tb_root_moves.moves[0],
-            &tb_root_moves.moves[tb_root_moves.size],
-            [](auto a, auto b) { return a.tbRank > b.tbRank; });
-
-  const auto best_move_entry = tb_root_moves.moves[0];
-  root_moves.Push(ConvertTbMove(best_move_entry.move, state));
-
-  for (int i = 1; i < tb_root_moves.size; i++) {
-    const auto move_entry = tb_root_moves.moves[i];
-    if (move_entry.tbRank < best_move_entry.tbRank) {
-      break;
+    // DTZ tables are unavailable
+    if (result == 0) {
+      result = tb_probe_root_wdl(state.Occupied(Color::kWhite).AsU64(),
+                                 state.Occupied(Color::kBlack).AsU64(),
+                                 state.Kings().AsU64(),
+                                 state.Queens().AsU64(),
+                                 state.Rooks().AsU64(),
+                                 state.Bishops().AsU64(),
+                                 state.Knights().AsU64(),
+                                 state.Pawns().AsU64(),
+                                 state.fifty_moves_clock,
+                                 0,
+                                 en_passant,
+                                 state.turn == Color::kWhite,
+                                 true,
+                                 &tb_root_moves);
     }
 
-    root_moves.Push(ConvertTbMove(move_entry.move, state));
-  }
+    if (result == 0 || tb_root_moves.size == 0) {
+      return {ProbeResult::kFailed, root_moves};
+    }
 
-  ProbeResult wdl;
-  if (best_move_entry.tbRank >= 900)
-    wdl = ProbeResult::kWin;
-  else if (best_move_entry.tbRank >= -899)
-    wdl = ProbeResult::kDraw;
-  else {
-    wdl = ProbeResult::kLoss;
-  }
+    // Sort the TB root moves based on their scores
+    std::sort(&tb_root_moves.moves[0],
+              &tb_root_moves.moves[tb_root_moves.size],
+              [](auto a, auto b) { return a.tbRank > b.tbRank; });
 
-  return {wdl, root_moves};
+    const auto best_move_entry = tb_root_moves.moves[0];
+    root_moves.Push(ConvertTbMove(best_move_entry.move, state));
+
+    for (int i = 1; i < tb_root_moves.size; i++) {
+      const auto move_entry = tb_root_moves.moves[i];
+      if (move_entry.tbRank < best_move_entry.tbRank) {
+        break;
+      }
+
+      root_moves.Push(ConvertTbMove(move_entry.move, state));
+    }
+
+    ProbeResult wdl;
+    if (best_move_entry.tbRank >= 900)
+      wdl = ProbeResult::kWin;
+    else if (best_move_entry.tbRank >= -899)
+      wdl = ProbeResult::kDraw;
+    else {
+      wdl = ProbeResult::kLoss;
+    }
+
+    return {wdl, root_moves};
+  } else {
+    return {ProbeResult::kFailed, {}};
+  }
 }
 
 }  // namespace syzygy

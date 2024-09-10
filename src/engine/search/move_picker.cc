@@ -29,12 +29,13 @@ Move MovePicker::Next() {
       const auto [result, root_moves] = syzygy::ProbeRoot(state);
       if (result == syzygy::ProbeResult::kFailed || root_moves.Empty()) {
         stage_ = Stage::kTTMove;
+        stack_->tb_score = kScoreNone;
       } else {
         tb_moves_ = root_moves;
         stack_->tb_score = result == syzygy::ProbeResult::kWin  ? kTBWinScore
-                         : result == syzygy::ProbeResult::kDraw ? 0
-                                                                : -kTBWinScore;
+                         : (result == syzygy::ProbeResult::kDraw ? 0 : -kTBWinScore);
         stage_ = Stage::kTbMoves;
+        board_.PrintPieces();
       }
     }
 
