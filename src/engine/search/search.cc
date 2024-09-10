@@ -24,7 +24,6 @@ int CalculateLMR(int depth, int moves, double base, double divisor) {
 LateMoveReductionTable GenerateLateMoveReductionTable() {
   LateMoveReductionTable table;
 
-  // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
       table[true][depth][move] =
@@ -39,6 +38,27 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
 
 const LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
+
+using LateMovePruningTable = MultiArray<int, 2, kMaxSearchDepth + 1>;
+
+int CalculateLMP(int depth, double base, double factor, double power) {
+  return base + factor * std::pow(depth, power);
+}
+
+LateMovePruningTable GenerateLateMovePruningTable() {
+  LateMovePruningTable table;
+
+  for (int depth = 0; depth <= kMaxSearchDepth; depth++) {
+    table[true][depth] = CalculateLMP(
+        depth, lmp_non_imp_base, lmp_non_imp_factor, lmp_non_imp_power);
+    table[false][depth] =
+        CalculateLMP(depth, lmp_imp_base, lmp_imp_factor, lmp_imp_power);
+  }
+
+  return table;
+}
+
+const LateMovePruningTable kLaveMovePruning = GenerateLateMovePruningTable();
 
 }  // namespace tables
 
@@ -711,10 +731,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((lmp_base + depth * depth) /
-                           (lmp_mult - std::max(0.0, stack->improving_rate)));
-      if (is_quiet && moves_seen >= lmp_threshold) {
+      if (is_quiet &&
+          moves_seen >= tables::kLaveMovePruning[improving][moves_seen]) {
         move_picker.SkipQuiets();
         continue;
       }

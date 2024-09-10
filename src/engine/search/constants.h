@@ -6,9 +6,16 @@
 namespace search {
 
 Tunable lmr_quiet_base("lmr_quiet_base", 0.80, 0.5, 1.2, 0.05);
-Tunable lmr_quiet_div("lmr_quiet_div", 2.04, 1.5, 3.0, 0.1);
+Tunable lmr_quiet_div("lmr_quiet_div", 2.04, 1.5, 3.0, 0.05);
 Tunable lmr_tact_base("lmr_tact_base", -0.24, -0.5, 0.2, 0.05);
-Tunable lmr_tact_div("lmr_tact_div", 2.60, 2.0, 3.5, 0.1);
+Tunable lmr_tact_div("lmr_tact_div", 2.60, 2.0, 3.5, 0.05);
+
+Tunable lmp_non_imp_base("lmp_non_imp_base", 1.67, 0.5, 2.0, 0.05);
+Tunable lmp_non_imp_factor("lmp_non_imp_factor", 0.35, 0.1, 1.0, 0.05);
+Tunable lmp_non_imp_power("lmp_non_imp_power", 1.68, 0.5, 2.0, 0.05);
+Tunable lmp_imp_base("lmp_imp_base", 3.1, 1.5, 4.0, 0.05);
+Tunable lmp_imp_factor("lmp_imp_factor", 0.99, 0.5, 1.5, 0.05);
+Tunable lmp_imp_power("lmp_imp_power", 1.93, 1.0, 2.3, 0.05);
 
 Tunable asp_window_depth("asp_window_depth", 4, 2, 8, 1, true);
 Tunable asp_window_delta("asp_window_delta", 9, 5, 20, 2);
