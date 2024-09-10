@@ -8,7 +8,7 @@
 namespace search::history {
 
 using ContinuationEntry =
-    MultiArray<I32, kNumColors, 2, kNumPieceTypes, kSquareCount>;
+    MultiArray<I32, kNumColors, kNumPieceTypes, kSquareCount>;
 
 class ContinuationHistory {
  public:
@@ -53,7 +53,7 @@ class ContinuationHistory {
 
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
-    return entry[state.turn][move.IsCapture(state)][piece][to];
+    return entry[state.turn][piece][to];
   }
 
  private:
@@ -71,7 +71,7 @@ class ContinuationHistory {
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
 
-    int &score = entry[state.turn][move.IsCapture(state)][piece][to];
+    int &score = entry[state.turn][piece][to];
     score += ScaleBonus(score, bonus);
   }
 
