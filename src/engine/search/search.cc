@@ -542,11 +542,12 @@ Score Search::PVSearch(Thread &thread,
   if (!in_pv_node && !in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= rev_fut_depth && !stack->excluded_tt_move) {
-      const int futility_margin =
-          depth * (improving ? 40 : 74) + (stack - 1)->history_score / 600;
+    if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
+        stack->eval >= beta) {
+      const int futility_margin = (depth - improving) * rev_fut_margin +
+                                  (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
-        return (stack->eval + beta) / 2;
+        return stack->eval;
       }
     }
 
