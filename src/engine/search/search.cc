@@ -49,9 +49,9 @@ LateMovePruningTable GenerateLateMovePruningTable() {
   LateMovePruningTable table;
 
   for (int depth = 0; depth <= kMaxSearchDepth; depth++) {
-    table[true][depth] = CalculateLMP(
+    table[false][depth] = CalculateLMP(
         depth, lmp_non_imp_base, lmp_non_imp_factor, lmp_non_imp_power);
-    table[false][depth] =
+    table[true][depth] =
         CalculateLMP(depth, lmp_imp_base, lmp_imp_factor, lmp_imp_power);
   }
 
