@@ -546,7 +546,7 @@ Score Search::PVSearch(Thread &thread,
       const int futility_margin =
           depth * (improving ? 40 : 74) + (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
-        return stack->eval;
+        return (stack->eval + beta) / 2;
       }
     }
 
