@@ -732,7 +732,7 @@ Score Search::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       if (is_quiet &&
-          moves_seen >= tables::kLaveMovePruning[improving][moves_seen]) {
+          moves_seen >= tables::kLaveMovePruning[improving][depth]) {
         move_picker.SkipQuiets();
         continue;
       }
