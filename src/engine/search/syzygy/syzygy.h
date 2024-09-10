@@ -4,6 +4,7 @@
 #include <atomic>
 
 #include "../../../chess/board.h"
+#include "../../../chess/move_gen.h"
 
 namespace syzygy {
 
@@ -22,6 +23,8 @@ void SetPath(std::string_view path);
 void Free();
 
 ProbeResult ProbePosition(const BoardState &state);
+
+std::pair<ProbeResult, MoveList> ProbeRoot(const BoardState &state);
 
 }  // namespace syzygy
 

@@ -1,5 +1,7 @@
 #include "move_picker.h"
 
+#include "syzygy/syzygy.h"
+
 namespace search {
 
 MovePicker::MovePicker(MovePickerType type,
@@ -13,12 +15,35 @@ MovePicker::MovePicker(MovePickerType type,
       type_(type),
       history_(history),
       stack_(stack),
-      stage_(Stage::kTTMove),
+      stage_(stack->ply == 0 && syzygy::enabled ? Stage::kGenerateTbMoves
+                                                : Stage::kTTMove),
       moves_idx_(0),
       see_threshold_(see_threshold) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
+
+  // Probe the Syzygy table-base for root moves
+  if (stack_->ply == 0 && syzygy::enabled) {
+    if (stage_ == Stage::kGenerateTbMoves) {
+      const auto [result, root_moves] = syzygy::ProbeRoot(state);
+      if (result == syzygy::ProbeResult::kFailed) {
+        stage_ = Stage::kTTMove;
+      } else {
+        tb_moves_ = root_moves;
+        stack_->tb_score = result == syzygy::ProbeResult::kWin  ? kTBWinScore
+                         : result == syzygy::ProbeResult::kDraw ? 0
+                                                                : -kTBWinScore;
+        stage_ = Stage::kTbMoves;
+      }
+    }
+
+    if (stage_ == Stage::kTbMoves) {
+      if (moves_idx_ < tb_moves_.Size()) {
+        return tb_moves_[moves_idx_++];
+      }
+    }
+  }
 
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateNoisys;

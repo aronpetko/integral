@@ -210,6 +210,7 @@ void GameLoop(const Config &config,
       continue;
     }
 
+    const auto &root_stack = thread->stack.Front();
     U64 win_plies = 0, loss_plies = 0, draw_plies = 0;
 
     std::optional<double> wdl_outcome;
@@ -225,6 +226,10 @@ void GameLoop(const Config &config,
         if (std::abs(score) >= kTBWinInMaxPlyScore) {
           // Return the correct score depending on who is getting checkmated
           wdl_outcome = score > 0;
+        } else if (root_stack.tb_score != kScoreNone &&
+                   root_stack.tb_score == 0) {
+          // Handle TB draw scores (TB W/L scores are handled above)
+          wdl_outcome = 0.5;
         } else {
           const int scaled_win_threshold =
               kWinThreshold -

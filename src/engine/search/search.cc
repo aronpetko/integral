@@ -125,7 +125,12 @@ void Search::IterativeDeepening(Thread &thread) {
     }
 
     if (thread.IsMainThread() && !stop_ && print_info) {
-      const bool is_mate = eval::IsMateScore(root_stack->score);
+      // If we have a TB score at root, use it
+      if (syzygy::enabled && root_stack->tb_score != kScoreNone) {
+        score = root_stack->tb_score;
+      }
+
+      const bool is_mate = eval::IsMateScore(score);
       const auto nodes_searched = GetNodesSearched();
       fmt::println(
           "info depth {} seldepth {} score {} {} nodes {} time {} nps "
@@ -133,7 +138,7 @@ void Search::IterativeDeepening(Thread &thread) {
           depth,
           thread.sel_depth,
           is_mate ? "mate" : "cp",
-          is_mate ? eval::MateIn(root_stack->score) : root_stack->score,
+          is_mate ? eval::MateIn(score) : score,
           nodes_searched,
           time_mgmt_.TimeElapsed(),
           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
@@ -428,8 +433,8 @@ Score Search::PVSearch(Thread &thread,
   }
 
   // Probe the Syzygy table bases
-  int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
-  if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
+  Score syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
+  if (syzygy::enabled &&  !stack->excluded_tt_move &&
       state.Occupied().PopCount() <= 7 && depth >= syzygy::probe_depth &&
       state.fifty_moves_clock == 0 &&
       !state.castle_rights.CanCastle(state.turn) &&
@@ -1069,7 +1074,7 @@ std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
   time_mgmt_.Start();
 
   // The thread's board gets directly modified, so we don't need to call
-  // SetBoard
+  // thread->SetBoard(..)
   thread->Reset();
 
   IterativeDeepening<SearchType::kBench>(*thread);

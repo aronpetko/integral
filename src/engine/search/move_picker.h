@@ -23,6 +23,8 @@ enum class MovePickerType {
 class MovePicker {
  public:
   enum class Stage {
+    kGenerateTbMoves,
+    kTbMoves,
     kTTMove,
     kGenerateNoisys,
     kGoodNoisys,
@@ -63,6 +65,7 @@ class MovePicker {
   history::History &history_;
   StackEntry *stack_;
   Stage stage_;
+  MoveList tb_moves_;
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
