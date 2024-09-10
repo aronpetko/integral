@@ -65,7 +65,7 @@ Move ConvertTbMove(TbMove move, const BoardState &state) {
 
 std::pair<ProbeResult, MoveList> ProbeRoot(const BoardState &state) {
   MoveList root_moves;
-  TbRootMoves tb_root_moves;
+  TbRootMoves tb_root_moves{};
 
   const Square en_passant =
       state.en_passant != Squares::kNoSquare ? state.en_passant : Square(0);

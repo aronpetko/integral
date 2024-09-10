@@ -229,6 +229,7 @@ void GameLoop(const Config &config,
         } else if (root_stack.tb_score != kScoreNone &&
                    root_stack.tb_score == 0) {
           // Handle TB draw scores (TB W/L scores are handled above)
+          fmt::println("{} {} {}", (int)state.turn, best_move.ToString(), fen::BoardToString(state));
           wdl_outcome = 0.5;
         } else {
           const int scaled_win_threshold =

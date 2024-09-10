@@ -27,7 +27,7 @@ Move MovePicker::Next() {
   if (stack_->ply == 0 && syzygy::enabled) {
     if (stage_ == Stage::kGenerateTbMoves) {
       const auto [result, root_moves] = syzygy::ProbeRoot(state);
-      if (result == syzygy::ProbeResult::kFailed) {
+      if (result == syzygy::ProbeResult::kFailed || root_moves.Empty()) {
         stage_ = Stage::kTTMove;
       } else {
         tb_moves_ = root_moves;
