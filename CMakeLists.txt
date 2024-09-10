@@ -124,8 +124,8 @@ elseif (BUILD_NATIVE)
 endif ()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -funroll-loops -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -g -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -funroll-loops -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT LTO_SUPPORTED)
