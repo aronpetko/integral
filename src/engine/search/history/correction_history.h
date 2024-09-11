@@ -15,18 +15,17 @@ class CorrectionHistory {
   CorrectionHistory() : non_pawn_table_({}), pawn_table_({}) {}
 
   void UpdateScore(const BoardState &state,
-                   StackEntry *stack,
+                   Score raw_static_eval,
                    Score search_score,
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
-    if (!IsStaticEvalWithinBounds(
-            stack->raw_static_eval, search_score, score_type)) {
+    if (!IsStaticEvalWithinBounds(raw_static_eval, search_score, score_type)) {
       return;
     }
 
     const int weight = CalculateWeight(depth);
     const Score scaled_bonus =
-        CalculateScaledBonus(stack->raw_static_eval, search_score);
+        CalculateScaledBonus(raw_static_eval, search_score);
 
     // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];

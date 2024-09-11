@@ -235,17 +235,17 @@ Score Search::QuiescentSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
+  Score raw_static_eval = kScoreNone;
 
-  stack->raw_static_eval = kScoreNone;
   if (tt_static_eval != kScoreNone) {
-    stack->raw_static_eval = tt_static_eval;
+    raw_static_eval = tt_static_eval;
   } else {
-    stack->raw_static_eval = eval::Evaluate(board);
+    raw_static_eval = eval::Evaluate(board);
   }
 
   if (!in_check) {
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack->raw_static_eval);
+    stack->static_eval =
+        history.correction_history->CorrectStaticEval(state, raw_static_eval);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -339,7 +339,7 @@ Score Search::QuiescentSearch(Thread &thread,
                                              tt_depth,
                                              tt_flag,
                                              best_score,
-                                             stack->raw_static_eval,
+                                             raw_static_eval,
                                              Move::NullMove(),
                                              tt_was_in_pv);
   transposition_table_.Save(
@@ -480,12 +480,13 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
+  Score raw_static_eval;
+
   // Approximate the current evaluation at this node
-  stack->raw_static_eval = kScoreNone;
   if (in_check) {
-    stack->static_eval = stack->eval = stack->raw_static_eval = kScoreNone;
+    stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
-    stack->raw_static_eval =
+    raw_static_eval =
         tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
 
     // Save the static eval in the TT if we have nothing yet
@@ -494,15 +495,15 @@ Score Search::PVSearch(Thread &thread,
                                                  0,
                                                  TranspositionTableEntry::kNone,
                                                  kScoreNone,
-                                                 stack->raw_static_eval,
+                                                 raw_static_eval,
                                                  Move::NullMove(),
                                                  tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
     }
 
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack->raw_static_eval);
+    stack->static_eval =
+        history.correction_history->CorrectStaticEval(state, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
@@ -602,7 +603,7 @@ Score Search::PVSearch(Thread &thread,
       if (depth >= 5 && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
-        const int pc_see = pc_beta - stack->raw_static_eval;
+        const int pc_see = pc_beta - raw_static_eval;
         const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
                                   ? tt_move
                                   : Move::NullMove();
@@ -652,7 +653,7 @@ Score Search::PVSearch(Thread &thread,
                 probcut_depth,
                 TranspositionTableEntry::kLowerBound,
                 score,
-                stack->raw_static_eval,
+                raw_static_eval,
                 Move::NullMove(),
                 tt_was_in_pv);
             transposition_table_.Save(
@@ -948,7 +949,7 @@ Score Search::PVSearch(Thread &thread,
                                                depth,
                                                tt_flag,
                                                best_score,
-                                               stack->raw_static_eval,
+                                               raw_static_eval,
                                                best_move,
                                                tt_was_in_pv);
     transposition_table_.Save(
@@ -956,7 +957,7 @@ Score Search::PVSearch(Thread &thread,
 
     if (!in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
-          state, stack, best_score, tt_flag, depth);
+          state, raw_static_eval, best_score, tt_flag, depth);
     }
   }
 
