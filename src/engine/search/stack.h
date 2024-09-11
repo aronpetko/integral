@@ -86,6 +86,7 @@ struct StackEntry {
 
   explicit StackEntry(U16 ply)
       : ply(ply),
+        raw_static_eval(kScoreNone),
         static_eval(kScoreNone),
         eval(kScoreNone),
         history_score(0),

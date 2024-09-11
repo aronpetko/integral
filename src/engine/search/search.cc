@@ -236,6 +236,7 @@ Score Search::QuiescentSearch(Thread &thread,
   int moves_seen = 0;
   Score best_score = kScoreNone;
 
+  stack->raw_static_eval = kScoreNone;
   if (tt_static_eval != kScoreNone) {
     stack->raw_static_eval = tt_static_eval;
   } else {
@@ -480,6 +481,7 @@ Score Search::PVSearch(Thread &thread,
   }
 
   // Approximate the current evaluation at this node
+  stack->raw_static_eval = kScoreNone;
   if (in_check) {
     stack->static_eval = stack->eval = stack->raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
