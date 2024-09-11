@@ -518,7 +518,7 @@ Score Search::PVSearch(Thread &thread,
   // This condition is dependent on if the side to move's static evaluation has
   // improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
-  stack->improving_rate = 0.0;
+  stack->improving_rate = 0;
   bool improving = false;
 
   StackEntry *past_stack = nullptr;
@@ -532,9 +532,11 @@ Score Search::PVSearch(Thread &thread,
     improving = stack->static_eval > past_stack->static_eval;
     // Smoothen the improving rate from the static eval of our position in
     // previous turns
-    const Score diff = stack->static_eval - past_stack->static_eval;
-    stack->improving_rate = std::clamp(
-        past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
+    const auto diff = (stack->static_eval - past_stack->static_eval) * 1000;
+    const auto improvement =
+        diff / static_cast<int>(improving_rate_divisor) / 100;
+    stack->improving_rate =
+        std::clamp(past_stack->improving_rate + improvement, -1000, 1000);
   }
 
   (stack + 1)->ClearKillerMoves();
@@ -544,8 +546,9 @@ Score Search::PVSearch(Thread &thread,
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
-      const int futility_margin = (depth - improving) * rev_fut_margin +
-                                  (stack - 1)->history_score / 600;
+      const int futility_margin =
+          (depth * 1000 - stack->improving_rate) / 1000 * rev_fut_margin +
+          (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
       }
@@ -711,9 +714,9 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((lmp_base + depth * depth) /
-                           (lmp_mult - std::max(0.0, stack->improving_rate)));
+      const int lmp_threshold = static_cast<int>(
+          (lmp_base + depth * depth) /
+          (lmp_mult - std::max(0.0, stack->improving_rate / 1000.0)));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;

@@ -70,7 +70,7 @@ struct StackEntry {
   // Moves that caused a beta cutoff at this ply
   std::array<Move, 2> killer_moves;
   // Overall improving rate from the last couple plies
-  double improving_rate;
+  int improving_rate;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
