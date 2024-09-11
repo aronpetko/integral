@@ -21,7 +21,7 @@ class Accumulator {
     for (int perspective = Color::kWhite; perspective <= Color::kBlack;
          perspective++) {
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
-        accumulator_.active[perspective][i] = network.feature_biases[i];
+        accumulator_.active[perspective][i] = network->feature_biases[i];
       }
     }
 
@@ -68,7 +68,7 @@ class Accumulator {
       case MoveType::kCastle: {
         const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
         const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
-        AddSubSubSubFeatures(to,
+        AddAddSubSubFeatures(to,
                              PieceType::kKing,
                              state.turn,
                              rook_to,
@@ -152,7 +152,7 @@ class Accumulator {
           GetFeatureIndex(square, piece, piece_color, perspective);
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
         accumulator_.active[perspective][i] +=
-            network.feature_weights[index][i];
+            network->feature_weights[index][i];
       }
     }
     accumulator_.num_pieces++;
@@ -172,8 +172,8 @@ class Accumulator {
           GetFeatureIndex(sub_square, sub_piece, sub_color, perspective);
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
         accumulator_.active[perspective][i] +=
-            network.feature_weights[add_index][i] -
-            network.feature_weights[sub_index][i];
+            network->feature_weights[add_index][i] -
+            network->feature_weights[sub_index][i];
       }
     }
   }
@@ -197,15 +197,15 @@ class Accumulator {
           GetFeatureIndex(sub2_square, sub2_piece, sub2_color, perspective);
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
         accumulator_.active[perspective][i] +=
-            network.feature_weights[add_index][i] -
-            network.feature_weights[sub1_index][i] -
-            network.feature_weights[sub2_index][i];
+            network->feature_weights[add_index][i] -
+            network->feature_weights[sub1_index][i] -
+            network->feature_weights[sub2_index][i];
       }
     }
     accumulator_.num_pieces--;
   }
 
-  void AddSubSubSubFeatures(Square add1_square,
+  void AddAddSubSubFeatures(Square add1_square,
                             int add1_piece,
                             int add1_color,
                             Square add2_square,
@@ -229,10 +229,10 @@ class Accumulator {
           GetFeatureIndex(sub2_square, sub2_piece, sub2_color, perspective);
       for (int i = 0; i < arch::kHiddenLayerSize; i++) {
         accumulator_.active[perspective][i] +=
-            network.feature_weights[add1_index][i] +
-            network.feature_weights[add2_index][i] -
-            network.feature_weights[sub1_index][i] -
-            network.feature_weights[sub2_index][i];
+            network->feature_weights[add1_index][i] +
+            network->feature_weights[add2_index][i] -
+            network->feature_weights[sub1_index][i] -
+            network->feature_weights[sub2_index][i];
       }
     }
   }
