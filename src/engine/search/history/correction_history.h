@@ -20,13 +20,13 @@ class CorrectionHistory {
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
     if (!IsStaticEvalWithinBounds(
-            stack->static_eval, search_score, score_type)) {
+            stack->raw_static_eval, search_score, score_type)) {
       return;
     }
 
     const int weight = CalculateWeight(depth);
     const Score scaled_bonus =
-        CalculateScaledBonus(stack->static_eval, search_score);
+        CalculateScaledBonus(stack->raw_static_eval, search_score);
 
     // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
@@ -58,9 +58,8 @@ class CorrectionHistory {
     const Score adjusted_score =
         static_eval + correction / static_cast<int>(corr_history_scale);
     // Ensure no static evaluations are mate scores
-    return std::clamp(adjusted_score,
-                      -kMateInMaxPlyScore + 1,
-                      kMateInMaxPlyScore - 1);
+    return std::clamp(
+        adjusted_score, -kMateInMaxPlyScore + 1, kMateInMaxPlyScore - 1);
   }
 
  private:
