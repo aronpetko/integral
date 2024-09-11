@@ -15,11 +15,13 @@ class CorrectionHistory {
   CorrectionHistory() : non_pawn_table_({}), pawn_table_({}) {}
 
   void UpdateScore(const BoardState &state,
+                   Score corrected_static_eval,
                    Score raw_static_eval,
                    Score search_score,
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
-    if (!IsStaticEvalWithinBounds(raw_static_eval, search_score, score_type)) {
+    if (!IsStaticEvalWithinBounds(
+            corrected_static_eval, search_score, score_type)) {
       return;
     }
 

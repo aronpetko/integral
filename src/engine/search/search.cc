@@ -956,8 +956,12 @@ Score Search::PVSearch(Thread &thread,
         tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
     if (!in_check && (!best_move || !best_move.IsNoisy(state))) {
-      history.correction_history->UpdateScore(
-          state, raw_static_eval, best_score, tt_flag, depth);
+      history.correction_history->UpdateScore(state,
+                                              stack->static_eval,
+                                              raw_static_eval,
+                                              best_score,
+                                              tt_flag,
+                                              depth);
     }
   }
 
