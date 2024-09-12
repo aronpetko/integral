@@ -13,9 +13,39 @@ option(BUILD_X86_64_BMI2 "Build with x86-64 bmi2 optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 option(BUILD_NATIVE "Build with native optimizations" ON)
 
+include(CheckCXXCompilerFlag)
+include(CheckCXXSourceRuns)
+
 function(check_avx_support)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686|i386")
-        include(CheckCXXCompilerFlag)
+        # Function to detect AVX support
+        function(detect_avx FEATURE FLAGS RESULT)
+            set(AVX_CODE "
+                #include <immintrin.h>
+                int main() {
+                    ${FEATURE}
+                    return 0;
+                }")
+
+            # First, try without any flags
+            check_cxx_source_runs("${AVX_CODE}" AVX_RUNS)
+
+            if(NOT AVX_RUNS)
+                # If it doesn't run, try with the specified flags
+                set(CMAKE_REQUIRED_FLAGS "${FLAGS}")
+                check_cxx_source_runs("${AVX_CODE}" AVX_RUNS_WITH_FLAG)
+                unset(CMAKE_REQUIRED_FLAGS)
+
+                if(AVX_RUNS_WITH_FLAG)
+                    set(${RESULT} "${FLAGS}" PARENT_SCOPE)
+                else()
+                    set(${RESULT} "UNAVAILABLE" PARENT_SCOPE)
+                endif()
+            else()
+                # AVX is supported without any special flags
+                set(${RESULT} "AVAILABLE" PARENT_SCOPE)
+            endif()
+        endfunction()
 
         # Check for AVX512 support
         check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512F)
@@ -25,10 +55,19 @@ function(check_avx_support)
 
         if(COMPILER_SUPPORTS_AVX512F AND COMPILER_SUPPORTS_AVX512DQ AND
                 COMPILER_SUPPORTS_AVX512BW AND COMPILER_SUPPORTS_AVX512VL)
-            set(AVX_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl" PARENT_SCOPE)
-            set(AVX_DEFINES "-DSIMD -DAVX512" PARENT_SCOPE)
-            message(STATUS "Compiler supports AVX512")
-            return()
+            set(AVX512_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl")
+            detect_avx(
+                    "__m512i a = _mm512_set1_epi32(1); __m512i b = _mm512_set1_epi32(2); __m512i c = _mm512_add_epi32(a, b); return _mm256_extract_epi32(_mm512_extracti64x4_epi64(c, 0), 0) == 3 ? 0 : 1;"
+                    "${AVX512_FLAGS}"
+                    AVX512_SUPPORT
+            )
+
+            if(NOT AVX512_SUPPORT STREQUAL "UNAVAILABLE")
+                set(AVX_FLAGS "${AVX512_SUPPORT}" PARENT_SCOPE)
+                set(AVX_DEFINES "-DSIMD -DAVX512" PARENT_SCOPE)
+                message(STATUS "AVX512 is supported: ${AVX512_SUPPORT}")
+                return()
+            endif()
         endif()
 
         # Check for AVX2 support
@@ -36,31 +75,38 @@ function(check_avx_support)
         check_cxx_compiler_flag("-mfma" COMPILER_SUPPORTS_FMA)
 
         if(COMPILER_SUPPORTS_AVX2)
-            set(AVX_FLAGS "-mavx2" PARENT_SCOPE)
-            set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
+            set(AVX2_FLAGS "-mavx2")
             if(COMPILER_SUPPORTS_FMA)
-                set(AVX_FLAGS "${AVX_FLAGS} -mfma" PARENT_SCOPE)
+                set(AVX2_FLAGS "${AVX2_FLAGS} -mfma")
             endif()
-            message(STATUS "Compiler supports AVX2")
-            return()
+
+            detect_avx(
+                    "__m256i a = _mm256_set1_epi32(1); __m256i b = _mm256_set1_epi32(2); __m256i c = _mm256_add_epi32(a, b); return _mm256_extract_epi32(c, 0) == 3 ? 0 : 1;"
+                    "${AVX2_FLAGS}"
+                    AVX2_SUPPORT
+            )
+
+            if(NOT AVX2_SUPPORT STREQUAL "UNAVAILABLE")
+                set(AVX_FLAGS "${AVX2_SUPPORT}" PARENT_SCOPE)
+                set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
+                message(STATUS "AVX2 is supported: ${AVX2_SUPPORT}")
+                return()
+            endif()
         endif()
 
-        # Check for AVX support
-        check_cxx_compiler_flag("-mavx" COMPILER_SUPPORTS_AVX)
-
-        if(COMPILER_SUPPORTS_AVX)
-            set(AVX_FLAGS "-mavx" PARENT_SCOPE)
-            set(AVX_DEFINES "-DSIMD -DAVX" PARENT_SCOPE)
-            message(STATUS "Compiler supports AVX")
-            return()
-        endif()
-
-        # No AVX support found
-        message(STATUS "Compiler does not support AVX, AVX2, or AVX512")
+        message(STATUS "Neither AVX512 nor AVX2 is supported on this system")
     else()
         message(WARNING "AVX support check skipped for unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
 endfunction()
+
+check_avx_support()
+if(DEFINED AVX_FLAGS)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AVX_FLAGS}")
+endif()
+if(DEFINED AVX_DEFINES)
+    add_definitions(${AVX_DEFINES})
+endif()
 
 # Set the build type
 if (BUILD_DEBUG)
@@ -78,8 +124,8 @@ elseif (BUILD_NATIVE)
 endif ()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -fopenmp -O3 -funroll-loops -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fopenmp -g -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT LTO_SUPPORTED)
