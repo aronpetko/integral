@@ -545,8 +545,8 @@ Score Search::PVSearch(Thread &thread,
     if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
       const int futility_margin =
-          static_cast<int>((depth - stack->improving_rate * 1.5) *
-                           rev_fut_margin) +
+          depth * rev_fut_margin -
+          static_cast<int>(stack->improving_rate * 1.5 * rev_fut_margin) +
           (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
@@ -834,6 +834,7 @@ Score Search::PVSearch(Thread &thread,
       reduction -=
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
+      reduction += stack->improving_rate < 0;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
