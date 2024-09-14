@@ -124,7 +124,7 @@ elseif (BUILD_NATIVE)
 endif ()
 
 # Set debug and release specific flags
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -fno-exceptions -fwhole-program -fomit-frame-pointer -ffast-math -funroll-loops -fno-align-functions -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
 
 include(CheckIPOSupported)
