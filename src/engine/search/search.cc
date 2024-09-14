@@ -542,8 +542,7 @@ Score Search::PVSearch(Thread &thread,
   if (!in_pv_node && !in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
-        stack->eval >= beta) {
+    if (depth <= rev_fut_depth && stack->eval >= beta) {
       const int futility_margin =
           depth * rev_fut_margin -
           static_cast<int>(stack->improving_rate * 1.5 * rev_fut_margin) +
@@ -555,8 +554,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
-    if (!stack->excluded_tt_move && depth <= 4 &&
-        stack->static_eval + 450 * (depth - !improving) < alpha) {
+    if (depth <= 4 && stack->static_eval + 450 * (depth - !improving) < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
@@ -669,8 +667,7 @@ Score Search::PVSearch(Thread &thread,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if ((in_pv_node || cut_node) && depth >= iir_depth &&
-      !stack->excluded_tt_move && !tt_move) {
+  if ((in_pv_node || cut_node) && depth >= iir_depth && !tt_move) {
     depth--;
   }
 
