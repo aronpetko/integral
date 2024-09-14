@@ -405,7 +405,7 @@ Score Search::PVSearch(Thread &thread,
   // position
   TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node, tt_noisy = false;
   Score tt_static_eval = kScoreNone;
 
   if (!stack->excluded_tt_move) {
@@ -418,6 +418,7 @@ Score Search::PVSearch(Thread &thread,
       tt_was_in_pv |= tt_entry->GetWasPV();
       tt_move = tt_entry->move;
       tt_static_eval = tt_entry->static_eval;
+      tt_noisy = tt_move.IsCapture(state);
     }
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
@@ -835,6 +836,7 @@ Score Search::PVSearch(Thread &thread,
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
       reduction += stack->improving_rate < 0;
+      reduction += tt_noisy;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
