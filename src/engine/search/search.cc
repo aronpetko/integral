@@ -198,7 +198,7 @@ Score Search::QuiescentSearch(Thread &thread,
     return kDrawScore;
   }
 
-  const bool in_check = state.InCheck();
+  stack->in_check = state.InCheck();
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
@@ -243,7 +243,7 @@ Score Search::QuiescentSearch(Thread &thread,
     raw_static_eval = eval::Evaluate(board);
   }
 
-  if (!in_check) {
+  if (!stack->in_check) {
     stack->static_eval =
         history.correction_history->CorrectStaticEval(state, raw_static_eval);
 
@@ -281,7 +281,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
-    if (!in_check && move.IsCapture(state) && futility_score <= alpha &&
+    if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
@@ -320,7 +320,7 @@ Score Search::QuiescentSearch(Thread &thread,
     }
   }
 
-  if (in_check && moves_seen == 0) {
+  if (stack->in_check && moves_seen == 0) {
     return -kMateScore + stack->ply;
   }
 
@@ -373,7 +373,7 @@ Score Search::PVSearch(Thread &thread,
     return QuiescentSearch<node_type>(thread, alpha, beta, stack);
   }
 
-  const bool in_check = state.InCheck();
+  stack->in_check = state.InCheck();
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
@@ -483,7 +483,7 @@ Score Search::PVSearch(Thread &thread,
   Score raw_static_eval;
 
   // Approximate the current evaluation at this node
-  if (in_check) {
+  if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
@@ -515,8 +515,17 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
-  // This condition is dependent on if the side to move's static evaluation has
-  // improved in the past two or four plies. It also used as a metric for
+  const auto &prev_stack = stack - 1;
+  if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
+      !prev_stack->in_check) {
+    const int bonus = std::clamp(
+        -60 * (stack->static_eval + prev_stack->static_eval) / 10, -65, 100);
+    history.quiet_history->UpdateMoveScore(
+        FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
+  }
+
+  // This condition is dependent on if the side to move's static evaluation
+  // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   stack->improving_rate = 0.0;
   bool improving = false;
@@ -528,7 +537,7 @@ Score Search::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (past_stack && !in_check) {
+  if (past_stack && !stack->in_check) {
     improving = stack->static_eval > past_stack->static_eval;
     // Smoothen the improving rate from the static eval of our position in
     // previous turns
@@ -539,7 +548,7 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !in_check && stack->eval < kTBWinInMaxPlyScore) {
+  if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
@@ -575,6 +584,7 @@ Score Search::PVSearch(Thread &thread,
       if (non_pawn_king_pieces) {
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
+        stack->capture_move = false;
         stack->continuation_entry = nullptr;
 
         const int eval_reduction =
@@ -628,6 +638,7 @@ Score Search::PVSearch(Thread &thread,
           // Set the currently searched move in the stack for continuation
           // history
           stack->move = move;
+          stack->capture_move = move.IsCapture(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
 
@@ -680,7 +691,7 @@ Score Search::PVSearch(Thread &thread,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
-  const BitBoard threats = state.threats;
+  stack->threats = state.threats;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -699,9 +710,9 @@ Score Search::PVSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    stack->history_score =
-        is_capture ? history.GetCaptureMoveScore(state, move)
-                   : history.GetQuietMoveScore(state, move, threats, stack);
+    stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
+                                      : history.GetQuietMoveScore(
+                                            state, move, stack->threats, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -724,7 +735,7 @@ Score Search::PVSearch(Thread &thread,
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin = fut_margin_base + fut_margin_mult * lmr_depth;
-      if (lmr_depth <= fut_prune_depth && !in_check && is_quiet &&
+      if (lmr_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
@@ -801,12 +812,13 @@ Score Search::PVSearch(Thread &thread,
     }
 
     // Check Extensions: Integral's not yet strong enough to simplify this out
-    if (in_check) {
+    if (stack->in_check) {
       ++extensions;
     }
 
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
+    stack->capture_move = move.IsCapture(state);
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
 
@@ -900,7 +912,7 @@ Score Search::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, depth, threats, quiets);
+                state, stack, depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
           } else if (is_capture) {
@@ -923,7 +935,7 @@ Score Search::PVSearch(Thread &thread,
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
-    return in_check ? -kMateScore + stack->ply : kDrawScore;
+    return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
   if (best_move) {
@@ -958,7 +970,7 @@ Score Search::PVSearch(Thread &thread,
     transposition_table_.Save(
         tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
-    if (!in_check && (!best_move || !best_move.IsNoisy(state))) {
+    if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }
