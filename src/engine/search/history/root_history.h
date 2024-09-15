@@ -15,7 +15,7 @@ class RootHistory {
     const int bonus = HistoryBonus(depth);
     // Apply a linear dampening to the bonus as the depth increases
     int &score = table_[turn][move.GetFrom()][move.GetTo()];
-    score += ScaleBonus(score, depth);
+    score += ScaleBonus(score, bonus);
 
     // Lower the score of the capture moves that failed to raise alpha
     for (int i = 0; i < quiets.Size(); i++) {
@@ -23,7 +23,7 @@ class RootHistory {
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_quiet_score =
           table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()];
-      bad_quiet_score += ScaleBonus(bad_quiet_score, -depth);
+      bad_quiet_score += ScaleBonus(bad_quiet_score, -bonus);
     }
   }
 

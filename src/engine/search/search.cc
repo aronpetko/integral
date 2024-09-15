@@ -66,6 +66,9 @@ void Search::IterativeDeepening(Thread &thread) {
   Move best_move = Move::NullMove();
   Score score = 0;
 
+  // Clear root history on each root search
+  thread.history.root_history = std::make_unique<history::RootHistory>();
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
 
@@ -916,7 +919,8 @@ Score Search::PVSearch(Thread &thread,
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
             if (in_root) {
-              history.root_history->UpdateScore(state.turn, move, depth, quiets);
+              history.root_history->UpdateScore(
+                  state.turn, move, depth, quiets);
             }
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, depth);
