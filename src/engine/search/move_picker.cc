@@ -32,8 +32,14 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kGenerateNoisys) {
-    stage_ = Stage::kGoodNoisys;
+    stage_ = type_ == MovePickerType::kQuiescence ? Stage::kNoisys : Stage::kGoodNoisys;
     GenerateAndScoreMoves<MoveGenType::kNoisy>(noisys_);
+  }
+
+  if (stage_ == Stage::kNoisys) {
+    if (moves_idx_ < noisys_.Size()) {
+      return SelectionSort(noisys_, moves_idx_++);
+    }
   }
 
   if (stage_ == Stage::kGoodNoisys) {

@@ -25,6 +25,7 @@ class MovePicker {
   enum class Stage {
     kTTMove,
     kGenerateNoisys,
+    kNoisys, // Used in Quiescence search
     kGoodNoisys,
     kFirstKiller,
     kSecondKiller,
