@@ -710,9 +710,10 @@ Score Search::PVSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
-                                      : history.GetQuietMoveScore(
-                                            state, move, stack->threats, stack);
+    stack->history_score =
+        is_capture
+            ? history.GetCaptureMoveScore(state, move, stack)
+            : history.GetQuietMoveScore(state, move, stack->threats, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -918,6 +919,11 @@ Score Search::PVSearch(Thread &thread,
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, depth);
           }
+
+          if (in_root) {
+            history.root_history->UpdateScore(state.turn, move);
+          }
+
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         }

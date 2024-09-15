@@ -6,6 +6,7 @@
 #include "continuation_history.h"
 #include "correction_history.h"
 #include "quiet_history.h"
+#include "root_history.h"
 
 namespace search::history {
 
@@ -20,6 +21,7 @@ class History {
     continuation_history = std::make_unique<ContinuationHistory>();
     correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
+    root_history = std::make_unique<RootHistory>();
   }
 
   // Reinitialize the history objects for quicker clearing
@@ -31,15 +33,20 @@ class History {
                                       Move move,
                                       BitBoard threats,
                                       StackEntry *stack) const {
+    const bool root_node = stack->ply == 0;
     return quiet_history->GetScore(state, move, threats) +
            continuation_history->GetScore(state, move, stack - 1) +
            continuation_history->GetScore(state, move, stack - 2) +
-           continuation_history->GetScore(state, move, stack - 4);
+           continuation_history->GetScore(state, move, stack - 4) +
+           root_node * root_history->GetScore(state, move);
   }
 
   [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
-                                        Move move) const {
-    return capture_history->GetScore(state, move);
+                                        Move move,
+                                        StackEntry *stack) const {
+    const bool root_node = stack->ply == 0;
+    return capture_history->GetScore(state, move) +
+           root_node * root_history->GetScore(state, move);
   }
 
  public:
@@ -47,6 +54,7 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
+  std::unique_ptr<RootHistory> root_history;
 };
 
 }  // namespace search::history
