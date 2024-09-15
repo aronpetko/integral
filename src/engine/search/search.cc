@@ -910,26 +910,21 @@ Score Search::PVSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
+          if (in_root) {
+            history.root_history->UpdateScore(state.turn, move, depth);
+          }
+
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
+            if (in_root) {
+              history.root_history->Penalize(state, depth, quiets);
+            }
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, depth);
-          }
-
-          if (in_root) {
-            const int bonus = history::HistoryBonus(depth);
-            history.root_history->UpdateScore(state.turn, move, bonus);
-            if (is_quiet) {
-              // Lower the score of the quiet moves that failed to raise alpha
-              for (int i = 0; i < quiets.Size(); i++) {
-                history.root_history->UpdateScore(
-                    state.turn, quiets[i], -bonus);
-              }
-            }
           }
 
           // Beta cutoff: The opponent had a better move earlier in the tree
@@ -956,10 +951,7 @@ Score Search::PVSearch(Thread &thread,
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
-    const int penalty = -history::HistoryBonus(depth);
-    for (int i = 0; i < captures.Size(); i++) {
-      history.root_history->UpdateScore(state.turn, captures[i], penalty);
-    }
+    history.root_history->Penalize(state, depth, captures);
   }
 
   if (syzygy::enabled) {
