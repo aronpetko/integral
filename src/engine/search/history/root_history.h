@@ -11,8 +11,7 @@ class RootHistory {
  public:
   RootHistory() : table_({}) {}
 
-  void UpdateScore(Color turn, Move move) {
-    const int bonus = HistoryBonus(move);
+  void UpdateScore(Color turn, Move move, int bonus) {
     // Apply a linear dampening to the bonus as the depth increases
     int &score = table_[turn][move.GetFrom()][move.GetTo()];
     score += ScaleBonus(score, bonus);
@@ -22,7 +21,6 @@ class RootHistory {
     return table_[state.turn][move.GetFrom()][move.GetTo()];
   }
 
- private:
  private:
   MultiArray<int, kNumColors, kSquareCount, kSquareCount> table_;
 };

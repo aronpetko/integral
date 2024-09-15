@@ -38,7 +38,7 @@ class History {
            continuation_history->GetScore(state, move, stack - 1) +
            continuation_history->GetScore(state, move, stack - 2) +
            continuation_history->GetScore(state, move, stack - 4) +
-           root_node * root_history->GetScore(state, move);
+           root_node * root_history->GetScore(state, move) * 4;
   }
 
   [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
@@ -46,7 +46,7 @@ class History {
                                         StackEntry *stack) const {
     const bool root_node = stack->ply == 0;
     return capture_history->GetScore(state, move) +
-           root_node * root_history->GetScore(state, move);
+           root_node * root_history->GetScore(state, move) * 4;
   }
 
  public:
