@@ -169,7 +169,7 @@ int MovePicker::ScoreMove(Move &move) {
   if (move.IsCapture(state)) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
-    const int victim_value = eval::kSEEPieceScores[victim] * 100;
+    const int victim_value = eval::kSEEPieceScores[victim] * 10000;
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
