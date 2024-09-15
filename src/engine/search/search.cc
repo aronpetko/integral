@@ -272,10 +272,6 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    if (best_score >= -kMateInMaxPlyScore && moves_seen >= 2) {
-      break;
-    }
-
     if (!stack->in_check) {
       // QS Futility Pruning: Prune capture moves that don't win material if the
       // static eval is behind alpha by some margin
@@ -284,11 +280,15 @@ Score Search::QuiescentSearch(Thread &thread,
         best_score = std::max(best_score, futility_score);
         continue;
       }
+    }
 
-      // QS SEE Pruning: Prune moves that lose too much material
-      if (!eval::StaticExchange(move, -107, state)) {
-        continue;
-      }
+    if (best_score >= -kMateInMaxPlyScore && moves_seen >= 2) {
+      break;
+    }
+
+    // QS SEE Pruning: Prune moves that lose too much material
+    if (!eval::StaticExchange(move, -107, state)) {
+      continue;
     }
 
     // Prefetch the TT entry for the next move as early as possible
