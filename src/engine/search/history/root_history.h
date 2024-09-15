@@ -11,21 +11,19 @@ class RootHistory {
  public:
   RootHistory() : table_({}) {}
 
-  void UpdateScore(Color turn, Move move, int bonus) {
+  void UpdateScore(Color turn, Move move, int depth, MoveList &quiets) {
+    const int bonus = HistoryBonus(depth);
     // Apply a linear dampening to the bonus as the depth increases
     int &score = table_[turn][move.GetFrom()][move.GetTo()];
-    score += ScaleBonus(score, bonus);
-  }
+    score += ScaleBonus(score, depth);
 
-  void Penalize(const BoardState &state, int depth, MoveList &moves) {
-    const int penalty = -HistoryBonus(depth);
     // Lower the score of the capture moves that failed to raise alpha
-    for (int i = 0; i < moves.Size(); i++) {
-      const Move bad_move = moves[i];
+    for (int i = 0; i < quiets.Size(); i++) {
+      const Move bad_quiet = quiets[i];
       // Apply a linear dampening to the penalty as the depth increases
-      int &bad_move_score =
-          table_[state.turn][bad_move.GetFrom()][bad_move.GetTo()];
-      bad_move_score += ScaleBonus(bad_move_score, penalty);
+      int &bad_quiet_score =
+          table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()];
+      bad_quiet_score += ScaleBonus(bad_quiet_score, -depth);
     }
   }
 

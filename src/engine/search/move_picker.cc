@@ -170,7 +170,7 @@ int MovePicker::ScoreMove(Move &move) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
     const int victim_value = eval::kSEEPieceScores[victim] * 100;
-    return victim_value + history_.GetCaptureMoveScore(state, move, stack_);
+    return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
   // Order moves that caused a beta cutoff by their own history score
