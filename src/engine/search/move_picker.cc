@@ -40,6 +40,10 @@ Move MovePicker::Next() {
     if (moves_idx_ < noisys_.Size()) {
       return SelectionSort(noisys_, moves_idx_++);
     }
+
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
+      return Move::NullMove();
+    }
   }
 
   if (stage_ == Stage::kGoodNoisys) {
@@ -56,10 +60,6 @@ Move MovePicker::Next() {
       }
 
       bad_noisys_.Push({move, score});
-    }
-
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
-      return Move::NullMove();
     }
 
     stage_ = Stage::kFirstKiller;
