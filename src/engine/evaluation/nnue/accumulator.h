@@ -113,15 +113,11 @@ class Accumulator {
         }
         break;
       default:
-        throw std::runtime_error("unknown move type in MakeMove");
+        break;
     }
   }
 
   void UndoMove() {
-    if (accumulators_.empty()) {
-      throw std::runtime_error(
-          "attempt to undo move with empty accumulator stack");
-    }
     accumulator_ = accumulators_.back();
     accumulators_.pop_back();
   }

@@ -769,13 +769,13 @@ Score Search::PVSearch(Thread &thread,
     if (!in_root && depth >= 6 && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
-          tt_entry->depth + 4 >= depth &&
+          tt_entry->depth + 3 >= depth &&
           tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry->score - depth * 2;
+        const Score new_beta = tt_entry->score - depth;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
