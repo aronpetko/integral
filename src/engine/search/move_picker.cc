@@ -44,6 +44,8 @@ Move MovePicker::Next() {
     if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
       return Move::NullMove();
     }
+
+    stage_ = Stage::kFirstKiller;
   }
 
   if (stage_ == Stage::kGoodNoisys) {
