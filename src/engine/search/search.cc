@@ -266,7 +266,7 @@ Score Search::QuiescentSearch(Thread &thread,
   const Score futility_score = best_score + qs_fut_margin;
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack, -107);
+      MovePickerType::kQuiescence, board, tt_move, history, stack, -20);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
