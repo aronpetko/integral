@@ -243,9 +243,9 @@ void Board::MakeMove(Move move) {
   if (piece == PieceType::kKing &&
       (from.File() >= kFileE) != (to.File() >= kFileE)) {
     accumulator_->Refresh(state_, old_state.turn);
+  } else {
+    accumulator_->MakeMove(old_state, move);
   }
-
-  accumulator_->MakeMove(old_state, move);
 
   CalculateThreats();
 }

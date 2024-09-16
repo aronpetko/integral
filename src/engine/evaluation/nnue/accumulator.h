@@ -93,6 +93,7 @@ class Accumulator {
   }
 
   void Refresh(const BoardState& state, Color perspective) {
+    accumulators_.push_back(accumulator_);
     accumulator_.accumulators[perspective].Refresh(state, perspective);
   }
 
