@@ -102,9 +102,7 @@ class Accumulator {
     turn_ = FlipColor(state.turn);
     if (!move) return;
 
-    if (accumulator_.accumulators[state.turn].NeedsRefresh()) {
-      accumulator_.accumulators[state.turn].Refresh(state, state.turn);
-    }
+    accumulator_.accumulators[state.turn].Refresh(state, state.turn);
 
     const auto from = move.GetFrom();
     const auto to = move.GetTo();
