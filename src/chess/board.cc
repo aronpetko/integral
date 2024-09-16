@@ -243,7 +243,7 @@ void Board::MakeMove(Move move) {
   const auto &old_state = history_.Back();
   if (piece == PieceType::kKing &&
       (from.File() >= kFileE) != (to.File() >= kFileE)) {
-    accumulator_->Refresh(state_, FlipColor(state_.turn));
+    accumulator_->SetFromState(state_);
   }
 
   CalculateThreats();

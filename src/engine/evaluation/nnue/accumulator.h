@@ -83,16 +83,19 @@ class Accumulator {
       (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;
 
  public:
-  void SetFromState(const BoardState& state) {
+  Accumulator() {
     accumulators_.clear();
     accumulators_.shrink_to_fit();
     accumulators_.reserve(kMaxGamePly);
+  }
 
+  void SetFromState(const BoardState& state) {
     accumulator_.accumulators[Color::kWhite].Refresh(state, Color::kWhite);
     accumulator_.accumulators[Color::kBlack].Refresh(state, Color::kBlack);
   }
 
   void Refresh(const BoardState& state, Color perspective) {
+    accumulators_.push_back(accumulator_);
     accumulator_.accumulators[perspective].Refresh(state, perspective);
   }
 
