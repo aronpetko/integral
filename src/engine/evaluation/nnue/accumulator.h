@@ -51,10 +51,10 @@ class PerspectiveAccumulator {
     needs_refresh_ = value;
   }
 
-  std::array<I16, arch::kHiddenLayerSize>& GetActive() {
+  MultiArray<I16, arch::kHiddenLayerSize>& GetActive() {
     return active_;
   }
-  const std::array<I16, arch::kHiddenLayerSize>& GetActive() const {
+  const MultiArray<I16, arch::kHiddenLayerSize>& GetActive() const {
     return active_;
   }
 
@@ -73,7 +73,7 @@ class PerspectiveAccumulator {
     num_pieces_++;
   }
 
-  alignas(64) std::array<I16, arch::kHiddenLayerSize> active_;
+  alignas(64) MultiArray<I16, arch::kHiddenLayerSize> active_;
   int num_pieces_ = 0;
   bool needs_refresh_ = true;
 };
@@ -83,32 +83,32 @@ class Accumulator {
       (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;
 
  public:
-  Accumulator() {
+  void SetFromState(const BoardState& state) {
     accumulators_.clear();
     accumulators_.shrink_to_fit();
     accumulators_.reserve(kMaxGamePly);
-  }
 
-  void SetFromState(const BoardState& state) {
     accumulator_.accumulators[Color::kWhite].Refresh(state, Color::kWhite);
     accumulator_.accumulators[Color::kBlack].Refresh(state, Color::kBlack);
-  }
-
-  void Refresh(const BoardState& state, Color perspective) {
-    accumulators_.push_back(accumulator_);
-    accumulator_.accumulators[perspective].Refresh(state, perspective);
   }
 
   void MakeMove(const BoardState& state, Move move) {
     accumulators_.push_back(accumulator_);
 
+    accumulator_.accumulators[Color::kWhite].Refresh(state, Color::kWhite);
+    accumulator_.accumulators[Color::kBlack].Refresh(state, Color::kBlack);
+
+    turn_ = FlipColor(state.turn);
     if (!move) return;
+
+    return;
 
     const auto from = move.GetFrom();
     const auto to = move.GetTo();
     const auto type = move.GetType();
     const auto moving_piece = state.GetPieceType(from);
     const auto captured_piece = state.GetPieceType(to);
+
     const Square king_square = state.King(state.turn).GetLsb();
     const bool flip = king_square.File() >= kFileE;
 
@@ -184,13 +184,8 @@ class Accumulator {
                             FlipColor(state.turn),
                             flip);
         } else {
-          AddSubFeatures(to,
-                         moving_piece,
-                         state.turn,
-                         from,
-                         moving_piece,
-                         state.turn,
-                         flip);
+          AddSubFeatures(
+              to, moving_piece, state.turn, from, moving_piece, state.turn, flip);
         }
         break;
       default:
@@ -203,6 +198,10 @@ class Accumulator {
     accumulators_.pop_back();
   }
 
+  [[nodiscard]] Color GetTurn() const {
+    return turn_;
+  }
+
   [[nodiscard]] int GetOutputBucket() {
     return std::min(
         (accumulator_.accumulators[Color::kWhite].GetNumPieces() - 2) /
@@ -210,11 +209,11 @@ class Accumulator {
         static_cast<int>(arch::kOutputBucketCount - 1));
   }
 
-  std::array<I16, arch::kHiddenLayerSize>& operator[](int perspective) {
+  MultiArray<I16, arch::kHiddenLayerSize>& operator[](int perspective) {
     return accumulator_.accumulators[perspective].GetActive();
   }
 
-  const std::array<I16, arch::kHiddenLayerSize>& operator[](
+  const MultiArray<I16, arch::kHiddenLayerSize>& operator[](
       int perspective) const {
     return accumulator_.accumulators[perspective].GetActive();
   }
@@ -304,6 +303,7 @@ class Accumulator {
     std::array<PerspectiveAccumulator, 2> accumulators;
   };
 
+  Color turn_;
   AccumulatorEntry accumulator_;
   std::vector<AccumulatorEntry> accumulators_;
 };

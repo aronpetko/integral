@@ -184,7 +184,6 @@ bool Board::IsMoveLegal(Move move) {
 
 void Board::MakeMove(Move move) {
   history_.Push(state_);
-  accumulator_->MakeMove(state_, move);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -239,12 +238,7 @@ void Board::MakeMove(Move move) {
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
 
-  // Determine if we need to refresh this perspectives accumulator
-  const auto &old_state = history_.Back();
-  if (piece == PieceType::kKing &&
-      (from.File() >= kFileE) != (to.File() >= kFileE)) {
-    accumulator_->SetFromState(state_);
-  }
+  accumulator_->MakeMove(state_, move);
 
   CalculateThreats();
 }
