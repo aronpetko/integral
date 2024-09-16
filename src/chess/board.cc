@@ -184,6 +184,7 @@ bool Board::IsMoveLegal(Move move) {
 
 void Board::MakeMove(Move move) {
   history_.Push(state_);
+  accumulator_->MakeMove(state_, move);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -242,9 +243,7 @@ void Board::MakeMove(Move move) {
   const auto &old_state = history_.Back();
   if (piece == PieceType::kKing &&
       (from.File() >= kFileE) != (to.File() >= kFileE)) {
-    accumulator_->Refresh(state_, old_state.turn);
-  } else {
-    accumulator_->MakeMove(old_state, move);
+    accumulator_->Refresh(state_, FlipColor(state_.turn));
   }
 
   CalculateThreats();

@@ -93,15 +93,12 @@ class Accumulator {
   }
 
   void Refresh(const BoardState& state, Color perspective) {
-    accumulators_.push_back(accumulator_);
-    turn_ = state.turn;
     accumulator_.accumulators[perspective].Refresh(state, perspective);
   }
 
   void MakeMove(const BoardState& state, Move move) {
     accumulators_.push_back(accumulator_);
 
-    turn_ = FlipColor(state.turn);
     if (!move) return;
 
     const auto from = move.GetFrom();
@@ -201,10 +198,6 @@ class Accumulator {
   void UndoMove() {
     accumulator_ = accumulators_.back();
     accumulators_.pop_back();
-  }
-
-  [[nodiscard]] Color GetTurn() const {
-    return turn_;
   }
 
   [[nodiscard]] int GetOutputBucket() {
@@ -308,7 +301,6 @@ class Accumulator {
     std::array<PerspectiveAccumulator, 2> accumulators;
   };
 
-  Color turn_;
   AccumulatorEntry accumulator_;
   std::vector<AccumulatorEntry> accumulators_;
 };

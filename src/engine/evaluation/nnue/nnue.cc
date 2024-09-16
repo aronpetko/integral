@@ -54,8 +54,9 @@ void LoadFromIncBin() {
   network.output_biases = raw_network.output_biases;
 }
 
-Score Evaluate(std::shared_ptr<Accumulator>& accumulator) {
-  const auto turn = accumulator->GetTurn();
+Score Evaluate(const BoardState& state,
+               std::shared_ptr<Accumulator>& accumulator) {
+  const auto turn = state.turn;
   const auto bucket = accumulator->GetOutputBucket();
 
   Score eval;
