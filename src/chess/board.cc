@@ -242,7 +242,7 @@ void Board::MakeMove(Move move) {
   const auto &old_state = history_.Back();
   if (piece == PieceType::kKing &&
       (from.File() >= kFileE) != (to.File() >= kFileE)) {
-    accumulator_->SetNeedsRefresh(old_state.turn);
+    accumulator_->Refresh(state_, old_state.turn);
   }
 
   accumulator_->MakeMove(old_state, move);

@@ -92,8 +92,8 @@ class Accumulator {
     accumulator_.accumulators[Color::kBlack].Refresh(state, Color::kBlack);
   }
 
-  void SetNeedsRefresh(Color perspective) {
-    accumulator_.accumulators[perspective].SetNeedsRefresh(true);
+  void Refresh(const BoardState& state, Color perspective) {
+    accumulator_.accumulators[perspective].Refresh(state, perspective);
   }
 
   void MakeMove(const BoardState& state, Move move) {
@@ -101,8 +101,6 @@ class Accumulator {
 
     turn_ = FlipColor(state.turn);
     if (!move) return;
-
-    accumulator_.accumulators[state.turn].Refresh(state, state.turn);
 
     const auto from = move.GetFrom();
     const auto to = move.GetTo();
