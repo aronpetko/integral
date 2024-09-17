@@ -163,7 +163,7 @@ class PerspectiveAccumulator {
 class Accumulator {
  public:
   Accumulator() : head_(nullptr) {
-    stack_.resize(1024);
+    stack_.resize(2048);
   }
 
   void SetFromState(const BoardState& state) {
@@ -179,14 +179,13 @@ class Accumulator {
   }
 
   void MakeMove(const BoardState& state, Move move) {
-    // Move forward the head accumulator
-    ++head_;
-
     // Don't make any changes in a null move
     if (!move) {
-      *head_ = *(head_ - 1);
       return;
     }
+
+    // Move forward the head accumulator
+    ++head_;
 
     const auto& prev_head = *(head_ - 1);
     const auto from = move.GetFrom();

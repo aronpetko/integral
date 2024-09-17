@@ -595,7 +595,7 @@ Score Search::PVSearch(Thread &thread,
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
             thread, depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
-        board.UndoMove();
+        board.UndoNullMove();
 
         if (ShouldQuit(thread)) {
           return 0;

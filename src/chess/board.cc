@@ -252,6 +252,10 @@ void Board::UndoMove() {
   accumulator_->UndoMove();
 }
 
+void Board::UndoNullMove() {
+  state_ = history_.PopBack();
+}
+
 void Board::MakeNullMove() {
   history_.Push(state_);
   accumulator_->MakeMove(state_, Move::NullMove());
