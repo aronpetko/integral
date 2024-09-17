@@ -241,8 +241,7 @@ void Board::MakeMove(Move move) {
   // Determine if we need to refresh this perspectives accumulator or if we can
   // efficiently update it
   const auto &old_state = history_.Back();
-  accumulator_->MakeMove(old_state, move);
-
+  accumulator_->FullRefresh(state_);
 
   CalculateThreats();
 }
