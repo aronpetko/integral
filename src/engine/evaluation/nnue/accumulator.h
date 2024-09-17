@@ -162,20 +162,26 @@ class PerspectiveAccumulator {
 
 class Accumulator {
  public:
-  Accumulator() : head_(nullptr) {
+  Accumulator() : head_idx_(0) {
     stack_.resize(2048);
   }
 
   void SetFromState(const BoardState& state) {
-    head_ = &stack_.front();
     // Refresh both sides' accumulator
+    head_idx_ = 0;
     for (const Color color : {Color::kBlack, Color::kWhite}) {
-      head_->at(color).Refresh(state, color);
+      stack_[head_idx_].at(color).Refresh(state, color);
     }
   }
 
   void Refresh(const BoardState& state, Color perspective) {
-    (++head_)->at(perspective).Refresh(state, perspective);
+    stack_[++head_idx_][perspective].Refresh(state, perspective);
+  }
+
+  void FullRefresh(const BoardState& state) {
+    ++head_idx_;
+    stack_[head_idx_].at(Color::kWhite).Refresh(state, Color::kWhite);
+    stack_[head_idx_].at(Color::kBlack).Refresh(state, Color::kBlack);
   }
 
   void MakeMove(const BoardState& state, Move move) {
@@ -185,9 +191,11 @@ class Accumulator {
     }
 
     // Move forward the head accumulator
-    ++head_;
+    if (++head_idx_ == stack_.size()) {
+      stack_.emplace_back();
+    }
 
-    const auto& prev_head = *(head_ - 1);
+    const auto& prev_head = stack_[head_idx_ - 1];
     const auto from = move.GetFrom();
     const auto to = move.GetTo();
     const auto type = move.GetType();
@@ -205,7 +213,7 @@ class Accumulator {
               static_cast<int>(move.GetPromotionType()) + 1);
           if (captured_piece != PieceType::kNone) {
             // Promotion with capture
-            head_->at(perspective)
+            stack_[head_idx_][perspective]
                 .AddSubSubFeatures(prev_head[perspective],
                                    perspective,
                                    king_square,
@@ -220,7 +228,7 @@ class Accumulator {
                                    opponent_color);
           } else {
             // Promotion without capture
-            head_->at(perspective)
+            stack_[head_idx_][perspective]
                 .AddSubFeatures(prev_head[perspective],
                                 perspective,
                                 king_square,
@@ -236,7 +244,7 @@ class Accumulator {
         case MoveType::kCastle: {
           const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
           const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
-          head_->at(perspective)
+          stack_[head_idx_][perspective]
               .AddAddSubSubFeatures(prev_head[perspective],
                                     perspective,
                                     king_square,
@@ -257,7 +265,7 @@ class Accumulator {
         case MoveType::kEnPassant: {
           const Square captured_pawn =
               Square(to - (moving_color == Color::kWhite ? 8 : -8));
-          head_->at(perspective)
+          stack_[head_idx_][perspective]
               .AddSubSubFeatures(prev_head[perspective],
                                  perspective,
                                  king_square,
@@ -274,7 +282,7 @@ class Accumulator {
         }
         case MoveType::kNormal: {
           if (captured_piece != PieceType::kNone) {
-            head_->at(perspective)
+            stack_[head_idx_][perspective]
                 .AddSubSubFeatures(prev_head[perspective],
                                    perspective,
                                    king_square,
@@ -288,7 +296,7 @@ class Accumulator {
                                    captured_piece,
                                    opponent_color);
           } else {
-            head_->at(perspective)
+            stack_[head_idx_][perspective]
                 .AddSubFeatures(prev_head[perspective],
                                 perspective,
                                 king_square,
@@ -308,7 +316,7 @@ class Accumulator {
   }
 
   void UndoMove() {
-    --head_;
+    --head_idx_;
   }
 
   [[nodiscard]] int GetOutputBucket(const BoardState& state) {
@@ -317,17 +325,17 @@ class Accumulator {
   }
 
   PerspectiveAccumulator& operator[](int perspective) {
-    return head_->at(perspective);
+    return stack_[head_idx_][perspective];
   }
 
   const PerspectiveAccumulator& operator[](int perspective) const {
-    return head_->at(perspective);
+    return stack_[head_idx_][perspective];
   }
 
  private:
   using SideAccumulators = std::array<PerspectiveAccumulator, 2>;
 
-  SideAccumulators* head_;
+  int head_idx_;
   std::vector<SideAccumulators> stack_;
 };
 
