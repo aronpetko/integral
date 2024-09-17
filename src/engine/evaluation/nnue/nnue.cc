@@ -57,7 +57,7 @@ void LoadFromIncBin() {
 Score Evaluate(const BoardState& state,
                std::shared_ptr<Accumulator>& accumulator) {
   const auto turn = state.turn;
-  const auto bucket = accumulator->GetOutputBucket();
+  const auto bucket = accumulator->GetOutputBucket(state);
 
   Score eval;
 

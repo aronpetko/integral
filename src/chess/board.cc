@@ -238,7 +238,11 @@ void Board::MakeMove(Move move) {
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
 
-  accumulator_->MakeMove(state_, move);
+  // Determine if we need to refresh this perspectives accumulator or if we can
+  // efficiently update it
+  const auto &old_state = history_.Back();
+  accumulator_->MakeMove(old_state, move);
+
 
   CalculateThreats();
 }
