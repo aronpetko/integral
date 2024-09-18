@@ -185,6 +185,11 @@ bool Board::IsMoveLegal(Move move) {
 void Board::MakeMove(Move move) {
   history_.Push(state_);
 
+  // Determine if we need to refresh this perspectives accumulator or if we can
+  // efficiently update it
+  const auto &old_state = history_.Back();
+  accumulator_->MakeMove(state_, move);
+
   const Color us = state_.turn, them = FlipColor(us);
 
   const auto from = move.GetFrom(), to = move.GetTo();
@@ -237,11 +242,6 @@ void Board::MakeMove(Move move) {
 
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
-
-  // Determine if we need to refresh this perspectives accumulator or if we can
-  // efficiently update it
-  const auto &old_state = history_.Back();
-  accumulator_->FullRefresh(state_);
 
   CalculateThreats();
 }
