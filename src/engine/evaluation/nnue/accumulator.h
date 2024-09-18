@@ -166,9 +166,9 @@ class Accumulator {
 
   void Refresh(const BoardState& state, Color perspective) {
     // Move forward the head accumulator
-    if (++head_idx_ == stack_.size()) {
+    /*if (++head_idx_ == stack_.size()) {
       stack_.emplace_back();
-    }
+    }*/
 
     stack_[head_idx_][perspective].Refresh(state, perspective);
   }

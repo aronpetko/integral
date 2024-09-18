@@ -186,6 +186,7 @@ void Board::MakeMove(Move move) {
   history_.Push(state_);
 
   auto old_state = state_;
+  accumulator_->MakeMove(old_state, move);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -243,7 +244,7 @@ void Board::MakeMove(Move move) {
   if (accumulator_->ShouldRefresh(old_state, move)) {
     accumulator_->Refresh(state_, old_state.turn);
   } else {
-    accumulator_->MakeMove(old_state, move);
+
   }
 
   CalculateThreats();
