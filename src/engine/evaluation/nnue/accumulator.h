@@ -16,6 +16,10 @@ static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
     PieceType piece,
     Color piece_color,
     Color perspective) {
+  if (king_square.File() >= kFileE) {
+    square = square ^ 0b111;
+  }
+
   const int color_idx = static_cast<int>(perspective != piece_color);
   const int piece_idx = static_cast<int>(piece);
   const int square_idx = static_cast<int>(square ^ (56 * perspective));
@@ -161,13 +165,32 @@ class Accumulator {
   }
 
   void Refresh(const BoardState& state, Color perspective) {
-    stack_[++head_idx_][perspective].Refresh(state, perspective);
+    // Move forward the head accumulator
+    if (++head_idx_ == stack_.size()) {
+      stack_.emplace_back();
+    }
+
+    stack_[head_idx_][perspective].Refresh(state, perspective);
   }
 
   void FullRefresh(const BoardState& state) {
     ++head_idx_;
     stack_[head_idx_].at(Color::kWhite).Refresh(state, Color::kWhite);
     stack_[head_idx_].at(Color::kBlack).Refresh(state, Color::kBlack);
+  }
+
+  [[nodiscard]] bool ShouldRefresh(const BoardState& state, Move move) const {
+    const auto from = move.GetFrom();
+    const auto to = move.GetTo();
+    const auto moving_piece = state.GetPieceType(from);
+
+    if (moving_piece == PieceType::kKing) {
+      // Refresh the perspective's accumulator if the king crosses to the other
+      // half of the board
+      return (from.File() >= kFileE) != (to.File() >= kFileE);
+    }
+
+    return false;
   }
 
   void MakeMove(const BoardState& state, Move move) {

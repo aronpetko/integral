@@ -184,7 +184,8 @@ bool Board::IsMoveLegal(Move move) {
 
 void Board::MakeMove(Move move) {
   history_.Push(state_);
-  accumulator_->MakeMove(state_, move);
+
+  auto old_state = state_;
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -238,6 +239,12 @@ void Board::MakeMove(Move move) {
 
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
+
+  if (accumulator_->ShouldRefresh(old_state, move)) {
+    accumulator_->Refresh(state_, old_state.turn);
+  } else {
+    accumulator_->MakeMove(old_state, move);
+  }
 
   CalculateThreats();
 }
