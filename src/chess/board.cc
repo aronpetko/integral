@@ -185,7 +185,7 @@ bool Board::IsMoveLegal(Move move) {
 void Board::MakeMove(Move move) {
   history_.Push(state_);
 
-  auto old_state = state_;
+  auto &old_state = history_.Back();
 
   const Color us = state_.turn, them = FlipColor(us);
 
