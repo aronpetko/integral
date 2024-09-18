@@ -183,8 +183,8 @@ bool Board::IsMoveLegal(Move move) {
 }
 
 void Board::MakeMove(Move move) {
-  accumulator_->MakeMove(state_, move);
   history_.Push(state_);
+  accumulator_->MakeMove(state_, move);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -245,6 +245,10 @@ void Board::MakeMove(Move move) {
 void Board::UndoMove() {
   state_ = history_.PopBack();
   accumulator_->UndoMove();
+}
+
+void Board::UndoNullMove() {
+  state_ = history_.PopBack();
 }
 
 void Board::MakeNullMove() {

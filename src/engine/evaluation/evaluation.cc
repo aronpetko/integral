@@ -5,7 +5,7 @@
 namespace eval {
 
 Score Evaluate(Board &board) {
-  return nnue::Evaluate(board.GetAccumulator());
+  return nnue::Evaluate(board.GetState(), board.GetAccumulator());
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {

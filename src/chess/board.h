@@ -264,6 +264,8 @@ class Board {
 
   void UndoMove();
 
+  void UndoNullMove();
+
   void PrintPieces();
 
   [[nodiscard]] bool IsMovePseudoLegal(Move move);
