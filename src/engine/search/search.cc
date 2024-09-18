@@ -720,7 +720,7 @@ Score Search::PVSearch(Thread &thread,
       reduction -=
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
-      reduction += stack->improving_rate <= 0;
+      reduction += stack->improving_rate < 0;
       const int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
