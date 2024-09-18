@@ -720,6 +720,7 @@ Score Search::PVSearch(Thread &thread,
       reduction -=
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
+      reduction += stack->improving_rate <= 0;
       const int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
@@ -734,10 +735,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_depth = lmr_depth - !improving;
-      const int futility_margin =
-          fut_margin_base + fut_margin_mult * futility_depth;
-      if (futility_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
+      const int futility_margin = fut_margin_base + fut_margin_mult * lmr_depth;
+      if (lmr_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
