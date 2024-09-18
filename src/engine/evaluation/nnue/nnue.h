@@ -10,7 +10,11 @@
 namespace nnue {
 
 struct alignas(64) RawNetwork {
-  MultiArray<I16, arch::kInputLayerSize, arch::kHiddenLayerSize>
+  MultiArray<I16,
+             2,
+             PieceType::kNumPieceTypes,
+             Squares::kSquareCount,
+             arch::kHiddenLayerSize>
       feature_weights;
   MultiArray<I16, arch::kHiddenLayerSize> feature_biases;
   MultiArray<I16, 2, arch::kHiddenLayerSize, arch::kOutputBucketCount>
@@ -20,7 +24,9 @@ struct alignas(64) RawNetwork {
 
 struct TransposedNetwork {
   alignas(64) MultiArray<I16,
-                         arch::kInputLayerSize,
+                         2,
+                         PieceType::kNumPieceTypes,
+                         Squares::kSquareCount,
                          arch::kHiddenLayerSize> feature_weights;
   alignas(64) MultiArray<I16, arch::kHiddenLayerSize> feature_biases;
   alignas(64) MultiArray<I16,

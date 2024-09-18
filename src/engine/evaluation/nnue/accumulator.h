@@ -16,24 +16,10 @@ static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
     PieceType piece,
     Color piece_color,
     Color perspective) {
-  // Horizontally mirror every feature if the king is on the right half of the
-  // board
-  if (king_square.File() >= kFileE) {
-    // square = square ^ 0b111;
-  }
-
-  constexpr int kColorStride =
-      Squares::kSquareCount * PieceType::kNumPieceTypes;
-  constexpr int kPieceStride = Squares::kSquareCount;
-
-  int idx;
-  if (perspective == Color::kWhite) {
-    idx = piece_color * kColorStride + piece * kPieceStride + square;
-  } else {
-    idx = !piece_color * kColorStride + piece * kPieceStride + (square ^ 56);
-  }
-
-  return network.feature_weights[idx];
+  const int color_idx = static_cast<int>(perspective != piece_color);
+  const int piece_idx = static_cast<int>(piece);
+  const int square_idx = static_cast<int>(square ^ (56 * perspective));
+  return network.feature_weights[color_idx][piece_idx][square_idx];
 }
 
 class PerspectiveAccumulator {
@@ -213,99 +199,99 @@ class Accumulator {
               static_cast<int>(move.GetPromotionType()) + 1);
           if (captured_piece != PieceType::kNone) {
             // Promotion with capture
-            stack_[head_idx_][perspective]
-                .AddSubSubFeatures(prev_head[perspective],
-                                   perspective,
-                                   king_square,
-                                   to,
-                                   promotion_piece,
-                                   moving_color,
-                                   from,
-                                   moving_piece,
-                                   moving_color,
-                                   to,
-                                   captured_piece,
-                                   opponent_color);
+            stack_[head_idx_][perspective].AddSubSubFeatures(
+                prev_head[perspective],
+                perspective,
+                king_square,
+                to,
+                promotion_piece,
+                moving_color,
+                from,
+                moving_piece,
+                moving_color,
+                to,
+                captured_piece,
+                opponent_color);
           } else {
             // Promotion without capture
-            stack_[head_idx_][perspective]
-                .AddSubFeatures(prev_head[perspective],
-                                perspective,
-                                king_square,
-                                to,
-                                promotion_piece,
-                                moving_color,
-                                from,
-                                moving_piece,
-                                moving_color);
+            stack_[head_idx_][perspective].AddSubFeatures(
+                prev_head[perspective],
+                perspective,
+                king_square,
+                to,
+                promotion_piece,
+                moving_color,
+                from,
+                moving_piece,
+                moving_color);
           }
           break;
         }
         case MoveType::kCastle: {
           const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
           const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
-          stack_[head_idx_][perspective]
-              .AddAddSubSubFeatures(prev_head[perspective],
-                                    perspective,
-                                    king_square,
-                                    to,
-                                    PieceType::kKing,
-                                    moving_color,
-                                    rook_to,
-                                    PieceType::kRook,
-                                    moving_color,
-                                    from,
-                                    PieceType::kKing,
-                                    moving_color,
-                                    rook_from,
-                                    PieceType::kRook,
-                                    moving_color);
+          stack_[head_idx_][perspective].AddAddSubSubFeatures(
+              prev_head[perspective],
+              perspective,
+              king_square,
+              to,
+              PieceType::kKing,
+              moving_color,
+              rook_to,
+              PieceType::kRook,
+              moving_color,
+              from,
+              PieceType::kKing,
+              moving_color,
+              rook_from,
+              PieceType::kRook,
+              moving_color);
           break;
         }
         case MoveType::kEnPassant: {
           const Square captured_pawn =
               Square(to - (moving_color == Color::kWhite ? 8 : -8));
-          stack_[head_idx_][perspective]
-              .AddSubSubFeatures(prev_head[perspective],
-                                 perspective,
-                                 king_square,
-                                 to,
-                                 PieceType::kPawn,
-                                 moving_color,
-                                 from,
-                                 moving_piece,
-                                 moving_color,
-                                 captured_pawn,
-                                 PieceType::kPawn,
-                                 opponent_color);
+          stack_[head_idx_][perspective].AddSubSubFeatures(
+              prev_head[perspective],
+              perspective,
+              king_square,
+              to,
+              PieceType::kPawn,
+              moving_color,
+              from,
+              moving_piece,
+              moving_color,
+              captured_pawn,
+              PieceType::kPawn,
+              opponent_color);
           break;
         }
         case MoveType::kNormal: {
           if (captured_piece != PieceType::kNone) {
-            stack_[head_idx_][perspective]
-                .AddSubSubFeatures(prev_head[perspective],
-                                   perspective,
-                                   king_square,
-                                   to,
-                                   moving_piece,
-                                   moving_color,
-                                   from,
-                                   moving_piece,
-                                   moving_color,
-                                   to,
-                                   captured_piece,
-                                   opponent_color);
+            stack_[head_idx_][perspective].AddSubSubFeatures(
+                prev_head[perspective],
+                perspective,
+                king_square,
+                to,
+                moving_piece,
+                moving_color,
+                from,
+                moving_piece,
+                moving_color,
+                to,
+                captured_piece,
+                opponent_color);
           } else {
-            stack_[head_idx_][perspective]
-                .AddSubFeatures(prev_head[perspective],
-                                perspective,
-                                king_square,
-                                to,
-                                moving_piece,
-                                moving_color,
-                                from,
-                                moving_piece,
-                                moving_color);
+            stack_[head_idx_][perspective].AddSubFeatures(
+                prev_head[perspective],
+                perspective,
+                king_square,
+                to,
+                moving_piece,
+                moving_color,
+                from,
+                moving_piece,
+                moving_color);
           }
           break;
         }
@@ -333,10 +319,8 @@ class Accumulator {
   }
 
  private:
-  using SideAccumulators = std::array<PerspectiveAccumulator, 2>;
-
   int head_idx_;
-  std::vector<SideAccumulators> stack_;
+  std::vector<std::array<PerspectiveAccumulator, 2>> stack_;
 };
 
 }  // namespace nnue
