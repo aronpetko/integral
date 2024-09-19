@@ -527,7 +527,6 @@ Score Search::PVSearch(Thread &thread,
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
-  stack->improving_rate = 0.0;
   bool improving = false;
 
   StackEntry *past_stack = nullptr;
@@ -539,11 +538,6 @@ Score Search::PVSearch(Thread &thread,
 
   if (past_stack && !stack->in_check) {
     improving = stack->static_eval > past_stack->static_eval;
-    // Smoothen the improving rate from the static eval of our position in
-    // previous turns
-    const Score diff = stack->static_eval - past_stack->static_eval;
-    stack->improving_rate = std::clamp(
-        past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
   }
 
   (stack + 1)->ClearKillerMoves();
@@ -555,7 +549,7 @@ Score Search::PVSearch(Thread &thread,
         stack->eval >= beta) {
       const int futility_margin =
           depth * rev_fut_margin -
-          static_cast<int>(stack->improving_rate * 1.5 * rev_fut_margin) +
+          static_cast<int>(improving * 1.5 * rev_fut_margin) +
           (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
         return stack->eval;
@@ -726,8 +720,7 @@ Score Search::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
-          static_cast<int>((lmp_base + depth * depth) /
-                           (lmp_mult - std::max(0.0, stack->improving_rate)));
+          static_cast<int>((lmp_base + depth * depth) / (lmp_mult - improving));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -847,7 +840,7 @@ Score Search::PVSearch(Thread &thread,
       reduction -=
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
-      reduction += stack->improving_rate < 0;
+      reduction += !improving;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);

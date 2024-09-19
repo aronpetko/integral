@@ -70,8 +70,6 @@ struct StackEntry {
   void *continuation_entry;
   // Moves that caused a beta cutoff at this ply
   std::array<Move, 2> killer_moves;
-  // Overall improving rate from the last couple plies
-  double improving_rate;
   // Was in check at this ply
   bool in_check;
   // Threats
@@ -98,8 +96,7 @@ struct StackEntry {
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
-        continuation_entry(nullptr),
-        improving_rate(kScoreNone) {
+        continuation_entry(nullptr) {
     ClearKillerMoves();
   }
 
