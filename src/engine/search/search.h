@@ -43,6 +43,22 @@ struct Thread {
     board = new_board;
   }
 
+  void MakeMove(Move move) {
+
+  }
+
+  void UndoMove() {
+
+  }
+
+  void MakeNullMove() {
+
+  }
+
+  void UndoNullMove() {
+
+  }
+
   void Reset() {
     stack.Reset();
 
@@ -57,6 +73,7 @@ struct Thread {
   Board board;
   history::History history;
   Stack stack;
+  std::unique_ptr<nnue::Accumulator> accumulator;
   std::atomic<U64> nodes_searched;
   U16 root_depth, sel_depth;
   U64 tb_hits;
