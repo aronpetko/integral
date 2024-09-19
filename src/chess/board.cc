@@ -184,7 +184,8 @@ bool Board::IsMoveLegal(Move move) {
 
 void Board::MakeMove(Move move) {
   history_.Push(state_);
-  accumulator_->MakeMove(state_, move);
+
+  auto &old_state = history_.Back();
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -238,6 +239,15 @@ void Board::MakeMove(Move move) {
 
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
+
+  if (accumulator_->ShouldRefresh(old_state, move)) {
+    // Efficiently update the new side-to-move's perspective
+    accumulator_->MakeMove(old_state, state_.turn, move);
+    // Refresh the old side-to-move's perspective
+    accumulator_->Refresh(state_, old_state.turn);
+  } else {
+    accumulator_->MakeMove(old_state, move);
+  }
 
   CalculateThreats();
 }
