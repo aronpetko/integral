@@ -237,10 +237,10 @@ void Board::MakeMove(Move move, std::function<void(U64)> prefetch_fn) {
   state_.turn = FlipColor(state_.turn);
   state_.zobrist_key ^= zobrist::turn;
 
+  if (prefetch_fn) prefetch_fn(state_.zobrist_key);
+
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
-
-  if (prefetch_fn) prefetch_fn(state_.zobrist_key);
 
   if (accumulator_->ShouldRefresh(old_state, move)) {
     // Efficiently update the new side-to-move's perspective

@@ -26,7 +26,7 @@ enum class SearchType {
 
 struct Thread {
   explicit Thread(U32 id)
-      : id(id), stack({}), tt(tt), nodes_searched(0), sel_depth(0), tb_hits(0) {
+      : id(id), stack({}), nodes_searched(0), sel_depth(0), tb_hits(0) {
     NewGame();
   }
 
@@ -57,7 +57,6 @@ struct Thread {
   Board board;
   history::History history;
   Stack stack;
-  TranspositionTable *tt;
   std::atomic<U64> nodes_searched;
   U16 root_depth, sel_depth;
   U64 tb_hits;

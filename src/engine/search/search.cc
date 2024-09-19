@@ -642,8 +642,7 @@ Score Search::PVSearch(Thread &thread,
 
           const int probcut_depth = depth - 3;
 
-          board.MakeMove(
-              move, [this](U64 key) { transposition_table_.Prefetch(key); });
+          board.MakeMove(move);
 
           Score score = -QuiescentSearch<node_type>(
               thread, -pc_beta, -pc_beta + 1, stack + 1);
