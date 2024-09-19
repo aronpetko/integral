@@ -542,8 +542,8 @@ Score Search::PVSearch(Thread &thread,
     // Smoothen the improving rate from the static eval of our position in
     // previous turns
     const Score diff = stack->static_eval - past_stack->static_eval;
-    stack->improving_rate = std::clamp(
-        past_stack->improving_rate + diff / improving_rate_divisor, -1.0, 1.0);
+    stack->improving_rate =
+        std::clamp(diff / improving_rate_divisor, -1.0, 1.0);
   }
 
   (stack + 1)->ClearKillerMoves();
