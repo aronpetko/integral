@@ -26,7 +26,7 @@ enum class SearchType {
 
 struct Thread {
   explicit Thread(U32 id)
-      : id(id), stack({}), nodes_searched(0), sel_depth(0), tb_hits(0) {
+      : id(id), stack({}), tt(tt), nodes_searched(0), sel_depth(0), tb_hits(0) {
     NewGame();
   }
 
@@ -43,22 +43,6 @@ struct Thread {
     board = new_board;
   }
 
-  void MakeMove(Move move) {
-
-  }
-
-  void UndoMove() {
-
-  }
-
-  void MakeNullMove() {
-
-  }
-
-  void UndoNullMove() {
-
-  }
-
   void Reset() {
     stack.Reset();
 
@@ -73,7 +57,7 @@ struct Thread {
   Board board;
   history::History history;
   Stack stack;
-  std::unique_ptr<nnue::Accumulator> accumulator;
+  TranspositionTable *tt;
   std::atomic<U64> nodes_searched;
   U16 root_depth, sel_depth;
   U64 tb_hits;

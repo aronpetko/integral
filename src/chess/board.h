@@ -258,7 +258,7 @@ class Board {
 
   void SetFromFen(std::string_view fen_str);
 
-  void MakeMove(Move move);
+  void MakeMove(Move move, std::function<void(U64)> prefetch_fn = nullptr);
 
   void MakeNullMove();
 

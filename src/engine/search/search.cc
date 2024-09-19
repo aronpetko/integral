@@ -287,12 +287,10 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    // Prefetch the TT entry for the next move as early as possible
-    transposition_table_.Prefetch(board.PredictKeyAfter(move));
-
     ++thread.nodes_searched;
 
-    board.MakeMove(move);
+    board.MakeMove(move,
+                   [this](U64 key) { transposition_table_.Prefetch(key); });
     const Score score =
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
@@ -644,7 +642,8 @@ Score Search::PVSearch(Thread &thread,
 
           const int probcut_depth = depth - 3;
 
-          board.MakeMove(move);
+          board.MakeMove(
+              move, [this](U64 key) { transposition_table_.Prefetch(key); });
 
           Score score = -QuiescentSearch<node_type>(
               thread, -pc_beta, -pc_beta + 1, stack + 1);
@@ -703,9 +702,6 @@ Score Search::PVSearch(Thread &thread,
     if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
       continue;
     }
-
-    // Prefetch the TT entry for the next move as early as possible
-    transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
@@ -823,7 +819,8 @@ Score Search::PVSearch(Thread &thread,
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
 
-    board.MakeMove(move);
+    board.MakeMove(move,
+                   [this](U64 key) { transposition_table_.Prefetch(key); });
 
     const bool gives_check = state.InCheck();
 
