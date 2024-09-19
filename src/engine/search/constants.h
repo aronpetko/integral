@@ -26,7 +26,7 @@ Tunable null_move_re("null_move_re", 202, 100, 400, 20);
 Tunable iir_depth("iir_depth", 4, 2, 8, 1);
 
 Tunable improving_rate_divisor(
-    "improving_rate_divisor", 30.0, 5.0, 100.0, 15.0);
+    "improving_rate_divisor", 10.0, 5.0, 100.0, 15.0);
 
 Tunable lmp_base("lmp_base", 5.0, 1.5, 5.0, 0.5);
 Tunable lmp_mult("lmp_mult", 3, 1.0, 4.0, 0.25);
