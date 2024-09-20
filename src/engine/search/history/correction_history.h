@@ -12,7 +12,11 @@ inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
 
 class CorrectionHistory {
  public:
-  CorrectionHistory() : non_pawn_table_({}), pawn_table_({}) {}
+  CorrectionHistory()
+      : non_pawn_table_({}),
+        pawn_table_({}),
+        minor_table_({}),
+        major_table_({}) {}
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
