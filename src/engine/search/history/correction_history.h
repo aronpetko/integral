@@ -75,7 +75,7 @@ class CorrectionHistory {
     const I32 correction =
         pawn_correction +
         (non_pawn_white_correction + non_pawn_black_correction) / 2 +
-        minor_correction + major_correction / 2;
+        minor_correction + major_correction;
     const I32 adjusted_score =
         static_cast<I32>(static_eval) +
         correction / static_cast<int>(corr_history_scale);
