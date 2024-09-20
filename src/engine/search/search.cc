@@ -423,7 +423,7 @@ Score Search::PVSearch(Thread &thread,
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
     if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= depth) {
-      if (!tt_move.IsCapture(state)) {
+      if (tt_entry->score >= beta && !tt_move.IsNoisy(state)) {
         history.quiet_history->UpdateMoveScore(
             state.turn, tt_move, state.threats, history::HistoryBonus(depth));
       }
