@@ -58,15 +58,15 @@ class CorrectionHistory {
                                         Score static_eval) const {
     const Score pawn_correction =
         pawn_table_[state.turn][GetPawnTableIndex(state)];
-    const Score non_pawn_white_correction =
+    const I32 non_pawn_white_correction =
         non_pawn_table_[state.turn][Color::kWhite]
                        [GetNonPawnTableIndex(state, Color::kWhite)];
-    const Score non_pawn_black_correction =
+    const I32 non_pawn_black_correction =
         non_pawn_table_[state.turn][Color::kBlack]
                        [GetNonPawnTableIndex(state, Color::kBlack)];
-    const Score minor_correction =
+    const I32 minor_correction =
         minor_table_[state.turn][GetMinorTableIndex(state)];
-    const Score major_correction =
+    const I32 major_correction =
         major_table_[state.turn][GetMajorTableIndex(state)];
     const I32 correction =
         pawn_correction +
@@ -93,9 +93,9 @@ class CorrectionHistory {
   [[nodiscard]] Score UpdateTableScore(Score current_score,
                                        int weight,
                                        Score scaled_bonus) {
-    Score new_score = (current_score * (corr_history_scale - weight) +
-                       scaled_bonus * weight) /
-                      corr_history_scale;
+    const Score new_score = (current_score * (corr_history_scale - weight) +
+                             scaled_bonus * weight) /
+                            corr_history_scale;
     return std::clamp<Score>(new_score,
                              corr_history_scale * -max_corr_hist,
                              corr_history_scale * max_corr_hist);
