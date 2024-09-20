@@ -11,12 +11,11 @@ Score Evaluate(Board &board) {
   const auto &state = board.GetState();
 
   // Scale the score based on the number of material left
-  const int game_phase =
-      state.Knights().PopCount() + state.Bishops().PopCount() +
-      state.Rooks().PopCount() * 2 + state.Queens().PopCount() * 4;
-  const int material = std::min(game_phase, 24);
+  const int phase =
+      state.Knights().PopCount() * 3 + state.Bishops().PopCount() * 3 +
+      state.Rooks().PopCount() * 5 + state.Queens().PopCount() * 12;
 
-  return network_eval * (56 + material) / 64;
+  return network_eval * (200 + phase) / 256;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
