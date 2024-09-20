@@ -89,6 +89,8 @@ struct BoardState {
         en_passant(Squares::kNoSquare),
         zobrist_key(0ULL),
         pawn_key(0ULL),
+        minor_key(0ULL),
+        major_key(0ULL),
         non_pawn_keys({}),
         checkers(0ULL),
         pinned(0ULL),
