@@ -735,6 +735,14 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
+      // Capture Futility Pruning: Skip capture moves at near-leaf nodes when
+      // there's a low chance to raise alpha
+      const int capture_futility_margin = 200 + 150 * lmr_depth;
+      if (lmr_depth <= 4 && !stack->in_check && is_capture &&
+          stack->history_score < 0 && stack->eval + capture_futility_margin < alpha) {
+        continue;
+      }
+
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       const int see_threshold =
