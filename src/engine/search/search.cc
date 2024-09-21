@@ -905,6 +905,8 @@ Score Search::PVSearch(Thread &thread,
         if (alpha >= beta) {
           if (is_quiet) {
             stack->AddKillerMove(move);
+            history.quiet_history->UpdateScore(
+                state, stack, depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
           } else if (is_capture) {
