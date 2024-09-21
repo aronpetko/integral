@@ -10,6 +10,19 @@ namespace nnue {
 constexpr U8 kBucketDivisor =
     (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;
 
+// clang-format off
+constexpr std::array<int, 64> kKingBucketMap {
+    0, 0, 1, 1, 1, 1, 0, 0,
+    0, 0, 1, 1, 1, 1, 0, 0,
+    2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3,
+};
+// clang-format on
+
 static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
     Square square,
     Square king_square,
@@ -20,10 +33,14 @@ static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
     square = square ^ 0b111;
   }
 
+  const int relative_king_square = king_square ^ (56 * perspective);
+  const int king_bucket_idx = kKingBucketMap[relative_king_square];
+  const int square_idx = static_cast<int>(square ^ (56 * perspective));
   const int color_idx = static_cast<int>(perspective != piece_color);
   const int piece_idx = static_cast<int>(piece);
-  const int square_idx = static_cast<int>(square ^ (56 * perspective));
-  return network.feature_weights[color_idx][piece_idx][square_idx];
+
+  return network
+      ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx];
 }
 
 class PerspectiveAccumulator {
@@ -33,7 +50,7 @@ class PerspectiveAccumulator {
   void Refresh(const BoardState& state, Color perspective) {
     // Initialize the accumulator values with the network biases
     for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] = network.feature_biases[i];
+      values_[i] = network->feature_biases[i];
     }
 
     const Square king_square = state.King(perspective).GetLsb();
@@ -182,7 +199,13 @@ class Accumulator {
     if (moving_piece == PieceType::kKing) {
       // Refresh the perspective's accumulator if the king crosses to the other
       // half of the board
-      return (from.File() >= kFileE) != (to.File() >= kFileE);
+      if ((from.File() >= kFileE) != (to.File() >= kFileE)) {
+        return true;
+      }
+
+      // Refresh if the king changes buckets
+      return kKingBucketMap[from ^ (56 * state.turn)] !=
+             kKingBucketMap[to ^ (56 * state.turn)];
     }
 
     return false;

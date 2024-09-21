@@ -31,11 +31,12 @@ I32 SquaredCReLU(I16 value) {
 #endif
 
 void LoadFromIncBin() {
-  RawNetwork raw_network;
-  std::memcpy(&raw_network, gEVALData, sizeof(raw_network));
+  auto raw_network = std::make_unique<RawNetwork>();
+  std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
 
-  network.feature_weights = raw_network.feature_weights;
-  network.feature_biases = raw_network.feature_biases;
+  network = std::make_unique<TransposedNetwork>();
+  network->feature_weights = raw_network->feature_weights;
+  network->feature_biases = raw_network->feature_biases;
 
   // We transpose the output weights from Bullet since we get better cache hits
   // with this layout
@@ -45,13 +46,13 @@ void LoadFromIncBin() {
     for (Color perspective : {Color::kBlack, Color::kWhite}) {
       for (int weight = 0; weight < arch::kHiddenLayerSize; weight++) {
         transposed_output_weights[bucket][perspective][weight] =
-            raw_network.output_weights[perspective][weight][bucket];
+            raw_network->output_weights[perspective][weight][bucket];
       }
     }
   }
 
-  network.output_weights = transposed_output_weights;
-  network.output_biases = raw_network.output_biases;
+  network->output_weights = transposed_output_weights;
+  network->output_biases = raw_network->output_biases;
 }
 
 Score Evaluate(const BoardState& state,
@@ -70,7 +71,7 @@ Score Evaluate(const BoardState& state,
   for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
     const auto accumulator_value = simd::LoadEpi16(&(*accumulator)[turn][i]);
     const auto weight_value =
-        simd::LoadEpi16(&network.output_weights[bucket][0][i]);
+        simd::LoadEpi16(&network->output_weights[bucket][0][i]);
 
     // Clip the accumulator values
     const auto clipped =
@@ -91,7 +92,7 @@ Score Evaluate(const BoardState& state,
   for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
     const auto accumulator_value = simd::LoadEpi16(&(*accumulator)[!turn][i]);
     const auto weight_value =
-        simd::LoadEpi16(&network.output_weights[bucket][1][i]);
+        simd::LoadEpi16(&network->output_weights[bucket][1][i]);
 
     // Clip the accumulator values
     const auto clipped =
@@ -114,9 +115,9 @@ Score Evaluate(const BoardState& state,
   eval = 0;
   for (int i = 0; i < arch::kHiddenLayerSize; i++) {
     const Score our_value = SquaredCReLU((*accumulator)[turn][i]) *
-                            network.output_weights[bucket][0][i];
+                            network->output_weights[bucket][0][i];
     const Score their_value = SquaredCReLU((*accumulator)[!turn][i]) *
-                              network.output_weights[bucket][1][i];
+                              network->output_weights[bucket][1][i];
     eval += our_value + their_value;
   }
 #endif
@@ -125,7 +126,7 @@ Score Evaluate(const BoardState& state,
   eval /= arch::kHiddenLayerQuantization;
 
   // Add final output bias
-  eval += network.output_biases[bucket];
+  eval += network->output_biases[bucket];
 
   // Scale the evaluation
   eval *= arch::kEvalScale;
