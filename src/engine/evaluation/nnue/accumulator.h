@@ -211,15 +211,17 @@ class Accumulator {
     return false;
   }
 
+  void IncrementHead() {
+    // Move forward the head accumulator
+    if (++head_idx_ == stack_.size()) {
+      stack_.emplace_back();
+    }
+  }
+
   void MakeMove(const BoardState& state, Color perspective, Move move) {
     // Don't make any changes in a null move
     if (!move) {
       return;
-    }
-
-    // Move forward the head accumulator
-    if (++head_idx_ == stack_.size()) {
-      stack_.emplace_back();
     }
 
     const auto& prev_head = stack_[head_idx_ - 1];
@@ -343,128 +345,8 @@ class Accumulator {
       return;
     }
 
-    // Move forward the head accumulator
-    if (++head_idx_ == stack_.size()) {
-      stack_.emplace_back();
-    }
-
-    const auto& prev_head = stack_[head_idx_ - 1];
-    const auto from = move.GetFrom();
-    const auto to = move.GetTo();
-    const auto type = move.GetType();
-    const auto moving_piece = state.GetPieceType(from);
-    const auto captured_piece = state.GetPieceType(to);
-    const auto moving_color = state.GetPieceColor(from);
-    const auto opponent_color =
-        move.IsCapture(state) ? FlipColor(moving_color) : Color::kNoColor;
-
     for (const Color perspective : {Color::kWhite, Color::kBlack}) {
-      const Square king_square = state.King(perspective).GetLsb();
-      switch (type) {
-        case MoveType::kPromotion: {
-          auto promotion_piece = static_cast<PieceType>(
-              static_cast<int>(move.GetPromotionType()) + 1);
-          if (captured_piece != PieceType::kNone) {
-            // Promotion with capture
-            stack_[head_idx_][perspective].AddSubSubFeatures(
-                prev_head[perspective],
-                perspective,
-                king_square,
-                to,
-                promotion_piece,
-                moving_color,
-                from,
-                moving_piece,
-                moving_color,
-                to,
-                captured_piece,
-                opponent_color);
-          } else {
-            // Promotion without capture
-            stack_[head_idx_][perspective].AddSubFeatures(
-                prev_head[perspective],
-                perspective,
-                king_square,
-                to,
-                promotion_piece,
-                moving_color,
-                from,
-                moving_piece,
-                moving_color);
-          }
-          break;
-        }
-        case MoveType::kCastle: {
-          const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
-          const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
-          stack_[head_idx_][perspective].AddAddSubSubFeatures(
-              prev_head[perspective],
-              perspective,
-              king_square,
-              to,
-              PieceType::kKing,
-              moving_color,
-              rook_to,
-              PieceType::kRook,
-              moving_color,
-              from,
-              PieceType::kKing,
-              moving_color,
-              rook_from,
-              PieceType::kRook,
-              moving_color);
-          break;
-        }
-        case MoveType::kEnPassant: {
-          const Square captured_pawn =
-              Square(to - (moving_color == Color::kWhite ? 8 : -8));
-          stack_[head_idx_][perspective].AddSubSubFeatures(
-              prev_head[perspective],
-              perspective,
-              king_square,
-              to,
-              PieceType::kPawn,
-              moving_color,
-              from,
-              moving_piece,
-              moving_color,
-              captured_pawn,
-              PieceType::kPawn,
-              opponent_color);
-          break;
-        }
-        case MoveType::kNormal: {
-          if (captured_piece != PieceType::kNone) {
-            stack_[head_idx_][perspective].AddSubSubFeatures(
-                prev_head[perspective],
-                perspective,
-                king_square,
-                to,
-                moving_piece,
-                moving_color,
-                from,
-                moving_piece,
-                moving_color,
-                to,
-                captured_piece,
-                opponent_color);
-          } else {
-            stack_[head_idx_][perspective].AddSubFeatures(
-                prev_head[perspective],
-                perspective,
-                king_square,
-                to,
-                moving_piece,
-                moving_color,
-                from,
-                moving_piece,
-                moving_color);
-          }
-          break;
-        }
-        default:
-          break;
-      }
+      MakeMove(state, perspective, move);
     }
   }
 

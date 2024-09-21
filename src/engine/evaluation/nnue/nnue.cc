@@ -8,9 +8,9 @@
 #endif
 
 // This macro invocation will declare the following three variables
-//     const unsigned char        gEVALData[];  // a pointer to the embedded
-//     data const unsigned char *const gEVALEnd;     // a marker to the end
-//     const unsigned int         gEVALSize;    // the size of the embedded file
+//     const unsigned char        gEVALData[];   // a pointer to the embedded
+//     data const unsigned char *const gEVALEnd; // a marker to the end
+//     const unsigned int         gEVALSize;     // the size of the embedded file
 // Note that this does not work in Microsoft Visual Studio.
 #if !defined(_MSC_VER)
 INCBIN(EVAL, EVALFILE);
