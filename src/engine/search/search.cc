@@ -674,8 +674,7 @@ Score Search::PVSearch(Thread &thread,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if ((in_pv_node || cut_node) && depth >= iir_depth &&
-      !stack->excluded_tt_move && !tt_move) {
+  if (depth >= iir_depth && !stack->excluded_tt_move && !tt_move) {
     depth--;
   }
 
@@ -835,7 +834,7 @@ Score Search::PVSearch(Thread &thread,
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
-      reduction += 2 * cut_node;
+      reduction += cut_node;
       reduction -= gives_check;
       reduction -=
           stack->history_score /
