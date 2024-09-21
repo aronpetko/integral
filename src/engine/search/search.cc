@@ -950,6 +950,15 @@ Score Search::PVSearch(Thread &thread,
     } else if (alpha <= original_alpha) {
       // Alpha failed to raise
       tt_flag = TranspositionTableEntry::kUpperBound;
+
+      const auto &prev_state = board.GetPrevState();
+      if (!prev_stack->move.IsNoisy(prev_state)) {
+        const int bonus = history::HistoryBonus(depth);
+        history.quiet_history->UpdateMoveScore(
+            prev_state.turn, prev_stack->move, prev_stack->threats, bonus);
+        history.continuation_history->UpdateMoveScore(
+            prev_state, prev_stack, prev_stack->move, bonus);
+      }
     }
 
     // Attempt to update the transposition table with the evaluation of this
@@ -964,6 +973,8 @@ Score Search::PVSearch(Thread &thread,
     transposition_table_.Save(
         tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
 
+    // Update the static evaluation correction history in the case of a fail
+    // low, or a quiet position
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);

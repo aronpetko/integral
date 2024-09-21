@@ -14,23 +14,26 @@ class ContinuationHistory {
  public:
   ContinuationHistory() : table_({}) {}
 
+  void UpdateMoveScore(const BoardState &state,
+                       StackEntry *stack,
+                       Move move,
+                       int bonus) {
+    UpdateIndividualScore(state, move, bonus, stack - 1);
+    UpdateIndividualScore(state, move, bonus, stack - 2);
+    UpdateIndividualScore(state, move, bonus, stack - 4);
+  }
+
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    int depth,
                    MoveList &quiets) {
-    const Move move = stack->move;
-
     const int bonus = HistoryBonus(depth);
-    UpdateIndividualScore(state, move, bonus, stack - 1);
-    UpdateIndividualScore(state, move, bonus, stack - 2);
-    UpdateIndividualScore(state, move, bonus, stack - 4);
+    UpdateMoveScore(state, stack, stack->move, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      UpdateIndividualScore(state, quiets[i], -bonus, stack - 1);
-      UpdateIndividualScore(state, quiets[i], -bonus, stack - 2);
-      UpdateIndividualScore(state, quiets[i], -bonus, stack - 4);
+      UpdateMoveScore(state, stack, quiets[i], -bonus);
     }
   }
 

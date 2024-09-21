@@ -276,6 +276,10 @@ class Board {
     return state_;
   }
 
+  inline BoardState &GetPrevState() {
+    return history_.Back();
+  }
+
   inline std::shared_ptr<nnue::Accumulator> &GetAccumulator() {
     return accumulator_;
   }
