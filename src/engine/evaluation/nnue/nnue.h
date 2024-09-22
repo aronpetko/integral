@@ -11,6 +11,7 @@ namespace nnue {
 
 struct alignas(64) RawNetwork {
   MultiArray<I16,
+             arch::kInputBucketCount,
              2,
              PieceType::kNumPieceTypes,
              Squares::kSquareCount,
@@ -24,6 +25,7 @@ struct alignas(64) RawNetwork {
 
 struct TransposedNetwork {
   alignas(64) MultiArray<I16,
+                         arch::kInputBucketCount,
                          2,
                          PieceType::kNumPieceTypes,
                          Squares::kSquareCount,
@@ -36,7 +38,7 @@ struct TransposedNetwork {
   alignas(64) MultiArray<I16, arch::kOutputBucketCount> output_biases;
 };
 
-inline TransposedNetwork network;
+inline std::unique_ptr<TransposedNetwork> network;
 
 class Accumulator;
 

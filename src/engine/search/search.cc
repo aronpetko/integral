@@ -1,6 +1,7 @@
 #include "search.h"
 
 #include <thread>
+#include <algorithm>
 
 #include "constants.h"
 #include "fmt/format.h"
