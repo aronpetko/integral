@@ -184,8 +184,7 @@ bool Board::IsMoveLegal(Move move) {
 
 void Board::MakeMove(Move move) {
   history_.Push(state_);
-
-  auto &old_state = history_.Back();
+  accumulator_->PushChange(state_, move);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -240,6 +239,8 @@ void Board::MakeMove(Move move) {
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
 
+  accumulator_->UpdateKings(state_);
+
   CalculateThreats();
 }
 
@@ -254,7 +255,6 @@ void Board::UndoNullMove() {
 
 void Board::MakeNullMove() {
   history_.Push(state_);
-  accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {

@@ -101,6 +101,7 @@ enum File : int {
 class Square {
  public:
   constexpr Square(U8 square) : square_(square) {}
+  constexpr Square() = default;
 
   static constexpr Square FromRankFile(int rank, int file) {
     return rank * kNumRanks + file;

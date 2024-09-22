@@ -57,15 +57,7 @@ void LoadFromIncBin() {
 
 Score Evaluate(const BoardState& state,
                std::shared_ptr<Accumulator>& accumulator) {
-  accumulator_->IncrementHead();
-  if (accumulator_->ShouldRefresh(old_state, move)) {
-    // Efficiently update the new side-to-move's perspective
-    accumulator_->MakeMove(old_state, state_.turn, move);
-    // Refresh the old side-to-move's perspective
-    accumulator_->Refresh(state_, old_state.turn);
-  } else {
-    accumulator_->MakeMove(old_state, move);
-  }
+  accumulator->ApplyChanges(state);
 
   const auto turn = state.turn;
   const auto bucket = accumulator->GetOutputBucket(state);
