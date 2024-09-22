@@ -273,17 +273,8 @@ class PerspectiveAccumulator {
     return values_[idx];
   }
 
-  [[nodiscard]] bool ShouldRefresh() const {
-    return should_refresh_;
-  }
-
-  void MarkForRefresh() {
-    should_refresh_ = true;
-  }
-
  private:
   alignas(64) std::array<I16, arch::kHiddenLayerSize> values_;
-  bool should_refresh_;
 };
 
 struct AccumulatorEntry {
