@@ -1,7 +1,7 @@
 #include "search.h"
 
-#include <thread>
 #include <algorithm>
+#include <thread>
 
 #include "constants.h"
 #include "fmt/format.h"
@@ -741,6 +741,7 @@ Score Search::PVSearch(Thread &thread,
       const int see_threshold =
           is_quiet ? see_quiet_thresh * depth : see_noisy_thresh * depth;
       if (depth <= see_prune_depth && moves_seen >= 1 &&
+          stack->threats.IsSet(move.GetTo()) &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
