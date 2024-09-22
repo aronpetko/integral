@@ -163,8 +163,35 @@ class PerspectiveAccumulator {
     return values_[idx];
   }
 
+  [[nodiscard]] bool ShouldRefresh() const {
+    return should_refresh_;
+  }
+
+  void MarkForRefresh() {
+    should_refresh_ = true;
+  }
+
  private:
   alignas(64) std::array<I16, arch::kHiddenLayerSize> values_;
+  bool should_refresh_;
+};
+
+struct FeatureData {
+  Square square;
+  PieceType piece;
+  Color color;
+};
+
+struct AccumulatorChange {
+  FeatureData sub_0, add_0, sub_1, add_1;
+
+  enum Type {
+    kNormal,
+    kCapture,
+    kCastle,
+    kPromotion,
+    kEnPassant
+  } type;
 };
 
 class Accumulator {
@@ -354,7 +381,7 @@ class Accumulator {
     --head_idx_;
   }
 
-  [[nodiscard]] int GetOutputBucket(const BoardState& state) {
+  [[nodiscard]] int GetOutputBucket(const BoardState& state) const {
     return std::min((state.Occupied().PopCount() - 2) / kBucketDivisor,
                     static_cast<int>(arch::kOutputBucketCount - 1));
   }

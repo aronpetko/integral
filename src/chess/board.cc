@@ -240,16 +240,6 @@ void Board::MakeMove(Move move) {
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
 
-  accumulator_->IncrementHead();
-  if (accumulator_->ShouldRefresh(old_state, move)) {
-    // Efficiently update the new side-to-move's perspective
-    accumulator_->MakeMove(old_state, state_.turn, move);
-    // Refresh the old side-to-move's perspective
-    accumulator_->Refresh(state_, old_state.turn);
-  } else {
-    accumulator_->MakeMove(old_state, move);
-  }
-
   CalculateThreats();
 }
 

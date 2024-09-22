@@ -74,6 +74,8 @@ struct StackEntry {
   bool in_check;
   // Threats
   BitBoard threats;
+  // Keeps track of if the accumulator was updated at this point
+  bool updated_accumulator;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
