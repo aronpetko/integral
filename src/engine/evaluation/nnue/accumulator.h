@@ -352,7 +352,6 @@ class Accumulator {
 
   void UndoMove() {
     --head_idx_;
-    if (head_idx_ < 0) fmt::println("YOO");
   }
 
   [[nodiscard]] int GetOutputBucket(const BoardState& state) {
