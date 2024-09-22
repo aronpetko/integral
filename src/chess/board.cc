@@ -182,8 +182,14 @@ bool Board::IsMoveLegal(Move move) {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
+template void Board::MakeMove<true>(Move move);
+template void Board::MakeMove<false>(Move move);
+
+template <bool update_stacks>
 void Board::MakeMove(Move move) {
-  history_.Push(state_);
+  if constexpr (update_stacks) {
+    history_.Push(state_);
+  }
 
   auto &old_state = history_.Back();
 
@@ -240,14 +246,16 @@ void Board::MakeMove(Move move) {
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
 
-  accumulator_->IncrementHead();
-  if (accumulator_->ShouldRefresh(old_state, move)) {
-    // Efficiently update the new side-to-move's perspective
-    accumulator_->MakeMove(old_state, state_.turn, move);
-    // Refresh the old side-to-move's perspective
-    accumulator_->Refresh(state_, old_state.turn);
-  } else {
-    accumulator_->MakeMove(old_state, move);
+  if constexpr (update_stacks) {
+    accumulator_->IncrementHead();
+    if (accumulator_->ShouldRefresh(old_state, move)) {
+      // Efficiently update the new side-to-move's perspective
+      accumulator_->MakeMove(old_state, state_.turn, move);
+      // Refresh the old side-to-move's perspective
+      accumulator_->Refresh(state_, old_state.turn);
+    } else {
+      accumulator_->MakeMove(old_state, move);
+    }
   }
 
   CalculateThreats();
@@ -264,7 +272,6 @@ void Board::UndoNullMove() {
 
 void Board::MakeNullMove() {
   history_.Push(state_);
-  accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {

@@ -85,7 +85,7 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
     auto &chosen_moves = piece_moves[chosen_piece];
     const auto random_move =
         chosen_moves[RandomU64(0, chosen_moves.Size() - 1)];
-    board.MakeMove(random_move);
+    board.MakeMove<false>(random_move);
 
     // Prevent the last ply from being a checkmate/stalemate
     if (++current_ply == target_plies && GetLegalMoves(board).Empty()) {
@@ -248,7 +248,7 @@ void GameLoop(const Config &config,
         }
       }
 
-      thread->board.MakeMove(best_move);
+      thread->board.MakeMove<false>(best_move);
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root

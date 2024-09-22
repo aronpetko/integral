@@ -282,6 +282,7 @@ class Board {
 
   void SetFromFen(std::string_view fen_str);
 
+  template <bool update_stacks = true>
   void MakeMove(Move move);
 
   void MakeNullMove();

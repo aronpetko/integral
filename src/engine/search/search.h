@@ -6,6 +6,7 @@
 #include "../../chess/move_gen.h"
 #include "../../utils/barrier.h"
 #include "../evaluation/evaluation.h"
+#include "../evaluation/nnue/accumulator.h"
 #include "history/history.h"
 #include "stack.h"
 #include "time_mgmt.h"
@@ -41,6 +42,7 @@ struct Thread {
 
   void SetBoard(Board &new_board) {
     board = new_board;
+    board.GetAccumulator()->SetFromState(board.GetState());
   }
 
   void Reset() {
