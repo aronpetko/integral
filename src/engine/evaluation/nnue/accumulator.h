@@ -234,7 +234,8 @@ class Accumulator {
     const auto opponent_color =
         move.IsCapture(state) ? FlipColor(moving_color) : Color::kNoColor;
 
-    const Square king_square = state.King(perspective).GetLsb();
+    const Square king_square = std::clamp<Square>(
+        state.King(perspective).GetLsb(), Squares::kA1, Squares::kH8);
     switch (type) {
       case MoveType::kPromotion: {
         auto promotion_piece = static_cast<PieceType>(

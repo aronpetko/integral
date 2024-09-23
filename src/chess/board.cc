@@ -41,17 +41,21 @@ bool Board::IsMovePseudoLegal(Move move) {
   if (!our_pieces.IsSet(from) || our_pieces.IsSet(to)) {
     return false;
   }
+  const auto move_type = move.GetType();
 
   const auto piece_type = state_.GetPieceType(from);
-  if (piece_type != PieceType::kPawn &&
-      move.GetType() == MoveType::kPromotion) {
+  if (piece_type != PieceType::kPawn && move_type == MoveType::kPromotion) {
     return false;
   }
 
   const BitBoard &their_pieces = state_.Occupied(FlipColor(state_.turn));
   const BitBoard occupied = our_pieces | their_pieces;
 
-  if (piece_type == PieceType::kKing) {
+  if (move_type == MoveType::kCastle) {
+    if (piece_type != PieceType::kKing) {
+      return false;
+    }
+
     constexpr int kKingsideCastleDist = -2;
     constexpr int kQueensideCastleDist = 2;
     constexpr BitBoard kWhiteKingsideOccupancy = 0x60;
@@ -73,16 +77,15 @@ bool Board::IsMovePseudoLegal(Move move) {
     }
   }
 
+  if (move_type == MoveType::kEnPassant) {
+    return piece_type == PieceType::kPawn && to == state_.en_passant;
+  }
+
   BitBoard possible_moves;
   switch (piece_type) {
     case PieceType::kPawn: {
-      BitBoard en_passant_mask;
-      if (state_.en_passant != Squares::kNoSquare) {
-        en_passant_mask = BitBoard::FromSquare(state_.en_passant);
-      }
-      const BitBoard pawn_attacks = (move_gen::PawnAttacks(from, state_.turn) &
-                                     (their_pieces | en_passant_mask));
-      possible_moves = move_gen::PawnPushMoves(from, state_) | pawn_attacks;
+      possible_moves = move_gen::PawnPushMoves(from, state_) |
+                       move_gen::PawnAttacks(from, state_.turn);
       break;
     }
     case PieceType::kKnight:
@@ -187,11 +190,7 @@ template void Board::MakeMove<false>(Move move);
 
 template <bool update_stacks>
 void Board::MakeMove(Move move) {
-  if constexpr (update_stacks) {
-    history_.Push(state_);
-  }
-
-  auto &old_state = history_.Back();
+  history_.Push(state_);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -247,6 +246,7 @@ void Board::MakeMove(Move move) {
   ++state_.half_moves;
 
   if constexpr (update_stacks) {
+    auto &old_state = history_.Back();
     accumulator_->IncrementHead();
     if (accumulator_->ShouldRefresh(old_state, move)) {
       // Efficiently update the new side-to-move's perspective

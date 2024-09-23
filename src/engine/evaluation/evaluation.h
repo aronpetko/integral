@@ -28,8 +28,6 @@ inline std::array<Tunable, kNumPieceTypes + 1> kSEEPieceScores = {
 };
 // clang-format on
 
-constexpr int kMaxPhase = 24;
-
 [[maybe_unused]] static bool IsMateScore(int evaluation) {
   return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;
 }
