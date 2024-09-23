@@ -191,8 +191,6 @@ void Board::MakeMove(Move move) {
     history_.Push(state_);
   }
 
-  auto &old_state = history_.Back();
-
   const Color us = state_.turn, them = FlipColor(us);
 
   const auto from = move.GetFrom(), to = move.GetTo();
@@ -247,6 +245,7 @@ void Board::MakeMove(Move move) {
   ++state_.half_moves;
 
   if constexpr (update_stacks) {
+    auto &old_state = history_.Back();
     accumulator_->IncrementHead();
     if (accumulator_->ShouldRefresh(old_state, move)) {
       // Efficiently update the new side-to-move's perspective
