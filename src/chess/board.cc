@@ -239,8 +239,6 @@ void Board::MakeMove(Move move) {
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
 
-  accumulator_->UpdateKings(state_);
-
   CalculateThreats();
 }
 

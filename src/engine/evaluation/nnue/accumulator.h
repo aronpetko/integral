@@ -25,8 +25,8 @@ constexpr std::array<int, 64> kKingBucketMap {
 
 struct FeatureData {
   Square square = Squares::kNoSquare;
-  PieceType piece{};
-  Color color{};
+  PieceType piece = PieceType::kNone;
+  Color color = Color::kNoColor;
 };
 
 struct AccumulatorChange {
@@ -278,10 +278,10 @@ class PerspectiveAccumulator {
 };
 
 struct AccumulatorEntry {
-  AccumulatorChange change;
-  std::array<bool, 2> updated{};
-  std::array<Square, 2> kings{};
   std::array<PerspectiveAccumulator, 2> perspectives;
+  AccumulatorChange change;
+  std::array<Square, 2> kings;
+  std::array<bool, 2> updated;
 };
 
 class Accumulator {
@@ -309,6 +309,8 @@ class Accumulator {
     auto& entry = stack_[head_idx_];
     auto& change = entry.change;
 
+    change = AccumulatorChange{};
+
     const auto from = move.GetFrom();
     const auto to = move.GetTo();
     const auto type = move.GetType();
@@ -317,6 +319,15 @@ class Accumulator {
     const auto moving_color = state.GetPieceColor(from);
     const auto opponent_color =
         move.IsCapture(state) ? FlipColor(moving_color) : Color::kNoColor;
+
+    if (moving_piece == PieceType::kKing) {
+      entry.kings[moving_color] = to;
+    }
+    entry.kings[FlipColor(moving_color)] =
+        state.King(FlipColor(moving_color)).GetLsb();
+
+    entry.updated[Color::kBlack] = false;
+    entry.updated[Color::kWhite] = false;
 
     switch (type) {
       case MoveType::kPromotion: {
@@ -345,7 +356,7 @@ class Accumulator {
         const Square captured_pawn =
             Square(to - (moving_color == Color::kWhite ? 8 : -8));
         change.add_0 = {to, PieceType::kPawn, moving_color};
-        change.sub_0 = {from, moving_piece, moving_color};
+        change.sub_0 = {from, PieceType::kPawn, moving_color};
         change.sub_1 = {captured_pawn, PieceType::kPawn, opponent_color};
         break;
       }
@@ -364,15 +375,6 @@ class Accumulator {
       }
       default:
         break;
-    }
-  }
-
-  void UpdateKings(const BoardState &state) {
-    auto& entry = stack_[head_idx_];
-    // Update king positions and reset update flags
-    for (Color perspective : {Color::kBlack, Color::kWhite}) {
-      entry.kings[perspective] = state.King(perspective).GetLsb();
-      entry.updated[perspective] = false;
     }
   }
 
@@ -398,6 +400,7 @@ class Accumulator {
         // We've found the earliest updated accumulator
         if (stack_[iter].updated[perspective]) {
           int last_updated = iter;
+
           // Apply all updates from the earliest updated accumulator to now
           while (last_updated != head_idx_) {
             stack_[last_updated + 1].perspectives[perspective].ApplyChange(
@@ -417,14 +420,14 @@ class Accumulator {
   [[nodiscard]] bool NeedRefresh(Color perspective,
                                  Square old_king,
                                  Square new_king) const {
-    // Check if the king has moved to a different half of the board
-    if ((old_king.File() >= kFileE) != (new_king.File() >= kFileE)) {
+    // Check if the king moved into a different bucket
+    if (kKingBucketMap[old_king ^ (56 * perspective)] !=
+        kKingBucketMap[new_king ^ (56 * perspective)]) {
       return true;
     }
 
-    // Check if the king has changed buckets
-    return kKingBucketMap[old_king ^ (56 * perspective)] !=
-           kKingBucketMap[new_king ^ (56 * perspective)];
+    // Check if the king has moved to a different half of the board
+    return (old_king.File() >= kFileE) != (new_king.File() >= kFileE);
   }
 
   void IncrementHead() {
