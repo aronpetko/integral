@@ -32,7 +32,13 @@ class History {
                                       BitBoard threats,
                                       StackEntry *stack) const {
     return quiet_history->GetScore(state, move, threats) +
-           continuation_history->GetScore(state, move, stack - 1) +
+           GetConthistScore(state, move, stack);
+  }
+
+  [[nodiscard]] int GetConthistScore(const BoardState &state,
+                                     Move move,
+                                     StackEntry *stack) const {
+    return continuation_history->GetScore(state, move, stack - 1) +
            continuation_history->GetScore(state, move, stack - 2) +
            continuation_history->GetScore(state, move, stack - 4);
   }

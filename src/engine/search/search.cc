@@ -1,7 +1,7 @@
 #include "search.h"
 
-#include <thread>
 #include <algorithm>
+#include <thread>
 
 #include "constants.h"
 #include "fmt/format.h"
@@ -708,6 +708,7 @@ Score Search::PVSearch(Thread &thread,
     stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
                                       : history.GetQuietMoveScore(
                                             state, move, stack->threats, stack);
+    const Score conthist_score = history.GetConthistScore(state, move, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -839,7 +840,7 @@ Score Search::PVSearch(Thread &thread,
       reduction += 2 * cut_node;
       reduction -= gives_check;
       reduction -=
-          stack->history_score /
+          conthist_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
       reduction += !improving;
 
