@@ -708,7 +708,9 @@ Score Search::PVSearch(Thread &thread,
     stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
                                       : history.GetQuietMoveScore(
                                             state, move, stack->threats, stack);
-    const Score conthist_score = history.GetConthistScore(state, move, stack);
+    const Score conthist_score =
+        is_capture ? stack->history_score
+                   : history.GetConthistScore(state, move, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
