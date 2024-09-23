@@ -236,6 +236,7 @@ struct AccumulatorEntry {
   AccumulatorChange change;
   std::array<Square, 2> kings;
   std::array<bool, 2> updated;
+  BoardState state;
 };
 
 class Accumulator {
@@ -257,13 +258,14 @@ class Accumulator {
     stack_[head_idx_].updated[perspective] = true;
   }
 
-  void PushChanges(const AccumulatorChange& change) {
+  void PushChanges(const BoardState& state, AccumulatorChange& change) {
     IncrementHead();
 
     auto& entry = stack_[head_idx_];
     entry.change = change;
     entry.updated[Color::kBlack] = false;
     entry.updated[Color::kWhite] = false;
+    entry.state = state;
 
     // Update king positions if necessary
     if (change.sub_0.piece == PieceType::kKing) {
@@ -293,23 +295,26 @@ class Accumulator {
       while (true) {
         --iter;
 
-        // If the accumulator needs a refresh, we skip applying updates and just
-        // refresh it
-        if (NeedRefresh(perspective, stack_[iter].kings[perspective], king)) {
-          Refresh(state, perspective);
-          break;
-        }
         // We've found the earliest updated accumulator
-        else if (stack_[iter].updated[perspective]) {
+        if (stack_[iter].updated[perspective]) {
           int last_updated = iter;
 
           // Apply all updates from the earliest updated accumulator to now
           while (last_updated != head_idx_) {
-            stack_[last_updated + 1].perspectives[perspective].ApplyChange(
-                stack_[last_updated].perspectives[perspective],
-                stack_[last_updated + 1].change,
-                perspective,
-                king);
+            // If the accumulator needs a refresh, we skip applying updates and
+            // just refresh it
+            if (NeedRefresh(perspective,
+                            stack_[last_updated + 1].kings[perspective],
+                            stack_[last_updated].kings[perspective])) {
+              stack_[last_updated + 1].perspectives[perspective].Refresh(
+                  stack_[last_updated + 1].state, perspective);
+            } else {
+              stack_[last_updated + 1].perspectives[perspective].ApplyChange(
+                  stack_[last_updated].perspectives[perspective],
+                  stack_[last_updated + 1].change,
+                  perspective,
+                  stack_[last_updated + 1].kings[perspective]);
+            }
             // Mark the accumulator as having been updated
             stack_[++last_updated].updated[perspective] = true;
           }

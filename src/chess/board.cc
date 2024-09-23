@@ -265,7 +265,7 @@ void Board::MakeMove(Move move) {
   CalculateThreats();
 
   // Push the accumulator change
-  accumulator_->PushChanges(accum_change);
+  accumulator_->PushChanges(state_, accum_change);
 }
 
 void Board::UndoMove() {
