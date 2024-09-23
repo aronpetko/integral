@@ -33,7 +33,7 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
 
   I32 current_ply = 0, target_plies = RandomU64(min_plies, max_plies);
   constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
-      35, 25, 25, 5, 10, 0};
+      35, 25, 25, 1, 14, 0};
 
   while (current_ply < target_plies) {
     auto legal_moves = GetLegalMoves(board);
@@ -89,8 +89,9 @@ void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
 
     // Prevent the last ply from being a checkmate/stalemate
     if (++current_ply == target_plies && GetLegalMoves(board).Empty()) {
-      board.UndoMove();
-      --current_ply;
+      current_ply = 0;
+      board.SetFromFen(fen::kStartFen);
+      continue;
     }
   }
 }
@@ -248,7 +249,7 @@ void GameLoop(const Config &config,
         }
       }
 
-      thread->board.MakeMove(best_move);
+      thread->board.MakeMove<false>(best_move);
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root
