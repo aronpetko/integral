@@ -34,7 +34,6 @@ static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
   }
 
   const int relative_king_square = king_square ^ (56 * perspective);
-  if (king_square < 0 || king_square == 64) {fmt::println("wtf");}
   const int king_bucket_idx = kKingBucketMap[relative_king_square];
   const int square_idx = static_cast<int>(square ^ (56 * perspective));
   const int color_idx = static_cast<int>(perspective != piece_color);
@@ -235,7 +234,8 @@ class Accumulator {
     const auto opponent_color =
         move.IsCapture(state) ? FlipColor(moving_color) : Color::kNoColor;
 
-    const Square king_square = state.King(perspective).GetLsb();
+    const Square king_square = std::clamp<Square>(
+        state.King(perspective).GetLsb(), Squares::kA1, Squares::kH8);
     switch (type) {
       case MoveType::kPromotion: {
         auto promotion_piece = static_cast<PieceType>(
