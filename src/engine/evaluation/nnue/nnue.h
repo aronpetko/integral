@@ -44,8 +44,7 @@ class Accumulator;
 
 void LoadFromIncBin();
 
-Score Evaluate(const BoardState& state,
-               std::shared_ptr<Accumulator>& accumulator);
+Score Evaluate(Board &board);
 
 }  // namespace nnue
 

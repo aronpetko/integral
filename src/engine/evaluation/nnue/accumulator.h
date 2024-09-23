@@ -268,6 +268,9 @@ class Accumulator {
     // Update king positions if necessary
     if (change.sub_0.piece == PieceType::kKing) {
       entry.kings[change.sub_0.color] = change.add_0.square;
+    } else {
+      entry.kings[change.sub_0.color] =
+          stack_[head_idx_ - 1].kings[change.sub_0.color];
     }
     // The opponent's king doesn't move, so we can copy it from the previous
     // entry
@@ -275,7 +278,10 @@ class Accumulator {
         stack_[head_idx_ - 1].kings[FlipColor(change.sub_0.color)];
   }
 
-  void ApplyChanges(const BoardState& state) {
+  void ApplyChanges(Board& board) {
+    auto& state = board.GetState();
+    auto& history = board.GetStateHistory();
+
     for (Color perspective : {Color::kWhite, Color::kBlack}) {
       if (stack_[head_idx_].updated[perspective]) {
         continue;
@@ -293,9 +299,8 @@ class Accumulator {
           Refresh(state, perspective);
           break;
         }
-
         // We've found the earliest updated accumulator
-        if (stack_[iter].updated[perspective]) {
+        else if (stack_[iter].updated[perspective]) {
           int last_updated = iter;
 
           // Apply all updates from the earliest updated accumulator to now
