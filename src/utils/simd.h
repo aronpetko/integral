@@ -16,6 +16,7 @@
 #define BUILD_HAS_POPCNT __POPCNT__
 #define BUILD_HAS_SSE41 __SSE4_1__
 #define BUILD_HAS_NEON __ARM_NEON
+#define BUILD_HAS_SIMD (BUILD_HAS_AVX512 || BUILD_HAS_AVX2)
 #elif defined(BUILD_VNNI512)
 #define BUILD_HAS_BMI2 1
 #define BUILD_HAS_AVX512VNNI 1
@@ -25,6 +26,7 @@
 #define BUILD_HAS_POPCNT 1
 #define BUILD_HAS_SSE41 1
 #define BUILD_HAS_NEON 0
+#define BUILD_HAS_SIMD 1
 #elif defined(BUILD_AVX512)
 #define BUILD_HAS_BMI2 1
 #define BUILD_HAS_AVX512VNNI 0
@@ -34,6 +36,7 @@
 #define BUILD_HAS_POPCNT 1
 #define BUILD_HAS_SSE41 1
 #define BUILD_HAS_NEON 0
+#define BUILD_HAS_SIMD 1
 #elif defined(BUILD_AVX2_BMI2)
 #define BUILD_HAS_BMI2 1
 #define BUILD_HAS_AVX512VNNI 0
@@ -43,6 +46,7 @@
 #define BUILD_HAS_POPCNT 1
 #define BUILD_HAS_SSE41 1
 #define BUILD_HAS_NEON 0
+#define BUILD_HAS_SIMD 1
 #elif defined(BUILD_AVX2)
 #define BUILD_HAS_BMI2 0
 #define BUILD_HAS_AVX512VNNI 0
@@ -52,6 +56,7 @@
 #define BUILD_HAS_POPCNT 1
 #define BUILD_HAS_SSE41 1
 #define BUILD_HAS_NEON 0
+#define BUILD_HAS_SIMD 1
 #elif defined(BUILD_SSE41_POPCNT)
 #define BUILD_HAS_BMI2 0
 #define BUILD_HAS_AVX512VNNI 0
@@ -64,9 +69,6 @@
 #else
 #error No architecture specified
 #endif
-
-#define BUILD_HAS_SIMD \
-  (BUILD_HAS_AVX512 || BUILD_HAS_AVX2 || BUILD_HAS_NEON || BUILD_HAS_SSE41)
 
 #if defined(BUILD_HAS_SIMD)
 #include <immintrin.h>
