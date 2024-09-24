@@ -1,22 +1,20 @@
 #include "nnue.h"
 
+#include "../../../utils/simd.h"
 #include "accumulator.h"
 #include "arch.h"
-
-#if defined(SIMD)
-#include "../../../utils/simd.h"
-#endif
 
 // This macro invocation will declare the following three variables
 //     const unsigned char        gEVALData[];   // a pointer to the embedded
 //     data const unsigned char *const gEVALEnd; // a marker to the end
-//     const unsigned int         gEVALSize;     // the size of the embedded file
+//     const unsigned int         gEVALSize;     // the size of the embedded
+//     file
 // Note that this does not work in Microsoft Visual Studio.
 #if !defined(_MSC_VER)
 INCBIN(EVAL, EVALFILE);
 #else
 const unsigned char gEVALData[1] = {};
-const unsigned char* const gEVALEnd = &gEVALData[1];
+const unsigned char *const gEVALEnd = &gEVALData[1];
 const unsigned int gEVALSize = 1;
 #endif
 
@@ -66,7 +64,7 @@ Score Evaluate(Board &board) {
 
   Score eval;
 
-#if defined(SIMD)
+#if defined(BUILD_HAS_SIMD)
   constexpr int kChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
 
   auto sum = simd::ZeroEpi32();
