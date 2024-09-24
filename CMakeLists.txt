@@ -1,147 +1,74 @@
 cmake_minimum_required(VERSION 3.16)
 project(integral)
 
+# Set the C++ standard and verbosity
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 
-include(CheckCXXCompilerFlag)
-
-# Options for different build types
-option(BUILD_X86_64_POPCNT "Build with x86-64-popcnt optimizations" OFF)
-option(BUILD_X86_64_MODERN "Build with x86-64 modern optimizations" OFF)
-option(BUILD_X86_64_BMI2 "Build with x86-64 bmi2 optimizations" OFF)
-option(BUILD_DEBUG "Build with debug information" OFF)
-option(BUILD_NATIVE "Build with native optimizations" ON)
-
+# Include necessary modules
 include(CheckCXXCompilerFlag)
 include(CheckCXXSourceRuns)
+include(CheckIPOSupported)
+
+# Build options for different architectures
+option(BUILD_NATIVE "Build with native optimizations" ON)
+option(BUILD_VNNI512 "Build with AVX512 VNNI support" OFF)
+option(BUILD_AVX512 "Build with AVX512 optimizations" OFF)
+option(BUILD_AVX2_BMI2 "Build with AVX2 + BMI2 optimizations" OFF)
+option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
+option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
+option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Define the location to download the .nnue file
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
 
 # Check if the .nnue file exists, if not, download it
-if(NOT EXISTS ${NNUE_PATH})
+if (NOT EXISTS ${NNUE_PATH})
     message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
     file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
             STATUS DOWNLOAD_STATUS
             SHOW_PROGRESS
             )
     list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
-    if(NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
+    if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
         message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
-    endif()
-else()
+    endif ()
+else ()
     message(STATUS "integral.nnue already exists. Skipping download.")
-endif()
-
-# Function to check AVX support
-function(check_avx_support)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686|i386")
-        function(detect_avx FEATURE FLAGS RESULT)
-            set(AVX_CODE "
-                #include <immintrin.h>
-                int main() {
-                    ${FEATURE}
-                    return 0;
-                }")
-
-            check_cxx_source_runs("${AVX_CODE}" AVX_RUNS)
-
-            if(NOT AVX_RUNS)
-                set(CMAKE_REQUIRED_FLAGS "${FLAGS}")
-                check_cxx_source_runs("${AVX_CODE}" AVX_RUNS_WITH_FLAG)
-                unset(CMAKE_REQUIRED_FLAGS)
-
-                if(AVX_RUNS_WITH_FLAG)
-                    set(${RESULT} "${FLAGS}" PARENT_SCOPE)
-                else()
-                    set(${RESULT} "UNAVAILABLE" PARENT_SCOPE)
-                endif()
-            else()
-                set(${RESULT} "AVAILABLE" PARENT_SCOPE)
-            endif()
-        endfunction()
-
-        check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512F)
-        check_cxx_compiler_flag("-mavx512dq" COMPILER_SUPPORTS_AVX512DQ)
-        check_cxx_compiler_flag("-mavx512bw" COMPILER_SUPPORTS_AVX512BW)
-        check_cxx_compiler_flag("-mavx512vl" COMPILER_SUPPORTS_AVX512VL)
-
-        if(COMPILER_SUPPORTS_AVX512F AND COMPILER_SUPPORTS_AVX512DQ AND
-                COMPILER_SUPPORTS_AVX512BW AND COMPILER_SUPPORTS_AVX512VL)
-            set(AVX512_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl")
-            detect_avx(
-                    "__m512i a = _mm512_set1_epi32(1); __m512i b = _mm512_set1_epi32(2); __m512i c = _mm512_add_epi32(a, b); return _mm256_extract_epi32(_mm512_extracti64x4_epi64(c, 0), 0) == 3 ? 0 : 1;"
-                    "${AVX512_FLAGS}"
-                    AVX512_SUPPORT
-            )
-
-            if(NOT AVX512_SUPPORT STREQUAL "UNAVAILABLE")
-                set(AVX_FLAGS "${AVX512_SUPPORT}" PARENT_SCOPE)
-                set(AVX_DEFINES "-DSIMD -DAVX512" PARENT_SCOPE)
-                message(STATUS "AVX512 is supported: ${AVX512_SUPPORT}")
-                return()
-            endif()
-        endif()
-
-        check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
-        check_cxx_compiler_flag("-mfma" COMPILER_SUPPORTS_FMA)
-
-        if(COMPILER_SUPPORTS_AVX2)
-            set(AVX2_FLAGS "-mavx2")
-            if(COMPILER_SUPPORTS_FMA)
-                set(AVX2_FLAGS "${AVX2_FLAGS} -mfma")
-            endif()
-
-            detect_avx(
-                    "__m256i a = _mm256_set1_epi32(1); __m256i b = _mm256_set1_epi32(2); __m256i c = _mm256_add_epi32(a, b); return _mm256_extract_epi32(c, 0) == 3 ? 0 : 1;"
-                    "${AVX2_FLAGS}"
-                    AVX2_SUPPORT
-            )
-
-            if(NOT AVX2_SUPPORT STREQUAL "UNAVAILABLE")
-                set(AVX_FLAGS "${AVX2_SUPPORT}" PARENT_SCOPE)
-                set(AVX_DEFINES "-DSIMD -DAVX2" PARENT_SCOPE)
-                message(STATUS "AVX2 is supported: ${AVX2_SUPPORT}")
-                return()
-            endif()
-        endif()
-
-        message(STATUS "Neither AVX512 nor AVX2 is supported on this system")
-    else()
-        message(WARNING "AVX support check skipped for unsupported processor architecture: ${CMAKE_SYSTEM_PROCESSOR}")
-    endif()
-endfunction()
-
-check_avx_support()
-if(DEFINED AVX_FLAGS)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${AVX_FLAGS}")
-endif()
-if(DEFINED AVX_DEFINES)
-    add_definitions(${AVX_DEFINES})
-endif()
-
-# Set the build type
-if (BUILD_DEBUG)
-    set(CMAKE_BUILD_TYPE Debug)
-elseif (BUILD_X86_64_POPCNT)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=sandybridge -mpopcnt")
-elseif (BUILD_X86_64_MODERN)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=znver2 -msse -msse3")
-elseif (BUILD_X86_64_BMI2)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=haswell -mavx2 -mbmi2")
-elseif (BUILD_NATIVE)
-    check_avx_support()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native ${AVX_FLAGS}")
-    add_definitions(${AVX_DEFINES})
 endif ()
 
-# Set debug and release specific flags
+# Architecture-specific flags
+set(CXXFLAGS_NATIVE "-march=native")
+set(CXXFLAGS_VNNI512 "-march=znver4 -mtune=znver4 -DBUILD_VNNI512 -DBUILD_FAST_PEXT")
+set(CXXFLAGS_AVX512 "-march=x86-64-v4 -mtune=skylake-avx512 -DBUILD_AVX512 -DBUILD_FAST_PEXT")
+set(CXXFLAGS_AVX2_BMI2 "-march=haswell -mtune=haswell -mavx2 -mbmi2 -DBUILD_AVX2_BMI2 -DBUILD_FAST_PEXT")
+set(CXXFLAGS_AVX2 "-march=bdver4 -mno-tbm -mno-sse4a -mno-bmi2 -mtune=znver2 -DBUILD_AVX2")
+set(CXXFLAGS_SSE41_POPCNT "-march=nehalem -mtune=sandybridge -DBUILD_SSE41_POPCNT")
+
+# Apply the correct flags based on the build type
+if (BUILD_DEBUG)
+    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+elseif (BUILD_VNNI512)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_VNNI512} -DBUILD_VNNI512")
+elseif (BUILD_AVX512)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_AVX512} -DBUILD_AVX512")
+elseif (BUILD_AVX2_BMI2)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_AVX2_BMI2} -DBUILD_AVX2_BMI2")
+elseif (BUILD_AVX2)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_AVX2} -DBUILD_AVX2")
+elseif (BUILD_SSE41_POPCNT)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_SSE41_POPCNT} -DBUILD_SSE41_POPCNT")
+elseif (BUILD_NATIVE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_NATIVE} -DBUILD_NATIVE")
+endif ()
+
+# Set common flags for release and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
 
-include(CheckIPOSupported)
+# Check for Link-Time Optimization (LTO) support
 check_ipo_supported(RESULT LTO_SUPPORTED)
 
 if (LTO_SUPPORTED)
@@ -150,11 +77,12 @@ if (LTO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 endif ()
 
+# Add Clang-specific flags
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
 endif ()
 
-# Conditionally add static linking flag on Windows
+# Static linking on Windows
 if (WIN32)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,/STACK:8388608")
@@ -162,12 +90,20 @@ if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 endif ()
 
+# Include third-party directories
 include_directories(third-party/fathom)
 include_directories(third-party/fmt/include)
 add_definitions(-DFMT_HEADER_ONLY -DEVALFILE="${NNUE_PATH}")
 
-# Collect source files
+# Collect all source files
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
 
-# Create the executable target
-add_executable(integral ${SOURCES} third-party/fathom/tbconfig.h third-party/fathom/tbprobe.h third-party/fathom/stdendian.h third-party/fathom/tbprobe.c src/data_gen/data_gen.h src/data_gen/format/binpack.h)
+# Create the executable
+add_executable(integral ${SOURCES}
+        third-party/fathom/tbconfig.h
+        third-party/fathom/tbprobe.h
+        third-party/fathom/stdendian.h
+        third-party/fathom/tbprobe.c
+        src/data_gen/data_gen.h
+        src/data_gen/format/binpack.h
+        )
