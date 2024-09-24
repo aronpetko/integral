@@ -1,7 +1,7 @@
 #include "search.h"
 
-#include <thread>
 #include <algorithm>
+#include <thread>
 
 #include "constants.h"
 #include "fmt/format.h"
@@ -800,7 +800,8 @@ Score Search::PVSearch(Thread &thread,
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta || cut_node) {
+        else if (tt_entry->score >= beta || tt_entry->score <= alpha ||
+                 cut_node) {
           extensions = -1;
         }
       }
