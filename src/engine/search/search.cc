@@ -1,7 +1,7 @@
 #include "search.h"
 
-#include <thread>
 #include <algorithm>
+#include <thread>
 
 #include "constants.h"
 #include "fmt/format.h"
@@ -705,9 +705,9 @@ Score Search::PVSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
-                                      : history.GetQuietMoveScore(
-                                            state, move, stack->threats, stack);
+    stack->history_score = is_capture
+                             ? history.GetCaptureMoveScore(state, move, stack)
+                             : history.GetQuietMoveScore(state, move, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -906,8 +906,7 @@ Score Search::PVSearch(Thread &thread,
         if (alpha >= beta) {
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history.quiet_history->UpdateScore(
-                state, stack, depth, stack->threats, quiets);
+            history.quiet_history->UpdateScore(state, stack, depth, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
           } else if (is_capture) {
@@ -936,7 +935,7 @@ Score Search::PVSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, depth, captures);
+    history.capture_history->Penalize(state, depth, stack->threats, captures);
   }
 
   if (syzygy::enabled) {
