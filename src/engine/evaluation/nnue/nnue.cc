@@ -20,7 +20,7 @@ const unsigned int gEVALSize = 1;
 
 namespace nnue {
 
-#if !(BUILD_HAS_SIMD)
+#if !BUILD_HAS_SIMD
 I32 SquaredCReLU(I16 value) {
   const I32 clipped = std::clamp<I32>(
       static_cast<I32>(value), 0, arch::kHiddenLayerQuantization);
@@ -64,7 +64,7 @@ Score Evaluate(Board &board) {
 
   Score eval;
 
-#if defined(BUILD_HAS_SIMD)
+#if BUILD_HAS_SIMD
   constexpr int kChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
 
   auto sum = simd::ZeroEpi32();
