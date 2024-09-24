@@ -3,7 +3,7 @@ project(integral)
 
 # Set the C++ standard and verbosity
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Include necessary modules
 include(CheckCXXCompilerFlag)

@@ -23,6 +23,22 @@ constexpr std::array<int, 64> kKingBucketMap {
 };
 // clang-format on
 
+struct FeatureData {
+  Square square = Squares::kNoSquare;
+  PieceType piece = PieceType::kNone;
+  Color color = Color::kNoColor;
+};
+
+struct AccumulatorChange {
+  FeatureData sub_0, add_0, sub_1, add_1;
+
+  enum Type {
+    kNormal,
+    kCapture,
+    kCastle
+  } type;
+};
+
 static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
     Square square,
     Square king_square,
@@ -58,8 +74,7 @@ class PerspectiveAccumulator {
     // Add each piece's features
     for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
       for (Square square : state.piece_bbs[piece]) {
-        AddFeature(*this,
-                   perspective,
+        AddFeature(perspective,
                    king_square,
                    square,
                    static_cast<PieceType>(piece),
@@ -68,9 +83,58 @@ class PerspectiveAccumulator {
     }
   }
 
+  void ApplyChange(const PerspectiveAccumulator& previous,
+                   const AccumulatorChange& change,
+                   Color perspective,
+                   Square king_square) {
+    switch (change.type) {
+      case AccumulatorChange::kNormal:
+        AddSubFeatures(previous,
+                       perspective,
+                       king_square,
+                       change.add_0.square,
+                       change.add_0.piece,
+                       change.add_0.color,
+                       change.sub_0.square,
+                       change.sub_0.piece,
+                       change.sub_0.color);
+        break;
+      case AccumulatorChange::kCapture:
+        AddSubSubFeatures(previous,
+                          perspective,
+                          king_square,
+                          change.add_0.square,
+                          change.add_0.piece,
+                          change.add_0.color,
+                          change.sub_0.square,
+                          change.sub_0.piece,
+                          change.sub_0.color,
+                          change.sub_1.square,
+                          change.sub_1.piece,
+                          change.sub_1.color);
+        break;
+      case AccumulatorChange::kCastle:
+        AddAddSubSubFeatures(previous,
+                             perspective,
+                             king_square,
+                             change.add_0.square,
+                             change.add_0.piece,
+                             change.add_0.color,
+                             change.add_1.square,
+                             change.add_1.piece,
+                             change.add_1.color,
+                             change.sub_0.square,
+                             change.sub_0.piece,
+                             change.sub_0.color,
+                             change.sub_1.square,
+                             change.sub_1.piece,
+                             change.sub_1.color);
+        break;
+    }
+  }
+
   // Update features by adding a single feature
-  void AddFeature(const PerspectiveAccumulator& previous,
-                  Color perspective,
+  void AddFeature(Color perspective,
                   Square king_square,
                   Square square,
                   PieceType piece,
@@ -78,7 +142,7 @@ class PerspectiveAccumulator {
     const auto& table =
         GetFeatureTable(square, king_square, piece, piece_color, perspective);
     for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] = previous[i] + table[i];
+      values_[i] += table[i];
     }
   }
 
@@ -167,6 +231,14 @@ class PerspectiveAccumulator {
   alignas(64) std::array<I16, arch::kHiddenLayerSize> values_;
 };
 
+struct AccumulatorEntry {
+  alignas(64) std::array<PerspectiveAccumulator, 2> perspectives;
+  AccumulatorChange change;
+  std::array<Square, 2> kings;
+  std::array<bool, 2> updated;
+  BoardState state;
+};
+
 class Accumulator {
  public:
   Accumulator() : head_idx_(0) {
@@ -174,41 +246,95 @@ class Accumulator {
   }
 
   void SetFromState(const BoardState& state) {
-    // Refresh both sides' accumulator
     head_idx_ = 0;
     for (const Color color : {Color::kBlack, Color::kWhite}) {
-      stack_[head_idx_][color].Refresh(state, color);
+      Refresh(state, color);
     }
   }
 
   void Refresh(const BoardState& state, Color perspective) {
-    stack_[head_idx_][perspective].Refresh(state, perspective);
+    stack_[head_idx_].perspectives[perspective].Refresh(state, perspective);
+    stack_[head_idx_].kings[perspective] = state.King(perspective).GetLsb();
+    stack_[head_idx_].updated[perspective] = true;
   }
 
-  void FullRefresh(const BoardState& state) {
-    ++head_idx_;
-    stack_[head_idx_][Color::kWhite].Refresh(state, Color::kWhite);
-    stack_[head_idx_][Color::kBlack].Refresh(state, Color::kBlack);
+  void PushChanges(const BoardState& state, AccumulatorChange& change) {
+    IncrementHead();
+
+    auto& entry = stack_[head_idx_];
+    entry.change = change;
+    entry.updated[Color::kBlack] = false;
+    entry.updated[Color::kWhite] = false;
+    entry.state = state;
+
+    // Update king positions if necessary
+    if (change.sub_0.piece == PieceType::kKing) {
+      entry.kings[change.sub_0.color] = change.add_0.square;
+    } else {
+      entry.kings[change.sub_0.color] =
+          stack_[head_idx_ - 1].kings[change.sub_0.color];
+    }
+    // The opponent's king doesn't move, so we can copy it from the previous
+    // entry
+    entry.kings[FlipColor(change.sub_0.color)] =
+        stack_[head_idx_ - 1].kings[FlipColor(change.sub_0.color)];
   }
 
-  [[nodiscard]] bool ShouldRefresh(const BoardState& state, Move move) const {
-    const auto from = move.GetFrom();
-    const auto to = move.GetTo();
-    const auto moving_piece = state.GetPieceType(from);
+  void ApplyChanges(Board& board) {
+    auto& state = board.GetState();
+    auto& history = board.GetStateHistory();
 
-    if (moving_piece == PieceType::kKing) {
-      // Refresh the perspective's accumulator if the king crosses to the other
-      // half of the board
-      if ((from.File() >= kFileE) != (to.File() >= kFileE)) {
-        return true;
+    for (Color perspective : {Color::kWhite, Color::kBlack}) {
+      if (stack_[head_idx_].updated[perspective]) {
+        continue;
       }
 
-      // Refresh if the king changes buckets
-      return kKingBucketMap[from ^ (56 * state.turn)] !=
-             kKingBucketMap[to ^ (56 * state.turn)];
+      const Square king = stack_[head_idx_].kings[perspective];
+      int iter = head_idx_;
+
+      while (true) {
+        --iter;
+
+        // We've found the earliest updated accumulator
+        if (stack_[iter].updated[perspective]) {
+          int last_updated = iter;
+
+          // Apply all updates from the earliest updated accumulator to now
+          while (last_updated != head_idx_) {
+            // If the accumulator needs a refresh, we skip applying updates and
+            // just refresh it
+            if (NeedRefresh(perspective,
+                            stack_[last_updated + 1].kings[perspective],
+                            stack_[last_updated].kings[perspective])) {
+              stack_[last_updated + 1].perspectives[perspective].Refresh(
+                  stack_[last_updated + 1].state, perspective);
+            } else {
+              stack_[last_updated + 1].perspectives[perspective].ApplyChange(
+                  stack_[last_updated].perspectives[perspective],
+                  stack_[last_updated + 1].change,
+                  perspective,
+                  stack_[last_updated + 1].kings[perspective]);
+            }
+            // Mark the accumulator as having been updated
+            stack_[++last_updated].updated[perspective] = true;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  [[nodiscard]] bool NeedRefresh(Color perspective,
+                                 Square old_king,
+                                 Square new_king) const {
+    // Check if the king has moved to a different half of the board
+    if ((old_king.File() >= kFileE) != (new_king.File() >= kFileE)) {
+      return true;
     }
 
-    return false;
+    // Check if the king moved into a different bucket
+    return kKingBucketMap[old_king ^ (56 * perspective)] !=
+           kKingBucketMap[new_king ^ (56 * perspective)];
   }
 
   void IncrementHead() {
@@ -218,159 +344,26 @@ class Accumulator {
     }
   }
 
-  void MakeMove(const BoardState& state, Color perspective, Move move) {
-    // Don't make any changes in a null move
-    if (!move) {
-      return;
-    }
-
-    const auto& prev_head = stack_[head_idx_ - 1];
-    const auto from = move.GetFrom();
-    const auto to = move.GetTo();
-    const auto type = move.GetType();
-    const auto moving_piece = state.GetPieceType(from);
-    const auto captured_piece = state.GetPieceType(to);
-    const auto moving_color = state.GetPieceColor(from);
-    const auto opponent_color =
-        move.IsCapture(state) ? FlipColor(moving_color) : Color::kNoColor;
-
-    const Square king_square = std::clamp<Square>(
-        state.King(perspective).GetLsb(), Squares::kA1, Squares::kH8);
-    switch (type) {
-      case MoveType::kPromotion: {
-        auto promotion_piece = static_cast<PieceType>(
-            static_cast<int>(move.GetPromotionType()) + 1);
-        if (captured_piece != PieceType::kNone) {
-          // Promotion with capture
-          stack_[head_idx_][perspective].AddSubSubFeatures(
-              prev_head[perspective],
-              perspective,
-              king_square,
-              to,
-              promotion_piece,
-              moving_color,
-              from,
-              moving_piece,
-              moving_color,
-              to,
-              captured_piece,
-              opponent_color);
-        } else {
-          // Promotion without capture
-          stack_[head_idx_][perspective].AddSubFeatures(prev_head[perspective],
-                                                        perspective,
-                                                        king_square,
-                                                        to,
-                                                        promotion_piece,
-                                                        moving_color,
-                                                        from,
-                                                        moving_piece,
-                                                        moving_color);
-        }
-        break;
-      }
-      case MoveType::kCastle: {
-        const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
-        const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
-        stack_[head_idx_][perspective].AddAddSubSubFeatures(
-            prev_head[perspective],
-            perspective,
-            king_square,
-            to,
-            PieceType::kKing,
-            moving_color,
-            rook_to,
-            PieceType::kRook,
-            moving_color,
-            from,
-            PieceType::kKing,
-            moving_color,
-            rook_from,
-            PieceType::kRook,
-            moving_color);
-        break;
-      }
-      case MoveType::kEnPassant: {
-        const Square captured_pawn =
-            Square(to - (moving_color == Color::kWhite ? 8 : -8));
-        stack_[head_idx_][perspective].AddSubSubFeatures(prev_head[perspective],
-                                                         perspective,
-                                                         king_square,
-                                                         to,
-                                                         PieceType::kPawn,
-                                                         moving_color,
-                                                         from,
-                                                         moving_piece,
-                                                         moving_color,
-                                                         captured_pawn,
-                                                         PieceType::kPawn,
-                                                         opponent_color);
-        break;
-      }
-      case MoveType::kNormal: {
-        if (captured_piece != PieceType::kNone) {
-          stack_[head_idx_][perspective].AddSubSubFeatures(
-              prev_head[perspective],
-              perspective,
-              king_square,
-              to,
-              moving_piece,
-              moving_color,
-              from,
-              moving_piece,
-              moving_color,
-              to,
-              captured_piece,
-              opponent_color);
-        } else {
-          stack_[head_idx_][perspective].AddSubFeatures(prev_head[perspective],
-                                                        perspective,
-                                                        king_square,
-                                                        to,
-                                                        moving_piece,
-                                                        moving_color,
-                                                        from,
-                                                        moving_piece,
-                                                        moving_color);
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-
-  void MakeMove(const BoardState& state, Move move) {
-    // Don't make any changes in a null move
-    if (!move) {
-      return;
-    }
-
-    for (const Color perspective : {Color::kWhite, Color::kBlack}) {
-      MakeMove(state, perspective, move);
-    }
-  }
-
   void UndoMove() {
     --head_idx_;
   }
 
-  [[nodiscard]] int GetOutputBucket(const BoardState& state) {
+  [[nodiscard]] int GetOutputBucket(const BoardState& state) const {
     return std::min((state.Occupied().PopCount() - 2) / kBucketDivisor,
                     static_cast<int>(arch::kOutputBucketCount - 1));
   }
 
   PerspectiveAccumulator& operator[](int perspective) {
-    return stack_[head_idx_][perspective];
+    return stack_[head_idx_].perspectives[perspective];
   }
 
   const PerspectiveAccumulator& operator[](int perspective) const {
-    return stack_[head_idx_][perspective];
+    return stack_[head_idx_].perspectives[perspective];
   }
 
  private:
   int head_idx_;
-  std::vector<std::array<PerspectiveAccumulator, 2>> stack_;
+  std::vector<AccumulatorEntry> stack_;
 };
 
 }  // namespace nnue
