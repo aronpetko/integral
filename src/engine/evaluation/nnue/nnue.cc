@@ -20,7 +20,7 @@ const unsigned int gEVALSize = 1;
 
 namespace nnue {
 
-#if !defined(SIMD)
+#if !(BUILD_HAS_SIMD)
 I32 SquaredCReLU(I16 value) {
   const I32 clipped = std::clamp<I32>(
       static_cast<I32>(value), 0, arch::kHiddenLayerQuantization);

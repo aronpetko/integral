@@ -70,13 +70,13 @@
 #error No architecture specified
 #endif
 
-#if defined(BUILD_HAS_SIMD)
+#if BUILD_HAS_SIMD
 #include <immintrin.h>
 #endif
 
 namespace simd {
 
-#if defined(BUILD_HAS_AVX512)
+#if BUILD_HAS_AVX512
 
 using Vepi16 = __m512i;
 using Vepi32 = __m512i;
@@ -131,7 +131,7 @@ inline int ReduceAddEpi32(Vepi32 v) {
   return _mm512_reduce_add_epi32(v);
 }
 
-#elif defined(BUILD_HAS_AVX2)
+#elif BUILD_HAS_AVX2
 
 using Vepi16 = __m256i;
 using Vepi32 = __m256i;
