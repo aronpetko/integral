@@ -41,8 +41,8 @@ bool Board::IsMovePseudoLegal(Move move) {
   if (!our_pieces.IsSet(from) || our_pieces.IsSet(to)) {
     return false;
   }
-  const auto move_type = move.GetType();
 
+  const auto move_type = move.GetType();
   const auto piece_type = state_.GetPieceType(from);
   if (piece_type != PieceType::kPawn && move_type == MoveType::kPromotion) {
     return false;
@@ -84,8 +84,9 @@ bool Board::IsMovePseudoLegal(Move move) {
   BitBoard possible_moves;
   switch (piece_type) {
     case PieceType::kPawn: {
-      possible_moves = move_gen::PawnPushMoves(from, state_) |
-                       move_gen::PawnAttacks(from, state_.turn);
+      possible_moves =
+          move_gen::PawnPushMoves(from, state_) |
+          (move_gen::PawnAttacks(from, state_.turn) & their_pieces);
       break;
     }
     case PieceType::kKnight:

@@ -16,9 +16,28 @@ option(BUILD_NATIVE "Build with native optimizations" ON)
 include(CheckCXXCompilerFlag)
 include(CheckCXXSourceRuns)
 
+# Define the location to download the .nnue file
+set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
+set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+
+# Check if the .nnue file exists, if not, download it
+if(NOT EXISTS ${NNUE_PATH})
+    message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
+    file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
+            STATUS DOWNLOAD_STATUS
+            SHOW_PROGRESS
+            )
+    list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
+    if(NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
+        message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
+    endif()
+else()
+    message(STATUS "integral.nnue already exists. Skipping download.")
+endif()
+
+# Function to check AVX support
 function(check_avx_support)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686|i386")
-        # Function to detect AVX support
         function(detect_avx FEATURE FLAGS RESULT)
             set(AVX_CODE "
                 #include <immintrin.h>
@@ -27,11 +46,9 @@ function(check_avx_support)
                     return 0;
                 }")
 
-            # First, try without any flags
             check_cxx_source_runs("${AVX_CODE}" AVX_RUNS)
 
             if(NOT AVX_RUNS)
-                # If it doesn't run, try with the specified flags
                 set(CMAKE_REQUIRED_FLAGS "${FLAGS}")
                 check_cxx_source_runs("${AVX_CODE}" AVX_RUNS_WITH_FLAG)
                 unset(CMAKE_REQUIRED_FLAGS)
@@ -42,12 +59,10 @@ function(check_avx_support)
                     set(${RESULT} "UNAVAILABLE" PARENT_SCOPE)
                 endif()
             else()
-                # AVX is supported without any special flags
                 set(${RESULT} "AVAILABLE" PARENT_SCOPE)
             endif()
         endfunction()
 
-        # Check for AVX512 support
         check_cxx_compiler_flag("-mavx512f" COMPILER_SUPPORTS_AVX512F)
         check_cxx_compiler_flag("-mavx512dq" COMPILER_SUPPORTS_AVX512DQ)
         check_cxx_compiler_flag("-mavx512bw" COMPILER_SUPPORTS_AVX512BW)
@@ -70,7 +85,6 @@ function(check_avx_support)
             endif()
         endif()
 
-        # Check for AVX2 support
         check_cxx_compiler_flag("-mavx2" COMPILER_SUPPORTS_AVX2)
         check_cxx_compiler_flag("-mfma" COMPILER_SUPPORTS_FMA)
 
@@ -150,7 +164,7 @@ endif ()
 
 include_directories(third-party/fathom)
 include_directories(third-party/fmt/include)
-add_definitions(-DFMT_HEADER_ONLY -DEVALFILE="${PROJECT_SOURCE_DIR}/integral.nnue")
+add_definitions(-DFMT_HEADER_ONLY -DEVALFILE="${NNUE_PATH}")
 
 # Collect source files
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
