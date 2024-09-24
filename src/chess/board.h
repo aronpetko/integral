@@ -146,7 +146,8 @@ struct BoardState {
         if (piece_type == PieceType::kKing) {
           minor_key ^= zobrist::pieces[colored_piece][square];
           major_key ^= zobrist::pieces[colored_piece][square];
-        } if (piece_type == PieceType::kKnight ||
+        }
+        if (piece_type == PieceType::kKnight ||
             piece_type == PieceType::kBishop) {
           minor_key ^= zobrist::pieces[colored_piece][square];
         } else if (piece_type == PieceType::kRook ||
@@ -272,8 +273,12 @@ class Board {
 
   Board(const BoardState &state);
 
-  inline BoardState &GetState() {
+  inline auto &GetState() {
     return state_;
+  }
+
+  inline auto &GetStateHistory() {
+    return history_;
   }
 
   inline std::shared_ptr<nnue::Accumulator> &GetAccumulator() {

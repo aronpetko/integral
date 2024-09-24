@@ -5,9 +5,7 @@
 namespace eval {
 
 Score Evaluate(Board &board) {
-  const Score network_eval =
-      nnue::Evaluate(board.GetState(), board.GetAccumulator());
-
+  const auto network_eval = nnue::Evaluate(board);
   const auto &state = board.GetState();
 
   // Scale the score based on the number of material left
