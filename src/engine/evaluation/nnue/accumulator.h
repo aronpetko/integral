@@ -239,6 +239,12 @@ struct AccumulatorEntry {
   BoardState state;
 };
 
+struct BucketCacheEntry {
+  std::array<BitBoard, kNumPieceTypes> piece_bbs;
+  std::array<BitBoard, 2> side_bbs;
+  AccumulatorEntry accumulator;
+};
+
 class Accumulator {
  public:
   Accumulator() : head_idx_(0) {
@@ -252,10 +258,8 @@ class Accumulator {
     }
   }
 
-  void Refresh(const BoardState& state, Color perspective) {
-    stack_[head_idx_].perspectives[perspective].Refresh(state, perspective);
-    stack_[head_idx_].kings[perspective] = state.King(perspective).GetLsb();
-    stack_[head_idx_].updated[perspective] = true;
+  void RefreshPerspective(int index, Color perspective) {
+
   }
 
   void PushChanges(const BoardState& state, AccumulatorChange& change) {
@@ -289,9 +293,7 @@ class Accumulator {
         continue;
       }
 
-      const Square king = stack_[head_idx_].kings[perspective];
       int iter = head_idx_;
-
       while (true) {
         --iter;
 
@@ -301,19 +303,24 @@ class Accumulator {
 
           // Apply all updates from the earliest updated accumulator to now
           while (last_updated != head_idx_) {
+            auto& dirty_accumulator = stack_[last_updated + 1];
+            const auto& clean_accumulator = stack_[last_updated];
+
             // If the accumulator needs a refresh, we skip applying updates and
             // just refresh it
             if (NeedRefresh(perspective,
-                            stack_[last_updated + 1].kings[perspective],
-                            stack_[last_updated].kings[perspective])) {
-              stack_[last_updated + 1].perspectives[perspective].Refresh(
-                  stack_[last_updated + 1].state, perspective);
+                            dirty_accumulator.kings[perspective],
+                            clean_accumulator.kings[perspective])) {
+              dirty_accumulator.perspectives[perspective].Refresh(
+                  dirty_accumulator.state, perspective);
+              input_bucket_cache_[perspective][GetKingBucket(
+                  dirty_accumulator.kings[perspective], perspective)] = state;
             } else {
-              stack_[last_updated + 1].perspectives[perspective].ApplyChange(
-                  stack_[last_updated].perspectives[perspective],
-                  stack_[last_updated + 1].change,
+              dirty_accumulator.perspectives[perspective].ApplyChange(
+                  clean_accumulator.perspectives[perspective],
+                  dirty_accumulator.change,
                   perspective,
-                  stack_[last_updated + 1].kings[perspective]);
+                  dirty_accumulator.kings[perspective]);
             }
             // Mark the accumulator as having been updated
             stack_[++last_updated].updated[perspective] = true;
@@ -333,8 +340,8 @@ class Accumulator {
     }
 
     // Check if the king moved into a different bucket
-    return kKingBucketMap[old_king ^ (56 * perspective)] !=
-           kKingBucketMap[new_king ^ (56 * perspective)];
+    return GetKingBucket(old_king, perspective) !=
+           GetKingBucket(new_king, perspective);
   }
 
   void IncrementHead() {
@@ -353,17 +360,31 @@ class Accumulator {
                     static_cast<int>(arch::kOutputBucketCount - 1));
   }
 
-  PerspectiveAccumulator& operator[](int perspective) {
+  [[nodiscard]] PerspectiveAccumulator& operator[](int perspective) {
     return stack_[head_idx_].perspectives[perspective];
   }
 
-  const PerspectiveAccumulator& operator[](int perspective) const {
+  [[nodiscard]] const PerspectiveAccumulator& operator[](
+      int perspective) const {
     return stack_[head_idx_].perspectives[perspective];
+  }
+
+ private:
+  void RefreshFromCached(PerspectiveAccumulator& accumulator,
+                         const BoardState& cached_state,
+                         const BoardState& state) {
+
+  }
+
+  [[nodiscard]] inline int GetKingBucket(Square king_square,
+                                         Color king_color) const {
+    return kKingBucketMap[king_square ^ (56 * king_color)];
   }
 
  private:
   int head_idx_;
   std::vector<AccumulatorEntry> stack_;
+  InputBucketCache input_bucket_cache_;
 };
 
 }  // namespace nnue
