@@ -835,7 +835,7 @@ Score Search::PVSearch(Thread &thread,
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction += !in_pv_node - tt_was_in_pv;
+      reduction -= in_pv_node + tt_was_in_pv;
       reduction += 2 * cut_node;
       reduction -= gives_check;
       reduction -=
