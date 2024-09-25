@@ -521,10 +521,9 @@ Score Search::PVSearch(Thread &thread,
   const auto &prev_stack = stack - 1;
   if (stack->ply >= 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
-    const int bonus =
-        std::clamp(
-            -10 * (prev_stack->static_eval + stack->static_eval), -1600, 1400) +
-        750;
+    const auto their_static_eval_loss =
+        -(prev_stack->static_eval + stack->static_eval);
+    const int bonus = std::clamp(their_static_eval_loss * 5, -1000, 800);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
