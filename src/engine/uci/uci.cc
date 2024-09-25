@@ -23,9 +23,6 @@ void Initialize(search::Search &search) {
   listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&search](const Option &option) {
     search.ResizeHash(option.GetValue<int>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("PawnCache", 1, 1, 16, [](const Option &option) {
-    eval::pawn_cache.Resize(option.GetValue<int>());
-  });
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
     search.SetThreadCount(option.GetValue<U16>());
   });
