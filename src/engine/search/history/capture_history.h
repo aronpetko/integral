@@ -14,8 +14,11 @@ class CaptureHistory {
   void UpdateScore(const BoardState &state, StackEntry *stack, int depth) {
     const int bonus = HistoryBonus(depth);
     const auto moving_piece = state.GetPieceType(stack->move.GetFrom());
-    const auto captured_piece = state.GetPieceType(stack->move.GetTo());
-    // Apply a linear dampening to the bonus as the depth increases
+    const auto captured_piece = stack->move.IsEnPassant(state)
+                                  ? PieceType::kPawn
+                                  : state.GetPieceType(stack->move.GetTo());
+    // Apply a linear dampening to the
+    // bonus as the depth increases
     int &score =
         table_[state.turn][moving_piece][captured_piece][stack->move.GetTo()]
               [ThreatIndex(stack->move, stack->threats)];
@@ -31,7 +34,9 @@ class CaptureHistory {
     for (int i = 0; i < captures.Size(); i++) {
       const Move bad_capture = captures[i];
       const auto moving_piece = state.GetPieceType(bad_capture.GetFrom());
-      const auto captured_piece = state.GetPieceType(bad_capture.GetTo());
+      const auto captured_piece = bad_capture.IsEnPassant(state)
+                                    ? PieceType::kPawn
+                                    : state.GetPieceType(bad_capture.GetTo());
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_capture_score =
           table_[state.turn][moving_piece][captured_piece][bad_capture.GetTo()]
