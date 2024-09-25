@@ -876,7 +876,7 @@ Score Search::PVSearch(Thread &thread,
                         : score >= beta  ? history::HistoryBonus(new_depth)
                                          : 0;
         history.continuation_history->UpdateMoveScore(
-            state, move, bonus, stack);
+            board.GetStateHistory().Back(), move, bonus, stack);
       }
     }
 
