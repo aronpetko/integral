@@ -20,8 +20,7 @@ class CaptureHistory {
     // Apply a linear dampening to the
     // bonus as the depth increases
     int &score =
-        table_[state.turn][moving_piece][captured_piece][stack->move.GetTo()]
-              [ThreatIndex(stack->move, stack->threats)];
+        table_[state.turn][moving_piece][captured_piece][stack->move.GetTo()];
     score += ScaleBonus(score, bonus);
   }
 
@@ -39,8 +38,7 @@ class CaptureHistory {
                                     : state.GetPieceType(bad_capture.GetTo());
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_capture_score =
-          table_[state.turn][moving_piece][captured_piece][bad_capture.GetTo()]
-                [ThreatIndex(bad_capture, threats)];
+          table_[state.turn][moving_piece][captured_piece][bad_capture.GetTo()];
       bad_capture_score += ScaleBonus(bad_capture_score, -bonus);
     }
   }
@@ -50,8 +48,7 @@ class CaptureHistory {
                              BitBoard threats) const {
     const auto moving_piece = state.GetPieceType(move.GetFrom());
     const auto captured_piece = state.GetPieceType(move.GetTo());
-    return table_[state.turn][moving_piece][captured_piece][move.GetTo()]
-                 [ThreatIndex(move, threats)];
+    return table_[state.turn][moving_piece][captured_piece][move.GetTo()];
   }
 
  private:
@@ -60,7 +57,7 @@ class CaptureHistory {
   }
 
  private:
-  MultiArray<int, kNumColors, kNumPieceTypes, kNumPieceTypes, kSquareCount, 4>
+  MultiArray<int, kNumColors, kNumPieceTypes, kNumPieceTypes, kSquareCount>
       table_;
 };
 
