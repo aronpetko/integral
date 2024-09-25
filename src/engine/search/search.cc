@@ -519,10 +519,12 @@ Score Search::PVSearch(Thread &thread,
   // Penalize the history of the previous move depending on how much static
   // evaluation it forfeited
   const auto &prev_stack = stack - 1;
-  if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
+  if (stack->ply >= 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
-    const int bonus = std::clamp(
-        -10 * (prev_stack->static_eval + stack->static_eval), -1000, 1000);
+    const int bonus =
+        std::clamp(
+            -10 * (prev_stack->static_eval + stack->static_eval), -1600, 1400) +
+        750;
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
