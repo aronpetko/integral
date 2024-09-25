@@ -165,7 +165,7 @@ class PrettyReportInfo : public ReportInfo {
     // Depth and Selective Depth
     fmt::print(fg(dark_gray), "depth: ");
     fmt::print(
-        fg(light_gray), "{:>6}  ", fmt::format("{}/{}", depth, sel_depth));
+        fg(grayish_white), "{:>6}  ", fmt::format("{}/{}", depth, sel_depth));
 
     // Time
     fmt::print(fg(dark_gray), "time: ");
