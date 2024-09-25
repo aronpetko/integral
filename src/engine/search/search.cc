@@ -1,7 +1,7 @@
 #include "search.h"
 
-#include <thread>
 #include <algorithm>
+#include <thread>
 
 #include "constants.h"
 #include "fmt/format.h"
@@ -827,6 +827,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
+    int reduction = 0;
     bool needs_full_search;
     Score score;
 
@@ -834,7 +835,7 @@ Score Search::PVSearch(Thread &thread,
     // move ordering) are searched at lower depths
     const int lmr_move_threshold = 1 + in_root * 2;
     if (depth > 2 && moves_seen >= lmr_move_threshold) {
-      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
       reduction -= gives_check;
@@ -869,6 +870,14 @@ Score Search::PVSearch(Thread &thread,
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+
+      if (reduction != 0) {
+        const int bonus = score <= alpha ? -history::HistoryBonus(new_depth)
+                        : score >= beta  ? history::HistoryBonus(new_depth)
+                                         : 0;
+        history.continuation_history->UpdateMoveScore(
+            state, move, bonus, stack);
+      }
     }
 
     // Perform a full window search on this move if it's known to be good
