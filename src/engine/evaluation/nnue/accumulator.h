@@ -257,8 +257,8 @@ struct AccumulatorEntry {
 };
 
 struct BucketCacheEntry {
-  std::array<BitBoard, kNumPieceTypes> piece_bbs{};
-  std::array<BitBoard, 2> side_bbs{};
+  MultiArray<BitBoard, 2, kNumPieceTypes> piece_bbs{};
+  MultiArray<BitBoard, 2, kNumColors> side_bbs{};
   AccumulatorEntry accumulator;
 
   BucketCacheEntry() {
@@ -283,7 +283,7 @@ class Accumulator {
     head_idx_ = 0;
     for (const Color color : {Color::kBlack, Color::kWhite}) {
       auto& accumulator = stack_[head_idx_];
-      accumulator.perspectives[color].Refresh(state, color);
+      RefreshPerspective(accumulator, state, color, true);
       accumulator.updated[color] = true;
       accumulator.kings[color] = state.King(color).GetLsb();
     }
@@ -291,17 +291,21 @@ class Accumulator {
 
   void RefreshPerspective(AccumulatorEntry& accumulator,
                           const BoardState& state,
-                          Color perspective) {
+                          Color perspective,
+                          bool reset = false) {
     const auto king_square = Square(state.King(perspective).GetLsb());
     const auto king_bucket = GetKingBucket(king_square, perspective);
     const auto mirrored = king_square.File() >= kFileE;
 
     auto& cached = input_bucket_cache_[mirrored][king_bucket];
+    if (reset) {
+      cached.Reset();
+    }
 
-/*    for (const Color color : {Color::kBlack, Color::kWhite}) {
+    for (const Color color : {Color::kBlack, Color::kWhite}) {
       for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
-        const BitBoard old_pieces =
-            cached.piece_bbs[piece] & cached.side_bbs[color];
+        const BitBoard old_pieces = cached.piece_bbs[perspective][piece] &
+                                    cached.side_bbs[perspective][color];
         const BitBoard new_pieces =
             state.piece_bbs[piece] & state.side_bbs[color];
 
@@ -326,15 +330,17 @@ class Accumulator {
         }
       }
     }
-*/
-    accumulator.perspectives[perspective].Refresh(state, perspective);
-    cached.side_bbs[perspective] = state.side_bbs[perspective];
-    cached.piece_bbs[perspective] = state.piece_bbs[perspective];
+
+    cached.side_bbs[perspective] = state.side_bbs;
+    cached.piece_bbs[perspective] = state.piece_bbs;
 
     accumulator.perspectives[perspective] =
         cached.accumulator.perspectives[perspective];
+
+    /*accumulator.perspectives[perspective] =
+        cached.accumulator.perspectives[perspective];
     accumulator.updated[perspective] = true;
-    accumulator.kings[perspective] = king_square;
+    accumulator.kings[perspective] = king_square;*/
   }
 
   void PushChanges(const BoardState& state, AccumulatorChange& change) {
