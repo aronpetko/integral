@@ -63,11 +63,15 @@ class PerspectiveAccumulator {
  public:
   PerspectiveAccumulator() : values_({}) {}
 
-  void Refresh(const BoardState& state, Color perspective) {
+  void Reset() {
     // Initialize the accumulator values with the network biases
     for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
       values_[i] = network->feature_biases[i];
     }
+  }
+
+  void Refresh(const BoardState& state, Color perspective) {
+    Reset();
 
     const Square king_square = state.King(perspective).GetLsb();
 
@@ -143,6 +147,19 @@ class PerspectiveAccumulator {
         GetFeatureTable(square, king_square, piece, piece_color, perspective);
     for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
       values_[i] += table[i];
+    }
+  }
+
+  // Update features by subtract a single feature
+  void SubFeature(Color perspective,
+                  Square king_square,
+                  Square square,
+                  PieceType piece,
+                  Color piece_color) {
+    const auto& table =
+        GetFeatureTable(square, king_square, piece, piece_color, perspective);
+    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
+      values_[i] -= table[i];
     }
   }
 
@@ -239,6 +256,23 @@ struct AccumulatorEntry {
   BoardState state;
 };
 
+struct BucketCacheEntry {
+  MultiArray<BitBoard, 2, kNumPieceTypes> piece_bbs{};
+  MultiArray<BitBoard, 2, kNumColors> side_bbs{};
+  AccumulatorEntry accumulator;
+
+  BucketCacheEntry() {
+    Reset();
+  }
+
+  void Reset() {
+    accumulator.perspectives[Color::kWhite].Reset();
+    accumulator.perspectives[Color::kBlack].Reset();
+    piece_bbs = {};
+    side_bbs = {};
+  }
+};
+
 class Accumulator {
  public:
   Accumulator() : head_idx_(0) {
@@ -248,14 +282,66 @@ class Accumulator {
   void SetFromState(const BoardState& state) {
     head_idx_ = 0;
     for (const Color color : {Color::kBlack, Color::kWhite}) {
-      Refresh(state, color);
+      auto& accumulator = stack_[head_idx_];
+      RefreshPerspective(accumulator, state, color, true);
+      accumulator.updated[color] = true;
+      accumulator.kings[color] = state.King(color).GetLsb();
     }
   }
 
-  void Refresh(const BoardState& state, Color perspective) {
-    stack_[head_idx_].perspectives[perspective].Refresh(state, perspective);
-    stack_[head_idx_].kings[perspective] = state.King(perspective).GetLsb();
-    stack_[head_idx_].updated[perspective] = true;
+  void RefreshPerspective(AccumulatorEntry& accumulator,
+                          const BoardState& state,
+                          Color perspective,
+                          bool reset = false) {
+    const auto king_square = Square(state.King(perspective).GetLsb());
+    const auto king_bucket = GetKingBucket(king_square, perspective);
+    const auto mirrored = king_square.File() >= kFileE;
+
+    auto& cached = input_bucket_cache_[mirrored][king_bucket];
+    // Reset the cached accumulator data to the network biases
+    if (reset) {
+      cached.Reset();
+    }
+
+    // Instead of refreshing this perspective's accumulator from zero pieces, we
+    // reset from the pieces of the last accumulator update in this bucket. This
+    // is an optimization trick known as "Finny Tables".
+    for (const Color color : {Color::kBlack, Color::kWhite}) {
+      for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
+        const BitBoard old_pieces = cached.piece_bbs[perspective][piece] &
+                                    cached.side_bbs[perspective][color];
+        const BitBoard new_pieces =
+            state.piece_bbs[piece] & state.side_bbs[color];
+
+        // Calculate difference of features to remove
+        const BitBoard to_remove = ~new_pieces & old_pieces;
+        for (Square square : to_remove) {
+          cached.accumulator.perspectives[perspective].SubFeature(
+              perspective,
+              king_square,
+              square,
+              static_cast<PieceType>(piece),
+              color);
+        }
+
+        // Calculate difference of features to add
+        const BitBoard to_add = new_pieces & ~old_pieces;
+        for (Square square : to_add) {
+          cached.accumulator.perspectives[perspective].AddFeature(
+              perspective,
+              king_square,
+              square,
+              static_cast<PieceType>(piece),
+              color);
+        }
+      }
+    }
+
+    cached.side_bbs[perspective] = state.side_bbs;
+    cached.piece_bbs[perspective] = state.piece_bbs;
+
+    accumulator.perspectives[perspective] =
+        cached.accumulator.perspectives[perspective];
   }
 
   void PushChanges(const BoardState& state, AccumulatorChange& change) {
@@ -281,17 +367,12 @@ class Accumulator {
   }
 
   void ApplyChanges(Board& board) {
-    auto& state = board.GetState();
-    auto& history = board.GetStateHistory();
-
     for (Color perspective : {Color::kWhite, Color::kBlack}) {
       if (stack_[head_idx_].updated[perspective]) {
         continue;
       }
 
-      const Square king = stack_[head_idx_].kings[perspective];
       int iter = head_idx_;
-
       while (true) {
         --iter;
 
@@ -301,19 +382,22 @@ class Accumulator {
 
           // Apply all updates from the earliest updated accumulator to now
           while (last_updated != head_idx_) {
+            auto& dirty_accumulator = stack_[last_updated + 1];
+            const auto& clean_accumulator = stack_[last_updated];
+
             // If the accumulator needs a refresh, we skip applying updates and
             // just refresh it
             if (NeedRefresh(perspective,
-                            stack_[last_updated + 1].kings[perspective],
-                            stack_[last_updated].kings[perspective])) {
-              stack_[last_updated + 1].perspectives[perspective].Refresh(
-                  stack_[last_updated + 1].state, perspective);
+                            clean_accumulator.kings[perspective],
+                            dirty_accumulator.kings[perspective])) {
+              RefreshPerspective(
+                  dirty_accumulator, dirty_accumulator.state, perspective);
             } else {
-              stack_[last_updated + 1].perspectives[perspective].ApplyChange(
-                  stack_[last_updated].perspectives[perspective],
-                  stack_[last_updated + 1].change,
+              dirty_accumulator.perspectives[perspective].ApplyChange(
+                  clean_accumulator.perspectives[perspective],
+                  dirty_accumulator.change,
                   perspective,
-                  stack_[last_updated + 1].kings[perspective]);
+                  dirty_accumulator.kings[perspective]);
             }
             // Mark the accumulator as having been updated
             stack_[++last_updated].updated[perspective] = true;
@@ -333,8 +417,8 @@ class Accumulator {
     }
 
     // Check if the king moved into a different bucket
-    return kKingBucketMap[old_king ^ (56 * perspective)] !=
-           kKingBucketMap[new_king ^ (56 * perspective)];
+    return GetKingBucket(old_king, perspective) !=
+           GetKingBucket(new_king, perspective);
   }
 
   void IncrementHead() {
@@ -353,17 +437,25 @@ class Accumulator {
                     static_cast<int>(arch::kOutputBucketCount - 1));
   }
 
-  PerspectiveAccumulator& operator[](int perspective) {
+  [[nodiscard]] PerspectiveAccumulator& operator[](int perspective) {
     return stack_[head_idx_].perspectives[perspective];
   }
 
-  const PerspectiveAccumulator& operator[](int perspective) const {
+  [[nodiscard]] const PerspectiveAccumulator& operator[](
+      int perspective) const {
     return stack_[head_idx_].perspectives[perspective];
+  }
+
+ private:
+  [[nodiscard]] inline int GetKingBucket(Square king_square,
+                                         Color king_color) const {
+    return kKingBucketMap[king_square ^ (56 * king_color)];
   }
 
  private:
   int head_idx_;
   std::vector<AccumulatorEntry> stack_;
+  MultiArray<BucketCacheEntry, 2, arch::kInputBucketCount> input_bucket_cache_;
 };
 
 }  // namespace nnue
