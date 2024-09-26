@@ -12,6 +12,7 @@
 #include "../search/search.h"
 #include "../search/syzygy/syzygy.h"
 #include "fmt/format.h"
+#include "reporter.h"
 
 namespace uci {
 
@@ -201,6 +202,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       constants::kEngineAuthor
     );
     listener.PrintOptions();
+    reporter::using_uci = true;
     fmt::println("uciok");
   });
 

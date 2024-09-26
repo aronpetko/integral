@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <thread>
 
+#include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
 #include "move_picker.h"
@@ -125,23 +126,27 @@ void Search::IterativeDeepening(Thread &thread) {
       break;
     }
 
+    std::unique_ptr<uci::reporter::ReportInfo> report_info;
+    if (uci::reporter::using_uci) {
+      report_info = std::make_unique<uci::reporter::UCIReportInfo>();
+    } else {
+      report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+    }
+
     if (thread.IsMainThread() && !stop_ && print_info) {
       const bool is_mate = eval::IsMateScore(root_stack->score);
       const auto nodes_searched = GetNodesSearched();
-      fmt::println(
-          "info depth {} seldepth {} score {} {} nodes {} time {} nps "
-          "{} hashfull {}{}{} pv {}",
-          depth,
-          thread.sel_depth,
-          is_mate ? "mate" : "cp",
-          is_mate ? eval::MateIn(root_stack->score) : root_stack->score,
-          nodes_searched,
-          time_mgmt_.TimeElapsed(),
-          nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-          transposition_table_.HashFull(),
-          syzygy::enabled ? " tbhits " : "",
-          syzygy::enabled ? std::to_string(thread.tb_hits) : "",
-          root_stack->pv.UCIFormat());
+      report_info->Print(depth,
+                         thread.sel_depth,
+                         is_mate,
+                         root_stack->score,
+                         nodes_searched,
+                         time_mgmt_.TimeElapsed(),
+                         nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
+                         transposition_table_.HashFull(),
+                         syzygy::enabled,
+                         thread.tb_hits,
+                         root_stack->pv.UCIFormat());
     }
   }
 
