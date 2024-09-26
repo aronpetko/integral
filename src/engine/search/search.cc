@@ -713,6 +713,9 @@ Score Search::PVSearch(Thread &thread,
     stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
                                       : history.GetQuietMoveScore(
                                             state, move, stack->threats, stack);
+    const auto continuation_score =
+        is_capture ? stack->history_score
+                   : history.GetContinuationMoveScore(state, move, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -755,7 +758,7 @@ Score Search::PVSearch(Thread &thread,
       const int history_margin =
           is_quiet ? hist_thresh_base + hist_thresh_mult * depth
                    : capt_hist_thresh_base + capt_hist_thresh_mult * depth;
-      if (depth <= hist_prune_depth && stack->history_score <= history_margin) {
+      if (depth <= hist_prune_depth && continuation_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
       }
