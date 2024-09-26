@@ -43,8 +43,8 @@ Move MovePicker::Next() {
 
       moves_idx_++;
 
-      const bool loses_material =
-          !eval::StaticExchange(move, see_threshold_, state);
+      const bool loses_material = !eval::StaticExchange(
+          move, see_threshold_ == 0 ? -score / 4 : 0, state);
       if (!loses_material && !move.IsUnderPromotion()) {
         return move;
       }
