@@ -273,6 +273,12 @@ class Board {
 
   Board(const BoardState &state);
 
+  // Copy constructor for deep copy of the accumulator
+  Board(const Board& other);
+
+  // Copy assignment operator for deep copy of the accumulator
+  Board& operator=(const Board& other);
+
   inline auto &GetState() {
     return state_;
   }
