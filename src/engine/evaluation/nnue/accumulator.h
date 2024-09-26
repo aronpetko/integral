@@ -63,11 +63,15 @@ class PerspectiveAccumulator {
  public:
   PerspectiveAccumulator() : values_({}) {}
 
-  void Refresh(const BoardState& state, Color perspective) {
+  void Reset() {
     // Initialize the accumulator values with the network biases
     for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
       values_[i] = network->feature_biases[i];
     }
+  }
+
+  void Refresh(const BoardState& state, Color perspective) {
+    Reset();
 
     const Square king_square = state.King(perspective).GetLsb();
 
@@ -143,6 +147,19 @@ class PerspectiveAccumulator {
         GetFeatureTable(square, king_square, piece, piece_color, perspective);
     for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
       values_[i] += table[i];
+    }
+  }
+
+  // Update features by subtract a single feature
+  void SubFeature(Color perspective,
+                  Square king_square,
+                  Square square,
+                  PieceType piece,
+                  Color piece_color) {
+    const auto& table =
+        GetFeatureTable(square, king_square, piece, piece_color, perspective);
+    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
+      values_[i] -= table[i];
     }
   }
 
@@ -240,9 +257,20 @@ struct AccumulatorEntry {
 };
 
 struct BucketCacheEntry {
-  std::array<BitBoard, kNumPieceTypes> piece_bbs;
-  std::array<BitBoard, 2> side_bbs;
+  std::array<BitBoard, kNumPieceTypes> piece_bbs{};
+  std::array<BitBoard, 2> side_bbs{};
   AccumulatorEntry accumulator;
+
+  BucketCacheEntry() {
+    Reset();
+  }
+
+  void Reset() {
+    accumulator.perspectives[Color::kWhite].Reset();
+    accumulator.perspectives[Color::kBlack].Reset();
+    piece_bbs = {};
+    side_bbs = {};
+  }
 };
 
 class Accumulator {
@@ -254,12 +282,59 @@ class Accumulator {
   void SetFromState(const BoardState& state) {
     head_idx_ = 0;
     for (const Color color : {Color::kBlack, Color::kWhite}) {
-      Refresh(state, color);
+      auto& accumulator = stack_[head_idx_];
+      accumulator.perspectives[color].Refresh(state, color);
+      accumulator.updated[color] = true;
+      accumulator.kings[color] = state.King(color).GetLsb();
     }
   }
 
-  void RefreshPerspective(int index, Color perspective) {
+  void RefreshPerspective(AccumulatorEntry& accumulator,
+                          const BoardState& state,
+                          Color perspective) {
+    const auto king_square = Square(state.King(perspective).GetLsb());
+    const auto king_bucket = GetKingBucket(king_square, perspective);
+    const auto mirrored = king_square.File() >= kFileE;
 
+    auto& cached = input_bucket_cache_[mirrored][king_bucket];
+
+/*    for (const Color color : {Color::kBlack, Color::kWhite}) {
+      for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
+        const BitBoard old_pieces =
+            cached.piece_bbs[piece] & cached.side_bbs[color];
+        const BitBoard new_pieces =
+            state.piece_bbs[piece] & state.side_bbs[color];
+
+        const BitBoard to_remove = ~new_pieces & old_pieces;
+        for (Square square : to_remove) {
+          cached.accumulator.perspectives[perspective].SubFeature(
+              perspective,
+              king_square,
+              square,
+              static_cast<PieceType>(piece),
+              color);
+        }
+
+        const BitBoard to_add = new_pieces & ~old_pieces;
+        for (Square square : to_add) {
+          cached.accumulator.perspectives[perspective].AddFeature(
+              perspective,
+              king_square,
+              square,
+              static_cast<PieceType>(piece),
+              color);
+        }
+      }
+    }
+*/
+    accumulator.perspectives[perspective].Refresh(state, perspective);
+    cached.side_bbs[perspective] = state.side_bbs[perspective];
+    cached.piece_bbs[perspective] = state.piece_bbs[perspective];
+
+    accumulator.perspectives[perspective] =
+        cached.accumulator.perspectives[perspective];
+    accumulator.updated[perspective] = true;
+    accumulator.kings[perspective] = king_square;
   }
 
   void PushChanges(const BoardState& state, AccumulatorChange& change) {
@@ -285,9 +360,6 @@ class Accumulator {
   }
 
   void ApplyChanges(Board& board) {
-    auto& state = board.GetState();
-    auto& history = board.GetStateHistory();
-
     for (Color perspective : {Color::kWhite, Color::kBlack}) {
       if (stack_[head_idx_].updated[perspective]) {
         continue;
@@ -309,12 +381,10 @@ class Accumulator {
             // If the accumulator needs a refresh, we skip applying updates and
             // just refresh it
             if (NeedRefresh(perspective,
-                            dirty_accumulator.kings[perspective],
-                            clean_accumulator.kings[perspective])) {
-              dirty_accumulator.perspectives[perspective].Refresh(
-                  dirty_accumulator.state, perspective);
-              input_bucket_cache_[perspective][GetKingBucket(
-                  dirty_accumulator.kings[perspective], perspective)] = state;
+                            clean_accumulator.kings[perspective],
+                            dirty_accumulator.kings[perspective])) {
+              RefreshPerspective(
+                  dirty_accumulator, dirty_accumulator.state, perspective);
             } else {
               dirty_accumulator.perspectives[perspective].ApplyChange(
                   clean_accumulator.perspectives[perspective],
@@ -370,12 +440,6 @@ class Accumulator {
   }
 
  private:
-  void RefreshFromCached(PerspectiveAccumulator& accumulator,
-                         const BoardState& cached_state,
-                         const BoardState& state) {
-
-  }
-
   [[nodiscard]] inline int GetKingBucket(Square king_square,
                                          Color king_color) const {
     return kKingBucketMap[king_square ^ (56 * king_color)];
@@ -384,7 +448,7 @@ class Accumulator {
  private:
   int head_idx_;
   std::vector<AccumulatorEntry> stack_;
-  InputBucketCache input_bucket_cache_;
+  MultiArray<BucketCacheEntry, 2, arch::kInputBucketCount> input_bucket_cache_;
 };
 
 }  // namespace nnue
