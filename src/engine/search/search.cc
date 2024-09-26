@@ -871,7 +871,7 @@ Score Search::PVSearch(Thread &thread,
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
 
-      if (reduction != 0) {
+      if (reduction != 0 && is_quiet) {
         const int bonus = score <= alpha ? -history::HistoryBonus(new_depth)
                         : score >= beta  ? history::HistoryBonus(new_depth)
                                          : 0;
