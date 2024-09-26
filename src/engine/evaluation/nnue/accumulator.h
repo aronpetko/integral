@@ -298,10 +298,14 @@ class Accumulator {
     const auto mirrored = king_square.File() >= kFileE;
 
     auto& cached = input_bucket_cache_[mirrored][king_bucket];
+    // Reset the cached accumulator data to the network biases
     if (reset) {
       cached.Reset();
     }
 
+    // Instead of refreshing this perspective's accumulator from zero pieces, we
+    // reset from the pieces of the last accumulator update in this bucket. This
+    // is an optimization trick known as "Finny Tables".
     for (const Color color : {Color::kBlack, Color::kWhite}) {
       for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
         const BitBoard old_pieces = cached.piece_bbs[perspective][piece] &
@@ -309,6 +313,7 @@ class Accumulator {
         const BitBoard new_pieces =
             state.piece_bbs[piece] & state.side_bbs[color];
 
+        // Calculate difference of features to remove
         const BitBoard to_remove = ~new_pieces & old_pieces;
         for (Square square : to_remove) {
           cached.accumulator.perspectives[perspective].SubFeature(
@@ -319,6 +324,7 @@ class Accumulator {
               color);
         }
 
+        // Calculate difference of features to add
         const BitBoard to_add = new_pieces & ~old_pieces;
         for (Square square : to_add) {
           cached.accumulator.perspectives[perspective].AddFeature(
@@ -336,11 +342,6 @@ class Accumulator {
 
     accumulator.perspectives[perspective] =
         cached.accumulator.perspectives[perspective];
-
-    /*accumulator.perspectives[perspective] =
-        cached.accumulator.perspectives[perspective];
-    accumulator.updated[perspective] = true;
-    accumulator.kings[perspective] = king_square;*/
   }
 
   void PushChanges(const BoardState& state, AccumulatorChange& change) {
