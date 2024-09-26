@@ -811,11 +811,6 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    // Check Extensions: Integral's not yet strong enough to simplify this out
-    if (stack->in_check) {
-      ++extensions;
-    }
-
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
     stack->capture_move = move.IsCapture(state);
