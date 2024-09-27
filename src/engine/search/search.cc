@@ -844,7 +844,7 @@ Score Search::PVSearch(Thread &thread,
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
       reduction += !improving;
-      reduction += (stack + 1)->beta_cutoff_count >= 5;
+      reduction -= (stack + 1)->beta_cutoff_count < 4;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
