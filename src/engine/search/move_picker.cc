@@ -39,12 +39,16 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGoodNoisys) {
     while (moves_idx_ < noisys_.Size()) {
       const auto move = SelectionSort(noisys_, moves_idx_);
-      const int score = noisys_[moves_idx_].score;
+      const auto score = noisys_[moves_idx_].score;
+      const auto history_score = history_.GetCaptureMoveScore(state, move);
 
       moves_idx_++;
 
-      const bool loses_material =
-          !eval::StaticExchange(move, see_threshold_, state);
+      const bool loses_material = !eval::StaticExchange(
+          move,
+          type_ != MovePickerType::kNoisy ? -history_score / 100
+                                          : see_threshold_,
+          state);
       if (!loses_material && !move.IsUnderPromotion()) {
         return move;
       }
