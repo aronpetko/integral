@@ -547,6 +547,7 @@ Score Search::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  (stack + 1)->beta_cutoff_count = 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
@@ -843,6 +844,7 @@ Score Search::PVSearch(Thread &thread,
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
       reduction += !improving;
+      reduction += (stack + 1)->beta_cutoff_count >= 2;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
@@ -913,6 +915,7 @@ Score Search::PVSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
+          ++stack->beta_cutoff_count;
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
