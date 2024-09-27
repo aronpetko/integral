@@ -86,6 +86,10 @@ void Search::IterativeDeepening(Thread &thread) {
       const Score new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
 
+      if (ShouldQuit(thread)) {
+        break;
+      }
+
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
