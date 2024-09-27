@@ -744,7 +744,8 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       const int see_threshold =
-          is_quiet ? see_quiet_thresh * depth : see_noisy_thresh * depth;
+          is_quiet ? see_quiet_thresh * depth
+                   : see_noisy_thresh * depth - stack->history_score / 150;
       if (depth <= see_prune_depth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
@@ -872,7 +873,7 @@ Score Search::PVSearch(Thread &thread,
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
 
-      if (reduction != 0) {
+      if (reduction != 0 && is_quiet) {
         const int bonus = score <= alpha ? -history::HistoryBonus(new_depth)
                         : score >= beta  ? history::HistoryBonus(new_depth)
                                          : 0;
