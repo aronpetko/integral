@@ -794,6 +794,7 @@ Score Search::PVSearch(Thread &thread,
           if (!in_pv_node &&
               tt_move_excluded_score < new_beta - sing_double_margin) {
             extensions = 2;
+            depth += depth < 10;
           } else {
             extensions = 1;
           }
