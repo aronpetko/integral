@@ -744,7 +744,11 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       const int see_threshold =
-          is_quiet ? see_quiet_thresh * depth : see_noisy_thresh * depth;
+          is_quiet
+              ? see_quiet_thresh * depth
+              : see_noisy_thresh * depth -
+                    std::clamp<int>(
+                        stack->history_score / 100, -100 * depth, 100 * depth);
       if (depth <= see_prune_depth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
