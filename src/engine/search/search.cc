@@ -776,7 +776,7 @@ Score Search::PVSearch(Thread &thread,
       if (is_accurate_tt_score) {
         const int reduced_depth = (depth - 1) / 2;
         const Score new_beta =
-            tt_entry->score - depth * (1 + !tt_move.IsNoisy(state));
+            tt_entry->score - depth / (2 - !tt_move.IsNoisy(state));
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
