@@ -26,7 +26,7 @@ The first iteration of Integral's neural network was trained on data from versio
 
 Integral provides a Makefile for compilation, but you can use CMake as well.\
 To compile Integral, enter the following commands in a terminal:
-```shell
+```
 git clone https://github.com/aronpetko/integral
 cd integral
 make <native|x86_64_bmi2|x86_64_modern|x86_64>
