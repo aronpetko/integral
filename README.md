@@ -15,14 +15,14 @@ Integral's neural network is a horizontally mirrored perspective network, contai
 `(768x4 -> 1280)x2 -> 1x8`
 
 ### Data Generation Process
-This neural network is trained on millions of self-play games. Each self-play game has a unique opening of six to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. Additionally, all moves that lose material are eliminated. This approach intuitively leaves the openings to be entirely positional in nature and thus, hopefully makes Integral's neural network able to learn more positional knowledge.
+This neural network is trained on millions of self-play games. Each self-play game has a unique opening of six to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. Additionally, all moves that lose material are eliminated. This approach intuitively leaves the openings to be entirely positional in nature and thus, hopefully makes Integral's neural network able to learn more positional knowledge. Lastly, 5-man Syzygy endgame tables are used in both the search and for game adjudication. 
 
 ### Training Process
 The first iteration of Integral's neural network was trained on data from version 4, which had a powerful hand-crafted evaluation (HCE). Each iteration of Integral's neural network since then has been generated on a fresh dataset using the prior network.
 
 ## Compiling Integral
 > [!NOTE]  
-> Integral should be compiled with either GCC v13 (or higher)
+> Integral should be compiled with GCC v13 (or higher)
 
 Integral provides a Makefile for compilation, but you can use CMake as well.\
 To compile Integral, enter the following commands in a terminal:
