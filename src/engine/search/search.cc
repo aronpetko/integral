@@ -531,7 +531,6 @@ Score Search::PVSearch(Thread &thread,
   }
 
   stack->threats = state.threats;
-  const bool no_piece_threats = (state.threats & state.Occupied(state.turn)) == 0;
 
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
@@ -552,6 +551,8 @@ Score Search::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+    const bool no_piece_threats = (state.threats & (state.Occupied(state.turn) ^ state.Pawns(state.turn))) == 0;
+
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
