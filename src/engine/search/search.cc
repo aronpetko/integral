@@ -530,6 +530,9 @@ Score Search::PVSearch(Thread &thread,
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
 
+  stack->threats = state.threats;
+  const bool no_piece_threats = (state.threats & state.Occupied(state.turn)) == 0;
+
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
@@ -576,7 +579,7 @@ Score Search::PVSearch(Thread &thread,
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
-        stack->static_eval >= beta + 170 - 24 * depth &&
+        stack->static_eval >= beta + 170 - 24 * depth && no_piece_threats &&
         !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
@@ -690,8 +693,6 @@ Score Search::PVSearch(Thread &thread,
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
-
-  stack->threats = state.threats;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
