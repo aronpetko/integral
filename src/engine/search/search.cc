@@ -551,7 +551,7 @@ Score Search::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    const bool no_piece_threats = (state.threats & (state.Occupied(state.turn) ^ state.Pawns(state.turn))) == 0;
+    const bool no_piece_threats = board.GetOpponentWinningCaptures() == 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon

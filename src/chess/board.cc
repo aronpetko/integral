@@ -441,24 +441,33 @@ void Board::HandleCastling(Move move) {
 void Board::CalculateThreats() {
   const Color them = FlipColor(state_.turn);
 
-  state_.threats = move_gen::PawnAttacks(state_.Pawns(them), them);
+  state_.threatened_by[kPawn] = move_gen::PawnAttacks(state_.Pawns(them), them);
 
   for (Square square : state_.Knights(them)) {
-    state_.threats |= move_gen::KnightMoves(square);
+    state_.threatened_by[kKnight] |= move_gen::KnightMoves(square);
   }
 
   const BitBoard queens = state_.Queens(them);
   const BitBoard occupied = state_.Occupied();
 
   for (Square square : state_.Bishops(them) | queens) {
-    state_.threats |= move_gen::BishopMoves(square, occupied);
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kBishop)]
+      |= move_gen::BishopMoves(square, occupied);
   }
 
   for (Square square : state_.Rooks(them) | queens) {
-    state_.threats |= move_gen::RookMoves(square, occupied);
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kRook)]
+      |= move_gen::RookMoves(square, occupied);
   }
 
-  state_.threats |= move_gen::KingAttacks(state_.King(them).GetLsb());
+  state_.threatened_by[kKing] = move_gen::KingAttacks(state_.King(them).GetLsb());
+
+  state_.threats = state_.threatened_by[kPawn] |
+      state_.threatened_by[kKnight] |
+      state_.threatened_by[kBishop] |
+      state_.threatened_by[kRook] |
+      state_.threatened_by[kQueen] |
+      state_.threatened_by[kKing];
 
   CalculateKingThreats();
 }
@@ -498,6 +507,20 @@ void Board::CalculateKingThreats() {
       state_.pinned |= pinned;
     }
   }
+}
+
+BitBoard Board::GetOpponentWinningCaptures() const {
+  const Color us = state_.turn;
+
+  const BitBoard queens = state_.Queens(us);
+  const BitBoard rooks = queens | state_.Rooks(us);
+  const BitBoard minors = rooks | state_.Knights(us) | state_.Bishops(us);
+
+  const BitBoard pawn_threats = state_.threatened_by[kPawn];
+  const BitBoard minor_threats = pawn_threats | state_.threatened_by[kKnight] | state_.threatened_by[kBishop];
+  const BitBoard rook_threats = minor_threats | state_.threatened_by[kRook];
+
+  return (queens & rook_threats) | (rooks & minor_threats) | (minors & pawn_threats);
 }
 
 void Board::PrintPieces() {
