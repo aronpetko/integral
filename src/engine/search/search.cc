@@ -530,7 +530,7 @@ Score Search::PVSearch(Thread &thread,
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
 
-  stack->threats = state.threats;
+  stack->threats = board.GetOpponentWinningCaptures();
 
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
@@ -551,8 +551,6 @@ Score Search::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    const bool no_piece_threats = board.GetOpponentWinningCaptures() == 0;
-
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
@@ -580,7 +578,7 @@ Score Search::PVSearch(Thread &thread,
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
-        stack->static_eval >= beta + 170 - 24 * depth && no_piece_threats &&
+        stack->static_eval >= beta + 170 - 24 * depth &&
         !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
