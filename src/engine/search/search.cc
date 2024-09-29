@@ -558,7 +558,7 @@ Score Search::PVSearch(Thread &thread,
           static_cast<int>(improving * 1.5 * rev_fut_margin) +
           (stack - 1)->history_score / 600;
       if (stack->eval - futility_margin >= beta) {
-        return stack->eval;
+        return (stack->eval + beta) / 2;
       }
     }
 
