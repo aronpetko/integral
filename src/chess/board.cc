@@ -443,12 +443,17 @@ void Board::CalculateThreats() {
 
   state_.threatened_by[kPawn] = move_gen::PawnAttacks(state_.Pawns(them), them);
 
+  state_.threatened_by[kKnight] = 0;
   for (Square square : state_.Knights(them)) {
     state_.threatened_by[kKnight] |= move_gen::KnightMoves(square);
   }
 
   const BitBoard queens = state_.Queens(them);
   const BitBoard occupied = state_.Occupied();
+
+  state_.threatened_by[kBishop] = 0;
+  state_.threatened_by[kQueen] = 0;
+  state_.threatened_by[kRook] = 0;
 
   for (Square square : state_.Bishops(them) | queens) {
     state_.threatened_by[(queens.IsSet(square) ? kQueen : kBishop)]
