@@ -21,6 +21,9 @@ BUILD_TYPE ?= BUILD_NATIVE
 # Executable name (can be overridden from command line)
 EXE ?= integral
 
+# Path to evaluation network file (can be overridden with make EVALFILE=path)
+EVALFILE ?= $(realpath integral.nnue)
+
 # Standard targets
 .PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
 

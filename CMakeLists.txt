@@ -19,23 +19,26 @@ option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
-# Define the location to download the .nnue file
-set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
-set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+# Define the location to download the default .nnue file
+set(DEFAULT_NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
+set(DEFAULT_NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
 
-# Check if the .nnue file exists, if not, download it
-if (NOT EXISTS ${NNUE_PATH})
-    message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
-    file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
+# Allow passing EVALFILE via CMake command
+set(EVALFILE "${DEFAULT_NNUE_PATH}" CACHE STRING "Path to the evaluation network file")
+
+# Check if the EVALFILE exists, if not, download the default .nnue file
+if (NOT EXISTS ${EVALFILE})
+    message(STATUS "${EVALFILE} not found. Falling back to default: ${DEFAULT_NNUE_URL}...")
+    file(DOWNLOAD ${DEFAULT_NNUE_URL} ${DEFAULT_NNUE_PATH}
             STATUS DOWNLOAD_STATUS
             SHOW_PROGRESS
             )
     list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
     if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
-        message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
+        message(FATAL_ERROR "Failed to download integral.nnue from ${DEFAULT_NNUE_URL}")
     endif ()
 else ()
-    message(STATUS "integral.nnue already exists. Skipping download.")
+    message(STATUS "Using provided evaluation network file: ${EVALFILE}")
 endif ()
 
 # Architecture-specific flags
