@@ -177,10 +177,41 @@ int MovePicker::ScoreMove(Move &move) {
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
+  const auto us = state.turn;
+
+  const BitBoard queens = state.Queens(us);
+  const BitBoard rooks = queens | state.Rooks(us);
+  const BitBoard minors = rooks | state.Knights(us) | state.Bishops(us);
+
+  const BitBoard pawn_threats = state.threatened_by[kPawn];
+  const BitBoard minor_threats = pawn_threats | state.threatened_by[kKnight] |
+                                 state.threatened_by[kBishop];
+  const BitBoard rook_threats = minor_threats | state.threatened_by[kRook];
+
+  int threat_score = 0;
+  switch (state.GetPieceType(from)) {
+    case kQueen:
+      if (rook_threats.IsSet(from)) threat_score += 20000;
+      if (rook_threats.IsSet(to)) threat_score -= 20000;
+      break;
+    case kRook:
+      if (minor_threats.IsSet(from)) threat_score += 12500;
+      if (minor_threats.IsSet(to)) threat_score -= 12500;
+      break;
+    case kBishop:
+    case kKnight:
+      if (pawn_threats.IsSet(from)) threat_score += 7500;
+      if (pawn_threats.IsSet(to)) threat_score -= 7500;
+      break;
+    default:
+      break;
+  }
+
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return history_.GetQuietMoveScore(state, move, state.threats, stack_);
+  return threat_score +
+         history_.GetQuietMoveScore(state, move, state.threats, stack_);
 }
 
 }  // namespace search
