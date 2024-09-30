@@ -191,17 +191,17 @@ int MovePicker::ScoreMove(Move &move) {
   int threat_score = 0;
   switch (state.GetPieceType(from)) {
     case kQueen:
-      if (rook_threats.IsSet(from)) threat_score += 20000;
-      if (rook_threats.IsSet(to)) threat_score -= 20000;
+      if (rook_threats.IsSet(from)) threat_score += 5000;
+      if (rook_threats.IsSet(to)) threat_score -= 5000;
       break;
     case kRook:
-      if (minor_threats.IsSet(from)) threat_score += 12500;
-      if (minor_threats.IsSet(to)) threat_score -= 12500;
+      if (minor_threats.IsSet(from)) threat_score += 3500;
+      if (minor_threats.IsSet(to)) threat_score -= 3500;
       break;
     case kBishop:
     case kKnight:
-      if (pawn_threats.IsSet(from)) threat_score += 7500;
-      if (pawn_threats.IsSet(to)) threat_score -= 7500;
+      if (pawn_threats.IsSet(from)) threat_score += 2000;
+      if (pawn_threats.IsSet(to)) threat_score -= 2000;
       break;
     default:
       break;
