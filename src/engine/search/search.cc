@@ -548,6 +548,9 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
+  const bool has_non_pawn_king_material =
+      (state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn)) != 0;
+
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
@@ -579,9 +582,7 @@ Score Search::PVSearch(Thread &thread,
         stack->static_eval >= beta + 170 - 24 * depth &&
         !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
-      const BitBoard non_pawn_king_pieces =
-          state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
-      if (non_pawn_king_pieces) {
+      if (has_non_pawn_king_material) {
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
         stack->capture_move = false;
@@ -715,7 +716,8 @@ Score Search::PVSearch(Thread &thread,
                                             state, move, stack->threats, stack);
 
     // Pruning guards
-    if (!in_root && best_score > -kTBWinInMaxPlyScore) {
+    if (!in_root && has_non_pawn_king_material &&
+        best_score > -kTBWinInMaxPlyScore) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction -=
           stack->history_score /
