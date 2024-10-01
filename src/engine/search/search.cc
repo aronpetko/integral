@@ -411,6 +411,7 @@ Score Search::PVSearch(Thread &thread,
   // position
   TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
+  int tt_depth = 0;
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
@@ -423,6 +424,7 @@ Score Search::PVSearch(Thread &thread,
       can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
       tt_was_in_pv |= tt_entry->GetWasPV();
       tt_move = tt_entry->move;
+      tt_depth = tt_entry->depth;
       tt_static_eval = tt_entry->static_eval;
     }
 
@@ -613,8 +615,7 @@ Score Search::PVSearch(Thread &thread,
       // possible
       const Score pc_beta = beta + probcut_beta_delta;
       if (depth >= 5 && std::abs(beta) < kTBWinInMaxPlyScore &&
-          (!tt_hit || tt_entry->depth + 3 < depth ||
-           tt_entry->score >= pc_beta)) {
+          (!tt_hit || tt_depth + 3 < depth || tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - raw_static_eval;
         const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
                                   ? tt_move
@@ -681,7 +682,7 @@ Score Search::PVSearch(Thread &thread,
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
   if ((in_pv_node || cut_node) && depth >= iir_depth &&
-      !stack->excluded_tt_move && !tt_move) {
+      !stack->excluded_tt_move && (!tt_move || tt_depth + 4 < depth)) {
     depth--;
   }
 
@@ -770,7 +771,7 @@ Score Search::PVSearch(Thread &thread,
     if (!in_root && depth >= 6 && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
-          tt_entry->depth + 3 >= depth &&
+          tt_depth + 3 >= depth &&
           tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
