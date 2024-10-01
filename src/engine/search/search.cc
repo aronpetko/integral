@@ -533,6 +533,8 @@ Score Search::PVSearch(Thread &thread,
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
 
+  stack->threats = state.threats;
+
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
@@ -693,8 +695,6 @@ Score Search::PVSearch(Thread &thread,
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
-
-  stack->threats = state.threats;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;

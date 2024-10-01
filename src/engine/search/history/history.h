@@ -38,7 +38,7 @@ class History {
            continuation_history->GetScore(state, move, stack - 1) +
            continuation_history->GetScore(state, move, stack - 2) +
            continuation_history->GetScore(state, move, stack - 4) +
-           in_root * 4 * root_history->GetScore(state, move);
+           in_root * 2 * root_history->GetScore(state, move);
   }
 
   [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
