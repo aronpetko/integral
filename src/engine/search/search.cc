@@ -790,10 +790,11 @@ Score Search::PVSearch(Thread &thread,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
-          // Double extend if the TT move is singular by a big margin
+          // Extend more if the TT move is singular by a big margin
           if (!in_pv_node &&
               tt_move_excluded_score < new_beta - sing_double_margin) {
-            extensions = 2;
+            extensions = 2 + (is_quiet && tt_move_excluded_score <
+                                              new_beta - sing_triple_margin);
             depth += depth < 10;
           } else {
             extensions = 1;
