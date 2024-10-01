@@ -65,6 +65,9 @@ void Search::IterativeDeepening(Thread &thread) {
   const auto root_stack = &thread.stack.Front();
   root_stack->best_move = Move::NullMove();
 
+  // Clear root history on each search
+  thread.history.root_history->Clear();
+
   Move best_move = Move::NullMove();
   Score score = 0;
 
@@ -921,6 +924,8 @@ Score Search::PVSearch(Thread &thread,
                 state, stack, depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, depth, quiets);
+            if (in_root)
+              history.root_history->UpdateScore(state, stack, depth, quiets);
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, depth);
           }
