@@ -1,6 +1,6 @@
 # Default compiler settings
 CC=gcc
-CXX=clang++
+CXX=g++
 
 # Detect the operating system
 ifeq ($(OS),Windows_NT)
@@ -22,7 +22,7 @@ BUILD_TYPE ?= BUILD_NATIVE
 EXE ?= integral
 
 # Standard targets
-.PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
+.PHONY: all clean debug avx512 avx2_bmi2 avx2 sse41_popcnt native
 
 all: $(BUILD_DIR)
 	@echo Building $(EXE) with $(BUILD_TYPE)...
@@ -51,12 +51,14 @@ endif
 copy_executable:
 ifeq ($(BUILD_TYPE),BUILD_DEBUG)
 	$(eval EXE_NAME := $(EXE)_debug$(EXE_EXT))
-else ifeq ($(BUILD_TYPE),BUILD_X86_64_POPCNT)
-	$(eval EXE_NAME := $(EXE)_x86_64_popcnt$(EXE_EXT))
-else ifeq ($(BUILD_TYPE),BUILD_X86_64_MODERN)
-	$(eval EXE_NAME := $(EXE)_x86_64_modern$(EXE_EXT))
-else ifeq ($(BUILD_TYPE),BUILD_X86_64_BMI2)
-	$(eval EXE_NAME := $(EXE)_x86_64_bmi2$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_AVX512)
+	$(eval EXE_NAME := $(EXE)_avx512$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_AVX2_BMI2)
+	$(eval EXE_NAME := $(EXE)_avx2_bmi2$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_AVX2)
+	$(eval EXE_NAME := $(EXE)_avx2$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_SSE41_POPCNT)
+	$(eval EXE_NAME := $(EXE)_sse41_popcnt$(EXE_EXT))
 else
 	$(eval EXE_NAME := $(EXE)$(EXE_EXT))
 endif
@@ -71,17 +73,25 @@ debug:
 	@echo Building with debug...
 	@$(MAKE) all BUILD_TYPE=BUILD_DEBUG
 
-x86_64_popcnt:
-	@echo Building with x86-64 optimizations...
-	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_POPCNT
+vnni512:
+	@echo Building with AVX512 optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_VNNI512
 
-x86_64_modern:
-	@echo Building with x86-64 modern optimizations...
-	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_MODERN
+avx512:
+	@echo Building with AVX512 optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_AVX512
 
-x86_64_bmi2:
-	@echo Building with x86-64 bmi2 optimizations...
-	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_BMI2
+avx2_bmi2:
+	@echo Building with AVX2 + BMI2 optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_AVX2_BMI2
+
+avx2:
+	@echo Building with AVX2 optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_AVX2
+
+sse41_popcnt:
+	@echo Building with SSE4.1 + POPCNT optimizations...
+	@$(MAKE) all BUILD_TYPE=BUILD_SSE41_POPCNT
 
 native:
 	@echo Building with native optimizations...

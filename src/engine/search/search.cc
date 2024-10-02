@@ -808,7 +808,9 @@ Score Search::PVSearch(Thread &thread,
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta || cut_node) {
+        else if (tt_entry->score >= beta) {
+          extensions = -2 + in_pv_node;
+        } else if (cut_node) {
           extensions = -1;
         }
       }
@@ -836,7 +838,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
