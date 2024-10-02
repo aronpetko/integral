@@ -188,30 +188,64 @@ int MovePicker::ScoreMove(Move &move) {
                                  state.threatened_by[kBishop];
   const BitBoard rook_threats = minor_threats | state.threatened_by[kRook];
 
-  int threat_score = 0;
-  switch (state.GetPieceType(from)) {
+  const auto piece_type = state.GetPieceType(from);
+
+  int move_score = 0;
+
+  switch (piece_type) {
     case kQueen:
-      if (rook_threats.IsSet(from)) threat_score += 20000;
-      if (rook_threats.IsSet(to)) threat_score -= 20000;
+      if (rook_threats.IsSet(from)) move_score += 20000;
+      if (rook_threats.IsSet(to)) move_score -= 20000;
       break;
     case kRook:
-      if (minor_threats.IsSet(from)) threat_score += 12500;
-      if (minor_threats.IsSet(to)) threat_score -= 12500;
+      if (minor_threats.IsSet(from)) move_score += 12500;
+      if (minor_threats.IsSet(to)) move_score -= 12500;
       break;
     case kBishop:
     case kKnight:
-      if (pawn_threats.IsSet(from)) threat_score += 7500;
-      if (pawn_threats.IsSet(to)) threat_score -= 7500;
+      if (pawn_threats.IsSet(from)) move_score += 7500;
+      if (pawn_threats.IsSet(to)) move_score -= 7500;
       break;
     default:
       break;
   }
 
+  // Give the move priority if it delivers check, and it's not a threatened
+  // square
+  if (move_score >= 0) {
+    const auto enemy_king = state.King(FlipColor(us));
+    const auto occupied = state.Occupied();
+    switch (piece_type) {
+      case kPawn:
+        if (move_gen::PawnAttacks(to, us) & enemy_king) {
+          move_score += 500;
+          // If the square is defended by another pawn, give it an extra bonus
+          move_score +=
+              6000 * move_gen::PawnAttacks(state.Pawns(us), us).IsSet(to);
+        }
+        break;
+      case kKnight:
+        if (move_gen::KnightMoves(to) & enemy_king) move_score += 5000;
+        break;
+      case kBishop:
+        if (move_gen::BishopMoves(to, occupied) & enemy_king)
+          move_score += 5000;
+        break;
+      case kRook:
+        if (move_gen::RookMoves(to, occupied) & enemy_king) move_score += 3000;
+        break;
+      case kQueen:
+        if (move_gen::QueenMoves(to, occupied) & enemy_king) move_score += 1500;
+        break;
+    }
+  }
+
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score +
-         history_.GetQuietMoveScore(state, move, state.threats, stack_);
+  move_score += history_.GetQuietMoveScore(state, move, state.threats, stack_);
+
+  return move_score;
 }
 
 }  // namespace search
