@@ -530,6 +530,8 @@ Score Search::PVSearch(Thread &thread,
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
 
+  stack->threats = state.threats;
+
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
@@ -691,8 +693,6 @@ Score Search::PVSearch(Thread &thread,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
-  stack->threats = state.threats;
-
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
@@ -767,7 +767,7 @@ Score Search::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= 6 && move == tt_move &&
+    if (!in_root && depth >= se_depth && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 3 >= depth &&
@@ -790,10 +790,11 @@ Score Search::PVSearch(Thread &thread,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
-          // Double extend if the TT move is singular by a big margin
+          // Extend more if the TT move is singular by a big margin
           if (!in_pv_node &&
-              tt_move_excluded_score < new_beta - sing_double_margin) {
-            extensions = 2;
+              tt_move_excluded_score < new_beta - se_double_margin) {
+            extensions = 2 + (is_quiet && tt_move_excluded_score <
+                                              new_beta - se_triple_margin);
             depth += depth < 10;
           } else {
             extensions = 1;
