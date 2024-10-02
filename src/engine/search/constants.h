@@ -48,9 +48,9 @@ Tunable capt_hist_thresh_mult("capt_hist_thresh_mult", -1695, -3000, -250, 300);
 Tunable lmr_hist_div("lmr_hist_div", 11432, 5000, 20000, 750);
 Tunable lmr_capt_hist_div("lmr_capt_hist_div", 11432, 5000, 20000, 750);
 
-Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
-Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
-Tunable sing_double_margin("sing_double_margin", 15, 10, 40, 5);
+Tunable se_depth("sing_ext_depth", 6, 6, 12, 1, true);
+Tunable se_double_margin("sing_double_margin", 15, 10, 40, 5);
+Tunable se_triple_margin("sing_triple_margin", 110, 10, 40, 5);
 
 Tunable probcut_beta_delta("probcut_beta_delta", 250, 150, 350, 15);
 
