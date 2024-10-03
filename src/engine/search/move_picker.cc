@@ -218,24 +218,23 @@ int MovePicker::ScoreMove(Move &move) {
     switch (piece_type) {
       case kPawn:
         if (move_gen::PawnAttacks(to, us) & enemy_king) {
-          move_score += 500;
           // If the square is defended by another pawn, give it an extra bonus
           move_score +=
               5000 * move_gen::PawnAttacks(state.Pawns(us), us).IsSet(to);
         }
         break;
       case kKnight:
-        if (move_gen::KnightMoves(to) & enemy_king) move_score += 10000;
+        if (move_gen::KnightMoves(to) & enemy_king) move_score += 1000;
         break;
       case kBishop:
         if (move_gen::BishopMoves(to, occupied) & enemy_king)
-          move_score += 10000;
+          move_score += 1000;
         break;
       case kRook:
-        if (move_gen::RookMoves(to, occupied) & enemy_king) move_score += 16500;
+        if (move_gen::RookMoves(to, occupied) & enemy_king) move_score += 2000;
         break;
       case kQueen:
-        if (move_gen::QueenMoves(to, occupied) & enemy_king) move_score += 22000;
+        if (move_gen::QueenMoves(to, occupied) & enemy_king) move_score += 3000;
         break;
     }
   }
