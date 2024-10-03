@@ -92,10 +92,6 @@ void Search::IterativeDeepening(Thread &thread) {
         score = new_score;
       }
 
-      if (ShouldQuit(thread)) {
-        break;
-      }
-
       if (new_score <= alpha) {
         // Narrow beta to increase the chance of a fail high
         beta = (alpha + beta) / 2;
@@ -132,33 +128,33 @@ void Search::IterativeDeepening(Thread &thread) {
 
     score = new_score;
 
-    std::unique_ptr<uci::reporter::ReportInfo> report_info;
-    if (uci::reporter::using_uci) {
-      report_info = std::make_unique<uci::reporter::UCIReportInfo>();
-    } else {
-      report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
-    }
-
     if (thread.IsMainThread()) {
+      // Check for a soft timeout
+      if (time_mgmt_.ShouldStop(pv[0], depth, thread.nodes_searched)) {
+        break;
+      }
+
+      std::unique_ptr<uci::reporter::ReportInfo> report_info;
+      if (uci::reporter::using_uci) {
+        report_info = std::make_unique<uci::reporter::UCIReportInfo>();
+      } else {
+        report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+      }
+
       if (print_info) {
-        const bool is_mate = eval::IsMateScore(root_stack->score);
+        const bool is_mate = eval::IsMateScore(score);
         const auto nodes_searched = GetNodesSearched();
         report_info->Print(depth,
                            thread.sel_depth,
                            is_mate,
-                           root_stack->score,
+                           score,
                            nodes_searched,
                            time_mgmt_.TimeElapsed(),
                            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
                            transposition_table_.HashFull(),
                            syzygy::enabled,
                            thread.tb_hits,
-                           root_stack->pv.UCIFormat());
-      }
-
-      // Check for a soft timeout
-      if (time_mgmt_.ShouldStop(pv[0], depth, thread.nodes_searched)) {
-        break;
+                           pv.UCIFormat());
       }
     }
   }
