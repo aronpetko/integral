@@ -83,8 +83,14 @@ void Search::IterativeDeepening(Thread &thread) {
     Score new_score = kScoreNone;
 
     while (true) {
+      root_stack->pv.Clear();
+
       new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
+
+      if (!root_stack->pv.Empty()) {
+        pv = root_stack->pv;
+      }
 
       if (ShouldQuit(thread)) {
         break;
@@ -125,7 +131,6 @@ void Search::IterativeDeepening(Thread &thread) {
     }
 
     score = new_score;
-    pv = root_stack->pv;
 
     std::unique_ptr<uci::reporter::ReportInfo> report_info;
     if (uci::reporter::using_uci) {

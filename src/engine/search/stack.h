@@ -16,6 +16,10 @@ struct PVLine {
     return moves_[i];
   }
 
+  [[nodiscard]] bool Empty() const {
+    return moves_.Empty();
+  }
+
   void Clear() {
     moves_.Clear();
   }
