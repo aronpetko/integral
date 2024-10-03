@@ -111,7 +111,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
-        if (alpha < 2000 && fail_high_count < 4) {
+        if (alpha < 2000 && fail_high_count < 2) {
           ++fail_high_count;
         }
       } else {
@@ -125,8 +125,12 @@ void Search::IterativeDeepening(Thread &thread) {
       window *= asp_window_growth;
     }
 
-    if (ShouldQuit(thread) ||
-        (thread.IsMainThread() &&
+    if (ShouldQuit(thread)) {
+      break;
+    }
+
+    if (!best_move) exit(0);
+    if ((thread.IsMainThread() &&
          time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
       break;
     }
