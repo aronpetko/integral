@@ -66,10 +66,12 @@ void Search::IterativeDeepening(Thread &thread) {
   root_stack->best_move = Move::NullMove();
 
   Move best_move = Move::NullMove();
+  PVLine pv;
   Score score = 0;
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
+    root_stack->best_move = Move::NullMove();
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -86,9 +88,14 @@ void Search::IterativeDeepening(Thread &thread) {
       const Score new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
 
+      if (ShouldQuit(thread)) {
+        break;
+      }
+
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
         score = new_score;
+        pv = root_stack->pv;
       }
 
       if (score <= alpha) {
@@ -134,19 +141,19 @@ void Search::IterativeDeepening(Thread &thread) {
     }
 
     if (thread.IsMainThread() && !stop_ && print_info) {
-      const bool is_mate = eval::IsMateScore(root_stack->score);
+      const bool is_mate = eval::IsMateScore(score);
       const auto nodes_searched = GetNodesSearched();
       report_info->Print(depth,
                          thread.sel_depth,
                          is_mate,
-                         root_stack->score,
+                         score,
                          nodes_searched,
                          time_mgmt_.TimeElapsed(),
                          nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
                          transposition_table_.HashFull(),
                          syzygy::enabled,
                          thread.tb_hits,
-                         root_stack->pv.UCIFormat());
+                         pv.UCIFormat());
     }
   }
 
@@ -836,7 +843,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
@@ -1027,10 +1035,7 @@ void Search::QuitThreads() {
 
 bool Search::ShouldQuit(Thread &thread) {
   if (stop_.load(std::memory_order_relaxed)) return true;
-  if (thread.IsMainThread()) {
-    return thread.stack.Front().best_move &&
-           time_mgmt_.TimesUp(thread.nodes_searched);
-  }
+  if (thread.IsMainThread()) return time_mgmt_.TimesUp(thread.nodes_searched);
   return false;
 }
 
