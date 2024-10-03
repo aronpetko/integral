@@ -69,7 +69,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
-    root_stack->pv.Clear();
+    root_stack->best_move = Move::NullMove();
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -91,7 +91,7 @@ void Search::IterativeDeepening(Thread &thread) {
         break;
       }
 
-      if (!root_stack->pv.Empty()) {
+      if (root_stack->best_move) {
         pv = root_stack->pv;
         score = new_score;
       }
@@ -134,7 +134,8 @@ void Search::IterativeDeepening(Thread &thread) {
 
     if (thread.IsMainThread()) {
       // Check for a soft timeout
-      if (time_mgmt_.ShouldStop(pv[0], depth, thread.nodes_searched)) {
+      if (time_mgmt_.ShouldStop(
+              root_stack->best_move, depth, thread.nodes_searched)) {
         break;
       }
 
@@ -189,7 +190,7 @@ void Search::IterativeDeepening(Thread &thread) {
     transposition_table_.Age();
 
     if (print_info) {
-      fmt::println("bestmove {}", pv[0].ToString());
+      fmt::println("bestmove {}", root_stack->best_move.ToString());
     }
   } else {
     SendStoppedSignal();
