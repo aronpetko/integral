@@ -845,6 +845,7 @@ Score Search::PVSearch(Thread &thread,
           stack->history_score /
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
       reduction += !improving;
+      reduction -= std::abs(stack->static_eval - raw_static_eval) > 80;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
