@@ -69,6 +69,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
+    root_stack->pv.Clear();
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -83,8 +84,6 @@ void Search::IterativeDeepening(Thread &thread) {
     Score new_score = kScoreNone;
 
     while (true) {
-      root_stack->pv.Clear();
-
       new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
 
