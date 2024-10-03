@@ -87,6 +87,10 @@ void Search::IterativeDeepening(Thread &thread) {
       new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
 
+      if (ShouldQuit(thread)) {
+        break;
+      }
+
       if (!root_stack->pv.Empty()) {
         pv = root_stack->pv;
         score = new_score;
