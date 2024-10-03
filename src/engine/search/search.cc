@@ -63,9 +63,8 @@ void Search::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &thread.stack.Front();
-  root_stack->best_move = Move::NullMove();
 
-  Move best_move = Move::NullMove();
+  PVLine pv;
   Score score = 0;
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
@@ -81,14 +80,14 @@ void Search::IterativeDeepening(Thread &thread) {
     }
 
     int fail_high_count = 0;
+    Score new_score = kScoreNone;
 
     while (true) {
-      const Score new_score = PVSearch<NodeType::kPV>(
+      new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
 
-      if (root_stack->best_move) {
-        score = new_score;
-        best_move = root_stack->best_move;
+      if (ShouldQuit(thread)) {
+        break;
       }
 
       if (new_score <= alpha) {
@@ -120,11 +119,13 @@ void Search::IterativeDeepening(Thread &thread) {
       window *= asp_window_growth;
     }
 
-    if (ShouldQuit(thread) ||
-        (thread.IsMainThread() &&
-         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
+    // If we abruptly stopped, we shouldn't report any info
+    if (ShouldQuit(thread)) {
       break;
     }
+
+    score = new_score;
+    pv = root_stack->pv;
 
     std::unique_ptr<uci::reporter::ReportInfo> report_info;
     if (uci::reporter::using_uci) {
@@ -133,20 +134,27 @@ void Search::IterativeDeepening(Thread &thread) {
       report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
     }
 
-    if (thread.IsMainThread() && !stop_ && print_info) {
-      const bool is_mate = eval::IsMateScore(root_stack->score);
-      const auto nodes_searched = GetNodesSearched();
-      report_info->Print(depth,
-                         thread.sel_depth,
-                         is_mate,
-                         root_stack->score,
-                         nodes_searched,
-                         time_mgmt_.TimeElapsed(),
-                         nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-                         transposition_table_.HashFull(),
-                         syzygy::enabled,
-                         thread.tb_hits,
-                         root_stack->pv.UCIFormat());
+    if (thread.IsMainThread()) {
+      if (print_info) {
+        const bool is_mate = eval::IsMateScore(root_stack->score);
+        const auto nodes_searched = GetNodesSearched();
+        report_info->Print(depth,
+                           thread.sel_depth,
+                           is_mate,
+                           root_stack->score,
+                           nodes_searched,
+                           time_mgmt_.TimeElapsed(),
+                           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
+                           transposition_table_.HashFull(),
+                           syzygy::enabled,
+                           thread.tb_hits,
+                           root_stack->pv.UCIFormat());
+      }
+
+      // Check for a soft timeout
+      if (time_mgmt_.ShouldStop(pv[0], depth, thread.nodes_searched)) {
+        break;
+      }
     }
   }
 
@@ -176,7 +184,7 @@ void Search::IterativeDeepening(Thread &thread) {
     transposition_table_.Age();
 
     if (print_info) {
-      fmt::println("bestmove {}", best_move.ToString());
+      fmt::println("bestmove {}", pv[0].ToString());
     }
   } else {
     SendStoppedSignal();
@@ -836,7 +844,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
