@@ -90,6 +90,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
       if (!root_stack->pv.Empty()) {
         pv = root_stack->pv;
+        score = new_score;
       }
 
       if (ShouldQuit(thread)) {
