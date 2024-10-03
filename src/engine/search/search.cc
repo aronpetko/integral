@@ -70,6 +70,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
+    root_stack->best_move = Move::NullMove();
 
     int window = static_cast<int>(asp_window_delta);
     Score alpha = -kInfiniteScore;
@@ -86,12 +87,16 @@ void Search::IterativeDeepening(Thread &thread) {
       const Score new_score = PVSearch<NodeType::kPV>(
           thread, depth - fail_high_count, alpha, beta, root_stack, false);
 
-      if (root_stack->best_move) {
-        best_move = root_stack->best_move;
-        score = new_score;
+      if (ShouldQuit(thread)) {
+        break;
       }
 
-      if (score <= alpha) {
+      if (root_stack->best_move) {
+        score = new_score;
+        best_move = root_stack->best_move;
+      }
+
+      if (new_score <= alpha) {
         // Narrow beta to increase the chance of a fail high
         beta = (alpha + beta) / 2;
 
@@ -99,14 +104,14 @@ void Search::IterativeDeepening(Thread &thread) {
         // alpha
         alpha = std::max<int>(-kInfiniteScore, alpha - window);
         fail_high_count = 0;
-      } else if (score >= beta) {
+      } else if (new_score >= beta) {
         // We failed high on a PV node, which is abnormal and requires further
         // verification
         beta = std::min<int>(kInfiniteScore, beta + window);
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
-        if (alpha < 2000 && fail_high_count < 2) {
+        if (alpha < 2000 && fail_high_count < 4) {
           ++fail_high_count;
         }
       } else {
@@ -908,6 +913,7 @@ Score Search::PVSearch(Thread &thread,
 
       if (score > alpha) {
         stack->best_move = best_move = move;
+        stack->score = score;
 
         stack->pv.Clear();
         stack->pv.Push(move);
@@ -982,7 +988,7 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
-  return stack->score = best_score;
+  return best_score;
 }
 
 void Search::Run(Thread &thread) {
