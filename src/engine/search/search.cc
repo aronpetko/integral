@@ -106,7 +106,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
-        if (alpha < 2000 && fail_high_count < 2) {
+        if (alpha < 2000 && fail_high_count < 4) {
           ++fail_high_count;
         }
       } else {
