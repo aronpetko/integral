@@ -210,38 +210,32 @@ int MovePicker::ScoreMove(Move &move) {
       break;
   }
 
-  // Give the move priority if it delivers check, and it's not a threatened
-  // square
-  if (move_score >= 0) {
+  // Give the move priority if it delivers check
+  const bool gives_check = [&]() -> bool {
     const auto enemy_king = state.King(FlipColor(us));
     const auto occupied = state.Occupied();
+
     switch (piece_type) {
       case kPawn:
-        if (move_gen::PawnAttacks(to, us) & enemy_king) {
-          // If the square is defended by another pawn, give it an extra bonus
-          move_score +=
-              5000 * move_gen::PawnAttacks(state.Pawns(us), us).IsSet(to);
-        }
-        break;
+        return (move_gen::PawnAttacks(to, us) & enemy_king) != 0;
       case kKnight:
-        if (move_gen::KnightMoves(to) & enemy_king) move_score += 1000;
-        break;
+        return (move_gen::KnightMoves(to) & enemy_king) != 0;
       case kBishop:
-        if (move_gen::BishopMoves(to, occupied) & enemy_king)
-          move_score += 1000;
-        break;
+        return (move_gen::BishopMoves(to, occupied) & enemy_king) != 0;
       case kRook:
-        if (move_gen::RookMoves(to, occupied) & enemy_king) move_score += 2000;
-        break;
+        return (move_gen::RookMoves(to, occupied) & enemy_king) != 0;
       case kQueen:
-        if (move_gen::QueenMoves(to, occupied) & enemy_king) move_score += 3000;
-        break;
+        return (move_gen::QueenMoves(to, occupied) & enemy_king) != 0;
+      default:
+        return false;
     }
-  }
+  }();
+
+  move_score += gives_check * 16384;
 
   // Order moves that caused a beta cutoff by their own history score
-  // The higher the depth this move caused a cutoff the more likely it move will
-  // be ordered first
+  // The higher the depth this move caused a cutoff the more likely it move
+  // will be ordered first
   move_score += history_.GetQuietMoveScore(state, move, state.threats, stack_);
 
   return move_score;
