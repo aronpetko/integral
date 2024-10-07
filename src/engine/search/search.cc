@@ -744,8 +744,7 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       const int see_threshold =
-          is_quiet ? see_quiet_thresh * depth
-                   : see_noisy_thresh * depth - stack->history_score / 150;
+          is_quiet ? see_quiet_thresh * depth : see_noisy_thresh * depth;
       if (depth <= see_prune_depth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
@@ -836,7 +835,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
