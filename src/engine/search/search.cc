@@ -730,7 +730,7 @@ Score Search::PVSearch(Thread &thread,
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         history.prune_history->UpdateMoveScore(
-            state, state.turn, move, -history::HistoryBonus(depth));
+            state, state.turn, move, history::HistoryBonus(depth));
         continue;
       }
 
@@ -741,7 +741,7 @@ Score Search::PVSearch(Thread &thread,
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         history.prune_history->UpdateMoveScore(
-            state, state.turn, move, -history::HistoryBonus(depth));
+            state, state.turn, move, history::HistoryBonus(depth));
         continue;
       }
 
@@ -753,7 +753,7 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= see_prune_depth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
         history.prune_history->UpdateMoveScore(
-            state, state.turn, move, -history::HistoryBonus(depth));
+            state, state.turn, move, history::HistoryBonus(depth));
         continue;
       }
 
@@ -765,14 +765,14 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= hist_prune_depth && stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
         history.prune_history->UpdateMoveScore(
-            state, state.turn, move, -history::HistoryBonus(depth));
+            state, state.turn, move, history::HistoryBonus(depth));
         continue;
       }
     }
 
-    // Move wasn't pruned, so we give a bonus to its prune history score
+    // Move wasn't pruned, so we give a penalty to its prune history score
     history.prune_history->UpdateMoveScore(
-        state, state.turn, move, history::HistoryBonus(depth));
+        state, state.turn, move, -history::HistoryBonus(depth));
 
     int extensions = 0;
 
