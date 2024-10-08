@@ -120,9 +120,7 @@ void Search::IterativeDeepening(Thread &thread) {
       window *= asp_window_growth;
     }
 
-    if (ShouldQuit(thread) ||
-        (thread.IsMainThread() &&
-         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
+    if (ShouldQuit(thread)) {
       break;
     }
 
@@ -133,20 +131,27 @@ void Search::IterativeDeepening(Thread &thread) {
       report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
     }
 
-    if (thread.IsMainThread() && !stop_ && print_info) {
-      const bool is_mate = eval::IsMateScore(root_stack->score);
-      const auto nodes_searched = GetNodesSearched();
-      report_info->Print(depth,
-                         thread.sel_depth,
-                         is_mate,
-                         root_stack->score,
-                         nodes_searched,
-                         time_mgmt_.TimeElapsed(),
-                         nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-                         transposition_table_.HashFull(),
-                         syzygy::enabled,
-                         thread.tb_hits,
-                         root_stack->pv.UCIFormat());
+    if (thread.IsMainThread()) {
+      if (print_info) {
+        const bool is_mate = eval::IsMateScore(root_stack->score);
+        const auto nodes_searched = GetNodesSearched();
+        report_info->Print(depth,
+                           thread.sel_depth,
+                           is_mate,
+                           root_stack->score,
+                           nodes_searched,
+                           time_mgmt_.TimeElapsed(),
+                           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
+                           transposition_table_.HashFull(),
+                           syzygy::enabled,
+                           thread.tb_hits,
+                           root_stack->pv.UCIFormat());
+      }
+    }
+
+    // Break if soft timeout is necessary
+    if (time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched)) {
+      break;
     }
   }
 
@@ -836,7 +841,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;

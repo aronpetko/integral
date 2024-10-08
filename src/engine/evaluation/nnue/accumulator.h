@@ -55,6 +55,13 @@ static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
   const int color_idx = static_cast<int>(perspective != piece_color);
   const int piece_idx = static_cast<int>(piece);
 
+  if (king_bucket_idx < 0 || king_bucket_idx >= arch::kInputBucketCount) {
+    fmt::println("bestmove kb {}", king_bucket_idx);
+  }
+  if (relative_king_square < 0 || relative_king_square > Squares::kH8) {
+    fmt::println("bestmove sq {}", relative_king_square);
+  }
+
   return network
       ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx];
 }

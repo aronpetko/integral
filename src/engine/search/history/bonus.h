@@ -8,14 +8,21 @@ namespace search::history {
 
 inline Tunable hist_default_gravity(
     "hist_default_gravity", 15176, 8192, 32768, 1024);
-inline Tunable hist_default_scale("hist_default_scale", 135, 65, 260, 5);
+inline Tunable hist_default_scale("hist_default_scale", 270, 65, 260, 5);
+inline Tunable hist_default_bias("hist_default_bias", 338, 65, 260, 5);
 inline Tunable hist_default_max_bonus(
-    "hist_default_max_bonus", 1188, 580, 2318, 50);
+    "hist_default_max_bonus", 2636, 580, 2318, 50);
 
-static int HistoryBonus(int depth,
-                        int scale = hist_default_scale,
-                        int max_bonus = hist_default_max_bonus) {
-  return std::clamp(scale * depth, -max_bonus, max_bonus);
+static int HistoryBonus(int depth) {
+  return std::clamp<int>(hist_default_scale * depth - hist_default_bias,
+                         -hist_default_max_bonus,
+                         hist_default_max_bonus);
+}
+
+static int HistoryPenalty(int depth) {
+  return std::clamp<int>(hist_default_scale * depth - hist_default_bias,
+                         -hist_default_max_bonus,
+                         hist_default_max_bonus);
 }
 
 // Linear interpolation of the bonus and maximum score
