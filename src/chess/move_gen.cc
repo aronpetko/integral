@@ -539,6 +539,20 @@ void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
   }
 }
 
+MoveList GenerateLegalMoves(Board &board) {
+  auto move_list = GenerateMoves(MoveGenType::kAll, board);
+  auto legal_move_list = MoveList{};
+
+  for (int i = 0; i < move_list.Size(); i++) {
+    const auto move = move_list[i];
+    if (board.IsMoveLegal(move)) {
+      legal_move_list.Push(move);
+    }
+  }
+
+  return legal_move_list;
+}
+
 MoveList GenerateMoves(MoveGenType move_type, Board &board) {
   MoveList move_list;
   auto &state = board.GetState();

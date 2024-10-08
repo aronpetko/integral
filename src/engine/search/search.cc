@@ -795,6 +795,19 @@ Score Search::PVSearch(Thread &thread,
               tt_move_excluded_score < new_beta - se_double_margin) {
             extensions = 2 + (is_quiet && tt_move_excluded_score <
                                               new_beta - se_triple_margin);
+
+            // Apply a malus to all quiet moves if the TT move was singular
+            auto legal_moves = move_gen::GenerateLegalMoves(board);
+            for (int i = 0; i < legal_moves.Size(); i++) {
+              const int penalty = -history::HistoryBonus(depth);
+              if (legal_moves[i] != tt_move && !legal_moves[i].IsNoisy(state)) {
+                history.quiet_history->UpdateMoveScore(
+                    state.turn, move, stack->threats, penalty);
+                history.continuation_history->UpdateMoveScore(
+                    state, move, penalty, stack);
+              }
+            }
+
             depth += depth < 10;
           } else {
             extensions = 1;
@@ -836,7 +849,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;

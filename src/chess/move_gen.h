@@ -58,6 +58,8 @@ BitBoard RayIntersecting(Square first, Square second);
 
 MoveList GenerateMoves(MoveGenType move_type, Board &board);
 
+MoveList GenerateLegalMoves(Board &board);
+
 }  // namespace move_gen
 
 #endif  // INTEGRAL_MOVE_GEN_H_
