@@ -5,15 +5,7 @@
 namespace eval {
 
 Score Evaluate(Board &board) {
-  const auto network_eval = nnue::Evaluate(board);
-  const auto &state = board.GetState();
-
-  // Scale the score based on the number of material left
-  const int phase =
-      state.Knights().PopCount() * 3 + state.Bishops().PopCount() * 3 +
-      state.Rooks().PopCount() * 5 + state.Queens().PopCount() * 12;
-
-  return network_eval * (200 + phase) / 256;
+  return nnue::Evaluate(board);
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
