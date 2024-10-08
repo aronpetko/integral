@@ -770,10 +770,6 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    // Move wasn't pruned, so we give a penalty to its prune history score
-    history.prune_history->UpdateMoveScore(
-        state, state.turn, move, -history::HistoryBonus(depth));
-
     int extensions = 0;
 
     // Singular Extensions: If a TT move exists and its score is accurate enough
@@ -923,6 +919,10 @@ Score Search::PVSearch(Thread &thread,
 
       if (score > alpha) {
         stack->best_move = best_move = move;
+
+        // Move wasn't pruned, so we give a penalty to its prune history score
+        history.prune_history->UpdateMoveScore(
+            state, state.turn, move, -history::HistoryBonus(depth));
 
         stack->pv.Clear();
         stack->pv.Push(move);
