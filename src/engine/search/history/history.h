@@ -5,6 +5,7 @@
 #include "capture_history.h"
 #include "continuation_history.h"
 #include "correction_history.h"
+#include "prune_history.h"
 #include "quiet_history.h"
 
 namespace search::history {
@@ -20,6 +21,7 @@ class History {
     continuation_history = std::make_unique<ContinuationHistory>();
     correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
+    prune_history = std::make_unique<PruneHistory>();
   }
 
   // Reinitialize the history objects for quicker clearing
@@ -47,6 +49,7 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
+  std::unique_ptr<PruneHistory> prune_history;
 };
 
 }  // namespace search::history

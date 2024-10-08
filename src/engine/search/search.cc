@@ -729,6 +729,8 @@ Score Search::PVSearch(Thread &thread,
           static_cast<int>((lmp_base + depth * depth) / (lmp_mult - improving));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
+        history.prune_history->UpdateMoveScore(
+            state, state.turn, move, -history::HistoryBonus(depth));
         continue;
       }
 
@@ -738,6 +740,8 @@ Score Search::PVSearch(Thread &thread,
       if (lmr_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
           stack->eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
+        history.prune_history->UpdateMoveScore(
+            state, state.turn, move, -history::HistoryBonus(depth));
         continue;
       }
 
@@ -748,6 +752,8 @@ Score Search::PVSearch(Thread &thread,
                    : see_noisy_thresh * depth - stack->history_score / 150;
       if (depth <= see_prune_depth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
+        history.prune_history->UpdateMoveScore(
+            state, state.turn, move, -history::HistoryBonus(depth));
         continue;
       }
 
@@ -758,9 +764,15 @@ Score Search::PVSearch(Thread &thread,
                    : capt_hist_thresh_base + capt_hist_thresh_mult * depth;
       if (depth <= hist_prune_depth && stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
+        history.prune_history->UpdateMoveScore(
+            state, state.turn, move, -history::HistoryBonus(depth));
         continue;
       }
     }
+
+    // Move wasn't pruned, so we give a bonus to its prune history score
+    history.prune_history->UpdateMoveScore(
+        state, state.turn, move, history::HistoryBonus(depth));
 
     int extensions = 0;
 
@@ -795,19 +807,6 @@ Score Search::PVSearch(Thread &thread,
               tt_move_excluded_score < new_beta - se_double_margin) {
             extensions = 2 + (is_quiet && tt_move_excluded_score <
                                               new_beta - se_triple_margin);
-
-            // Apply a malus to all quiet moves if the TT move was singular
-            auto legal_moves = move_gen::GenerateLegalMoves(board);
-            for (int i = 0; i < legal_moves.Size(); i++) {
-              const int penalty = -history::HistoryBonus(depth);
-              if (legal_moves[i] != tt_move && !legal_moves[i].IsNoisy(state)) {
-                history.quiet_history->UpdateMoveScore(
-                    state.turn, move, stack->threats, penalty);
-                history.continuation_history->UpdateMoveScore(
-                    state, move, penalty, stack);
-              }
-            }
-
             depth += depth < 10;
           } else {
             extensions = 1;
@@ -860,6 +859,7 @@ Score Search::PVSearch(Thread &thread,
           static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
       reduction += !improving;
       reduction -= std::abs(stack->static_eval - raw_static_eval) > 80;
+      reduction += history.prune_history->GetScore(state, move) / 8192;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
