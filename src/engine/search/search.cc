@@ -758,7 +758,7 @@ Score Search::PVSearch(Thread &thread,
         if (is_quiet) {
           const int futility_margin =
               fut_margin_base + fut_margin_mult * lmr_depth;
-          if (lmr_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
+          if (lmr_depth <= fut_prune_depth && is_quiet &&
               stack->eval + futility_margin < alpha) {
             move_picker.SkipQuiets();
             continue;

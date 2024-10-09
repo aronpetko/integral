@@ -34,9 +34,9 @@ Tunable lmp_mult("lmp_mult", 3, 1.0, 4.0, 0.25);
 Tunable fut_prune_depth("fut_prune_depth", 8, 6, 12, 1, true);
 Tunable fut_capt_prune_depth("fut_capt_prune_depth", 7, 6, 12, 1, true);
 Tunable fut_margin_base("fut_margin_base", 196, 100, 250, 20);
-Tunable fut_capt_margin_base("fut_capt_margin_base", 450, 100, 250, 20);
+Tunable fut_capt_margin_base("fut_capt_margin_base", 500, 100, 250, 20);
 Tunable fut_margin_mult("fut_margin_mult", 96, 50, 200, 15);
-Tunable fut_capt_margin_mult("fut_capt_margin_mult", 330, 50, 200, 15);
+Tunable fut_capt_margin_mult("fut_capt_margin_mult", 400, 50, 200, 15);
 
 Tunable see_prune_depth("see_prune_depth", 8, 6, 12, 1, true);
 Tunable see_quiet_thresh("see_quiet_thresh", -64, -100, -20, 6);
