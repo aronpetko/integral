@@ -42,6 +42,26 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
 const LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
 
+inline Tunable value_pawn_score("value_pawn_score", 98, 50, 150, 10);
+inline Tunable value_knight_score("value_knight_score", 299, 200, 400, 25);
+inline Tunable value_bishop_score("value_bishop_score", 300, 200, 400, 25);
+inline Tunable value_rook_score("value_rook_score", 533, 400, 600, 25);
+inline Tunable value_queen_score("value_queen_score", 921, 700, 1100, 50);
+inline Tunable value_king_score("value_king_score", 0, 0, 0, 1);  // Always 0
+inline Tunable value_none_score("value_none_score", 0, 0, 0, 1);  // Always 0
+
+// clang-format off
+inline std::array<Tunable, kNumPieceTypes + 1> kPieceValues = {
+    value_pawn_score,
+    value_knight_score,
+    value_bishop_score,
+    value_rook_score,
+    value_queen_score,
+    value_king_score,
+    value_none_score
+};
+// clang-format on
+
 }  // namespace tables
 
 Search::Search(Board &board)
@@ -732,13 +752,28 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
-      // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
+      // Futility Pruning: Skip (futile) moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = fut_margin_base + fut_margin_mult * lmr_depth;
-      if (lmr_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
-          stack->eval + futility_margin < alpha) {
-        move_picker.SkipQuiets();
-        continue;
+      if (!stack->in_check) {
+        if (is_quiet) {
+          const int futility_margin =
+              fut_margin_base + fut_margin_mult * lmr_depth;
+          if (lmr_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
+              stack->eval + futility_margin < alpha) {
+            move_picker.SkipQuiets();
+            continue;
+          }
+        } else if (is_capture) {
+          const auto captured_piece = move.IsEnPassant(state)
+                                        ? PieceType::kPawn
+                                        : state.GetPieceType(move.GetTo());
+          const int futility_margin = fut_capt_margin_base +
+                                      tables::kPieceValues[captured_piece] +
+                                      fut_capt_margin_mult * lmr_depth;
+          if (lmr_depth <= fut_capt_prune_depth &&
+              stack->eval + futility_margin <= alpha)
+            continue;
+        }
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
@@ -836,7 +871,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
