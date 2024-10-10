@@ -4,8 +4,14 @@
 
 namespace eval {
 
+inline Tunable fifty_move_clock_base(
+    "fifty_move_clock_base", 220, 100, 300, 30);
+inline Tunable fifty_move_clock_div("fifty_move_clock_div", 220, 100, 300, 30);
+
 Score Evaluate(Board &board) {
-  return nnue::Evaluate(board);
+  return nnue::Evaluate(board) *
+         (fifty_move_clock_base - board.GetState().fifty_moves_clock) /
+         fifty_move_clock_div;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
