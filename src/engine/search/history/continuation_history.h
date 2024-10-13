@@ -35,6 +35,7 @@ class ContinuationHistory {
     UpdateIndividualScore(state, move, bonus, stack - 1);
     UpdateIndividualScore(state, move, bonus, stack - 2);
     UpdateIndividualScore(state, move, bonus, stack - 4);
+    UpdateIndividualScore(state, move, bonus, stack - 6, 2);
   }
 
   [[nodiscard]] ContinuationEntry *GetEntry(const BoardState &state,
@@ -62,7 +63,8 @@ class ContinuationHistory {
   void UpdateIndividualScore(const BoardState &state,
                              Move move,
                              int bonus,
-                             StackEntry *stack) {
+                             StackEntry *stack,
+                             int divisor = 1) {
     if (!stack->continuation_entry) {
       return;
     }
@@ -74,7 +76,7 @@ class ContinuationHistory {
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
 
     int &score = entry[state.turn][piece][to];
-    score += ScaleBonus(score, bonus);
+    score += ScaleBonus(score, bonus) / divisor;
   }
 
  private:
