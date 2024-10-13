@@ -74,7 +74,7 @@ class CorrectionHistory {
         major_table_[state.turn][GetMajorTableIndex(state)];
     const I32 correction =
         pawn_correction +
-        (non_pawn_white_correction + non_pawn_black_correction) / 2 +
+        non_pawn_white_correction + non_pawn_black_correction +
         (minor_correction + major_correction) / 2;
     const I32 adjusted_score =
         static_cast<I32>(static_eval) +
