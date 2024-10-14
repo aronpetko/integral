@@ -56,9 +56,21 @@ class CorrectionHistory {
       non_pawn_table_score =
           UpdateTableScore(non_pawn_table_score, weight, scaled_bonus);
     }
+
+    // Update continuation table scores
+    if (stack->ply >= 2) {
+      auto &continuation_table_score =
+          continuation_table_[state.turn][(stack - 2)->moved_piece]
+                             [(stack - 2)->move.GetTo()]
+                             [(stack - 1)->moved_piece]
+                             [(stack - 1)->move.GetTo()];
+      continuation_table_score =
+          UpdateTableScore(continuation_table_score, weight, scaled_bonus);
+    }
   }
 
   [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
+                                        StackEntry *stack,
                                         Score static_eval) const {
     const Score pawn_correction =
         pawn_table_[state.turn][GetPawnTableIndex(state)];
@@ -72,10 +84,19 @@ class CorrectionHistory {
         minor_table_[state.turn][GetMinorTableIndex(state)];
     const I32 major_correction =
         major_table_[state.turn][GetMajorTableIndex(state)];
+    const I32 continuation_correction = [&]() -> I32 {
+      if (stack->ply >= 2) {
+        return continuation_table_[state.turn][(stack - 2)->moved_piece]
+                                  [(stack - 2)->move.GetTo()]
+                                  [(stack - 1)->moved_piece]
+                                  [(stack - 1)->move.GetTo()];
+      }
+      return 0;
+    }();
     const I32 correction =
         pawn_correction +
         (non_pawn_white_correction + non_pawn_black_correction) / 2 +
-        (minor_correction + major_correction) / 2;
+        (minor_correction + major_correction) / 2 + continuation_correction;
     const I32 adjusted_score =
         static_cast<I32>(static_eval) +
         correction / static_cast<int>(corr_history_scale);
@@ -137,6 +158,8 @@ class CorrectionHistory {
   MultiArray<Score, kNumColors, 16384> minor_table_;
   MultiArray<Score, kNumColors, 16384> major_table_;
   MultiArray<Score, kNumColors, kNumColors, 16384> non_pawn_table_;
+  MultiArray<Score, kNumColors, kNumPieceTypes + 1, 64, kNumPieceTypes + 1, 64>
+      continuation_table_;
 };
 
 }  // namespace search::history
