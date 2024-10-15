@@ -428,7 +428,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
     // window to allow early cutoff
-    if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= depth) {
+    if (!in_pv_node && can_use_tt_eval &&
+        (cut_node || tt_entry->score <= alpha) && tt_entry->depth >= depth) {
       return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     }
   }
