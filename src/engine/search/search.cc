@@ -250,8 +250,8 @@ Score Search::QuiescentSearch(Thread &thread,
   }
 
   if (!stack->in_check) {
-    stack->static_eval =
-        history.correction_history->CorrectStaticEval(state, raw_static_eval);
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, stack, raw_static_eval);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -509,8 +509,8 @@ Score Search::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
     }
 
-    stack->static_eval =
-        history.correction_history->CorrectStaticEval(state, raw_static_eval);
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, stack, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
@@ -588,6 +588,7 @@ Score Search::PVSearch(Thread &thread,
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
         stack->capture_move = false;
+        stack->moved_piece = kNone;
         stack->continuation_entry = nullptr;
 
         const int eval_reduction =
@@ -641,6 +642,7 @@ Score Search::PVSearch(Thread &thread,
           // Set the currently searched move in the stack for continuation
           // history
           stack->move = move;
+          stack->moved_piece = state.GetPieceType(move.GetFrom());
           stack->capture_move = move.IsCapture(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
@@ -819,6 +821,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
+    stack->moved_piece = state.GetPieceType(move.GetFrom());
     stack->capture_move = move.IsCapture(state);
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
