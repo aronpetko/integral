@@ -16,7 +16,8 @@ class CorrectionHistory {
       : non_pawn_table_({}),
         pawn_table_({}),
         minor_table_({}),
-        major_table_({}) {}
+        major_table_({}),
+        continuation_table_({}) {}
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
