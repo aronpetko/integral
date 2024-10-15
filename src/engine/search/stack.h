@@ -64,6 +64,7 @@ struct StackEntry {
   // Currently searched move at this ply
   Move move;
   bool capture_move;
+  PieceType moved_piece;
   // The excluded TT move when performing singular extensions
   Move excluded_tt_move;
   // Continuation history entry for this move
