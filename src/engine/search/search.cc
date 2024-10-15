@@ -88,8 +88,13 @@ void Search::IterativeDeepening(Thread &thread) {
 
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
-        score = new_score;
       }
+
+      if (ShouldQuit(thread)) {
+        break;
+      }
+
+      score = new_score;
 
       if (score <= alpha) {
         // Narrow beta to increase the chance of a fail high
@@ -120,9 +125,8 @@ void Search::IterativeDeepening(Thread &thread) {
       window *= asp_window_growth;
     }
 
-    if (ShouldQuit(thread) ||
-        (thread.IsMainThread() &&
-         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
+    if (thread.IsMainThread() &&
+        time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched)) {
       break;
     }
 
