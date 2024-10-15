@@ -58,7 +58,7 @@ class CorrectionHistory {
     }
 
     // Update continuation table scores
-    if (stack->ply >= 2) {
+    if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
       auto &continuation_table_score =
           continuation_table_[(stack - 2)->moved_piece]
                              [(stack - 2)->move.GetTo()]
