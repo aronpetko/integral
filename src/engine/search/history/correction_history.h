@@ -85,7 +85,7 @@ class CorrectionHistory {
     const I32 major_correction =
         major_table_[state.turn][GetMajorTableIndex(state)];
     const I32 continuation_correction = [&]() -> I32 {
-      if (stack->ply >= 2) {
+      if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
         return continuation_table_[(stack - 2)->moved_piece]
                                   [(stack - 2)->move.GetTo()]
                                   [(stack - 1)->moved_piece]
