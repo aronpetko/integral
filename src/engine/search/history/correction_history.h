@@ -61,7 +61,7 @@ class CorrectionHistory {
     // Update continuation table scores
     if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
       auto &continuation_table_score =
-          continuation_table_[(stack - 2)->moved_piece]
+          continuation_table_[state.turn][(stack - 2)->moved_piece]
                              [(stack - 2)->move.GetTo()]
                              [(stack - 1)->moved_piece]
                              [(stack - 1)->move.GetTo()];
@@ -87,7 +87,7 @@ class CorrectionHistory {
         major_table_[state.turn][GetMajorTableIndex(state)];
     const I32 continuation_correction = [&]() -> I32 {
       if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
-        return continuation_table_[(stack - 2)->moved_piece]
+        return continuation_table_[state.turn][(stack - 2)->moved_piece]
                                   [(stack - 2)->move.GetTo()]
                                   [(stack - 1)->moved_piece]
                                   [(stack - 1)->move.GetTo()];
@@ -159,7 +159,7 @@ class CorrectionHistory {
   MultiArray<Score, kNumColors, 16384> minor_table_;
   MultiArray<Score, kNumColors, 16384> major_table_;
   MultiArray<Score, kNumColors, kNumColors, 16384> non_pawn_table_;
-  MultiArray<Score, kNumPieceTypes + 1, 64, kNumPieceTypes + 1, 64>
+  MultiArray<Score, 2, kNumPieceTypes, 64, kNumPieceTypes, 64>
       continuation_table_;
 };
 
