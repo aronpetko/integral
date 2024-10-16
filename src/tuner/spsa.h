@@ -5,6 +5,10 @@
 
 // #define SPSA_TUNE
 
+#ifdef SPSA_TUNE
+#define TUNABLE(name, value, min, max, disabled) \
+  Tunable name(#name, value, min, max, (max - min) / 10, disabled)
+
 class Tunable {
  public:
   explicit Tunable(std::string_view name,
@@ -12,8 +16,7 @@ class Tunable {
                    double min,
                    double max,
                    double step,
-                   bool disabled = false,
-                   double learning_rate = 0.002)
+                   bool disabled = false)
       : value_(value) {
 #ifdef SPSA_TUNE
     if (disabled) return;
@@ -34,13 +37,12 @@ class Tunable {
         });
 
     const int int_step = static_cast<I64>(step * scaling_constant_);
-    fmt::println("{}, int, {}, {}, {}, {}, {}",
+    fmt::println("{}, int, {}, {}, {}, {}",
                  name,
                  int_value,
                  int_min,
                  int_max,
-                 step,
-                 learning_rate);
+                 step);
 #endif
   }
 
@@ -66,5 +68,10 @@ class Tunable {
   double value_;
   int scaling_constant_;
 };
+#else
+#define TUNABLE(name, value, min, max, disabled) \
+  static constexpr double name = value
+using Tunable = double;
+#endif
 
 #endif  // INTEGRAL_SPSA_H

@@ -19,14 +19,14 @@ class CaptureHistory {
   }
 
   void Penalize(const BoardState &state, int depth, MoveList &captures) {
-    const int bonus = HistoryBonus(depth);
+    const int penalty = HistoryPenalty(depth);
     // Lower the score of the capture moves that failed to raise alpha
     for (int i = 0; i < captures.Size(); i++) {
       const Move bad_capture = captures[i];
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_capture_score =
           table_[state.turn][bad_capture.GetFrom()][bad_capture.GetTo()];
-      bad_capture_score += ScaleBonus(bad_capture_score, -bonus);
+      bad_capture_score += ScaleBonus(bad_capture_score, penalty);
     }
   }
 
