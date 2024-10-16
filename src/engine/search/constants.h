@@ -16,9 +16,9 @@ TUNABLE(kAspWindowGrowth, 1.55, 0.1, 2.0, false);
 
 TUNABLE(kQsFutMargin, 101, 50, 200, false);
 
-TUNABLE(kEvalHistUpdateMult, 60, 20, 100, true);
-TUNABLE(kEvalHistUpdateMin, 65, 5, 150, true);
-TUNABLE(kEvalHistUpdateMax, 100, 40, 200, true);
+TUNABLE(kEvalHistUpdateMult, 60, 20, 100, false);
+TUNABLE(kEvalHistUpdateMin, 65, 5, 150, false);
+TUNABLE(kEvalHistUpdateMax, 100, 40, 200, false);
 
 TUNABLE(kRevFutDepth, 6, 4, 10, true);
 TUNABLE(kRevFutMargin, 74, 50, 150, false);
@@ -33,7 +33,7 @@ TUNABLE(kNullMoveRb, 4, 1, 5, false);
 TUNABLE(kNullMoveRf, 4, 2, 8, true);
 TUNABLE(kNullMoveRe, 202, 100, 400, false);
 
-TUNABLE(kIirDepth, 4, 2, 8, false);
+TUNABLE(kIirDepth, 4, 2, 8, true);
 
 TUNABLE(kImprovingRateDivisor, 30.0, 5.0, 100.0, false);
 

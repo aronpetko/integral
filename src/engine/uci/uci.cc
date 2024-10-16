@@ -20,7 +20,7 @@ namespace options {
 
 void Initialize(search::Search &search) {
   // clang-format off
-  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&search](const Option &option) {
+  listener.AddOption<OptionVisibility::kPublic>("Hash", 512, 1, 1048576, [&search](const Option &option) {
     search.ResizeHash(option.GetValue<int>());
   });
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {

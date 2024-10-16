@@ -39,8 +39,7 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
   return table;
 }
 
-const LateMoveReductionTable kLateMoveReduction =
-    GenerateLateMoveReductionTable();
+LateMoveReductionTable kLateMoveReduction = GenerateLateMoveReductionTable();
 
 }  // namespace tables
 
@@ -1140,7 +1139,7 @@ void Search::Stop() {
 void Search::NewGame(bool clear_tables) {
   if (clear_tables) {
     transposition_table_.Clear();
-    eval::pawn_cache.Clear();
+    tables::kLateMoveReduction = tables::GenerateLateMoveReductionTable();
   }
 
   for (auto &thread : threads_) {
