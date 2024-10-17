@@ -176,10 +176,10 @@ void GameLoop(const Config &config,
               std::ostream &output_stream) {
   RandomSeed(thread_id, search::GetCurrentTime());
 
-  constexpr int kWinThreshold = 1500;
+  constexpr int kWinThreshold = 2500;
   constexpr int kWinPliesThreshold = 5;
   constexpr int kDrawThreshold = 2;
-  constexpr int kDrawPliesThreshold = 10;
+  constexpr int kDrawPliesThreshold = 8;
   constexpr int kInitialScoreThreshold = 1000;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
@@ -227,14 +227,11 @@ void GameLoop(const Config &config,
           // Return the correct score depending on who is getting checkmated
           wdl_outcome = score > 0;
         } else {
-          const int scaled_win_threshold =
-              kWinThreshold -
-              800 * std::clamp<double>(state.half_moves, 0, 200) / 200;
-          if (score >= scaled_win_threshold) {
+          if (score >= kWinThreshold) {
             ++win_plies, loss_plies = draw_plies = 0;
-          } else if (score <= -scaled_win_threshold) {
+          } else if (score <= -kWinThreshold) {
             ++loss_plies, win_plies = draw_plies = 0;
-          } else if (std::abs(score) <= kDrawThreshold) {
+          } else if (std::abs(score) <= kDrawThreshold && state.half_moves >= 40) {
             ++draw_plies, win_plies = loss_plies = 0;
           }
 
@@ -242,8 +239,7 @@ void GameLoop(const Config &config,
             wdl_outcome = 1.0;
           } else if (loss_plies >= kWinPliesThreshold) {
             wdl_outcome = 0.0;
-          } else if (draw_plies >= kDrawPliesThreshold ||
-                     state.half_moves >= 200) {
+          } else if (draw_plies >= kDrawPliesThreshold) {
             wdl_outcome = 0.5;
           }
         }
