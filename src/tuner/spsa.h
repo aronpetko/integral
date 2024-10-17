@@ -6,6 +6,7 @@
 #include "../engine/uci/uci.h"
 
 #define SPSA_TUNE
+// #define PRINT_SPSA_INPUTS
 
 #ifdef SPSA_TUNE
 #define TUNABLE(name, value, min, max, disabled) \
@@ -33,13 +34,17 @@ class Tunable {
           name, value, min, max, [this](uci::Option &option) {
             value_ = option.GetValue<int>();
           });
+#ifdef PRINT_SPSA_INPUTS
       fmt::println("{}, int, {}, {}, {}, {}, {}", name, value, min, max, step_, learning_rate_);
+#endif
     } else if constexpr (std::is_same_v<T, double>) {
       uci::listener.AddOption<uci::OptionVisibility::kPublic>(
           name, std::to_string(value), [this](uci::Option &option) {
             value_ = std::stod(option.GetValue<std::string>());
           });
+#ifdef PRINT_SPSA_INPUTS
       fmt::println("{}, float, {}, {}, {}, {}, {}", name, value, min, max, step_, learning_rate_);
+#endif
     }
 #endif
   }

@@ -29,7 +29,7 @@ TUNABLE(kRazoringMult, 450, 200, 700, false);
 
 TUNABLE(kNullMoveBetaBase, 170, 50, 250, false);
 TUNABLE(kNullMoveBetaMult, 24, 5, 30, false);
-TUNABLE(kNullMoveRb, 4, 1, 5, false);
+TUNABLE(kNullMoveRb, 4, 1, 5, true);
 TUNABLE(kNullMoveRf, 4, 2, 8, true);
 TUNABLE(kNullMoveRe, 202, 100, 400, false);
 
