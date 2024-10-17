@@ -18,7 +18,7 @@ TUNABLE(kMoveStabilityScale3, 1.07, 0.0, 5.0, false);
 TUNABLE(kMoveStabilityScale4, 0.79, 0.0, 5.0, false);
 TUNABLE(kMoveStabilityScale5, 0.68, 0.0, 5.0, false);
 // clang-format off
-constexpr std::array<double, 5> kMoveStabilityScale = {
+std::array<Tunable<double>, 5> kMoveStabilityScale = {
     kMoveStabilityScale1,
     kMoveStabilityScale2,
     kMoveStabilityScale3,

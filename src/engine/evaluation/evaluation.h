@@ -17,7 +17,7 @@ TUNABLE(kSeeKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kSeeNoneScore, 0, 0, 0, true);  // Always 0
 
 // clang-format off
-inline std::array<Tunable, kNumPieceTypes + 1> kSeePieceScores = {
+inline std::array<Tunable<int>, kNumPieceTypes + 1> kSeePieceScores = {
     kSeePawnScore,
     kSeeKnightScore,
     kSeeBishopScore,

@@ -35,8 +35,6 @@ TUNABLE(kNullMoveRe, 202, 100, 400, false);
 
 TUNABLE(kIirDepth, 4, 2, 8, true);
 
-TUNABLE(kImprovingRateDivisor, 30.0, 5.0, 100.0, false);
-
 TUNABLE(kLmpBase, 5.0, 1.5, 5.0, false);
 
 TUNABLE(kFutPruneDepth, 8, 6, 12, true);

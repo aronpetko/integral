@@ -13,7 +13,7 @@ TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
 
 // clang-format off
-inline std::array<Tunable, kNumPieceTypes + 1> kPieceScores = {
+inline std::array<Tunable<int>, kNumPieceTypes + 1> kPieceScores = {
   kPawnScore,
   kKnightScore,
   kBishopScore,
