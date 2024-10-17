@@ -223,7 +223,7 @@ void GameLoop(const Config &config,
         wdl_outcome = state.InCheck() ? state.turn == Color::kBlack : 0.5;
         break;
       } else {
-        if (std::abs(score) >= kTBWinInMaxPlyScore) {
+        if (std::abs(score) >= kMateInMaxPlyScore) {
           // Return the correct score depending on who is getting checkmated
           wdl_outcome = score > 0;
         } else {
