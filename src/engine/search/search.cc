@@ -126,7 +126,10 @@ void Search::IterativeDeepening(Thread &thread) {
     }
 
     if (thread.IsMainThread() &&
-        time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched)) {
+        time_mgmt_.ShouldStop(
+            best_move,
+            depth,
+            thread.nodes_searched.load(std::memory_order_relaxed))) {
       break;
     }
 
@@ -137,7 +140,8 @@ void Search::IterativeDeepening(Thread &thread) {
       report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
     }
 
-    if (thread.IsMainThread() && !stop_ && print_info) {
+    if (thread.IsMainThread() && !stop_.load(std::memory_order_relaxed) &&
+        print_info) {
       const bool is_mate = eval::IsMateScore(root_stack->score);
       const auto nodes_searched = GetNodesSearched();
       report_info->Print(depth,
@@ -300,7 +304,7 @@ Score Search::QuiescentSearch(Thread &thread,
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
-    ++thread.nodes_searched;
+    thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
     board.MakeMove(move);
     const Score score =
@@ -834,9 +838,8 @@ Score Search::PVSearch(Thread &thread,
 
     const bool gives_check = state.InCheck();
 
-    ++thread.nodes_searched;
-
-    const U32 prev_nodes_searched = thread.nodes_searched;
+    const U32 prev_nodes_searched =
+        thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -905,7 +908,8 @@ Score Search::PVSearch(Thread &thread,
     if (in_root && thread.IsMainThread()) {
       if (auto timed_limiter = time_mgmt_.GetTimedLimiter()) {
         timed_limiter->NodesSpent(move) +=
-            thread.nodes_searched - prev_nodes_searched;
+            thread.nodes_searched.load(std::memory_order_relaxed) -
+            prev_nodes_searched;
       }
     }
 
@@ -1041,7 +1045,8 @@ bool Search::ShouldQuit(Thread &thread) {
   if (stop_.load(std::memory_order_relaxed)) return true;
   if (thread.IsMainThread()) {
     return thread.stack.Front().best_move &&
-           time_mgmt_.TimesUp(thread.nodes_searched);
+           time_mgmt_.TimesUp(
+               thread.nodes_searched.load(std::memory_order_relaxed));
   }
   return false;
 }
@@ -1151,7 +1156,7 @@ const TimeManagement &Search::GetTimeManagement() const {
 U64 Search::GetNodesSearched() const {
   return std::accumulate(
       threads_.begin(), threads_.end(), 0ULL, [](auto sum, const auto &thread) {
-        return sum + thread->nodes_searched;
+        return sum + thread->nodes_searched.load(std::memory_order_relaxed);
       });
 }
 
