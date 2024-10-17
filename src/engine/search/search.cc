@@ -39,7 +39,8 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
   return table;
 }
 
-LateMoveReductionTable kLateMoveReduction = GenerateLateMoveReductionTable();
+inline LateMoveReductionTable kLateMoveReduction =
+    GenerateLateMoveReductionTable();
 
 }  // namespace tables
 
