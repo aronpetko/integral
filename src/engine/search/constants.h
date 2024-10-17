@@ -61,11 +61,11 @@ TUNABLE(kDoDeeperBase, 35, 5, 70, false);
 TUNABLE(kDoShallowerBase, 8, 0, 30, false);
 
 TUNABLE(kSeDepth, 6, 6, 12, true);
-TUNABLE(kSeDoubleMargin, 15, 10, 40, false);
-TUNABLE(kSeTripleMargin, 110, 10, 40, false);
+TUNABLE(kSeDoubleMargin, 15, 0, 30, false);
+TUNABLE(kSeTripleMargin, 110, 30, 250, false);
 TUNABLE(kSeDepthExtensionDepth, 10, 0, 15, false);
 
-TUNABLE(kProbcutBetaDelta, 250, 150, 350, false);
+TUNABLE(kProbcutBetaDelta, 250, 100, 400, false);
 
 }  // namespace search
 
