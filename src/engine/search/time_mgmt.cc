@@ -12,11 +12,11 @@ TUNABLE(kHardLimitScale, 3.25, 1.00, 4.50, false);
 TUNABLE(kSoftLimitScale, 0.83, 0, 1.50, false);
 TUNABLE(kNodeFractionBase, 1.49, 0.50, 2.50, false);
 TUNABLE(kNodeFractionScale, 1.56, 0.50, 2.50, false);
-TUNABLE(kMoveStabilityScale1, 2.32, 0.0, 5.0, false);
-TUNABLE(kMoveStabilityScale2, 1.22, 0.0, 5.0, false);
-TUNABLE(kMoveStabilityScale3, 1.07, 0.0, 5.0, false);
-TUNABLE(kMoveStabilityScale4, 0.79, 0.0, 5.0, false);
-TUNABLE(kMoveStabilityScale5, 0.68, 0.0, 5.0, false);
+TUNABLE(kMoveStabilityScale1, 2.32, 1.5, 3.0, false);
+TUNABLE(kMoveStabilityScale2, 1.22, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale3, 1.07, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale4, 0.79, 0.2, 1.5, false);
+TUNABLE(kMoveStabilityScale5, 0.68, 0.2, 1.5, false);
 // clang-format off
 std::array<Tunable<double>, 5> kMoveStabilityScale = {
     kMoveStabilityScale1,

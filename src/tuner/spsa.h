@@ -11,7 +11,7 @@
 #define TUNABLE(name, value, min, max, disabled) \
   inline Tunable<decltype(value)> name(#name, value, min, max, (max - min) / 15, disabled)
 
-constexpr double kLearningRate = 0.0002;
+constexpr double kLearningRate = 0.002;
 
 template<typename T>
 class Tunable {
