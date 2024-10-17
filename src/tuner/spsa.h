@@ -6,7 +6,7 @@
 #include "../engine/uci/uci.h"
 
 #define SPSA_TUNE
-// #define PRINT_SPSA_INPUTS
+#define PRINT_SPSA_INPUTS
 
 #ifdef SPSA_TUNE
 #define TUNABLE(name, value, min, max, disabled) \
