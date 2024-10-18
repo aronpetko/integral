@@ -6,9 +6,9 @@
 
 namespace search::history {
 
-TUNABLE(kHistBonusGravity, 12569, 8192, 32768, false);
-TUNABLE(kHistBonusScale, 139, 65, 260, false);
-TUNABLE(kHistPenaltyScale, 132, 65, 260, false);
+TUNABLE(kHistBonusGravity, 12713, 8192, 32768, false);
+TUNABLE(kHistBonusScale, 136, 65, 260, false);
+TUNABLE(kHistPenaltyScale, 140, 65, 260, false);
 TUNABLE(kHistBonusMaxBonus, 1188, 580, 2318, true);
 
 static int HistoryBonus(int depth,
