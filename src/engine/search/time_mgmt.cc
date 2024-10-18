@@ -18,12 +18,12 @@ TUNABLE(kMoveStabilityScale3, 1.07, 0.5, 2.0, false);
 TUNABLE(kMoveStabilityScale4, 0.79, 0.2, 1.5, false);
 TUNABLE(kMoveStabilityScale5, 0.68, 0.2, 1.5, false);
 // clang-format off
-inline std::array<Tunable<double>, 5> kMoveStabilityScale = {
-    kMoveStabilityScale1,
-    kMoveStabilityScale2,
-    kMoveStabilityScale3,
-    kMoveStabilityScale4,
-    kMoveStabilityScale5
+inline std::array<Tunable<double>*, 5> kMoveStabilityScale = {
+    &kMoveStabilityScale1,
+    &kMoveStabilityScale2,
+    &kMoveStabilityScale3,
+    &kMoveStabilityScale4,
+    &kMoveStabilityScale5
 };
 // clang-format on
 
@@ -130,7 +130,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
       NodesSpent(best_move) / std::max<double>(1, nodes_searched);
   const double percent_scale_factor =
       (kNodeFractionBase - percent_searched) * kNodeFractionScale;
-  const double stability_scale = kMoveStabilityScale[best_move_stability_];
+  const double stability_scale = *kMoveStabilityScale[best_move_stability_];
   const U32 optimal_limit = std::min<U32>(
       soft_limit_ * percent_scale_factor * stability_scale, hard_limit_);
 
