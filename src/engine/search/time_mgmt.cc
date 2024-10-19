@@ -5,18 +5,18 @@
 
 namespace search {
 
-TUNABLE(kBaseTimeScale, 0.056872551143187025, 0, 0.10, false);
-TUNABLE(kIncrementScale, 0.9363464956080678, 0, 1.00, false);
-TUNABLE(kPercentLimit, 0.7820323962784128, 0, 1.00, false);
-TUNABLE(kHardLimitScale, 3.328819796834812, 1.00, 4.50, false);
-TUNABLE(kSoftLimitScale, 0.8076327197227045, 0, 1.50, false);
-TUNABLE(kNodeFractionBase, 1.4844559034107, 0.50, 2.50, false);
-TUNABLE(kNodeFractionScale, 1.5427879087736471, 0.50, 2.50, false);
-TUNABLE(kMoveStabilityScale1, 2.360075033191942, 1.5, 3.0, false);
-TUNABLE(kMoveStabilityScale2, 1.3018030647277745, 0.5, 2.0, false);
-TUNABLE(kMoveStabilityScale3, 1.0691811157913753, 0.5, 2.0, false);
-TUNABLE(kMoveStabilityScale4, 0.7640049174218108, 0.2, 1.5, false);
-TUNABLE(kMoveStabilityScale5, 0.6845283394764106, 0.2, 1.5, false);
+TUNABLE(kBaseTimeScale, 0.05659489993542713, 0, 0.10, false);
+TUNABLE(kIncrementScale, 0.9375894664024063, 0, 1.00, false);
+TUNABLE(kPercentLimit, 0.7845414389900047, 0, 1.00, false);
+TUNABLE(kHardLimitScale, 3.3618917534327086, 1.00, 4.50, false);
+TUNABLE(kSoftLimitScale, 0.8055748760488931, 0, 1.50, false);
+TUNABLE(kNodeFractionBase, 1.492956163665729, 0.50, 2.50, false);
+TUNABLE(kNodeFractionScale, 1.5449099141811304, 0.50, 2.50, false);
+TUNABLE(kMoveStabilityScale1, 2.3819900448242293, 1.5, 3.0, false);
+TUNABLE(kMoveStabilityScale2, 1.2815397535630197, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale3, 1.0755405658121784, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale4, 0.7564973360752522, 0.2, 1.5, false);
+TUNABLE(kMoveStabilityScale5, 0.6774980619960735, 0.2, 1.5, false);
 // clang-format off
 inline std::array<Tunable<double>, 5> kMoveStabilityScale = {
     kMoveStabilityScale1,
