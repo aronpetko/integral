@@ -7,11 +7,11 @@
 
 namespace search::history {
 
-TUNABLE(kPawnCorrectionWeight, 252, 0, 300, false);
-TUNABLE(kNonPawnCorrectionWeight, 252, 0, 300, false);
-TUNABLE(kMinorCorrectionWeight, 252, 0, 300, false);
-TUNABLE(kMajorCorrectionWeight, 251, 0, 300, false);
-TUNABLE(kContinuationCorrectionWeight, 251, 0, 300, false);
+TUNABLE(kPawnCorrectionWeight, 241, 0, 300, false);
+TUNABLE(kNonPawnCorrectionWeight, 247, 0, 300, false);
+TUNABLE(kMinorCorrectionWeight, 240, 0, 300, false);
+TUNABLE(kMajorCorrectionWeight, 257, 0, 300, false);
+TUNABLE(kContinuationCorrectionWeight, 256, 0, 300, false);
 
 class CorrectionHistory {
  public:
