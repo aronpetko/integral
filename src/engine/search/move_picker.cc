@@ -2,6 +2,35 @@
 
 namespace search {
 
+TUNABLE(kSeeNoisyHistoryDiv, 110, 32, 250, false);
+
+TUNABLE(kPawnScore, 97, 50, 150, false);
+TUNABLE(kKnightScore, 304, 200, 400, false);
+TUNABLE(kBishopScore, 296, 200, 400, false);
+TUNABLE(kRookScore, 540, 400, 600, false);
+TUNABLE(kQueenScore, 908, 700, 1100, false);
+TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
+TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
+
+// clang-format off
+inline std::array<Tunable<int>, kNumPieceTypes + 1> kPieceScores = {
+  kPawnScore,
+  kKnightScore,
+  kBishopScore,
+  kRookScore,
+  kQueenScore,
+  kKingScore,
+  kNoneScore
+};
+// clang-format on
+
+TUNABLE(kQueenRookThreatScorePos, 19339, 10000, 30000, false);
+TUNABLE(kQueenRookThreatScoreNeg, 19964, 10000, 30000, false);
+TUNABLE(kRookMinorThreatScorePos, 12332, 5000, 20000, false);
+TUNABLE(kRookMinorThreatScoreNeg, 12460, 5000, 20000, false);
+TUNABLE(kMinorPawnThreatScorePos, 7627, 3000, 12000, false);
+TUNABLE(kMinorPawnThreatScoreNeg, 7991, 3000, 12000, false);
+
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -46,7 +75,7 @@ Move MovePicker::Next() {
 
       const bool loses_material = !eval::StaticExchange(
           move,
-          type_ != MovePickerType::kNoisy ? -history_score / 100
+          type_ != MovePickerType::kNoisy ? -history_score / kSeeNoisyHistoryDiv
                                           : see_threshold_,
           state);
       if (!loses_material && !move.IsUnderPromotion()) {
@@ -173,7 +202,7 @@ int MovePicker::ScoreMove(Move &move) {
   if (move.IsCapture(state)) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
-    const int victim_value = eval::kSEEPieceScores[victim] * 100;
+    const int victim_value = kPieceScores[victim] * 100;
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
@@ -191,17 +220,17 @@ int MovePicker::ScoreMove(Move &move) {
   int threat_score = 0;
   switch (state.GetPieceType(from)) {
     case kQueen:
-      if (rook_threats.IsSet(from)) threat_score += 20000;
-      if (rook_threats.IsSet(to)) threat_score -= 20000;
+      if (rook_threats.IsSet(from)) threat_score += kQueenRookThreatScorePos;
+      if (rook_threats.IsSet(to)) threat_score -= kQueenRookThreatScoreNeg;
       break;
     case kRook:
-      if (minor_threats.IsSet(from)) threat_score += 12500;
-      if (minor_threats.IsSet(to)) threat_score -= 12500;
+      if (minor_threats.IsSet(from)) threat_score += kRookMinorThreatScorePos;
+      if (minor_threats.IsSet(to)) threat_score -= kRookMinorThreatScoreNeg;
       break;
     case kBishop:
     case kKnight:
-      if (pawn_threats.IsSet(from)) threat_score += 7500;
-      if (pawn_threats.IsSet(to)) threat_score -= 7500;
+      if (pawn_threats.IsSet(from)) threat_score += kMinorPawnThreatScorePos;
+      if (pawn_threats.IsSet(to)) threat_score -= kMinorPawnThreatScoreNeg;
       break;
     default:
       break;

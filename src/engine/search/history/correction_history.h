@@ -7,8 +7,11 @@
 
 namespace search::history {
 
-inline Tunable corr_history_scale("corr_history_scale", 256, 100, 500, 15);
-inline Tunable max_corr_hist("max_corr_hist", 64, 16, 128, 6);
+TUNABLE(kPawnCorrectionWeight, 251, 0, 300, false);
+TUNABLE(kNonPawnCorrectionWeight, 248, 0, 300, false);
+TUNABLE(kMinorCorrectionWeight, 241, 0, 300, false);
+TUNABLE(kMajorCorrectionWeight, 261, 0, 300, false);
+TUNABLE(kContinuationCorrectionWeight, 249, 0, 300, false);
 
 class CorrectionHistory {
  public:
@@ -74,23 +77,29 @@ class CorrectionHistory {
                                         StackEntry *stack,
                                         Score static_eval) const {
     const Score pawn_correction =
-        pawn_table_[state.turn][GetPawnTableIndex(state)];
+        (pawn_table_[state.turn][GetPawnTableIndex(state)] *
+         kPawnCorrectionWeight) / 256;
     const I32 non_pawn_white_correction =
-        non_pawn_table_[state.turn][Color::kWhite]
-                       [GetNonPawnTableIndex(state, Color::kWhite)];
+        (non_pawn_table_[state.turn][Color::kWhite]
+                        [GetNonPawnTableIndex(state, Color::kWhite)] *
+         kNonPawnCorrectionWeight) / 256;
     const I32 non_pawn_black_correction =
-        non_pawn_table_[state.turn][Color::kBlack]
-                       [GetNonPawnTableIndex(state, Color::kBlack)];
+        (non_pawn_table_[state.turn][Color::kBlack]
+                        [GetNonPawnTableIndex(state, Color::kBlack)] *
+         kNonPawnCorrectionWeight) / 256;
     const I32 minor_correction =
-        minor_table_[state.turn][GetMinorTableIndex(state)];
+        (minor_table_[state.turn][GetMinorTableIndex(state)] *
+         kMinorCorrectionWeight) / 256;
     const I32 major_correction =
-        major_table_[state.turn][GetMajorTableIndex(state)];
+        (major_table_[state.turn][GetMajorTableIndex(state)] *
+         kMajorCorrectionWeight) / 256;
     const I32 continuation_correction = [&]() -> I32 {
       if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
-        return continuation_table_[state.turn][(stack - 2)->moved_piece]
-                                  [(stack - 2)->move.GetTo()]
-                                  [(stack - 1)->moved_piece]
-                                  [(stack - 1)->move.GetTo()];
+        return (continuation_table_[state.turn][(stack - 2)->moved_piece]
+                                   [(stack - 2)->move.GetTo()]
+                                   [(stack - 1)->moved_piece]
+                                   [(stack - 1)->move.GetTo()] *
+                kContinuationCorrectionWeight) / 256;
       }
       return 0;
     }();
@@ -98,13 +107,12 @@ class CorrectionHistory {
         pawn_correction +
         (non_pawn_white_correction + non_pawn_black_correction) / 2 +
         (minor_correction + major_correction) / 2 + continuation_correction;
-    const I32 adjusted_score =
-        static_cast<I32>(static_eval) +
-        correction / static_cast<int>(corr_history_scale);
+    const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 256;
     // Ensure no static evaluations are mate scores
     return std::clamp(
         adjusted_score, -kMateInMaxPlyScore + 1, kMateInMaxPlyScore - 1);
   }
+
 
  private:
   [[nodiscard]] int CalculateWeight(int depth) {
@@ -113,18 +121,15 @@ class CorrectionHistory {
 
   [[nodiscard]] Score CalculateScaledBonus(Score static_eval,
                                            Score search_score) {
-    return (search_score - static_eval) * static_cast<int>(corr_history_scale);
+    return (search_score - static_eval) * 256;
   }
 
   [[nodiscard]] Score UpdateTableScore(Score current_score,
                                        int weight,
                                        Score scaled_bonus) {
-    const Score new_score = (current_score * (corr_history_scale - weight) +
-                             scaled_bonus * weight) /
-                            corr_history_scale;
-    return std::clamp<Score>(new_score,
-                             corr_history_scale * -max_corr_hist,
-                             corr_history_scale * max_corr_hist);
+    const Score new_score =
+        (current_score * (256.0 - weight) + scaled_bonus * weight) / 256.0;
+    return std::clamp<Score>(new_score, 256 * -64, 256 * 64);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(

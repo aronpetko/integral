@@ -5,20 +5,27 @@
 
 namespace search {
 
-Tunable base_time_scale("base_time_scale", 0.055, 0, 0.10, 0.003);
-Tunable increment_scale("increment_scale", 0.91, 0, 1.00, 0.04);
-Tunable percent_limit("percent_limit", 0.77, 0, 1.00, 0.03);
-Tunable hard_limit_scale("hard_limit_scale", 3.25, 1.00, 4.50, 0.08);
-Tunable soft_limit_scale("soft_limit_scale", 0.83, 0, 1.50, 0.08);
-Tunable node_fraction_base("node_fraction_base", 1.49, 0.50, 2.50, 0.08);
-Tunable node_fraction_scale("node_fraction_scale", 1.56, 0.50, 2.50, 0.08);
-std::array<Tunable, 5> move_stability_scale = {
-    Tunable("mss_1", 2.32, 0.0, 5.0, 0.07),
-    Tunable("mss_2", 1.22, 0.0, 5.0, 0.07),
-    Tunable("mss_3", 1.07, 0.0, 5.0, 0.07),
-    Tunable("mss_4", 0.79, 0.0, 5.0, 0.07),
-    Tunable("mss_5", 0.68, 0.0, 5.0, 0.07),
+TUNABLE(kBaseTimeScale, 0.05733820228980802, 0, 0.10, false);
+TUNABLE(kIncrementScale, 0.9760856856329947, 0, 1.00, false);
+TUNABLE(kPercentLimit, 0.8276195006604234, 0, 1.00, false);
+TUNABLE(kHardLimitScale, 3.393784908696118, 1.00, 4.50, false);
+TUNABLE(kSoftLimitScale, 0.8237969047606986, 0, 1.50, false);
+TUNABLE(kNodeFractionBase, 1.4523797051230019, 0.50, 2.50, false);
+TUNABLE(kNodeFractionScale, 1.5525960191419124, 0.50, 2.50, false);
+TUNABLE(kMoveStabilityScale1, 2.4030366505287315, 1.5, 3.0, false);
+TUNABLE(kMoveStabilityScale2, 1.30317921803015, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale3, 1.0659706093407642, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale4, 0.7862126398768999, 0.2, 1.5, false);
+TUNABLE(kMoveStabilityScale5, 0.6949568477601432, 0.2, 1.5, false);
+// clang-format off
+inline std::array<Tunable<double>, 5> kMoveStabilityScale = {
+    kMoveStabilityScale1,
+    kMoveStabilityScale2,
+    kMoveStabilityScale3,
+    kMoveStabilityScale4,
+    kMoveStabilityScale5
 };
+// clang-format on
 
 U64 GetCurrentTime() {
   const auto duration = std::chrono::steady_clock::now().time_since_epoch();
@@ -122,8 +129,8 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
   const auto percent_searched =
       NodesSpent(best_move) / std::max<double>(1, nodes_searched);
   const double percent_scale_factor =
-      (node_fraction_base - percent_searched) * node_fraction_scale;
-  const double stability_scale = move_stability_scale[best_move_stability_];
+      (kNodeFractionBase - percent_searched) * kNodeFractionScale;
+  const double stability_scale = kMoveStabilityScale[best_move_stability_];
   const U32 optimal_limit = std::min<U32>(
       soft_limit_ * percent_scale_factor * stability_scale, hard_limit_);
 
@@ -159,13 +166,13 @@ void TimedLimiter::CalculateLimits() {
   previous_best_move_ = Move::NullMove();
 
   const int base_time =
-      time_left_ * base_time_scale + increment_ * increment_scale - overhead;
-  const int maximum_time = percent_limit * time_left_;
+      time_left_ * kBaseTimeScale + increment_ * kIncrementScale - overhead;
+  const int maximum_time = kPercentLimit * time_left_;
 
   const int scaled_hard_limit =
-      std::min(static_cast<int>(hard_limit_scale * base_time), maximum_time);
+      std::min(static_cast<int>(kHardLimitScale * base_time), maximum_time);
   const int scaled_soft_limit =
-      std::min(static_cast<int>(soft_limit_scale * base_time), maximum_time);
+      std::min(static_cast<int>(kSoftLimitScale * base_time), maximum_time);
 
   hard_limit_ = std::max(5, scaled_hard_limit);
   soft_limit_ = std::max(1, scaled_soft_limit);
