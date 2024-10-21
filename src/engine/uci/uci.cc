@@ -130,6 +130,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     CreateArgument("min_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("max_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("out", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("book", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [](Command *cmd) {
     data_gen::Config config{
       .soft_node_limit = *cmd->ParseArgument<U64>("soft_limit"),
@@ -139,6 +140,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       .min_move_plies = *cmd->ParseArgument<I32>("min_moves"),
       .max_move_plies = *cmd->ParseArgument<I32>("max_moves"),
       .output_file = *cmd->ParseArgument<std::string>("out"),
+      .fens_file = *cmd->ParseArgument<std::string>("book"),
     };
     data_gen::Generate(config);
   });
