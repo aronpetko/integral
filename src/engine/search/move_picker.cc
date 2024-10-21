@@ -53,8 +53,9 @@ Move MovePicker::Next() {
     stage_ = Stage::kGenerateNoisys;
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
-      if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
-          tt_move_.IsNoisy(state)) {
+      if ((type_ == MovePickerType::kQuiescence &&
+           eval::StaticExchange(tt_move_, 0, state)) ||
+          state.InCheck()) {
         return tt_move_;
       }
     }
