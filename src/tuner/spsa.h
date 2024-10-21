@@ -5,8 +5,8 @@
 #include <type_traits>
 #include "../engine/uci/uci.h"
 
-#define SPSA_TUNE
-#define PRINT_SPSA_INPUTS
+// #define SPSA_TUNE
+// #define PRINT_SPSA_INPUTS
 
 #ifdef SPSA_TUNE
 #define TUNABLE(name, value, min, max, disabled) \
@@ -71,7 +71,7 @@ class Tunable {
   double learning_rate_;
 };
 #else
-#define TUNABLE(name, value, min, max, step, learning_rate, disabled) \
+#define TUNABLE(name, value, min, max, disabled) \
   static constexpr auto name = value
 
 template<typename T>
