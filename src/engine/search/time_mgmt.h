@@ -14,6 +14,8 @@ namespace search {
 
 using TimeStamp = U64;
 
+class Thread;
+
 U64 GetCurrentTime();
 
 struct TimeConfig {
@@ -32,7 +34,7 @@ class TimeLimiter {
  public:
   virtual ~TimeLimiter() = default;
 
-  virtual bool ShouldStop(Move best_move, int depth, U32 nodes_searched) = 0;
+  virtual bool ShouldStop(Move best_move, int depth, Thread &thread) = 0;
 
   virtual bool TimesUp(U32 nodes_searched) = 0;
 
@@ -49,7 +51,7 @@ class DepthLimiter : public TimeLimiter {
  public:
   explicit DepthLimiter(int max_depth);
 
-  bool ShouldStop(Move best_move, int depth, U32 nodes_searched) override;
+  bool ShouldStop(Move best_move, int depth, Thread &thread) override;
 
   bool TimesUp(U32 nodes_searched) override;
 
@@ -69,7 +71,7 @@ class NodeLimiter : public TimeLimiter {
  public:
   NodeLimiter(U64 max_nodes, U64 soft_max_nodes);
 
-  bool ShouldStop(Move best_move, int depth, U32 nodes_searched) override;
+  bool ShouldStop(Move best_move, int depth, Thread &thread) override;
 
   bool TimesUp(U32 nodes_searched) override;
 
@@ -90,7 +92,7 @@ class TimedLimiter : public TimeLimiter {
  public:
   TimedLimiter(int time_left, int increment, int move_time);
 
-  bool ShouldStop(Move best_move, int depth, U32 nodes_searched) override;
+  bool ShouldStop(Move best_move, int depth, Thread &thread) override;
 
   bool TimesUp(U32 nodes_searched) override;
 
@@ -112,6 +114,7 @@ class TimedLimiter : public TimeLimiter {
   int time_left_;
   int increment_;
   int move_time_;
+  TimeStamp allocated_time_;
   TimeStamp hard_limit_;
   TimeStamp soft_limit_;
   TimeStamp start_time_, end_time_;
@@ -132,7 +135,7 @@ class TimeManagement {
 
   void Stop();
 
-  bool ShouldStop(Move best_move, int depth, U32 nodes_searched);
+  bool ShouldStop(Move best_move, int depth, Thread &thread);
 
   bool TimesUp(U32 nodes_searched);
 
