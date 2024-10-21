@@ -7,11 +7,11 @@
 
 namespace search::history {
 
-TUNABLE(kPawnCorrectionWeight, 53, 0, 300, false);
-TUNABLE(kNonPawnCorrectionWeight, 53, 0, 300, false);
-TUNABLE(kMinorCorrectionWeight, 53, 0, 300, false);
-TUNABLE(kMajorCorrectionWeight, 53, 0, 300, false);
-TUNABLE(kContinuationCorrectionWeight, 53, 0, 300, false);
+TUNABLE(kPawnCorrectionWeight, 251, 0, 300, false);
+TUNABLE(kNonPawnCorrectionWeight, 248, 0, 300, false);
+TUNABLE(kMinorCorrectionWeight, 241, 0, 300, false);
+TUNABLE(kMajorCorrectionWeight, 261, 0, 300, false);
+TUNABLE(kContinuationCorrectionWeight, 249, 0, 300, false);
 TUNABLE(kCorrectionHistoryGravity, 1024, 512, 8192, false);
 
 class CorrectionHistory {
@@ -29,12 +29,12 @@ class CorrectionHistory {
                    Score raw_static_eval,
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
-    if (!IsStaticEvalWithinBounds(raw_static_eval, search_score, score_type)) {
+    if (!IsStaticEvalWithinBounds(stack->static_eval, search_score, score_type)) {
       return;
     }
 
     const auto bonus =
-        std::clamp((search_score - raw_static_eval) * depth / 8, -256, 256);
+        std::clamp((search_score - stack->static_eval) * depth / 8, -256, 256);
 
     // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
@@ -74,35 +74,43 @@ class CorrectionHistory {
                                         StackEntry *stack,
                                         Score static_eval) const {
     const Score pawn_correction =
-        kPawnCorrectionWeight *
-        pawn_table_[state.turn][GetPawnTableIndex(state)];
-    const I32 non_pawn_correction =
-        kNonPawnCorrectionWeight *
+        (pawn_table_[state.turn][GetPawnTableIndex(state)] *
+         kPawnCorrectionWeight) /
+        256;
+    const I32 non_pawn_white_correction =
         (non_pawn_table_[state.turn][Color::kWhite]
-                        [GetNonPawnTableIndex(state, Color::kWhite)] +
-         non_pawn_table_[state.turn][Color::kBlack]
-                        [GetNonPawnTableIndex(state, Color::kBlack)]) /
-        2;
+                        [GetNonPawnTableIndex(state, Color::kWhite)] *
+         kNonPawnCorrectionWeight) /
+        256;
+    const I32 non_pawn_black_correction =
+        (non_pawn_table_[state.turn][Color::kBlack]
+                        [GetNonPawnTableIndex(state, Color::kBlack)] *
+         kNonPawnCorrectionWeight) /
+        256;
     const I32 minor_correction =
-        kMinorCorrectionWeight *
-        minor_table_[state.turn][GetMinorTableIndex(state)];
+        (minor_table_[state.turn][GetMinorTableIndex(state)] *
+         kMinorCorrectionWeight) /
+        256;
     const I32 major_correction =
-        kMajorCorrectionWeight *
-        major_table_[state.turn][GetMajorTableIndex(state)];
+        (major_table_[state.turn][GetMajorTableIndex(state)] *
+         kMajorCorrectionWeight) /
+        256;
     const I32 continuation_correction = [&]() -> I32 {
       if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
-        return kContinuationCorrectionWeight *
-               continuation_table_[state.turn][(stack - 2)->moved_piece]
-                                  [(stack - 2)->move.GetTo()]
-                                  [(stack - 1)->moved_piece]
-                                  [(stack - 1)->move.GetTo()];
+        return (continuation_table_[state.turn][(stack - 2)->moved_piece]
+                                   [(stack - 2)->move.GetTo()]
+                                   [(stack - 1)->moved_piece]
+                                   [(stack - 1)->move.GetTo()] *
+                kContinuationCorrectionWeight) /
+               256;
       }
       return 0;
     }();
-    const I32 correction = pawn_correction + non_pawn_correction +
-                           minor_correction + major_correction +
-                           continuation_correction;
-    const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 1024;
+    const I32 correction =
+        pawn_correction +
+        (non_pawn_white_correction + non_pawn_black_correction) / 2 +
+        (minor_correction + major_correction) / 2 + continuation_correction;
+    const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 256;
     // Ensure no static evaluations are mate scores
     return std::clamp(
         adjusted_score, -kMateInMaxPlyScore + 1, kMateInMaxPlyScore - 1);
