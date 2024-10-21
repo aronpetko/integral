@@ -12,6 +12,7 @@ TUNABLE(kNonPawnCorrectionWeight, 248, 0, 300, false);
 TUNABLE(kMinorCorrectionWeight, 241, 0, 300, false);
 TUNABLE(kMajorCorrectionWeight, 261, 0, 300, false);
 TUNABLE(kContinuationCorrectionWeight, 249, 0, 300, false);
+TUNABLE(kCorrectionHistoryGravity, 1024, 512, 8192, false);
 
 class CorrectionHistory {
  public:
@@ -32,33 +33,29 @@ class CorrectionHistory {
       return;
     }
 
-    const int weight = CalculateWeight(depth);
-    const Score scaled_bonus =
-        CalculateScaledBonus(stack->static_eval, search_score);
+    const auto bonus =
+        std::clamp((search_score - stack->static_eval) * depth / 8, -256, 256);
 
     // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
-    pawn_table_score = UpdateTableScore(pawn_table_score, weight, scaled_bonus);
+    pawn_table_score = UpdateTableScore(pawn_table_score, bonus);
 
     // Update minor piece table score
     auto &minor_table_score =
         minor_table_[state.turn][GetMinorTableIndex(state)];
-    minor_table_score =
-        UpdateTableScore(minor_table_score, weight, scaled_bonus);
+    minor_table_score = UpdateTableScore(minor_table_score, bonus);
 
     // Update major piece table score
     auto &major_table_score =
         major_table_[state.turn][GetMajorTableIndex(state)];
-    major_table_score =
-        UpdateTableScore(major_table_score, weight, scaled_bonus);
+    major_table_score = UpdateTableScore(major_table_score, bonus);
 
     // Update non-pawn table scores for both colors
     for (Color color : {Color::kWhite, Color::kBlack}) {
       auto &non_pawn_table_score =
           non_pawn_table_[state.turn][color]
                          [GetNonPawnTableIndex(state, color)];
-      non_pawn_table_score =
-          UpdateTableScore(non_pawn_table_score, weight, scaled_bonus);
+      non_pawn_table_score = UpdateTableScore(non_pawn_table_score, bonus);
     }
 
     // Update continuation table scores
@@ -69,7 +66,7 @@ class CorrectionHistory {
                              [(stack - 1)->moved_piece]
                              [(stack - 1)->move.GetTo()];
       continuation_table_score =
-          UpdateTableScore(continuation_table_score, weight, scaled_bonus);
+          UpdateTableScore(continuation_table_score, bonus);
     }
   }
 
@@ -78,28 +75,34 @@ class CorrectionHistory {
                                         Score static_eval) const {
     const Score pawn_correction =
         (pawn_table_[state.turn][GetPawnTableIndex(state)] *
-         kPawnCorrectionWeight) / 256;
+         kPawnCorrectionWeight) /
+        256;
     const I32 non_pawn_white_correction =
         (non_pawn_table_[state.turn][Color::kWhite]
                         [GetNonPawnTableIndex(state, Color::kWhite)] *
-         kNonPawnCorrectionWeight) / 256;
+         kNonPawnCorrectionWeight) /
+        256;
     const I32 non_pawn_black_correction =
         (non_pawn_table_[state.turn][Color::kBlack]
                         [GetNonPawnTableIndex(state, Color::kBlack)] *
-         kNonPawnCorrectionWeight) / 256;
+         kNonPawnCorrectionWeight) /
+        256;
     const I32 minor_correction =
         (minor_table_[state.turn][GetMinorTableIndex(state)] *
-         kMinorCorrectionWeight) / 256;
+         kMinorCorrectionWeight) /
+        256;
     const I32 major_correction =
         (major_table_[state.turn][GetMajorTableIndex(state)] *
-         kMajorCorrectionWeight) / 256;
+         kMajorCorrectionWeight) /
+        256;
     const I32 continuation_correction = [&]() -> I32 {
       if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
         return (continuation_table_[state.turn][(stack - 2)->moved_piece]
                                    [(stack - 2)->move.GetTo()]
                                    [(stack - 1)->moved_piece]
                                    [(stack - 1)->move.GetTo()] *
-                kContinuationCorrectionWeight) / 256;
+                kContinuationCorrectionWeight) /
+               256;
       }
       return 0;
     }();
@@ -113,23 +116,9 @@ class CorrectionHistory {
         adjusted_score, -kMateInMaxPlyScore + 1, kMateInMaxPlyScore - 1);
   }
 
-
  private:
-  [[nodiscard]] int CalculateWeight(int depth) {
-    return std::min(1 + depth, 16);
-  }
-
-  [[nodiscard]] Score CalculateScaledBonus(Score static_eval,
-                                           Score search_score) {
-    return (search_score - static_eval) * 256;
-  }
-
-  [[nodiscard]] Score UpdateTableScore(Score current_score,
-                                       int weight,
-                                       Score scaled_bonus) {
-    const Score new_score =
-        (current_score * (256.0 - weight) + scaled_bonus * weight) / 256.0;
-    return std::clamp<Score>(new_score, 256 * -64, 256 * 64);
+  [[nodiscard]] Score UpdateTableScore(Score current_score, Score bonus) {
+    return history::ScaleBonus(current_score, bonus, kCorrectionHistoryGravity);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
