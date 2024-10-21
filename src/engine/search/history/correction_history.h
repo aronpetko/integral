@@ -29,12 +29,12 @@ class CorrectionHistory {
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
     if (!IsStaticEvalWithinBounds(
-            stack->static_eval, search_score, score_type)) {
+            stack->raw_static_eval, search_score, score_type)) {
       return;
     }
 
-    const auto bonus =
-        std::clamp((search_score - stack->static_eval) * depth / 8, -256, 256);
+    const auto bonus = std::clamp(
+        (search_score - stack->raw_static_eval) * depth / 8, -256, 256);
 
     // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
