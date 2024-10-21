@@ -26,15 +26,15 @@ class CorrectionHistory {
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    Score search_score,
+                   Score raw_static_eval,
                    TranspositionTableEntry::Flag score_type,
                    int depth) {
-    if (!IsStaticEvalWithinBounds(
-            stack->raw_static_eval, search_score, score_type)) {
+    if (!IsStaticEvalWithinBounds(raw_static_eval, search_score, score_type)) {
       return;
     }
 
-    const auto bonus = std::clamp(
-        (search_score - stack->raw_static_eval) * depth / 8, -256, 256);
+    const auto bonus =
+        std::clamp((search_score - raw_static_eval) * depth / 8, -256, 256);
 
     // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
