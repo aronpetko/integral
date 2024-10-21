@@ -118,7 +118,8 @@ class CorrectionHistory {
 
  private:
   [[nodiscard]] Score UpdateTableScore(Score current_score, Score bonus) {
-    return history::ScaleBonus(current_score, bonus, kCorrectionHistoryGravity);
+    return current_score +
+           history::ScaleBonus(current_score, bonus, kCorrectionHistoryGravity);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
