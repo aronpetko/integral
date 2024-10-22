@@ -38,7 +38,7 @@ void LoadFromIncBin() {
 
   // We transpose the output weights from Bullet since we get better cache hits
   // with this layout
-  MultiArray<I16, arch::kOutputBucketCount, 2, arch::kHiddenLayerSize>
+  /* MultiArray<I16, arch::kOutputBucketCount, 2, arch::kHiddenLayerSize>
       transposed_output_weights;
   for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
     for (Color perspective : {Color::kBlack, Color::kWhite}) {
@@ -47,9 +47,9 @@ void LoadFromIncBin() {
             raw_network->output_weights[perspective][weight][bucket];
       }
     }
-  }
+  } */
 
-  network->output_weights = transposed_output_weights;
+  network->output_weights = raw_network->output_weights;
   network->output_biases = raw_network->output_biases;
 }
 
