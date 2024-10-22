@@ -713,6 +713,8 @@ Score Search::PVSearch(Thread &thread,
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
+  bool did_lmp = false;
+  
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
@@ -743,7 +745,7 @@ Score Search::PVSearch(Thread &thread,
       const int lmp_threshold =
           static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
       if (is_quiet && moves_seen >= lmp_threshold) {
-        move_picker.SkipQuiets();
+        did_lmp = true, move_picker.SkipQuiets();
         continue;
       }
 
@@ -934,15 +936,14 @@ Score Search::PVSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
-          const int history_depth = depth + (moves_seen >= 10 && depth <= 4);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+                state, stack, depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, depth, quiets);
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, stack, history_depth);
+            history.capture_history->UpdateScore(state, stack, depth + did_lmp);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
