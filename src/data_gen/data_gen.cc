@@ -28,63 +28,105 @@ MoveList GetLegalMoves(Board &board) {
   return legal_move_list;
 }
 
-void FindStartingPosition(Board &board, I32 min_plies, I32 max_plies) {
+void FindStartingPosition(Board &board,
+                          const Config &config,
+                          const std::vector<std::string> &fens) {
   board.SetFromFen(fen::kStartFen);
 
-  I32 current_ply = 0, target_plies = RandomU64(min_plies, max_plies);
-  constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
-      35, 25, 25, 1, 14, 0};
+  I32 current_ply = 0;
+  I32 target_plies = RandomU64(config.min_move_plies, config.max_move_plies);
 
   while (current_ply < target_plies) {
-    auto legal_moves = GetLegalMoves(board);
+    Move random_move = Move::NullMove();
 
-    // If no legal moves are available, reset the board
-    if (legal_moves.Empty()) {
-      current_ply = 0;
-      board.SetFromFen(fen::kStartFen);
-      continue;
-    }
+    if (!fens.empty()) {
+      const auto fen = fens[RandomU64(0, fens.size() - 1)];
+      // Choose a random FEN from the fens list
+      board.SetFromFen(fen);
 
-    // Bucket for moves categorized by the piece type
-    std::array<MoveList, kNumPieceTypes> piece_moves;
-    std::vector<int> valid_pieces;
-    int total_probability = 0;
+      auto legal_moves = GetLegalMoves(board);
 
-    for (int i = 0; i < legal_moves.Size(); i++) {
-      const auto move = legal_moves[i];
-      if (eval::StaticExchange(move, 0, board.GetState())) {
-        const auto moving_piece = board.GetState().GetPieceType(move.GetFrom());
-        if (piece_moves[moving_piece].Empty()) {
-          valid_pieces.push_back(moving_piece);
-          total_probability += kPieceProbabilities[moving_piece];
-        }
-        piece_moves[moving_piece].Push(move);
+      // If no legal moves are available, reset the board
+      if (legal_moves.Empty()) {
+        current_ply = 0;
+        board.SetFromFen(fen::kStartFen);
+        continue;
       }
-    }
 
-    if (valid_pieces.empty()) {
-      current_ply = 0;
-      board.SetFromFen(fen::kStartFen);
-      continue;
-    }
-
-    // Select a piece type to move based on the weighted probability
-    int chosen_piece = valid_pieces.back();  // Default to last valid piece
-    if (valid_pieces.size() > 1) {
-      int random_value = RandomU64(0, total_probability - 1);
-      for (int piece : valid_pieces) {
-        if (random_value < kPieceProbabilities[piece]) {
-          chosen_piece = piece;
-          break;
+      // Gather all moves that don't lose material
+      MoveList non_losing_moves;
+      for (int i = 0; i < legal_moves.Size(); i++) {
+        const auto move = legal_moves[i];
+        if (eval::StaticExchange(move, 0, board.GetState())) {
+          non_losing_moves.Push(move);
         }
-        random_value -= kPieceProbabilities[piece];
       }
+
+      // All moves lose material, so skip this FEN
+      if (non_losing_moves.Empty()) {
+        continue;
+      }
+
+      random_move = non_losing_moves[RandomU64(0, non_losing_moves.Size() - 1)];
+    } else {
+      auto legal_moves = GetLegalMoves(board);
+
+      // If no legal moves are available, reset the board
+      if (legal_moves.Empty()) {
+        current_ply = 0;
+        board.SetFromFen(fen::kStartFen);
+        continue;
+      }
+
+      constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
+          35, 25, 25, 1, 14, 0};
+
+      // Bucket for moves categorized by the piece type
+      std::array<MoveList, kNumPieceTypes> piece_moves;
+      std::vector<int> valid_pieces;
+      int total_probability = 0;
+
+      // Gather all moves that don't lose material and count the total
+      // probability from the pieces that can move under our conditions
+      for (int i = 0; i < legal_moves.Size(); i++) {
+        const auto move = legal_moves[i];
+        if (eval::StaticExchange(move, 0, board.GetState())) {
+          const auto moving_piece =
+              board.GetState().GetPieceType(move.GetFrom());
+          if (piece_moves[moving_piece].Empty()) {
+            valid_pieces.push_back(moving_piece);
+            total_probability += kPieceProbabilities[moving_piece];
+          }
+          piece_moves[moving_piece].Push(move);
+        }
+      }
+
+      if (valid_pieces.empty()) {
+        current_ply = 0;
+        board.SetFromFen(fen::kStartFen);
+        continue;
+      }
+
+      // Select a piece type to move based on the weighted probability
+      int chosen_piece = valid_pieces.back();  // Default to last valid piece
+      if (valid_pieces.size() > 1) {
+        int random_value = RandomU64(0, total_probability - 1);
+        for (int piece : valid_pieces) {
+          if (random_value < kPieceProbabilities[piece]) {
+            chosen_piece = piece;
+            break;
+          }
+          random_value -= kPieceProbabilities[piece];
+        }
+      }
+
+      // Choose a random move for the selected piece type
+      auto &chosen_moves = piece_moves[chosen_piece];
+      random_move = chosen_moves[RandomU64(0, chosen_moves.Size() - 1)];
     }
 
-    // Choose a random move for the selected piece type
-    auto &chosen_moves = piece_moves[chosen_piece];
-    const auto random_move =
-        chosen_moves[RandomU64(0, chosen_moves.Size() - 1)];
+    if (random_move == Move::NullMove()) fmt::println("aaa");
+
     board.MakeMove(random_move);
 
     // Prevent the last ply from being a checkmate/stalemate
@@ -173,14 +215,15 @@ void PrintProgress(const Config &config, U64 completed, U64 written) {
 
 void GameLoop(const Config &config,
               int thread_id,
-              std::ostream &output_stream) {
+              std::ostream &output_stream,
+              const std::vector<std::string> &fens) {
   RandomSeed(thread_id, search::GetCurrentTime());
 
   constexpr int kWinThreshold = 2500;
   constexpr int kWinPliesThreshold = 5;
   constexpr int kDrawThreshold = 2;
   constexpr int kDrawPliesThreshold = 8;
-  constexpr int kInitialScoreThreshold = 1000;
+  constexpr int kInitialScoreThreshold = 600;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};
@@ -194,8 +237,7 @@ void GameLoop(const Config &config,
   const int workload = config.num_games / config.num_threads;
   for (int i = 0; i < workload && !stop; i++) {
     // Find a valid legal position to play the game from
-    FindStartingPosition(
-        thread->board, config.min_move_plies, config.max_move_plies);
+    FindStartingPosition(thread->board, config, fens);
 
     const auto &state = thread->board.GetState();
     formatter.SetPosition(state);
@@ -231,7 +273,8 @@ void GameLoop(const Config &config,
             ++win_plies, loss_plies = draw_plies = 0;
           } else if (score <= -kWinThreshold) {
             ++loss_plies, win_plies = draw_plies = 0;
-          } else if (std::abs(score) <= kDrawThreshold && state.half_moves >= 40) {
+          } else if (std::abs(score) <= kDrawThreshold &&
+                     state.half_moves >= 200) {
             ++draw_plies, win_plies = loss_plies = 0;
           }
 
@@ -306,34 +349,50 @@ void Generate(Config config) {
   std::vector<std::thread> threads;
   threads.reserve(config.num_threads);
 
+  // Parse FENs file for opening positions if it exists
+  std::vector<std::string> fens;
+  if (!config.fens_file.empty()) {
+    std::ifstream input_stream(config.fens_file);
+    std::string fen;
+    while (std::getline(input_stream, fen)) {
+      fens.emplace_back(fen);
+    }
+
+    std::random_device rd;
+    std::ranges::shuffle(fens, std::mt19937{rd()});
+  }
+
   std::vector<std::string> temp_files;
 
   for (int i = 0; i < config.num_threads; i++) {
     auto thread_path = path + fmt::format("_temp{}", i);
     temp_files.push_back(thread_path);
 
-    threads.emplace_back([&config, thread_path = std::move(thread_path), i]() {
-      std::ofstream output_stream(thread_path,
-                                  std::ios::binary | std::ios::app);
-      if (!output_stream) {
-        fmt::println("Error: Failed to open output file {} for thread {} '{}'",
-                     thread_path,
-                     i,
-                     strerror(errno));
-        return;
-      }
+    threads.emplace_back(
+        [&config, thread_path = std::move(thread_path), i, &fens]() {
+          std::ofstream output_stream(thread_path,
+                                      std::ios::binary | std::ios::app);
+          if (!output_stream) {
+            fmt::println(
+                "Error: Failed to open output file {} for thread {} '{}'",
+                thread_path,
+                i,
+                strerror(errno));
+            return;
+          }
 
-      GameLoop(config, i, output_stream);
+          GameLoop(config, i, output_stream, fens);
 
-      output_stream.close();
-      if (output_stream.good()) {
-        // Explicitly flush to ensure all data is written
-        output_stream.flush();
-      } else {
-        fmt::println(
-            "Error: Thread {} encountered an issue while closing the file", i);
-      }
-    });
+          output_stream.close();
+          if (output_stream.good()) {
+            // Explicitly flush to ensure all data is written
+            output_stream.flush();
+          } else {
+            fmt::println(
+                "Error: Thread {} encountered an issue while closing the file",
+                i);
+          }
+        });
   }
 
   for (auto &thread : threads) {
