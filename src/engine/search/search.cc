@@ -300,9 +300,6 @@ Score Search::QuiescentSearch(Thread &thread,
       if (eval::StaticExchange(move, -30, state)) {
         continue;
       }
-
-      // Only look at one good evasion when in check
-      if (stack->in_check) break;
     }
 
     // Prefetch the TT entry for the next move as early as possible
