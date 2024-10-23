@@ -621,7 +621,9 @@ Score Search::PVSearch(Thread &thread,
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / kNullMoveRe);
         const int reduction = std::clamp<int>(
-            depth / kNullMoveRf + kNullMoveRb + eval_reduction, 0, depth);
+            depth / kNullMoveRf + kNullMoveRb + eval_reduction + improving,
+            0,
+            depth);
 
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
