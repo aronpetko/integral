@@ -18,6 +18,9 @@ BUILD_DIR=build
 CMAKE_BUILD_OPTION ?= Release
 BUILD_TYPE ?= BUILD_NATIVE
 
+# Path to evaluation file (can be overridden from command line)
+EVALFILE ?= ${PROJECT_SOURCE_DIR}/integral.nnue
+
 # Executable name (can be overridden from command line)
 EXE ?= integral
 
@@ -37,7 +40,7 @@ else
 	@mkdir -p $(BUILD_DIR)
 endif
 	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE)...
-	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -D$(BUILD_TYPE)=ON ..
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON ..
 
 clean:
 ifeq ($(detected_OS),Windows)
