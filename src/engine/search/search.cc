@@ -297,7 +297,7 @@ Score Search::QuiescentSearch(Thread &thread,
       }
 
       // QS SEE Pruning: Prune moves that lose too much material
-      if (!eval::StaticExchange(move, -30, state)) {
+      if (!eval::StaticExchange(move, -100, state)) {
         continue;
       }
     }
