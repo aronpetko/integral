@@ -587,7 +587,7 @@ Score Search::PVSearch(Thread &thread,
           static_cast<int>(improving * 1.5 * kRevFutMargin) +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - futility_margin >= beta) {
-        return stack->eval;
+        return beta + (stack->eval - beta) / 3;
       }
     }
 
