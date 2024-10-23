@@ -605,8 +605,7 @@ Score Search::PVSearch(Thread &thread,
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
-        stack->static_eval >=
-            beta + kNullMoveBetaBase - kNullMoveBetaMult * depth &&
+        stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
         !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
@@ -619,11 +618,10 @@ Score Search::PVSearch(Thread &thread,
         stack->continuation_entry = nullptr;
 
         const int eval_reduction =
-            std::min<int>(2, (stack->eval - beta) / kNullMoveRe);
-        const int reduction = std::clamp<int>(
-            depth / kNullMoveRf + kNullMoveRb + eval_reduction + improving,
-            0,
-            depth);
+            std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
+        int reduction =
+            depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
+        reduction = std::clamp(reduction, 0, depth);
 
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(

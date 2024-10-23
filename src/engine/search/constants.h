@@ -27,11 +27,11 @@ TUNABLE(kRevFutHistoryDiv, 582, 200, 800, false);
 TUNABLE(kRazoringDepth, 4, 1, 8, true);
 TUNABLE(kRazoringMult, 439, 200, 700, false);
 
-TUNABLE(kNullMoveBetaBase, 143, 50, 250, false);
-TUNABLE(kNullMoveBetaMult, 25, 5, 30, false);
-TUNABLE(kNullMoveRb, 4, 1, 5, true);
-TUNABLE(kNullMoveRf, 4, 2, 8, true);
-TUNABLE(kNullMoveRe, 181, 100, 400, false);
+TUNABLE(kNmpBetaBase, 143, 50, 250, false);
+TUNABLE(kNmpBetaMult, 25, 5, 30, false);
+TUNABLE(kNmpRedBase, 4, 1, 5, true);
+TUNABLE(kNmpRedDiv, 3, 2, 8, true);
+TUNABLE(kNmpEvalDiv, 181, 100, 400, false);
 
 TUNABLE(kIirDepth, 4, 2, 8, true);
 
