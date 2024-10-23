@@ -19,24 +19,32 @@ option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
-# Define the location to download the .nnue file
-set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
-set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+# Allow user to specify EVALFILE through CMake
+set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 
-# Check if the .nnue file exists, if not, download it
-if (NOT EXISTS ${NNUE_PATH})
-    message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
-    file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
-            STATUS DOWNLOAD_STATUS
-            SHOW_PROGRESS
-            )
-    list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
-    if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
-        message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
+# Define the location to download the .nnue file if not provided
+if (NOT EVALFILE)
+    set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
+    set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+
+    # Check if the .nnue file exists, if not, download it
+    if (NOT EXISTS ${NNUE_PATH})
+        message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
+        file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
+                STATUS DOWNLOAD_STATUS
+                SHOW_PROGRESS
+                )
+        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
+        if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
+            message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
+        endif ()
+        set(EVALFILE ${NNUE_PATH})
+    else ()
+        message(STATUS "integral.nnue already exists. Skipping download.")
     endif ()
-else ()
-    message(STATUS "integral.nnue already exists. Skipping download.")
-endif ()
+else()
+    message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
+endif()
 
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
@@ -93,7 +101,7 @@ endif ()
 # Include third-party directories
 include_directories(third-party/fathom)
 include_directories(third-party/fmt/include)
-add_definitions(-DFMT_HEADER_ONLY -DEVALFILE="${NNUE_PATH}")
+add_definitions(-DFMT_HEADER_ONLY -DEVALFILE="${EVALFILE}")
 
 # Collect all source files
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
