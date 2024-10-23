@@ -641,6 +641,13 @@ Score Search::PVSearch(Thread &thread,
         }
       }
 
+      // Internal Iterative Reduction: Move ordering is expected to be worse with no
+      // TT move, so we save time on searching this position now
+      if ((in_pv_node || cut_node) && depth >= kIirDepth &&
+          !stack->excluded_tt_move && !tt_move) {
+        depth--;
+      }
+
       // ProbCut: When the current position's score is likely to cause a beta
       // cutoff, we attempt a shallower quiescent-like search and prune early if
       // possible
@@ -710,13 +717,6 @@ Score Search::PVSearch(Thread &thread,
         }
       }
     }
-  }
-
-  // Internal Iterative Reduction: Move ordering is expected to be worse with no
-  // TT move, so we save time on searching this position now
-  if ((in_pv_node || cut_node) && depth >= kIirDepth &&
-      !stack->excluded_tt_move && !tt_move) {
-    depth--;
   }
 
   // Keep track of the original alpha for bound determination when updating the
