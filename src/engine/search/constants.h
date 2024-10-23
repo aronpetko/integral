@@ -33,7 +33,7 @@ TUNABLE(kNullMoveRb, 4, 1, 5, true);
 TUNABLE(kNullMoveRf, 4, 2, 8, true);
 TUNABLE(kNullMoveRe, 181, 100, 400, false);
 
-TUNABLE(kIirDepth, 4, 2, 8, true);
+TUNABLE(kIirDepth, 2, 2, 8, true);
 
 TUNABLE(kLmpBase, 5.0, 1.5, 5.0, false);
 
