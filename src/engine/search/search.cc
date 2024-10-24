@@ -587,6 +587,10 @@ Score Search::PVSearch(Thread &thread,
           static_cast<int>(improving * 1.5 * kRevFutMargin) +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - futility_margin >= beta) {
+        // Return (eval + beta) / 2 as a balanced score: higher than the beta
+        // bound since we're confident position can't fall below it, but lower
+        // than the potentially optimistic static eval since we pruned without
+        // full search
         return (stack->eval + beta) / 2;
       }
     }
