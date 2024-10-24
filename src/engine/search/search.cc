@@ -843,9 +843,7 @@ Score Search::PVSearch(Thread &thread,
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta) {
-          extensions = -2 + in_pv_node;
-        } else if (cut_node) {
+        else if (tt_entry->score >= beta || cut_node) {
           extensions = -1;
         }
       }
@@ -883,7 +881,7 @@ Score Search::PVSearch(Thread &thread,
       reduction += !improving;
       reduction -=
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
-      reduction += stack->static_eval == raw_static_eval;
+      reduction += std::abs(stack->static_eval - raw_static_eval) < 5;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
