@@ -256,6 +256,18 @@ Score Search::QuiescentSearch(Thread &thread,
     raw_static_eval = tt_static_eval;
   } else {
     raw_static_eval = eval::Evaluate(board);
+
+    // Save the static eval in the TT if we have nothing yet
+    const TranspositionTableEntry new_tt_entry(
+        state.zobrist_key,
+        tt_depth,
+        TranspositionTableEntry::kNone,
+        kScoreNone,
+        raw_static_eval,
+        Move::NullMove(),
+        tt_was_in_pv);
+    transposition_table_.Save(
+        tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
   }
 
   if (!stack->in_check) {
@@ -271,20 +283,6 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // Early beta cutoff
     if (best_score >= beta) {
-      // Save the static eval in the TT if we have nothing yet
-      if (!tt_hit) {
-        const TranspositionTableEntry new_tt_entry(
-            state.zobrist_key,
-            tt_depth,
-            TranspositionTableEntry::kNone,
-            kScoreNone,
-            raw_static_eval,
-            Move::NullMove(),
-            tt_was_in_pv);
-        transposition_table_.Save(
-            tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
-      }
-
       return best_score;
     }
 
