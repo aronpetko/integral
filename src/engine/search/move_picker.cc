@@ -74,10 +74,7 @@ Move MovePicker::Next() {
       moves_idx_++;
 
       const bool loses_material = !eval::StaticExchange(
-          move,
-          type_ != MovePickerType::kNoisy ? -history_score / kSeeNoisyHistoryDiv
-                                          : see_threshold_,
-          state);
+          move, see_threshold_ - history_score / kSeeNoisyHistoryDiv, state);
       if (!loses_material && !move.IsUnderPromotion()) {
         return move;
       }
