@@ -843,7 +843,9 @@ Score Search::PVSearch(Thread &thread,
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta || cut_node) {
+        else if (tt_entry->score >= beta) {
+          extensions = -2 + in_pv_node;
+        } else if (cut_node) {
           extensions = -1;
         }
       }
@@ -952,14 +954,15 @@ Score Search::PVSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
+          const int history_depth = depth + (alpha > beta + 50);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, depth, stack->threats, quiets);
+                state, stack, history_depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
-                state, stack, depth, quiets);
+                state, stack, history_depth, quiets);
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, stack, depth);
+            history.capture_history->UpdateScore(state, stack, history_depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
