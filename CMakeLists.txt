@@ -21,11 +21,11 @@ option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
-
+set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
+set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
 # Define the location to download the .nnue file if not provided
 if (NOT EVALFILE)
-    set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
-    set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+
 
     # Check if the .nnue file exists, if not, download it
     if (NOT EXISTS ${NNUE_PATH})
