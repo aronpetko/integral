@@ -881,6 +881,7 @@ Score Search::PVSearch(Thread &thread,
       reduction += !improving;
       reduction -=
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
+      reduction += stack->static_eval == raw_static_eval;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
