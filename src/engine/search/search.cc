@@ -906,15 +906,15 @@ Score Search::PVSearch(Thread &thread,
           // Now do a full depth null-window search
           score = -PVSearch<NodeType::kNonPV>(
               thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+        }
 
-          if (is_quiet) {
-            const int bonus = score <= alpha
-                                ? history::HistoryPenalty(new_depth)
-                            : score >= beta ? history::HistoryBonus(new_depth)
-                                            : 0;
-            history.continuation_history->UpdateMoveScore(
-                board.GetStateHistory().Back(), move, bonus, stack);
-          }
+        if (is_quiet) {
+          const int bonus = score <= alpha
+                              ? history::HistoryPenalty(new_depth)
+                              : score >= beta ? history::HistoryBonus(new_depth)
+                                              : 0;
+          history.continuation_history->UpdateMoveScore(
+              board.GetStateHistory().Back(), move, bonus, stack);
         }
       }
     }
