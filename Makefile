@@ -29,9 +29,6 @@ PROFILE_DIR = $(BUILD_DIR)/profile
 CMAKE_BUILD_OPTION ?= Release
 BUILD_TYPE ?= BUILD_NATIVE
 
-# Path to evaluation file (can be overridden from command line)
-EVALFILE ?= ${PROJECT_SOURCE_DIR}/integral.nnue
-
 # Executable name (can be overridden from command line)
 EXE ?= integral
 
