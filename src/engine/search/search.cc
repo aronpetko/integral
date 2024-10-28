@@ -918,7 +918,7 @@ Score Search::PVSearch(Thread &thread,
           stack + 1,
           !cut_node);
 
-      if (reduction != 0 && is_quiet) {
+      if (!skipped_lmr && is_quiet) {
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
                         : score >= beta  ? history::HistoryBonus(new_depth)
                                          : 0;
