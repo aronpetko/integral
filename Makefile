@@ -56,9 +56,9 @@ pgo: pgo-clean
 	@$(MAKE) copy_executable_instrumented
 	@echo "Running benchmark to generate profile data..."
 ifeq ($(detected_OS),Windows)
-	@cd $(PROFILE_DIR) && ..\$(EXE)_instrumented$(EXE_EXT) bench
+	@cd $(PROFILE_DIR) && $(EXE)_instrumented$(EXE_EXT) bench
 else
-	@cd $(PROFILE_DIR) && ../$(EXE)_instrumented$(EXE_EXT) bench
+	@cd $(PROFILE_DIR) && $(EXE)_instrumented$(EXE_EXT) bench
 endif
 ifeq ($(CXX),clang++)
 	@llvm-profdata merge -output=$(PROFILE_DIR)/default.profdata $(PROFILE_DIR)/default.profraw
