@@ -29,6 +29,9 @@ PROFILE_DIR = $(BUILD_DIR)/profile
 CMAKE_BUILD_OPTION ?= Release
 BUILD_TYPE ?= BUILD_NATIVE
 
+# Path to evaluation file (can be overridden from command line)
+EVALFILE ?= ${PROJECT_SOURCE_DIR}/integral.nnue
+
 # Executable name (can be overridden from command line)
 EXE ?= integral
 
@@ -52,20 +55,18 @@ configure_cmake:
 pgo: pgo-clean
 	@echo "Building with PGO - Generation phase..."
 	@$(MAKE) configure_cmake CMAKE_EXTRA_FLAGS="-DENABLE_PGO=ON -DPGO_GENERATE=ON"
-	@$(MAKE) -C $(BUILD_DIR)
+	@$(MAKE) -C $(BUILD_DIR) clean
+	@$(MAKE) -C $(BUILD_DIR) VERBOSE=1
 	@$(MAKE) copy_executable_instrumented
 	@echo "Running benchmark to generate profile data..."
-ifeq ($(detected_OS),Windows)
-	@cd $(PROFILE_DIR) && ..\..\$(EXE)_instrumented$(EXE_EXT) bench
-else
-	@cd $(PROFILE_DIR) && ../../$(EXE)_instrumented$(EXE_EXT) bench
-endif
+	@cd $(PROFILE_DIR) && ../$(EXE)_instrumented$(EXE_EXT) bench
 ifeq ($(CXX),clang++)
 	@llvm-profdata merge -output=$(PROFILE_DIR)/default.profdata $(PROFILE_DIR)/default.profraw
 endif
 	@echo "Building with PGO - Use phase..."
 	@$(MAKE) configure_cmake CMAKE_EXTRA_FLAGS="-DENABLE_PGO=ON -DPGO_USE=ON"
-	@$(MAKE) -C $(BUILD_DIR)
+	@$(MAKE) -C $(BUILD_DIR) clean
+	@$(MAKE) -C $(BUILD_DIR) VERBOSE=1
 	@$(MAKE) copy_executable
 
 copy_executable_instrumented:
@@ -94,22 +95,13 @@ else
 endif
 
 pgo-clean:
-ifeq ($(detected_OS),Windows)
 	@$(call RM,$(PROFILE_DIR))
 	@$(call MKDIR,$(PROFILE_DIR))
-else
-	@$(call RM,$(PROFILE_DIR))
-	@$(call MKDIR,$(PROFILE_DIR))
-endif
+	@$(call RM,$(BUILD_DIR))
+	@$(call MKDIR,$(BUILD_DIR))
 
 clean: pgo-clean
-ifeq ($(detected_OS),Windows)
-	@$(call RM,$(BUILD_DIR))
 	@$(call RMFILES,$(EXE)*$(EXE_EXT))
-else
-	@$(call RM,$(BUILD_DIR))
-	@$(call RMFILES,$(EXE)*$(EXE_EXT))
-endif
 
 # Build variants
 debug:
