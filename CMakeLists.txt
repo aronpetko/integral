@@ -19,14 +19,57 @@ option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
+# PGO options
+option(ENABLE_PGO "Enable Profile Guided Optimization" OFF)
+option(PGO_GENERATE "Build with PGO generation" OFF)
+option(PGO_USE "Build with PGO use" OFF)
+
+# Define profile data directory and files
+set(PROFILE_DIR "${CMAKE_BINARY_DIR}/profile")
+if(MSVC)
+    set(PROFILE_DATA_PATH "${PROFILE_DIR}/integral.pgd")
+    set(PROFILE_RAW_PATH "${PROFILE_DIR}/integral.pgc")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(PROFILE_RAW_PATH "${PROFILE_DIR}/default.profraw")
+    set(PROFILE_DATA_PATH "${PROFILE_DIR}/default.profdata")
+else() # GCC
+    set(PROFILE_DATA_PATH "${PROFILE_DIR}")
+endif()
+
+# Configure PGO flags based on compiler
+if(ENABLE_PGO)
+    if(NOT EXISTS ${PROFILE_DIR})
+        file(MAKE_DIRECTORY ${PROFILE_DIR})
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        if(PGO_GENERATE)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate")
+        elseif(PGO_USE)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-use=${PROFILE_DATA_PATH}")
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        if(PGO_GENERATE)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-generate=${PROFILE_DATA_PATH}")
+        elseif(PGO_USE)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-use=${PROFILE_DATA_PATH}")
+        endif()
+    elseif(MSVC)
+        if(PGO_GENERATE)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GL /LTCG:PGINSTRUMENT")
+        elseif(PGO_USE)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GL /LTCG:PGOPTIMIZE")
+        endif()
+    endif()
+endif()
+
 # Allow user to specify EVALFILE through CMake
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+
 # Define the location to download the .nnue file if not provided
 if (NOT EVALFILE)
-
-
     # Check if the .nnue file exists, if not, download it
     if (NOT EXISTS ${NNUE_PATH})
         message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
