@@ -905,6 +905,7 @@ Score Search::PVSearch(Thread &thread,
       // full depth with a null window search if we don't expect it to be a PV
       // move
       skipped_lmr = needs_full_search = !in_pv_node || moves_seen >= 1;
+      reduction += 2 * !tt_move;
     }
 
     // Either the move has potential from a reduced depth search or it's not
