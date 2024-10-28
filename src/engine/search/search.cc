@@ -912,7 +912,7 @@ Score Search::PVSearch(Thread &thread,
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
           thread,
-          new_depth - (skipped_lmr && reduction > 4),
+          new_depth - (skipped_lmr && reduction > 3),
           -alpha - 1,
           -alpha,
           stack + 1,
