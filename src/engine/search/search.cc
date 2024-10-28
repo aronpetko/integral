@@ -516,8 +516,12 @@ Score Search::PVSearch(Thread &thread,
   if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
   } else if (!stack->excluded_tt_move) {
-    raw_static_eval =
-        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
+    if (tt_static_eval != kScoreNone) {
+      if (in_pv_node) board.GetAccumulator()->ApplyChanges();
+      raw_static_eval = tt_static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(board);
+    }
 
     // Save the static eval in the TT if we have nothing yet
     if (!tt_hit) {
@@ -530,8 +534,6 @@ Score Search::PVSearch(Thread &thread,
                                                  tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
-    } else if (in_pv_node) {
-      board.GetAccumulator()->ApplyChanges();
     }
 
     stack->static_eval = history.correction_history->CorrectStaticEval(
