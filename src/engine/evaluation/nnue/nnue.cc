@@ -57,7 +57,7 @@ Score Evaluate(Board &board) {
   auto &state = board.GetState();
   auto &accumulator = board.GetAccumulator();
 
-  accumulator->ApplyChanges(board);
+  accumulator->ApplyChanges();
 
   const auto turn = state.turn;
   const auto bucket = accumulator->GetOutputBucket(state);

@@ -366,7 +366,7 @@ class Accumulator {
         stack_[head_idx_ - 1].kings[FlipColor(change.sub_0.color)];
   }
 
-  void ApplyChanges(Board& board) {
+  void ApplyChanges() {
     for (Color perspective : {Color::kWhite, Color::kBlack}) {
       if (stack_[head_idx_].updated[perspective]) {
         continue;

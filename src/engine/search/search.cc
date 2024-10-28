@@ -530,6 +530,8 @@ Score Search::PVSearch(Thread &thread,
                                                  tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+    } else if (in_pv_node) {
+      board.GetAccumulator()->ApplyChanges();
     }
 
     stack->static_eval = history.correction_history->CorrectStaticEval(
@@ -541,6 +543,7 @@ Score Search::PVSearch(Thread &thread,
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
+      board.GetAccumulator()->ApplyChanges();
       stack->eval = stack->static_eval;
     }
   }
