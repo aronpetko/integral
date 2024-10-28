@@ -24,6 +24,11 @@ option(ENABLE_PGO "Enable Profile Guided Optimization" OFF)
 option(PGO_GENERATE "Build with PGO generation" OFF)
 option(PGO_USE "Build with PGO use" OFF)
 
+# Allow user to specify EVALFILE through CMake
+set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
+set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
+set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+
 # Define profile data directory and files
 set(PROFILE_DIR "${CMAKE_BINARY_DIR}/profile")
 if(MSVC)
@@ -34,6 +39,28 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(PROFILE_DATA_PATH "${PROFILE_DIR}/default.profdata")
 else() # GCC
     set(PROFILE_DATA_PATH "${PROFILE_DIR}")
+endif()
+
+# Define the location to download the .nnue file if not provided
+if (NOT EVALFILE)
+    # Check if the .nnue file exists, if not, download it
+    if (NOT EXISTS ${NNUE_PATH})
+        message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
+        file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
+                STATUS DOWNLOAD_STATUS
+                SHOW_PROGRESS
+                )
+        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
+        if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
+            message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
+        endif ()
+        set(EVALFILE ${NNUE_PATH})
+    else ()
+        message(STATUS "integral.nnue already exists. Skipping download.")
+        set(EVALFILE ${NNUE_PATH})
+    endif ()
+else()
+    message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
 endif()
 
 # Configure PGO flags based on compiler
@@ -52,7 +79,7 @@ if(ENABLE_PGO)
         if(PGO_GENERATE)
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-generate=${PROFILE_DATA_PATH}")
         elseif(PGO_USE)
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-use=${PROFILE_DATA_PATH}")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-use=${PROFILE_DATA_PATH} -fprofile-correction")
         endif()
     elseif(MSVC)
         if(PGO_GENERATE)
@@ -61,32 +88,6 @@ if(ENABLE_PGO)
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GL /LTCG:PGOPTIMIZE")
         endif()
     endif()
-endif()
-
-# Allow user to specify EVALFILE through CMake
-set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
-set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
-set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
-
-# Define the location to download the .nnue file if not provided
-if (NOT EVALFILE)
-    # Check if the .nnue file exists, if not, download it
-    if (NOT EXISTS ${NNUE_PATH})
-        message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
-        file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
-                STATUS DOWNLOAD_STATUS
-                SHOW_PROGRESS
-                )
-        list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
-        if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
-            message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
-        endif ()
-        set(EVALFILE ${NNUE_PATH})
-    else ()
-        message(STATUS "integral.nnue already exists. Skipping download.")
-    endif ()
-else()
-    message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
 endif()
 
 # Architecture-specific flags
@@ -122,7 +123,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-pthread")
 # Check for Link-Time Optimization (LTO) support
 check_ipo_supported(RESULT LTO_SUPPORTED)
 
-if (LTO_SUPPORTED)
+if (LTO_SUPPORTED AND NOT PGO_GENERATE)  # Don't enable LTO during profile generation
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
