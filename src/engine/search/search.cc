@@ -543,9 +543,10 @@ Score Search::PVSearch(Thread &thread,
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
-      board.GetAccumulator()->ApplyChanges();
       stack->eval = stack->static_eval;
     }
+  } else {
+    board.GetAccumulator()->ApplyChanges();
   }
 
   const auto &prev_stack = stack - 1;
