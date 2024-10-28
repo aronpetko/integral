@@ -24,7 +24,7 @@ int CalculateLMR(int depth, int moves, double base, double divisor) {
 }
 
 LateMoveReductionTable GenerateLateMoveReductionTable() {
-  LateMoveReductionTable table;
+  LateMoveReductionTable table{};
 
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
