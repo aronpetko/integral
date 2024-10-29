@@ -43,7 +43,7 @@ TUNABLE(kFutMarginMult, 93, 50, 200, false);
 TUNABLE(kFutMarginHistDiv, 147, 32, 256, false);
 
 TUNABLE(kSeePruneDepth, 8, 6, 12, true);
-TUNABLE(kSeeQuietThresh, -62, -100, -20, false);
+TUNABLE(kSeeQuietThresh, -80, -100, -20, false);
 TUNABLE(kSeeNoisyThresh, -115, -200, -50, false);
 TUNABLE(kSeeNoisyHistDiv, 151, 32, 256, false);
 
