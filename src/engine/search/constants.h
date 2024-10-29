@@ -20,7 +20,7 @@ TUNABLE(kEvalHistUpdateMult, 64, 20, 100, false);
 TUNABLE(kEvalHistUpdateMin, 65, 5, 150, false);
 TUNABLE(kEvalHistUpdateMax, 105, 40, 200, false);
 
-TUNABLE(kRevFutDepth, 6, 4, 10, true);
+TUNABLE(kRevFutDepth, 9, 4, 10, true);
 TUNABLE(kRevFutMargin, 65, 50, 150, false);
 TUNABLE(kRevFutHistoryDiv, 582, 200, 800, false);
 
@@ -37,13 +37,13 @@ TUNABLE(kIirDepth, 4, 2, 8, true);
 
 TUNABLE(kLmpBase, 5.0, 1.5, 5.0, false);
 
-TUNABLE(kFutPruneDepth, 8, 6, 12, true);
+TUNABLE(kFutPruneDepth, 10, 6, 12, true);
 TUNABLE(kFutMarginBase, 202, 100, 250, false);
 TUNABLE(kFutMarginMult, 93, 50, 200, false);
 TUNABLE(kFutMarginHistDiv, 147, 32, 256, false);
 
 TUNABLE(kSeePruneDepth, 8, 6, 12, true);
-TUNABLE(kSeeQuietThresh, -80, -100, -20, false);
+TUNABLE(kSeeQuietThresh, -62, -100, -20, false);
 TUNABLE(kSeeNoisyThresh, -115, -200, -50, false);
 TUNABLE(kSeeNoisyHistDiv, 151, 32, 256, false);
 

@@ -781,7 +781,8 @@ Score Search::PVSearch(Thread &thread,
                                   ? kSeeQuietThresh * depth
                                   : kSeeNoisyThresh * depth -
                                         stack->history_score / kSeeNoisyHistDiv;
-      if (!eval::StaticExchange(move, see_threshold, state)) {
+      if (depth <= kSeePruneDepth && moves_seen >= 1 &&
+          !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
 
