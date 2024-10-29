@@ -572,7 +572,8 @@ Score Search::PVSearch(Thread &thread,
   }
 
   if (past_stack && !stack->in_check) {
-    improving = stack->static_eval > past_stack->static_eval;
+    improving = stack->static_eval > past_stack->static_eval ||
+                stack->static_eval >= beta + 100;
   }
 
   (stack + 1)->ClearKillerMoves();

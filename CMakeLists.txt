@@ -23,10 +23,9 @@ option(BUILD_DEBUG "Build with debug information" OFF)
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/integral.nnue")
+
 # Define the location to download the .nnue file if not provided
 if (NOT EVALFILE)
-
-
     # Check if the .nnue file exists, if not, download it
     if (NOT EXISTS ${NNUE_PATH})
         message(STATUS "integral.nnue not found. Downloading from ${NNUE_URL}...")
@@ -38,10 +37,11 @@ if (NOT EVALFILE)
         if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
             message(FATAL_ERROR "Failed to download integral.nnue from ${NNUE_URL}")
         endif ()
-        set(EVALFILE ${NNUE_PATH})
     else ()
         message(STATUS "integral.nnue already exists. Skipping download.")
     endif ()
+
+    set(EVALFILE ${NNUE_PATH})
 else()
     message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
 endif()
