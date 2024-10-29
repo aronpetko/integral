@@ -40,11 +40,10 @@ if (NOT EVALFILE)
     else ()
         message(STATUS "integral.nnue already exists. Skipping download.")
     endif ()
+    set(EVALFILE ${NNUE_PATH})
 else()
     message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
 endif()
-
-set(EVALFILE ${NNUE_PATH})
 
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
