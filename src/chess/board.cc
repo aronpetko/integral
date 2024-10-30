@@ -368,17 +368,10 @@ bool Board::HasUpcomingRepetition(U16 ply) {
   };
 
   const auto occupied = state_.Occupied();
-  const auto original_key = state_.zobrist_key;
 
-  auto other = ~(original_key ^ keys_back(1));
-
-  for (int dist = 4; dist <= max_dist; dist += 2) {
-    const auto current_key = keys_back(dist);
-
-    other ^= ~(current_key ^ keys_back(dist - 1));
-    if (other) continue;
-
-    const auto key_diff = original_key ^ current_key;
+  for (int dist = 3; dist <= max_dist; dist += 2) {
+    const auto move_key = keys_back(dist);
+    const auto key_diff = state_.zobrist_key ^ move_key;
 
     U32 slot = search::cuckoo::H1(key_diff);
     if (key_diff != search::cuckoo::keys[slot]) {
@@ -391,7 +384,7 @@ bool Board::HasUpcomingRepetition(U16 ply) {
 
     const auto move = search::cuckoo::moves[slot];
     if ((occupied & move_gen::RayBetween(move.GetFrom(), move.GetTo())) == 0) {
-      if (ply >= dist) {
+      if (ply > dist) {
         return true;
       }
 
@@ -400,7 +393,15 @@ bool Board::HasUpcomingRepetition(U16 ply) {
         square = move.GetTo();
       }
 
-      return state_.GetPieceColor(square) == state_.turn;
+      if (state_.GetPieceColor(square) != state_.turn) {
+        continue;
+      }
+
+      for (int j = dist + 4; j <= max_dist; j += 2) {
+        if (keys_back(j) == keys_back(dist)) {
+          return true;
+        }
+      }
     }
   }
 
@@ -408,8 +409,19 @@ bool Board::HasUpcomingRepetition(U16 ply) {
 }
 
 bool Board::IsDraw(U16 ply) {
-  if (state_.fifty_moves_clock >= 100 || HasUpcomingRepetition(ply)) {
+  if (state_.fifty_moves_clock >= 100) {
     return true;
+  }
+
+  const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
+
+  bool hit_before_root = false;
+  for (int i = 4; i <= max_dist; i += 2) {
+    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
+      if (ply >= i) return true;
+      if (hit_before_root) return true;
+      hit_before_root = true;
+    }
   }
 
   // Insufficient material detection
