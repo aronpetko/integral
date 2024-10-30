@@ -434,7 +434,8 @@ Score Search::PVSearch(Thread &thread,
   // position
   TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node,
+       tt_noisy_move = false;
   Score tt_static_eval = kScoreNone;
 
   if (!stack->excluded_tt_move) {
@@ -447,6 +448,7 @@ Score Search::PVSearch(Thread &thread,
       tt_was_in_pv |= tt_entry->GetWasPV();
       tt_move = tt_entry->move;
       tt_static_eval = tt_entry->static_eval;
+      tt_noisy_move = tt_move.IsNoisy(state);
     }
 
     // Saved scores from non-PV nodes must fall within the current alpha/beta
@@ -789,7 +791,7 @@ Score Search::PVSearch(Thread &thread,
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
       const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth
+          is_quiet ? kHistThreshBase + kHistThreshMult * (depth + tt_noisy_move)
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
