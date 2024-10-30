@@ -4,19 +4,20 @@
 #include "accumulator.h"
 #include "arch.h"
 
-// This macro invocation will declare the following three variables
-//     const unsigned char        gEVALData[];   // a pointer to the embedded
-//     data const unsigned char *const gEVALEnd; // a marker to the end
-//     const unsigned int         gEVALSize;     // the size of the embedded
-//     file
-// Note that this does not work in Microsoft Visual Studio.
-#if !defined(_MSC_VER)
-INCBIN(EVAL, EVALFILE);
-#else
-const unsigned char gEVALData[1] = {};
-const unsigned char *const gEVALEnd = &gEVALData[1];
-const unsigned int gEVALSize = 1;
+#ifdef _MSC_VER
+#define SP_MSVC
+#pragma push_macro("_MSC_VER")
+#undef _MSC_VER
 #endif
+
+#include "../../../third-party/incbin/incbin.h"
+
+#ifdef SP_MSVC
+#pragma pop_macro("_MSC_VER")
+#undef SP_MSVC
+#endif
+
+INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 

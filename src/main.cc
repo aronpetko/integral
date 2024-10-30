@@ -1,4 +1,5 @@
 #include "engine/evaluation/nnue/nnue.h"
+#include "engine/search/cuckoo.h"
 #include "engine/uci/uci.h"
 #ifdef WIN32
 #include <windows.h>
@@ -20,6 +21,8 @@ int main(int arg_count, char **args) {
 #endif
 
   nnue::LoadFromIncBin();
+
+  search::cuckoo::Initialize();
 
   uci::AcceptCommands(arg_count, args);
 }
