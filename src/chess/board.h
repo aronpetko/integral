@@ -311,7 +311,7 @@ class Board {
 
   [[nodiscard]] U64 PredictKeyAfter(Move move);
 
-  [[nodiscard]] bool HasRepeated(U16 ply);
+  [[nodiscard]] bool HasUpcomingRepetition(U16 ply);
 
   [[nodiscard]] bool IsDraw(U16 ply);
 

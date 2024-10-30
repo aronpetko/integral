@@ -111,7 +111,7 @@ using namespace std;
 #endif
 
 // population count implementation
-#undef TB_SOFTWARE_POP_COUNT
+#define TB_SOFTWARE_POP_COUNT
 
 #if defined(TB_CUSTOM_POP_COUNT)
 #define popcount(x) TB_CUSTOM_POP_COUNT(x)
