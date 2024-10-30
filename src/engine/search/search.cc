@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <thread>
+#include <numeric>
 
 #include "../uci/reporter.h"
 #include "constants.h"
@@ -402,9 +403,10 @@ Score Search::PVSearch(Thread &thread,
   // The root node is also a PV node by default
   const bool in_root = stack->ply == 0;
 
-  if (!in_root && alpha < 0 && board.HasUpcomingRepetition(stack->ply)) {
-    alpha = 0;
-    if (alpha >= beta) {
+  // Detect if the position has a move that causes a repetition
+  if (!in_root && alpha < kDrawScore &&
+      board.HasUpcomingRepetition(stack->ply)) {
+    if ((alpha = kDrawScore) >= beta) {
       return alpha;
     }
   }
