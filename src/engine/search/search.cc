@@ -800,7 +800,7 @@ Score Search::PVSearch(Thread &thread,
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
       const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth / (1 + tt_noisy_move)
+          is_quiet ? kHistThreshBase + kHistThreshMult * (depth - 2 * tt_noisy_move)
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
