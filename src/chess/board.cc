@@ -1,6 +1,7 @@
 #include "board.h"
 
 #include "../engine/evaluation/nnue/accumulator.h"
+#include "../engine/search/cuckoo.h"
 #include "fen.h"
 #include "move.h"
 #include "move_gen.h"
@@ -356,15 +357,50 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasRepeated(U16 ply) {
+bool Board::HasUpcomingRepetition(U16 ply) {
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
+  if (max_dist < 3) {
+    return false;
+  }
 
-  bool hit_before_root = false;
-  for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
-      if (ply >= i) return true;
-      if (hit_before_root) return true;
-      hit_before_root = true;
+  const auto keys_back = [this](int dist) {
+    return history_[history_.Size() - dist].zobrist_key;
+  };
+
+  const auto occupied = state_.Occupied();
+  const auto original_key = state_.zobrist_key;
+
+  auto other = ~(original_key ^ keys_back(1));
+
+  for (int dist = 4; dist <= max_dist; dist += 2) {
+    const auto current_key = keys_back(dist);
+
+    other ^= ~(current_key ^ keys_back(dist - 1));
+    if (other) continue;
+
+    const auto key_diff = original_key ^ current_key;
+
+    U32 slot = search::cuckoo::H1(key_diff);
+    if (key_diff != search::cuckoo::keys[slot]) {
+      slot = search::cuckoo::H2(key_diff);
+    }
+
+    if (key_diff != search::cuckoo::keys[slot]) {
+      continue;
+    }
+
+    const auto move = search::cuckoo::moves[slot];
+    if ((occupied & move_gen::RayBetween(move.GetFrom(), move.GetTo())) == 0) {
+      if (ply >= dist) {
+        return true;
+      }
+
+      auto square = move.GetFrom();
+      if (state_.GetPieceType(square) == kNone) {
+        square = move.GetTo();
+      }
+
+      return state_.GetPieceColor(square) == state_.turn;
     }
   }
 
@@ -372,7 +408,7 @@ bool Board::HasRepeated(U16 ply) {
 }
 
 bool Board::IsDraw(U16 ply) {
-  if (state_.fifty_moves_clock >= 100 || HasRepeated(ply)) {
+  if (state_.fifty_moves_clock >= 100 || HasUpcomingRepetition(ply)) {
     return true;
   }
 
@@ -456,23 +492,21 @@ void Board::CalculateThreats() {
   state_.threatened_by[kRook] = 0;
 
   for (Square square : state_.Bishops(them) | queens) {
-    state_.threatened_by[(queens.IsSet(square) ? kQueen : kBishop)]
-      |= move_gen::BishopMoves(square, occupied);
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kBishop)] |=
+        move_gen::BishopMoves(square, occupied);
   }
 
   for (Square square : state_.Rooks(them) | queens) {
-    state_.threatened_by[(queens.IsSet(square) ? kQueen : kRook)]
-      |= move_gen::RookMoves(square, occupied);
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kRook)] |=
+        move_gen::RookMoves(square, occupied);
   }
 
-  state_.threatened_by[kKing] = move_gen::KingAttacks(state_.King(them).GetLsb());
+  state_.threatened_by[kKing] =
+      move_gen::KingAttacks(state_.King(them).GetLsb());
 
-  state_.threats = state_.threatened_by[kPawn] |
-      state_.threatened_by[kKnight] |
-      state_.threatened_by[kBishop] |
-      state_.threatened_by[kRook] |
-      state_.threatened_by[kQueen] |
-      state_.threatened_by[kKing];
+  state_.threats = state_.threatened_by[kPawn] | state_.threatened_by[kKnight] |
+                   state_.threatened_by[kBishop] | state_.threatened_by[kRook] |
+                   state_.threatened_by[kQueen] | state_.threatened_by[kKing];
 
   CalculateKingThreats();
 }
@@ -522,10 +556,12 @@ BitBoard Board::GetOpponentWinningCaptures() const {
   const BitBoard minors = rooks | state_.Knights(us) | state_.Bishops(us);
 
   const BitBoard pawn_threats = state_.threatened_by[kPawn];
-  const BitBoard minor_threats = pawn_threats | state_.threatened_by[kKnight] | state_.threatened_by[kBishop];
+  const BitBoard minor_threats = pawn_threats | state_.threatened_by[kKnight] |
+                                 state_.threatened_by[kBishop];
   const BitBoard rook_threats = minor_threats | state_.threatened_by[kRook];
 
-  return (queens & rook_threats) | (rooks & minor_threats) | (minors & pawn_threats);
+  return (queens & rook_threats) | (rooks & minor_threats) |
+         (minors & pawn_threats);
 }
 
 void Board::PrintPieces() {
