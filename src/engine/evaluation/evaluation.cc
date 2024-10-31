@@ -5,8 +5,8 @@
 namespace eval {
 
 Score Evaluate(Board &board) {
-  return (200 - board.GetState().fifty_moves_clock) * nnue::Evaluate(board) /
-         200;
+  return (250 - board.GetState().fifty_moves_clock) * nnue::Evaluate(board) /
+         250;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
