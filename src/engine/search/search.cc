@@ -1,8 +1,8 @@
 #include "search.h"
 
 #include <algorithm>
-#include <thread>
 #include <numeric>
+#include <thread>
 
 #include "../uci/reporter.h"
 #include "constants.h"
@@ -786,10 +786,9 @@ Score Search::PVSearch(Thread &thread,
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
-      const int see_threshold = is_quiet
-                                  ? kSeeQuietThresh * depth
-                                  : kSeeNoisyThresh * depth -
-                                        stack->history_score / kSeeNoisyHistDiv;
+      const int see_threshold =
+          (is_quiet ? kSeeQuietThresh * depth : kSeeNoisyThresh * depth) -
+          stack->history_score / kSeePruneHistDiv;
       if (depth <= kSeePruneDepth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
