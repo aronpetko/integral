@@ -1,8 +1,12 @@
-## <div align="center"><img src="https://i.imgur.com/LBxG3Ih.png" alt="Integral Chess Engine" width="200" height="200"/></div>
-# <div align="center">Integral</div>
-Integral is a top chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming. \
-\
-**Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)**
+<div align="center">
+<img src="https://i.imgur.com/LBxG3Ih.png" alt="Integral Chess Engine" width="150" height="150"/>
+<h3>Integral</h3>
+Integral is a top chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming.
+<br>
+<br>
+<strong>Play against Integral on <a href="https://lichess.org/@/IntegralBot">Lichess</a></strong>
+
+</div>
 
 ## Search
 Integral implements the widely adopted negamax search approach with alpha-beta pruning, and alongside it the various search heuristics that it enables. It utilizes the Lazy SMP approach for multi-threaded search, and has been proven to scale very well at higher thread counts compared to other alpha-beta chess engines.
