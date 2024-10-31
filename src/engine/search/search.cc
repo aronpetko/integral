@@ -1,8 +1,8 @@
 #include "search.h"
 
 #include <algorithm>
-#include <thread>
 #include <numeric>
+#include <thread>
 
 #include "../uci/reporter.h"
 #include "constants.h"
@@ -44,6 +44,14 @@ inline LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
 
 }  // namespace tables
+
+Score RandomDrawScore(Thread &thread) {
+  return 2 - (thread.nodes_searched % 4);
+}
+
+Score PrintableScore(Score score) {
+  return std::abs(score) <= 2 ? 0 : score;
+}
 
 Search::Search(Board &board)
     : board_(board),
@@ -211,7 +219,7 @@ Score Search::QuiescentSearch(Thread &thread,
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
   if (board.IsDraw(stack->ply)) {
-    return kDrawScore;
+    return RandomDrawScore(thread);
   }
 
   stack->in_check = state.InCheck();
@@ -406,7 +414,7 @@ Score Search::PVSearch(Thread &thread,
   // Detect if the position has a move that causes a repetition
   if (!in_root && alpha < kDrawScore &&
       board.HasUpcomingRepetition(stack->ply)) {
-    if ((alpha = kDrawScore) >= beta) {
+    if ((alpha = RandomDrawScore(thread)) >= beta) {
       return alpha;
     }
   }
@@ -421,7 +429,7 @@ Score Search::PVSearch(Thread &thread,
 
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
-      return kDrawScore;
+      return RandomDrawScore(thread);
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
@@ -485,7 +493,7 @@ Score Search::PVSearch(Thread &thread,
         score = -kTBWinScore + stack->ply;
         tt_flag = TranspositionTableEntry::kUpperBound;
       } else {
-        score = kDrawScore;
+        score = RandomDrawScore(thread);
         tt_flag = TranspositionTableEntry::kExact;
       }
 
