@@ -580,9 +580,8 @@ Score Search::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (!stack->in_check) {
-    improving = (past_stack && stack->static_eval > past_stack->static_eval) ||
-                stack->static_eval >= beta + 75;
+  if (!stack->in_check && past_stack) {
+    improving = stack->static_eval > past_stack->static_eval;
   }
 
   (stack + 1)->ClearKillerMoves();
@@ -604,6 +603,8 @@ Score Search::PVSearch(Thread &thread,
         return (stack->eval + beta) / 2;
       }
     }
+
+    improving |= stack->static_eval - 100 >= beta;
 
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
