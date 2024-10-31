@@ -1,6 +1,7 @@
 #include "search.h"
 
 #include <algorithm>
+#include <numeric>
 #include <thread>
 
 #include "../uci/reporter.h"
@@ -396,6 +397,20 @@ Score Search::PVSearch(Thread &thread,
 
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
+  // A principal variation (PV) node falls inside the [alpha, beta] window and
+  // is one which has most of its child moves searched
+  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+  // The root node is also a PV node by default
+  const bool in_root = stack->ply == 0;
+
+  // Detect if the position has a move that causes a repetition
+  if (!in_root && alpha < kDrawScore &&
+      board.HasUpcomingRepetition(stack->ply)) {
+    if ((alpha = kDrawScore) >= beta) {
+      return alpha;
+    }
+  }
+
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
   if (depth == 0) {
@@ -403,12 +418,6 @@ Score Search::PVSearch(Thread &thread,
   }
 
   stack->in_check = state.InCheck();
-
-  // A principal variation (PV) node falls inside the [alpha, beta] window and
-  // is one which has most of its child moves searched
-  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
-  // The root node is also a PV node by default
-  const bool in_root = stack->ply == 0;
 
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
@@ -571,9 +580,9 @@ Score Search::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (past_stack && !stack->in_check) {
-    improving = stack->static_eval > past_stack->static_eval ||
-                stack->static_eval >= beta + 100;
+  if (!stack->in_check) {
+    improving = (past_stack && stack->static_eval > past_stack->static_eval) ||
+                stack->static_eval >= beta + 75;
   }
 
   (stack + 1)->ClearKillerMoves();

@@ -2,7 +2,6 @@
 #define INTEGRAL_NNUE_H
 
 #include "../../../chess/board.h"
-#include "../../../third-party/incbin/incbin.h"
 #include "../../../utils/multi_array.h"
 #include "../../../utils/types.h"
 #include "arch.h"

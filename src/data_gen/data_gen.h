@@ -2,6 +2,7 @@
 #define INTEGRAL_DATAGEN_H
 
 #include <atomic>
+#include <string>
 
 #include "../utils/types.h"
 
