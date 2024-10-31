@@ -604,7 +604,9 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    improving |= stack->static_eval - 100 >= beta;
+    if (!stack->in_check) {
+      improving |= stack->static_eval - 100 >= beta;
+    }
 
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
