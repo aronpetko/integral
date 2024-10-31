@@ -1,5 +1,5 @@
-## <p align="center"><img src="https://i.imgur.com/Py8am6G.png" alt="Integral Chess Engine" width="30%" height="30%"/></p>
-
+## <div align="center"><img src="https://i.imgur.com/LBxG3Ih.png" alt="Integral Chess Engine" width="200" height="200"/></div>
+# <div align="center">Integral</div>
 Integral is a top chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming. \
 \
 **Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)**
@@ -11,8 +11,8 @@ Integral implements the widely adopted negamax search approach with alpha-beta p
 Integral utilizes an efficiently updatable neural network (NNUE) for its evaluation function.
 
 ### Architecture
-Integral's neural network is a horizontally mirrored perspective network, containing four king input buckets, eight output buckets, and a hidden layer of 1280 neurons.
-`(768x4 -> 1280)x2 -> 1x8`
+Integral's neural network is a horizontally mirrored perspective network, containing nine king input buckets, eight output buckets, and a hidden layer of 1536 neurons.
+`(768x9 -> 1536)x2 -> 1x8`
 
 ### Data Generation Process
 This neural network is trained on millions of self-play games. Each self-play game has a unique opening of six to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. Additionally, all moves that lose material are eliminated. This approach intuitively leaves the openings to be entirely positional in nature and thus, hopefully makes Integral's neural network able to learn more positional knowledge. Lastly, 5-man Syzygy endgame tables are used in both the search and for game adjudication. 
