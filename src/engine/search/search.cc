@@ -1,8 +1,8 @@
 #include "search.h"
 
 #include <algorithm>
-#include <thread>
 #include <numeric>
+#include <thread>
 
 #include "../uci/reporter.h"
 #include "constants.h"
@@ -1015,17 +1015,19 @@ Score Search::PVSearch(Thread &thread,
       tt_flag = TranspositionTableEntry::kUpperBound;
     }
 
-    // Attempt to update the transposition table with the evaluation of this
-    // position
-    const TranspositionTableEntry new_tt_entry(state.zobrist_key,
-                                               depth,
-                                               tt_flag,
-                                               best_score,
-                                               raw_static_eval,
-                                               best_move,
-                                               tt_was_in_pv);
-    transposition_table_.Save(
-        tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+    if (!in_root) {
+      // Attempt to update the transposition table with the evaluation of this
+      // position
+      const TranspositionTableEntry new_tt_entry(state.zobrist_key,
+                                                 depth,
+                                                 tt_flag,
+                                                 best_score,
+                                                 raw_static_eval,
+                                                 best_move,
+                                                 tt_was_in_pv);
+      transposition_table_.Save(
+          tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+    }
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
