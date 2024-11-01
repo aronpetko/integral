@@ -71,20 +71,28 @@ else
 endif
 
 debug:
-	@echo Building with debug...
+	@echo Building with debug
 	@$(MAKE) all BUILD_TYPE=BUILD_DEBUG
 
-x86_64_popcnt:
-	@echo Building with x86-64 optimizations...
-	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_POPCNT
+vnni512:
+	@echo Building with BUILD_VNNI512
+	@$(MAKE) all BUILD_TYPE=BUILD_VNNI512
 
-x86_64_modern:
-	@echo Building with x86-64 modern optimizations...
-	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_MODERN
+avx512:
+	@echo Building with BUILD_AVX512
+	@$(MAKE) all BUILD_TYPE=BUILD_AVX512
 
-x86_64_bmi2:
-	@echo Building with x86-64 bmi2 optimizations...
-	@$(MAKE) all BUILD_TYPE=BUILD_X86_64_BMI2
+avx2_bmi2:
+	@echo Building with BUILD_AVX2_BMI2
+	@$(MAKE) all BUILD_TYPE=BUILD_AVX2_BMI2
+
+avx2:
+	@echo Building with BUILD_AVX2
+	@$(MAKE) all BUILD_TYPE=BUILD_AVX2
+
+sse41_popcnt:
+	@echo Building with BUILD_SSE41_POPCNT
+	@$(MAKE) all BUILD_TYPE=BUILD_SSE41_POPCNT
 
 native:
 	@echo Building with native optimizations...

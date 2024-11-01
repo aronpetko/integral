@@ -33,5 +33,5 @@ To compile Integral, enter the following commands in a terminal:
 ```
 git clone https://github.com/aronpetko/integral
 cd integral
-make <native|x86_64_bmi2|x86_64_modern|x86_64>
+make [native | vnni512 | avx512 | avx2_bmi2 | avx2 | sse41_popcnt]
 ```
