@@ -65,7 +65,10 @@ TUNABLE(kSeDoubleMargin, 13, 0, 30, false);
 TUNABLE(kSeTripleMargin, 104, 30, 250, false);
 TUNABLE(kSeDepthExtensionDepth, 11, 0, 15, false);
 
+TUNABLE(kProbcutDepth, 5, 1, 10, false);
 TUNABLE(kProbcutBetaDelta, 244, 100, 400, false);
+
+TUNABLE(kHistoryBonusMargin, 50, 30, 150, false);
 
 }  // namespace search
 

@@ -403,7 +403,8 @@ Score Search::PVSearch(Thread &thread,
   // The root node is also a PV node by default
   const bool in_root = stack->ply == 0;
 
-  // Detect if the position has a move that causes a repetition
+  // If the position has a move that causes a repetition, and we are losing,
+  // then we can cut off early since we can secure a draw
   if (!in_root && alpha < kDrawScore &&
       board.HasUpcomingRepetition(stack->ply)) {
     if ((alpha = kDrawScore) >= beta) {
@@ -656,7 +657,7 @@ Score Search::PVSearch(Thread &thread,
       // cutoff, we attempt a shallower quiescent-like search and prune early if
       // possible
       const Score pc_beta = beta + kProbcutBetaDelta;
-      if (depth >= 5 && std::abs(beta) < kTBWinInMaxPlyScore &&
+      if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - raw_static_eval;
@@ -964,7 +965,8 @@ Score Search::PVSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
-          const int history_depth = depth + (alpha > beta + 50);
+          const int history_depth =
+              depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
