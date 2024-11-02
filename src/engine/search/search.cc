@@ -444,7 +444,8 @@ Score Search::PVSearch(Thread &thread,
   // position
   TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node,
+       tt_noisy_move = false;
   Score tt_static_eval = kScoreNone;
 
   if (!stack->excluded_tt_move) {
@@ -456,6 +457,7 @@ Score Search::PVSearch(Thread &thread,
       can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
       tt_was_in_pv |= tt_entry->GetWasPV();
       tt_move = tt_entry->move;
+      tt_noisy_move = tt_move.IsNoisy(state);
       tt_static_eval = tt_entry->static_eval;
     }
 
@@ -764,6 +766,7 @@ Score Search::PVSearch(Thread &thread,
       reduction -= stack->history_score /
                    static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
+      reduction += tt_noisy_move;
       const int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
@@ -777,7 +780,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = kFutMarginBase + kFutMarginMult * lmr_depth +
+      const int futility_margin = kFutMarginBase +
+                                  kFutMarginMult * lmr_depth +
                                   stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->eval + futility_margin < alpha) {
