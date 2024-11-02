@@ -886,7 +886,7 @@ Score Search::PVSearch(Thread &thread,
     if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction -= tt_was_in_pv + in_pv_node;
+      reduction += 2 * !tt_was_in_pv;
       reduction += 2 * cut_node;
       reduction -= gives_check;
       reduction -= stack->history_score /
@@ -896,7 +896,6 @@ Score Search::PVSearch(Thread &thread,
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
       reduction -=
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
-      reduction += tt_noisy_move;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
