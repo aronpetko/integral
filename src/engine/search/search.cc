@@ -204,14 +204,14 @@ Score Search::QuiescentSearch(Thread &thread,
 
   stack->pv.Clear();
 
-  if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
-  }
-
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
   if (board.IsDraw(stack->ply)) {
     return kDrawScore;
+  }
+
+  if (stack->ply >= kMaxPlyFromRoot - 1) {
+    return stack->in_check ? 0 : eval::Evaluate(board);
   }
 
   stack->in_check = state.InCheck();
@@ -391,10 +391,6 @@ Score Search::PVSearch(Thread &thread,
 
   stack->pv.Clear();
 
-  if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
-  }
-
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
@@ -423,6 +419,10 @@ Score Search::PVSearch(Thread &thread,
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
       return kDrawScore;
+    }
+
+    if (stack->ply >= kMaxPlyFromRoot - 1) {
+      return stack->in_check ? 0 : eval::Evaluate(board);
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
