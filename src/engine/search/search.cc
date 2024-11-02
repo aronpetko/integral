@@ -886,7 +886,7 @@ Score Search::PVSearch(Thread &thread,
     if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction += !in_pv_node - tt_was_in_pv;
+      reduction -= tt_was_in_pv + in_pv_node;
       reduction += 2 * cut_node;
       reduction -= gives_check;
       reduction -= stack->history_score /
