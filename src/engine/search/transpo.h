@@ -115,7 +115,7 @@ struct TranspositionTableCluster {
   U16 padding;
 };
 
-constexpr int kMaxTTAge = 64;
+constexpr int kMaxTTAge = 32;
 
 class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  public:
