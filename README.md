@@ -1,38 +1,37 @@
-## <p align="center"><img src="https://i.imgur.com/Py8am6G.png" alt="Integral Chess Engine" width="30%" height="30%"/></p>
-Integral is a [UCI-compliant](https://en.wikipedia.org/wiki/Universal_Chess_Interface) chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming. \
-\
-**Play against Integral on [Lichess](https://lichess.org/@/IntegralBot)**
+<div align="center">
+<img src="https://i.imgur.com/LBxG3Ih.png" alt="Integral Chess Engine" width="150" height="150"/>
+<h3>Integral</h3>
+Integral is a top chess engine developed in C++. It is a personal project developed with the goal of meshing my admiration for chess with programming.
+<br>
+<br>
+<strong>Play against Integral on <a href="https://lichess.org/@/IntegralBot">Lichess</a></strong>
 
-## Usage
-Integral supports the following UCI commands (not all listed):
-- `uci` Prints information about Integral and replies with `uciok`
-- `ucinewgame` Sets up a new game and clears the transposition table
-- `isready` Replies with `readyok`
-- `position startpos` Sets the board state and pieces to the starting position
-- `position fen <string>` Sets the board state and pieces to the given [FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation) string
-- `position fen <string> moves <e2e4 e7e5 ...>` Plays the given moves from the FEN position
-- `go depth <depth>` Searches up to the given depth and replies with `bestmove <move>`
-- `go infinite` Searches up to the maximum search depth (100) and replies with `bestmove <move>`
-- `go wtime <time> btime <time> winc <inc> binc <inc>` Searches for and replies with the best move given within the time/increment allotted. The amount of time used is managed by an internal time management system to ensure the engine doesn't run out of time
-- `go movetime <time>` Searches for the best move using the full time allotted
-- `go [infinite]` Searches for an infinite amount of time
-- `go perft <depth>` Runs a split perft test on the current position up the specified depth
+</div>
 
-Integral also supports some non-standard commands:
-- `test [see|perft]` Runs tests on static exchange evaluation (SEE) and/or move generation (perft)
-- `bench [depth]` Performs a search on the current position up to the specified depth and returns the node count
+## Search
+Integral implements the widely adopted negamax search approach with alpha-beta pruning, and alongside it the various search heuristics that it enables. It utilizes the Lazy SMP approach for multi-threaded search, and has been proven to scale very well at higher thread counts compared to other alpha-beta chess engines.
 
-## Compilation
+## Evaluation
+Integral utilizes an efficiently updatable neural network (NNUE) for its evaluation function.
+
+### Architecture
+Integral's neural network is a horizontally mirrored perspective network, containing nine king input buckets, eight output buckets, and a hidden layer of 1536 neurons.
+`(768x9 -> 1536)x2 -> 1x8`
+
+### Data Generation Process
+This neural network is trained on millions of self-play games. Each self-play game has a unique opening of six to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. Additionally, all moves that lose material are eliminated. This approach intuitively leaves the openings to be entirely positional in nature and thus, hopefully makes Integral's neural network able to learn more positional knowledge. Lastly, 5-man Syzygy endgame tables are used in both the search and for game adjudication. 
+
+### Training Process
+The first iteration of Integral's neural network was trained on data from version 4, which had a powerful hand-crafted evaluation (HCE). Each iteration of Integral's neural network since then has been generated on a fresh dataset using the prior network.
+
+## Compiling Integral
 > [!NOTE]  
-> Integral must be compiled with either GCC v13 (or higher) or Clang v15 (or higher)
+> Integral should be compiled with GCC v13 (or higher)
 
-Integral provides a Makefile for compatibility with CMake and ease of use.\
+Integral provides a Makefile for compilation, but you can use CMake as well.\
 To compile Integral, enter the following commands in a terminal:
-```shell
+```
 git clone https://github.com/aronpetko/integral
 cd integral
-make <native|x86_64_bmi2|x86_64_modern|x86_64>
+make [native | vnni512 | avx512 | avx2_bmi2 | avx2 | sse41_popcnt]
 ```
-
-## Rating
-Integral is estimated to be around 3400 [CCRL](https://www.computerchess.org.uk/ccrl/) Blitz, which puts it at a super-human level.

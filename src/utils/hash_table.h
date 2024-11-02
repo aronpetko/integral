@@ -25,7 +25,7 @@ inline void* alligned_alloc(size_t alignment, size_t bytes) {
 #elif defined(__GNUC__)
   ptr = std::aligned_alloc(alignment, bytes);
 #else
-#error "Compiler not supported"
+  ptr = std::malloc(bytes);
 #endif
 
 #if defined(__linux__)

@@ -1,28 +1,27 @@
 #include "nnue.h"
 
+#include "../../../utils/simd.h"
 #include "accumulator.h"
 #include "arch.h"
 
-#if defined(SIMD)
-#include "../../../utils/simd.h"
+#ifdef _MSC_VER
+#define SP_MSVC
+#pragma push_macro("_MSC_VER")
+#undef _MSC_VER
 #endif
 
-// This macro invocation will declare the following three variables
-//     const unsigned char        gEVALData[];  // a pointer to the embedded
-//     data const unsigned char *const gEVALEnd;     // a marker to the end
-//     const unsigned int         gEVALSize;    // the size of the embedded file
-// Note that this does not work in Microsoft Visual Studio.
-#if !defined(_MSC_VER)
-INCBIN(EVAL, EVALFILE);
-#else
-const unsigned char gEVALData[1] = {};
-const unsigned char* const gEVALEnd = &gEVALData[1];
-const unsigned int gEVALSize = 1;
+#include "../../../third-party/incbin/incbin.h"
+
+#ifdef SP_MSVC
+#pragma pop_macro("_MSC_VER")
+#undef SP_MSVC
 #endif
+
+INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
-#if !defined(SIMD)
+#if !BUILD_HAS_SIMD
 I32 SquaredCReLU(I16 value) {
   const I32 clipped = std::clamp<I32>(
       static_cast<I32>(value), 0, arch::kHiddenLayerQuantization);
@@ -31,11 +30,12 @@ I32 SquaredCReLU(I16 value) {
 #endif
 
 void LoadFromIncBin() {
-  RawNetwork raw_network;
-  std::memcpy(&raw_network, gEVALData, sizeof(raw_network));
+  auto raw_network = std::make_unique<RawNetwork>();
+  std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
 
-  network.feature_weights = raw_network.feature_weights;
-  network.feature_biases = raw_network.feature_biases;
+  network = std::make_unique<TransposedNetwork>();
+  network->feature_weights = raw_network->feature_weights;
+  network->feature_biases = raw_network->feature_biases;
 
   // We transpose the output weights from Bullet since we get better cache hits
   // with this layout
@@ -45,22 +45,27 @@ void LoadFromIncBin() {
     for (Color perspective : {Color::kBlack, Color::kWhite}) {
       for (int weight = 0; weight < arch::kHiddenLayerSize; weight++) {
         transposed_output_weights[bucket][perspective][weight] =
-            raw_network.output_weights[perspective][weight][bucket];
+            raw_network->output_weights[perspective][weight][bucket];
       }
     }
   }
 
-  network.output_weights = transposed_output_weights;
-  network.output_biases = raw_network.output_biases;
+  network->output_weights = transposed_output_weights;
+  network->output_biases = raw_network->output_biases;
 }
 
-Score Evaluate(std::shared_ptr<Accumulator>& accumulator) {
-  const auto turn = accumulator->GetTurn();
-  const auto bucket = accumulator->GetOutputBucket();
+Score Evaluate(Board &board) {
+  auto &state = board.GetState();
+  auto &accumulator = board.GetAccumulator();
+
+  accumulator->ApplyChanges(board);
+
+  const auto turn = state.turn;
+  const auto bucket = accumulator->GetOutputBucket(state);
 
   Score eval;
 
-#if defined(SIMD)
+#if BUILD_HAS_SIMD
   constexpr int kChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
 
   auto sum = simd::ZeroEpi32();
@@ -69,7 +74,7 @@ Score Evaluate(std::shared_ptr<Accumulator>& accumulator) {
   for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
     const auto accumulator_value = simd::LoadEpi16(&(*accumulator)[turn][i]);
     const auto weight_value =
-        simd::LoadEpi16(&network.output_weights[bucket][0][i]);
+        simd::LoadEpi16(&network->output_weights[bucket][0][i]);
 
     // Clip the accumulator values
     const auto clipped =
@@ -90,7 +95,7 @@ Score Evaluate(std::shared_ptr<Accumulator>& accumulator) {
   for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
     const auto accumulator_value = simd::LoadEpi16(&(*accumulator)[!turn][i]);
     const auto weight_value =
-        simd::LoadEpi16(&network.output_weights[bucket][1][i]);
+        simd::LoadEpi16(&network->output_weights[bucket][1][i]);
 
     // Clip the accumulator values
     const auto clipped =
@@ -113,9 +118,9 @@ Score Evaluate(std::shared_ptr<Accumulator>& accumulator) {
   eval = 0;
   for (int i = 0; i < arch::kHiddenLayerSize; i++) {
     const Score our_value = SquaredCReLU((*accumulator)[turn][i]) *
-                            network.output_weights[bucket][0][i];
+                            network->output_weights[bucket][0][i];
     const Score their_value = SquaredCReLU((*accumulator)[!turn][i]) *
-                              network.output_weights[bucket][1][i];
+                              network->output_weights[bucket][1][i];
     eval += our_value + their_value;
   }
 #endif
@@ -124,7 +129,7 @@ Score Evaluate(std::shared_ptr<Accumulator>& accumulator) {
   eval /= arch::kHiddenLayerQuantization;
 
   // Add final output bias
-  eval += network.output_biases[bucket];
+  eval += network->output_biases[bucket];
 
   // Scale the evaluation
   eval *= arch::kEvalScale;

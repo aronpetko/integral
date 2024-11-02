@@ -156,7 +156,7 @@ U64 PertInternal(Board &board, int depth, int start_depth) {
       // Bulk counting
       total_nodes += child_nodes = 1;
     } else {
-      board.MakeMove(move);
+      board.MakeMove<false>(move);
       total_nodes += child_nodes =
           PertInternal<PerftType::kNormal>(board, depth - 1, start_depth);
       board.UndoMove();

@@ -12,6 +12,7 @@
 #include "../search/search.h"
 #include "../search/syzygy/syzygy.h"
 #include "fmt/format.h"
+#include "reporter.h"
 
 namespace uci {
 
@@ -21,9 +22,6 @@ void Initialize(search::Search &search) {
   // clang-format off
   listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&search](const Option &option) {
     search.ResizeHash(option.GetValue<int>());
-  });
-  listener.AddOption<OptionVisibility::kPublic>("PawnCache", 1, 1, 16, [](const Option &option) {
-    eval::pawn_cache.Resize(option.GetValue<int>());
   });
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
     search.SetThreadCount(option.GetValue<U16>());
@@ -61,7 +59,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       std::string move_str;
       while (stream >> move_str) {
         const auto move = Move::FromStr(move_str, board.GetState());
-        if (move) board.MakeMove(move);
+        if (move) board.MakeMove<false>(move);
         else fmt::println("Error: invalid move '{}'", move_str);
       }
     }
@@ -132,6 +130,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     CreateArgument("min_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("max_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("out", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("book", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [](Command *cmd) {
     data_gen::Config config{
       .soft_node_limit = *cmd->ParseArgument<U64>("soft_limit"),
@@ -141,6 +140,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       .min_move_plies = *cmd->ParseArgument<I32>("min_moves"),
       .max_move_plies = *cmd->ParseArgument<I32>("max_moves"),
       .output_file = *cmd->ParseArgument<std::string>("out"),
+      .fens_file = *cmd->ParseArgument<std::string>("book"),
     };
     data_gen::Generate(config);
   });
@@ -204,6 +204,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       constants::kEngineAuthor
     );
     listener.PrintOptions();
+    reporter::using_uci = true;
     fmt::println("uciok");
   });
 

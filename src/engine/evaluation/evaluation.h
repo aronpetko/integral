@@ -8,27 +8,25 @@
 
 namespace eval {
 
-inline Tunable see_pawn_score("see_pawn_score", 98, 50, 150, 10);
-inline Tunable see_knight_score("see_knight_score", 299, 200, 400, 25);
-inline Tunable see_bishop_score("see_bishop_score", 300, 200, 400, 25);
-inline Tunable see_rook_score("see_rook_score", 533, 400, 600, 25);
-inline Tunable see_queen_score("see_queen_score", 921, 700, 1100, 50);
-inline Tunable see_king_score("see_king_score", 0, 0, 0, 1);  // Always 0
-inline Tunable see_none_score("see_none_score", 0, 0, 0, 1);  // Always 0
+TUNABLE(kSeePawnScore, 102, 50, 150, false);
+TUNABLE(kSeeKnightScore, 294, 200, 400, false);
+TUNABLE(kSeeBishopScore, 305, 200, 400, false);
+TUNABLE(kSeeRookScore, 526, 400, 600, false);
+TUNABLE(kSeeQueenScore, 931, 700, 1100, false);
+TUNABLE(kSeeKingScore, 0, 0, 0, true);  // Always 0
+TUNABLE(kSeeNoneScore, 0, 0, 0, true);  // Always 0
 
 // clang-format off
-inline std::array<Tunable, kNumPieceTypes + 1> kSEEPieceScores = {
-    see_pawn_score,
-    see_knight_score,
-    see_bishop_score,
-    see_rook_score,
-    see_queen_score,
-    see_king_score,
-    see_none_score
+inline std::array<Tunable<int>, kNumPieceTypes + 1> kSeePieceScores = {
+    kSeePawnScore,
+    kSeeKnightScore,
+    kSeeBishopScore,
+    kSeeRookScore,
+    kSeeQueenScore,
+    kSeeKingScore,
+    kSeeNoneScore
 };
 // clang-format on
-
-constexpr int kMaxPhase = 24;
 
 [[maybe_unused]] static bool IsMateScore(int evaluation) {
   return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;

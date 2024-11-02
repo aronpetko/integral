@@ -1,6 +1,7 @@
 #include "board.h"
 
 #include "../engine/evaluation/nnue/accumulator.h"
+#include "../engine/search/cuckoo.h"
 #include "fen.h"
 #include "move.h"
 #include "move_gen.h"
@@ -22,6 +23,22 @@ Board::Board() : history_({}) {}
 
 Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
+Board::Board(const Board &other)
+    : state_(other.state_),
+      history_(other.history_),
+      accumulator_(std::make_shared<nnue::Accumulator>(*other.accumulator_)) {}
+
+Board &Board::operator=(const Board &other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  state_ = other.state_;
+  history_ = other.history_;
+  accumulator_ = std::make_shared<nnue::Accumulator>(*other.accumulator_);
+  return *this;
+}
+
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
 
@@ -42,16 +59,20 @@ bool Board::IsMovePseudoLegal(Move move) {
     return false;
   }
 
+  const auto move_type = move.GetType();
   const auto piece_type = state_.GetPieceType(from);
-  if (piece_type != PieceType::kPawn &&
-      move.GetType() == MoveType::kPromotion) {
+  if (piece_type != PieceType::kPawn && move_type == MoveType::kPromotion) {
     return false;
   }
 
   const BitBoard &their_pieces = state_.Occupied(FlipColor(state_.turn));
   const BitBoard occupied = our_pieces | their_pieces;
 
-  if (piece_type == PieceType::kKing) {
+  if (move_type == MoveType::kCastle) {
+    if (piece_type != PieceType::kKing) {
+      return false;
+    }
+
     constexpr int kKingsideCastleDist = -2;
     constexpr int kQueensideCastleDist = 2;
     constexpr BitBoard kWhiteKingsideOccupancy = 0x60;
@@ -73,16 +94,16 @@ bool Board::IsMovePseudoLegal(Move move) {
     }
   }
 
+  if (move_type == MoveType::kEnPassant) {
+    return piece_type == PieceType::kPawn && to == state_.en_passant;
+  }
+
   BitBoard possible_moves;
   switch (piece_type) {
     case PieceType::kPawn: {
-      BitBoard en_passant_mask;
-      if (state_.en_passant != Squares::kNoSquare) {
-        en_passant_mask = BitBoard::FromSquare(state_.en_passant);
-      }
-      const BitBoard pawn_attacks = (move_gen::PawnAttacks(from, state_.turn) &
-                                     (their_pieces | en_passant_mask));
-      possible_moves = move_gen::PawnPushMoves(from, state_) | pawn_attacks;
+      possible_moves =
+          move_gen::PawnPushMoves(from, state_) |
+          (move_gen::PawnAttacks(from, state_.turn) & their_pieces);
       break;
     }
     case PieceType::kKnight:
@@ -182,8 +203,11 @@ bool Board::IsMoveLegal(Move move) {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
+template void Board::MakeMove<true>(Move move);
+template void Board::MakeMove<false>(Move move);
+
+template <bool update_stacks>
 void Board::MakeMove(Move move) {
-  accumulator_->MakeMove(state_, move);
   history_.Push(state_);
 
   const Color us = state_.turn, them = FlipColor(us);
@@ -193,6 +217,11 @@ void Board::MakeMove(Move move) {
              captured = state_.GetPieceType(to);
   const auto move_type = move.GetType();
 
+  // Initialize accumulator change
+  nnue::AccumulatorChange accum_change{};
+  accum_change.sub_0 = {from, piece, us};
+  accum_change.add_0 = {to, piece, us};
+
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
 
@@ -200,9 +229,15 @@ void Board::MakeMove(Move move) {
     const Square pawn_square =
         state_.en_passant - (us == Color::kWhite ? 8 : -8);
     state_.RemovePiece(pawn_square, them);
+    accum_change.type = nnue::AccumulatorChange::kCapture;
+    accum_change.sub_1 = {pawn_square, PieceType::kPawn, them};
   } else if (captured != PieceType::kNone) {
     state_.RemovePiece(to, them);
     new_fifty_move_clock = 0;
+    accum_change.type = nnue::AccumulatorChange::kCapture;
+    accum_change.sub_1 = {to, captured, them};
+  } else {
+    accum_change.type = nnue::AccumulatorChange::kNormal;
   }
 
   // Xor out en passant if it exists
@@ -222,8 +257,14 @@ void Board::MakeMove(Move move) {
   auto new_piece = piece;
   if (move_type == MoveType::kCastle) {
     HandleCastling(move);
+    accum_change.type = nnue::AccumulatorChange::kCastle;
+    const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
+    const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
+    accum_change.add_1 = {rook_to, PieceType::kRook, us};
+    accum_change.sub_1 = {rook_from, PieceType::kRook, us};
   } else if (move_type == MoveType::kPromotion) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
+    accum_change.add_0.piece = new_piece;
   }
 
   state_.PlacePiece(to, new_piece, state_.turn);
@@ -240,6 +281,9 @@ void Board::MakeMove(Move move) {
   ++state_.half_moves;
 
   CalculateThreats();
+
+  // Push the accumulator change
+  accumulator_->PushChanges(state_, accum_change);
 }
 
 void Board::UndoMove() {
@@ -247,9 +291,12 @@ void Board::UndoMove() {
   accumulator_->UndoMove();
 }
 
+void Board::UndoNullMove() {
+  state_ = history_.PopBack();
+}
+
 void Board::MakeNullMove() {
   history_.Push(state_);
-  accumulator_->MakeMove(state_, Move::NullMove());
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {
@@ -310,7 +357,62 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasRepeated(U16 ply) {
+bool Board::HasUpcomingRepetition(U16 ply) {
+  const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
+  if (max_dist < 3) {
+    return false;
+  }
+
+  const auto keys_back = [this](int dist) {
+    return history_[history_.Size() - dist].zobrist_key;
+  };
+
+  const auto occupied = state_.Occupied();
+
+  for (int dist = 3; dist <= max_dist; dist += 2) {
+    const auto move_key = keys_back(dist);
+    const auto key_diff = state_.zobrist_key ^ move_key;
+
+    U32 slot = search::cuckoo::H1(key_diff);
+    if (key_diff != search::cuckoo::keys[slot]) {
+      slot = search::cuckoo::H2(key_diff);
+    }
+
+    if (key_diff != search::cuckoo::keys[slot]) {
+      continue;
+    }
+
+    const auto move = search::cuckoo::moves[slot];
+    if ((occupied & move_gen::RayBetween(move.GetFrom(), move.GetTo())) == 0) {
+      if (ply > dist) {
+        return true;
+      }
+
+      auto square = move.GetFrom();
+      if (state_.GetPieceType(square) == kNone) {
+        square = move.GetTo();
+      }
+
+      if (state_.GetPieceColor(square) != state_.turn) {
+        continue;
+      }
+
+      for (int j = dist + 4; j <= max_dist; j += 2) {
+        if (keys_back(j) == keys_back(dist)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+bool Board::IsDraw(U16 ply) {
+  if (state_.fifty_moves_clock >= 100) {
+    return true;
+  }
+
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
 
   bool hit_before_root = false;
@@ -320,14 +422,6 @@ bool Board::HasRepeated(U16 ply) {
       if (hit_before_root) return true;
       hit_before_root = true;
     }
-  }
-
-  return false;
-}
-
-bool Board::IsDraw(U16 ply) {
-  if (state_.fifty_moves_clock >= 100 || HasRepeated(ply)) {
-    return true;
   }
 
   // Insufficient material detection
@@ -395,24 +489,36 @@ void Board::HandleCastling(Move move) {
 void Board::CalculateThreats() {
   const Color them = FlipColor(state_.turn);
 
-  state_.threats = move_gen::PawnAttacks(state_.Pawns(them), them);
+  state_.threatened_by[kPawn] = move_gen::PawnAttacks(state_.Pawns(them), them);
 
+  state_.threatened_by[kKnight] = 0;
   for (Square square : state_.Knights(them)) {
-    state_.threats |= move_gen::KnightMoves(square);
+    state_.threatened_by[kKnight] |= move_gen::KnightMoves(square);
   }
 
   const BitBoard queens = state_.Queens(them);
   const BitBoard occupied = state_.Occupied();
 
+  state_.threatened_by[kBishop] = 0;
+  state_.threatened_by[kQueen] = 0;
+  state_.threatened_by[kRook] = 0;
+
   for (Square square : state_.Bishops(them) | queens) {
-    state_.threats |= move_gen::BishopMoves(square, occupied);
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kBishop)] |=
+        move_gen::BishopMoves(square, occupied);
   }
 
   for (Square square : state_.Rooks(them) | queens) {
-    state_.threats |= move_gen::RookMoves(square, occupied);
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kRook)] |=
+        move_gen::RookMoves(square, occupied);
   }
 
-  state_.threats |= move_gen::KingAttacks(state_.King(them).GetLsb());
+  state_.threatened_by[kKing] =
+      move_gen::KingAttacks(state_.King(them).GetLsb());
+
+  state_.threats = state_.threatened_by[kPawn] | state_.threatened_by[kKnight] |
+                   state_.threatened_by[kBishop] | state_.threatened_by[kRook] |
+                   state_.threatened_by[kQueen] | state_.threatened_by[kKing];
 
   CalculateKingThreats();
 }
@@ -452,6 +558,22 @@ void Board::CalculateKingThreats() {
       state_.pinned |= pinned;
     }
   }
+}
+
+BitBoard Board::GetOpponentWinningCaptures() const {
+  const Color us = state_.turn;
+
+  const BitBoard queens = state_.Queens(us);
+  const BitBoard rooks = queens | state_.Rooks(us);
+  const BitBoard minors = rooks | state_.Knights(us) | state_.Bishops(us);
+
+  const BitBoard pawn_threats = state_.threatened_by[kPawn];
+  const BitBoard minor_threats = pawn_threats | state_.threatened_by[kKnight] |
+                                 state_.threatened_by[kBishop];
+  const BitBoard rook_threats = minor_threats | state_.threatened_by[kRook];
+
+  return (queens & rook_threats) | (rooks & minor_threats) |
+         (minors & pawn_threats);
 }
 
 void Board::PrintPieces() {

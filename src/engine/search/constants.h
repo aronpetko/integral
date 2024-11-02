@@ -5,55 +5,70 @@
 
 namespace search {
 
-Tunable lmr_quiet_base("lmr_quiet_base", 0.80, 0.5, 1.2, 0.05);
-Tunable lmr_quiet_div("lmr_quiet_div", 2.04, 1.5, 3.0, 0.1);
-Tunable lmr_tact_base("lmr_tact_base", -0.24, -0.5, 0.2, 0.05);
-Tunable lmr_tact_div("lmr_tact_div", 2.60, 2.0, 3.5, 0.1);
+TUNABLE(kLmrQuietBase, 0.8088864806576277, 0.5, 1.2, false);
+TUNABLE(kLmrQuietDiv, 2.0868634514798017, 1.5, 3.0, false);
+TUNABLE(kLmrTactBase, -0.2466717373843328, -0.5, 0.2, false);
+TUNABLE(kLmrTactDiv, 2.6600586182979926, 2.0, 3.5, false);
 
-Tunable asp_window_depth("asp_window_depth", 4, 2, 8, 1, true);
-Tunable asp_window_delta("asp_window_delta", 9, 5, 20, 2);
-Tunable asp_window_growth("asp_window_growth", 1.55, 0.1, 2.0, 0.05);
+TUNABLE(kAspWindowDepth, 4, 2, 8, true);
+TUNABLE(kAspWindowDelta, 8, 5, 20, false);
+TUNABLE(kAspWindowGrowth, 1.4205730241627241, 0.1, 2.0, false);
 
-Tunable qs_fut_margin("qs_fut_margin", 101, 50, 200, 10);
+TUNABLE(kQsFutMargin, 109, 50, 200, false);
 
-Tunable rev_fut_depth("rev_fut_depth", 6, 4, 10, 1, true);
-Tunable rev_fut_margin("rev_fut_margin", 74, 50, 150, 8);
+TUNABLE(kEvalHistUpdateMult, 64, 20, 100, false);
+TUNABLE(kEvalHistUpdateMin, 65, 5, 150, false);
+TUNABLE(kEvalHistUpdateMax, 105, 40, 200, false);
 
-Tunable null_move_rb("null_move_rb", 4, 1, 5, 0.5);
-Tunable null_move_rf("null_move_rf", 4, 2, 8, 1, true);
-Tunable null_move_re("null_move_re", 202, 100, 400, 20);
+TUNABLE(kRevFutDepth, 6, 4, 10, true);
+TUNABLE(kRevFutMargin, 65, 50, 150, false);
+TUNABLE(kRevFutHistoryDiv, 582, 200, 800, false);
 
-Tunable iir_depth("iir_depth", 4, 2, 8, 1);
+TUNABLE(kRazoringDepth, 4, 1, 8, true);
+TUNABLE(kRazoringMult, 439, 200, 700, false);
 
-Tunable improving_rate_divisor(
-    "improving_rate_divisor", 30.0, 5.0, 100.0, 15.0);
+TUNABLE(kNmpBetaBase, 143, 50, 250, false);
+TUNABLE(kNmpBetaMult, 25, 5, 30, false);
+TUNABLE(kNmpRedBase, 4, 1, 5, true);
+TUNABLE(kNmpRedDiv, 3, 2, 8, true);
+TUNABLE(kNmpEvalDiv, 181, 100, 400, false);
 
-Tunable lmp_base("lmp_base", 5.0, 1.5, 5.0, 0.5);
-Tunable lmp_mult("lmp_mult", 3, 1.0, 4.0, 0.25);
+TUNABLE(kIirDepth, 4, 2, 8, true);
 
-Tunable fut_prune_depth("fut_prune_depth", 8, 6, 12, 1, true);
-Tunable fut_margin_base("fut_margin_base", 196, 100, 250, 20);
-Tunable fut_margin_mult("fut_margin_mult", 96, 50, 200, 15);
+TUNABLE(kLmpBase, 5.0, 1.5, 5.0, false);
 
-Tunable see_prune_depth("see_prune_depth", 8, 6, 12, 1, true);
-Tunable see_quiet_thresh("see_quiet_thresh", -64, -100, -20, 6);
-Tunable see_noisy_thresh("see_noisy_thresh", -119, -200, -50, 8);
+TUNABLE(kFutPruneDepth, 8, 6, 12, true);
+TUNABLE(kFutMarginBase, 202, 100, 250, false);
+TUNABLE(kFutMarginMult, 93, 50, 200, false);
+TUNABLE(kFutMarginHistDiv, 147, 32, 256, false);
 
-Tunable hist_prune_depth("hist_prune_depth", 5, 3, 8, 1, true);
-Tunable hist_thresh_base("hist_thresh_base", -480, -1000, 500, 100);
-Tunable hist_thresh_mult("hist_thresh_mult", -1695, -3000, -250, 300);
-Tunable capt_hist_thresh_base("capt_hist_thresh_base", -480, -1000, 500, 100);
-Tunable capt_hist_thresh_mult("capt_hist_thresh_mult", -1695, -3000, -250, 300);
+TUNABLE(kSeePruneDepth, 8, 6, 12, true);
+TUNABLE(kSeeQuietThresh, -62, -100, -20, false);
+TUNABLE(kSeeNoisyThresh, -115, -200, -50, false);
+TUNABLE(kSeePruneHistDiv, 151, 32, 256, false);
 
-Tunable lmr_hist_div("lmr_hist_div", 11432, 5000, 20000, 750);
-Tunable lmr_capt_hist_div("lmr_capt_hist_div", 11432, 5000, 20000, 750);
+TUNABLE(kHistPruneDepth, 5, 3, 8, true);
+TUNABLE(kHistThreshBase, -481, -1000, 500, false);
+TUNABLE(kHistThreshMult, -1897, -3000, -250, false);
+TUNABLE(kCaptHistThreshBase, -438, -1000, 500, false);
+TUNABLE(kCaptHistThreshMult, -1802, -3000, -250, false);
 
-Tunable sing_ext_depth("sing_ext_depth", 8, 6, 12, 1, true);
-Tunable sing_ext_margin("sing_ext_margin", 2.00, 1.0, 4.0, 0.5);
-Tunable sing_double_margin("sing_double_margin", 28, 10, 40, 5);
+TUNABLE(kLmrHistDiv, 11207, 5000, 20000, false);
+TUNABLE(kLmrCaptHistDiv, 10627, 5000, 20000, false);
+TUNABLE(kLmrComplexityDiff, 80, 5, 150, false);
 
-Tunable probcut_beta_delta("probcut_beta_delta", 250, 150, 350, 15);
+TUNABLE(kDoDeeperBase, 35, 5, 70, false);
+TUNABLE(kDoShallowerBase, 5, 0, 30, false);
 
+TUNABLE(kSeDepth, 6, 6, 12, true);
+TUNABLE(kSeDoubleMargin, 13, 0, 30, false);
+TUNABLE(kSeTripleMargin, 104, 30, 250, false);
+TUNABLE(kSeDepthExtensionDepth, 11, 0, 15, false);
+
+TUNABLE(kProbcutDepth, 5, 1, 10, false);
+TUNABLE(kProbcutBetaDelta, 244, 100, 400, false);
+
+TUNABLE(kHistoryBonusMargin, 50, 30, 150, false);
 
 }  // namespace search
 

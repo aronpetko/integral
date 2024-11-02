@@ -89,6 +89,8 @@ struct BoardState {
         en_passant(Squares::kNoSquare),
         zobrist_key(0ULL),
         pawn_key(0ULL),
+        minor_key(0ULL),
+        major_key(0ULL),
         non_pawn_keys({}),
         checkers(0ULL),
         pinned(0ULL),
@@ -112,6 +114,17 @@ struct BoardState {
         pawn_key ^= zobrist::pieces[colored_piece][square];
       } else {
         non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
+
+        if (piece_type == PieceType::kKing) {
+          minor_key ^= zobrist::pieces[colored_piece][square];
+          major_key ^= zobrist::pieces[colored_piece][square];
+        } else if (piece_type == PieceType::kKnight ||
+                   piece_type == PieceType::kBishop) {
+          minor_key ^= zobrist::pieces[colored_piece][square];
+        } else if (piece_type == PieceType::kRook ||
+                   piece_type == PieceType::kQueen) {
+          major_key ^= zobrist::pieces[colored_piece][square];
+        }
       }
     }
   }
@@ -129,6 +142,18 @@ struct BoardState {
         pawn_key ^= zobrist::pieces[colored_piece][square];
       } else {
         non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
+
+        if (piece_type == PieceType::kKing) {
+          minor_key ^= zobrist::pieces[colored_piece][square];
+          major_key ^= zobrist::pieces[colored_piece][square];
+        }
+        if (piece_type == PieceType::kKnight ||
+            piece_type == PieceType::kBishop) {
+          minor_key ^= zobrist::pieces[colored_piece][square];
+        } else if (piece_type == PieceType::kRook ||
+                   piece_type == PieceType::kQueen) {
+          major_key ^= zobrist::pieces[colored_piece][square];
+        }
       }
     }
 
@@ -235,10 +260,11 @@ struct BoardState {
   U16 half_moves;
   Square en_passant;
   CastleRights castle_rights;
-  U64 zobrist_key, pawn_key;
+  U64 zobrist_key, pawn_key, minor_key, major_key;
   std::array<U64, 2> non_pawn_keys;
   BitBoard checkers;
   BitBoard threats;
+  std::array<BitBoard, kNumPieceTypes> threatened_by;
   BitBoard pinned;
 };
 
@@ -248,8 +274,18 @@ class Board {
 
   Board(const BoardState &state);
 
-  inline BoardState &GetState() {
+  // Copy constructor for deep copy of the accumulator
+  Board(const Board& other);
+
+  // Copy assignment operator for deep copy of the accumulator
+  Board& operator=(const Board& other);
+
+  inline auto &GetState() {
     return state_;
+  }
+
+  inline auto &GetStateHistory() {
+    return history_;
   }
 
   inline std::shared_ptr<nnue::Accumulator> &GetAccumulator() {
@@ -258,11 +294,14 @@ class Board {
 
   void SetFromFen(std::string_view fen_str);
 
+  template <bool update_stacks = true>
   void MakeMove(Move move);
 
   void MakeNullMove();
 
   void UndoMove();
+
+  void UndoNullMove();
 
   void PrintPieces();
 
@@ -272,13 +311,15 @@ class Board {
 
   [[nodiscard]] U64 PredictKeyAfter(Move move);
 
-  [[nodiscard]] bool HasRepeated(U16 ply);
+  [[nodiscard]] bool HasUpcomingRepetition(U16 ply);
 
   [[nodiscard]] bool IsDraw(U16 ply);
 
   void CalculateKingThreats();
 
   void CalculateThreats();
+
+  [[nodiscard]] BitBoard GetOpponentWinningCaptures() const;
 
  private:
   void HandleCastling(Move move);

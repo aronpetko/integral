@@ -5,20 +5,27 @@
 
 namespace search {
 
-Tunable base_time_scale("base_time_scale", 0.055, 0, 0.10, 0.003);
-Tunable increment_scale("increment_scale", 0.91, 0, 1.00, 0.04);
-Tunable percent_limit("percent_limit", 0.77, 0, 1.00, 0.03);
-Tunable hard_limit_scale("hard_limit_scale", 3.25, 1.00, 4.50, 0.08);
-Tunable soft_limit_scale("soft_limit_scale", 0.83, 0, 1.50, 0.08);
-Tunable node_fraction_base("node_fraction_base", 1.49, 0.50, 2.50, 0.08);
-Tunable node_fraction_scale("node_fraction_scale", 1.56, 0.50, 2.50, 0.08);
-std::array<Tunable, 5> move_stability_scale = {
-    Tunable("mss_1", 2.32, 0.0, 5.0, 0.07),
-    Tunable("mss_2", 1.22, 0.0, 5.0, 0.07),
-    Tunable("mss_3", 1.07, 0.0, 5.0, 0.07),
-    Tunable("mss_4", 0.79, 0.0, 5.0, 0.07),
-    Tunable("mss_5", 0.68, 0.0, 5.0, 0.07),
+TUNABLE(kBaseTimeScale, 0.05733820228980802, 0, 0.10, false);
+TUNABLE(kIncrementScale, 0.9760856856329947, 0, 1.00, false);
+TUNABLE(kPercentLimit, 0.8276195006604234, 0, 1.00, false);
+TUNABLE(kHardLimitScale, 3.393784908696118, 1.00, 4.50, false);
+TUNABLE(kSoftLimitScale, 0.8237969047606986, 0, 1.50, false);
+TUNABLE(kNodeFractionBase, 1.4523797051230019, 0.50, 2.50, false);
+TUNABLE(kNodeFractionScale, 1.5525960191419124, 0.50, 2.50, false);
+TUNABLE(kMoveStabilityScale1, 2.4030366505287315, 1.5, 3.0, false);
+TUNABLE(kMoveStabilityScale2, 1.30317921803015, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale3, 1.0659706093407642, 0.5, 2.0, false);
+TUNABLE(kMoveStabilityScale4, 0.7862126398768999, 0.2, 1.5, false);
+TUNABLE(kMoveStabilityScale5, 0.6949568477601432, 0.2, 1.5, false);
+// clang-format off
+inline std::array<Tunable<double>, 5> kMoveStabilityScale = {
+    kMoveStabilityScale1,
+    kMoveStabilityScale2,
+    kMoveStabilityScale3,
+    kMoveStabilityScale4,
+    kMoveStabilityScale5
 };
+// clang-format on
 
 U64 GetCurrentTime() {
   const auto duration = std::chrono::steady_clock::now().time_since_epoch();
@@ -45,7 +52,7 @@ int DepthLimiter::GetSearchDepth() const {
   return max_depth_;
 }
 
-bool DepthLimiter::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
+bool DepthLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   return depth >= max_depth_;
 }
 
@@ -68,8 +75,8 @@ int NodeLimiter::GetSearchDepth() const {
   return search::kMaxSearchDepth;
 }
 
-bool NodeLimiter::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
-  return soft_max_nodes_ != 0 && nodes_searched >= soft_max_nodes_;
+bool NodeLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
+  return soft_max_nodes_ != 0 && thread.nodes_searched >= soft_max_nodes_;
 }
 
 bool NodeLimiter::TimesUp(U32 nodes_searched) {
@@ -102,32 +109,48 @@ U64& TimedLimiter::NodesSpent(Move move) {
   return nodes_spent_[move.GetData() & 4095];
 }
 
-bool TimedLimiter::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
+bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   if (move_time_ != 0) {
-    return TimesUp(nodes_searched);
+    return TimesUp(thread.nodes_searched);
   }
 
-  if (depth < 7) {
-    return TimeElapsed() >= soft_limit_;
+  if (depth <= 5) {
+    return TimeElapsed() >= hard_limit_;
   }
 
   // Keep track of how many times this move has been the best move
   if (previous_best_move_ != best_move) {
     previous_best_move_ = best_move;
     best_move_stability_ = 0;
-  } else if (best_move_stability_ < 4) {
+  } else if (best_move_stability_ < 10) {
     best_move_stability_++;
   }
 
-  const auto percent_searched =
-      NodesSpent(best_move) / std::max<double>(1, nodes_searched);
-  const double percent_scale_factor =
-      (node_fraction_base - percent_searched) * node_fraction_scale;
-  const double stability_scale = move_stability_scale[best_move_stability_];
-  const U32 optimal_limit = std::min<U32>(
-      soft_limit_ * percent_scale_factor * stability_scale, hard_limit_);
+  const double stability_factor = 1.3110 - 0.0533 * best_move_stability_;
 
-  return TimeElapsed() >= optimal_limit;
+  const Score best_score = thread.scores[depth];
+  Score search_score_diff = thread.scores[depth - 3] - best_score;
+  Score previous_score_diff = thread.previous_score - thread.scores[depth];
+
+  // If this was the first search of the game, we just use the search score
+  // difference
+  if (thread.previous_score == kScoreNone) {
+    search_score_diff *= 2, previous_score_diff = 0;
+  }
+
+  double score_change_factor =
+      0.1127 + 0.0262 * search_score_diff * (search_score_diff > 0) +
+      0.0261 * previous_score_diff * (previous_score_diff > 0);
+  score_change_factor = std::max(0.5028, std::min(1.6561, score_change_factor));
+
+  const auto best_move_nodes = NodesSpent(best_move);
+  const auto percent_nodes_not_best =
+      1.0 - static_cast<double>(best_move_nodes) / thread.nodes_searched;
+  const double node_count_factor =
+      std::max(0.5630, percent_nodes_not_best * 2.2669 + 0.4499);
+
+  return TimeElapsed() >= allocated_time_ * stability_factor *
+                              score_change_factor * node_count_factor;
 }
 
 bool TimedLimiter::TimesUp(U32 nodes_searched) {
@@ -156,19 +179,11 @@ void TimedLimiter::CalculateLimits() {
     return;
   }
 
-  previous_best_move_ = Move::NullMove();
-
-  const int base_time =
-      time_left_ * base_time_scale + increment_ * increment_scale - overhead;
-  const int maximum_time = percent_limit * time_left_;
-
-  const int scaled_hard_limit =
-      std::min(static_cast<int>(hard_limit_scale * base_time), maximum_time);
-  const int scaled_soft_limit =
-      std::min(static_cast<int>(soft_limit_scale * base_time), maximum_time);
-
-  hard_limit_ = std::max(5, scaled_hard_limit);
-  soft_limit_ = std::max(1, scaled_soft_limit);
+  const int total_time =
+      std::max(1, time_left_ + 50 * increment_ - 50 * overhead);
+  allocated_time_ = std::min(time_left_ * 0.4193, total_time * 0.0575);
+  hard_limit_ =
+      std::min(time_left_ * 0.9221 - overhead, allocated_time_ * 5.9280) - 10;
 }
 
 void TimedLimiter::Update(const TimeConfig& config) {
@@ -252,9 +267,9 @@ void TimeManagement::Stop() {
   }
 }
 
-bool TimeManagement::ShouldStop(Move best_move, int depth, U32 nodes_searched) {
+bool TimeManagement::ShouldStop(Move best_move, int depth, Thread& thread) {
   for (const auto& limiter : limiters_) {
-    if (limiter->ShouldStop(best_move, depth, nodes_searched)) {
+    if (limiter->ShouldStop(best_move, depth, thread)) {
       return true;
     }
   }

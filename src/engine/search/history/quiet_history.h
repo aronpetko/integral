@@ -11,29 +11,27 @@ class QuietHistory {
  public:
   QuietHistory() : table_({}) {}
 
+  void UpdateMoveScore(Color turn, Move move, BitBoard threats, int bonus) {
+    // Apply a linear dampening to the bonus as the depth increases
+    int &score =
+        table_[turn][move.GetFrom()][move.GetTo()][ThreatIndex(move, threats)];
+    score += ScaleBonus(score, bonus);
+  }
+
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    int depth,
                    BitBoard threats,
                    MoveList &quiets) {
-    const Color turn = state.turn;
-    const Move move = stack->move;
-
     const int bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
-    int &score =
-        table_[turn][move.GetFrom()][move.GetTo()][ThreatIndex(move, threats)];
-    score += ScaleBonus(score, bonus);
+    UpdateMoveScore(state.turn, stack->move, threats, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
+    const int penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
-      const Move bad_quiet = quiets[i];
-      // Apply a linear dampening to the penalty as the depth increases
-      int &bad_quiet_score =
-          table_[turn][bad_quiet.GetFrom()][bad_quiet.GetTo()]
-                [ThreatIndex(bad_quiet, threats)];
-      bad_quiet_score += ScaleBonus(bad_quiet_score, -bonus);
+      UpdateMoveScore(state.turn, quiets[i], threats, penalty);
     }
   }
 
