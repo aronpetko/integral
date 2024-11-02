@@ -41,6 +41,10 @@ void FindStartingPosition(Board &board,
 
     if (!fens.empty()) {
       const auto fen = fens[RandomU64(0, fens.size() - 1)];
+      if (fen.empty()) {
+        current_ply = 0;
+        continue;
+      }
       // Choose a random FEN from the fens list
       board.SetFromFen(fen);
 
@@ -49,7 +53,6 @@ void FindStartingPosition(Board &board,
       // If no legal moves are available, reset the board
       if (legal_moves.Empty()) {
         current_ply = 0;
-        board.SetFromFen(fen::kStartFen);
         continue;
       }
 
@@ -64,6 +67,7 @@ void FindStartingPosition(Board &board,
 
       // All moves lose material, so skip this FEN
       if (non_losing_moves.Empty()) {
+        current_ply = 0;
         continue;
       }
 
@@ -124,8 +128,6 @@ void FindStartingPosition(Board &board,
       auto &chosen_moves = piece_moves[chosen_piece];
       random_move = chosen_moves[RandomU64(0, chosen_moves.Size() - 1)];
     }
-
-    if (random_move == Move::NullMove()) fmt::println("aaa");
 
     board.MakeMove(random_move);
 
