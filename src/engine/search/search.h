@@ -62,8 +62,8 @@ struct Thread {
     tb_hits = 0;
   }
 
-  void AddCounterMove(Move best_move, Move prev_move, PieceType prev_moved) {
-    counter_moves[prev_moved][prev_move.GetTo()] = best_move;
+  void AddCounterMove(Move best_move, Move prev_move) {
+    counter_moves[prev_move.GetFrom()][prev_move.GetTo()] = best_move;
   }
 
   std::thread raw_thread;
@@ -76,7 +76,7 @@ struct Thread {
   Score previous_score;
   U16 root_depth, sel_depth;
   U64 tb_hits;
-  MultiArray<Move, kNumPieceTypes, 64> counter_moves;
+  MultiArray<Move, 64, 64> counter_moves;
 };
 
 class Search {

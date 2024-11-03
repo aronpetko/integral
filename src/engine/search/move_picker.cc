@@ -103,7 +103,7 @@ Move MovePicker::Next() {
     stage_ = Stage::kGenerateQuiets;
 
     if ((stack_ - 1)->move) {
-      const auto counter = thread_.counter_moves[(stack_ - 1)->moved_piece]
+      const auto counter = thread_.counter_moves[(stack_ - 1)->move.GetFrom()]
                                                 [(stack_ - 1)->move.GetTo()];
       if (counter && counter != tt_move_ && counter != stack_->killer_move &&
           board.IsMovePseudoLegal(counter)) {
@@ -167,7 +167,7 @@ template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   auto counter = Move::NullMove();
   if ((stack_ - 1)->move) {
-    counter = thread_.counter_moves[(stack_ - 1)->moved_piece]
+    counter = thread_.counter_moves[(stack_ - 1)->move.GetFrom()]
                                    [(stack_ - 1)->move.GetTo()];
   }
 

@@ -739,8 +739,8 @@ Score Search::PVSearch(Thread &thread,
 
   const auto counter_move = [&]() {
     if ((stack - 1)->move) {
-      const auto counter = thread.counter_moves[(stack - 1)->moved_piece]
-                                               [(stack - 1)->move.GetTo()];
+      return thread.counter_moves[(stack - 1)->move.GetFrom()]
+                                 [(stack - 1)->move.GetTo()];
     }
     return Move::NullMove();
   }();
@@ -978,8 +978,7 @@ Score Search::PVSearch(Thread &thread,
             // Special moves
             stack->AddKillerMove(move);
             if (prev_stack->move)
-              thread.AddCounterMove(
-                  best_move, prev_stack->move, prev_stack->moved_piece);
+              thread.AddCounterMove(best_move, prev_stack->move);
 
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
