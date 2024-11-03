@@ -87,32 +87,15 @@ Move MovePicker::Next() {
       return Move::NullMove();
     }
 
-    stage_ = Stage::kFirstKiller;
+    stage_ = Stage::kKillerMove;
   }
 
-  auto first_killer = Move::NullMove(), second_killer = Move::NullMove();
-
-  if (stage_ == Stage::kFirstKiller) {
-    stage_ = Stage::kSecondKiller;
-
-    if (stack_) {
-      first_killer = stack_->killer_moves[0];
-      if (first_killer && first_killer != tt_move_ &&
-          board.IsMovePseudoLegal(first_killer)) {
-        return first_killer;
-      }
-    }
-  }
-
-  if (stage_ == Stage::kSecondKiller) {
+  if (stage_ == Stage::kKillerMove) {
     stage_ = Stage::kCounterMove;
 
-    if (stack_) {
-      second_killer = stack_->killer_moves[1];
-      if (second_killer && second_killer != tt_move_ &&
-          board.IsMovePseudoLegal(second_killer)) {
-        return second_killer;
-      }
+    if (stack_->killer_move && stack_->killer_move != tt_move_ &&
+        board.IsMovePseudoLegal(stack_->killer_move)) {
+      return stack_->killer_move;
     }
   }
 
@@ -122,8 +105,8 @@ Move MovePicker::Next() {
     if ((stack_ - 1)->move) {
       const auto counter = thread_.counter_moves[(stack_ - 1)->moved_piece]
                                                 [(stack_ - 1)->move.GetTo()];
-      if (counter && counter != tt_move_ && counter != first_killer &&
-          counter != second_killer && board.IsMovePseudoLegal(counter)) {
+      if (counter && counter != tt_move_ && counter != stack_->killer_move &&
+          board.IsMovePseudoLegal(counter)) {
         return counter;
       }
     }
@@ -182,9 +165,7 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 
 template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
-  const auto &killers = stack_->killer_moves;
   auto counter = Move::NullMove();
-
   if ((stack_ - 1)->move) {
     counter = thread_.counter_moves[(stack_ - 1)->moved_piece]
                                    [(stack_ - 1)->move.GetTo()];
@@ -193,8 +174,7 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   auto moves = move_gen::GenerateMoves(move_type, thread_.board);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && killers[0] != move && killers[1] != move &&
-        counter != move) {
+    if (move != tt_move_ && move != stack_->killer_move && move != counter) {
       list.Push({move, ScoreMove(move)});
     }
   }

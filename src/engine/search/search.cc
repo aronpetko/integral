@@ -585,7 +585,7 @@ Score Search::PVSearch(Thread &thread,
     improving = stack->static_eval > past_stack->static_eval;
   }
 
-  (stack + 1)->ClearKillerMoves();
+  (stack + 1)->ClearKillerMove();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
@@ -736,6 +736,14 @@ Score Search::PVSearch(Thread &thread,
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
+
+  const auto counter_move = [&]() {
+    if ((stack - 1)->move) {
+      const auto counter = thread.counter_moves[(stack - 1)->moved_piece]
+                                               [(stack - 1)->move.GetTo()];
+    }
+    return Move::NullMove();
+  }();
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -892,8 +900,7 @@ Score Search::PVSearch(Thread &thread,
       reduction += !improving;
       reduction -=
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
-      reduction -=
-          move == stack->killer_moves[0] || move == stack->killer_moves[1];
+      reduction -= move == stack->killer_move || move == counter_move;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
