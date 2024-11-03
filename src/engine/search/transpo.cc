@@ -20,8 +20,8 @@ namespace search {
       }
       // Always prefer the lowest quality entry
       const int lowest_quality =
-          replace_entry->depth - 8 * GetAgeDelta(replace_entry);
-      const int current_quality = entry->depth - 8 * GetAgeDelta(entry);
+          replace_entry->depth - GetAgeDelta(replace_entry);
+      const int current_quality = entry->depth -  GetAgeDelta(entry);
       if (lowest_quality > current_quality) {
         replace_entry = entry;
       }
@@ -42,7 +42,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
 
   if (!old_entry->CompareKey(key) ||
       new_entry.GetFlag() == TranspositionTableEntry::kExact ||
-      new_entry.depth + 3 + 2 * in_pv >= old_entry->depth) {
+      new_entry.depth + 4 >= old_entry->depth) {
     new_entry.bits.age = age_;
 
     old_entry->key = static_cast<U16>(key);
