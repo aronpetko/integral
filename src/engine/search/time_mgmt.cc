@@ -154,7 +154,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
 }
 
 bool TimedLimiter::TimesUp(U32 nodes_searched) {
-  return nodes_searched % 4096 == 0 && TimeElapsed() >= hard_limit_;
+  return (nodes_searched & 4095) == 0 && TimeElapsed() >= hard_limit_;
 }
 
 void TimedLimiter::Start() {
