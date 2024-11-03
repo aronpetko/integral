@@ -204,6 +204,8 @@ Score Search::QuiescentSearch(Thread &thread,
 
   stack->pv.Clear();
 
+  ++thread.nodes_searched;
+
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
   }
@@ -283,7 +285,7 @@ Score Search::QuiescentSearch(Thread &thread,
             Move::NullMove(),
             tt_was_in_pv);
         transposition_table_.Save(
-            tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+            tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
       }
 
       return best_score;
@@ -319,8 +321,6 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
-
-    ++thread.nodes_searched;
 
     board.MakeMove(move);
     const Score score =
@@ -373,7 +373,7 @@ Score Search::QuiescentSearch(Thread &thread,
                                              Move::NullMove(),
                                              tt_was_in_pv);
   transposition_table_.Save(
-      tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+      tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
 
   return best_score;
 }
@@ -417,6 +417,8 @@ Score Search::PVSearch(Thread &thread,
   if (depth == 0) {
     return QuiescentSearch<node_type>(thread, alpha, beta, stack);
   }
+
+  ++thread.nodes_searched;
 
   stack->in_check = state.InCheck();
 
@@ -504,7 +506,7 @@ Score Search::PVSearch(Thread &thread,
                                                    Move::NullMove(),
                                                    tt_was_in_pv);
         transposition_table_.Save(
-            tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+            tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
         return score;
       }
 
@@ -539,7 +541,7 @@ Score Search::PVSearch(Thread &thread,
                                                  Move::NullMove(),
                                                  tt_was_in_pv);
       transposition_table_.Save(
-          tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+          tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
     }
 
     stack->static_eval = history.correction_history->CorrectStaticEval(
@@ -625,6 +627,9 @@ Score Search::PVSearch(Thread &thread,
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
       if (non_pawn_king_pieces) {
+        // Prefetch the TT entry for the next move as early as possible
+        transposition_table_.Prefetch(board.PredictKeyAfter(Move::NullMove()));
+
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
         stack->capture_move = false;
@@ -669,6 +674,9 @@ Score Search::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
+          // Prefetch the TT entry for the next move as early as possible
+          transposition_table_.Prefetch(board.PredictKeyAfter(move));
+
           if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
               moves_seen > 0) {
             break;
@@ -715,8 +723,11 @@ Score Search::PVSearch(Thread &thread,
                 raw_static_eval,
                 Move::NullMove(),
                 tt_was_in_pv);
-            transposition_table_.Save(
-                tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+            transposition_table_.Save(tt_entry,
+                                      new_tt_entry,
+                                      state.zobrist_key,
+                                      stack->ply,
+                                      in_pv_node);
             return score;
           }
         }
@@ -871,7 +882,7 @@ Score Search::PVSearch(Thread &thread,
 
     const bool gives_check = state.InCheck();
 
-    const U32 prev_nodes_searched = thread.nodes_searched++;
+    const U32 prev_nodes_searched = thread.nodes_searched;
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -1026,7 +1037,7 @@ Score Search::PVSearch(Thread &thread,
                                                best_move,
                                                tt_was_in_pv);
     transposition_table_.Save(
-        tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+        tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
