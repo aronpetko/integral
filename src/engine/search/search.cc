@@ -971,7 +971,8 @@ Score Search::PVSearch(Thread &thread,
             // Special moves
             stack->AddKillerMove(move);
             if (prev_stack->move)
-              thread.AddCounterMove(prev_stack->move, prev_stack->moved_piece);
+              thread.AddCounterMove(
+                  best_move, prev_stack->move, prev_stack->moved_piece);
 
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
