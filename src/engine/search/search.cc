@@ -618,7 +618,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
+    if (depth >= 4 && !(stack - 1)->move && stack->eval >= beta &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
         !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
