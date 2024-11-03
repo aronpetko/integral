@@ -354,11 +354,11 @@ Score Search::QuiescentSearch(Thread &thread,
     return -kMateScore + stack->ply;
   }
 
-  TranspositionTableEntry::Flag tt_flag;
+  auto tt_flag = TranspositionTableEntry::kExact;
   if (alpha >= beta) {
     // Beta cutoff
     tt_flag = TranspositionTableEntry::kLowerBound;
-  } else {
+  } else if (alpha <= original_alpha) {
     // Alpha failed to raise
     tt_flag = TranspositionTableEntry::kUpperBound;
   }
