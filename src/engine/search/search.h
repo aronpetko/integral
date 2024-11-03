@@ -62,8 +62,8 @@ struct Thread {
     tb_hits = 0;
   }
 
-  void AddCounterMove(Move move, PieceType moving_piece) {
-    counter_moves[moving_piece][move.GetTo()] = move;
+  void AddCounterMove(Move best_move, Move prev_move, PieceType prev_moved) {
+    counter_moves[prev_moved][prev_move.GetTo()] = best_move;
   }
 
   std::thread raw_thread;
