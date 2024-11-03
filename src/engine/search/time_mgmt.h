@@ -12,7 +12,7 @@
 
 namespace search {
 
-using TimeStamp = U64;
+using TimeStamp = I64;
 
 class Thread;
 
