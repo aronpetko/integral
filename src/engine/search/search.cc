@@ -205,8 +205,8 @@ Score Search::QuiescentSearch(Thread &thread,
   stack->pv.Clear();
   ++thread.nodes_searched;
 
-  if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
+  if (stack->ply >= kMaxPlyFromRoot - 1) {
+    return state.InCheck() ? 0 : eval::Evaluate(board);
   }
 
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
@@ -390,12 +390,6 @@ Score Search::PVSearch(Thread &thread,
 
   stack->pv.Clear();
 
-  if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
-  }
-
-  thread.sel_depth = std::max(thread.sel_depth, stack->ply);
-
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
@@ -439,6 +433,12 @@ Score Search::PVSearch(Thread &thread,
       return 0;
     }
   }
+
+  if (stack->ply >= kMaxPlyFromRoot - 1) {
+    return state.InCheck() ? 0 : eval::Evaluate(board);
+  }
+
+  thread.sel_depth = std::max(thread.sel_depth, stack->ply);
 
   // Probe the transposition table to see if we have already evaluated this
   // position
@@ -551,7 +551,7 @@ Score Search::PVSearch(Thread &thread,
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
-      stack->eval = stack->static_eval;
+      stack->eval = raw_static_eval = stack->static_eval;
     }
   }
 
@@ -632,7 +632,7 @@ Score Search::PVSearch(Thread &thread,
         stack->continuation_entry = nullptr;
 
         const int eval_reduction =
-            std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
+            std::min<int>(4, (stack->eval - beta) / kNmpEvalDiv);
         int reduction =
             depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
         reduction = std::clamp(reduction, 0, depth);
