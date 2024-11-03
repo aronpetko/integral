@@ -61,6 +61,10 @@ struct Thread {
     tb_hits = 0;
   }
 
+  void AddCounterMove(Move move, PieceType moving_piece) {
+    counter_moves[moving_piece][move.GetTo()] = move;
+  }
+
   std::thread raw_thread;
   U32 id;
   Board board;
@@ -71,6 +75,7 @@ struct Thread {
   Score previous_score;
   U16 root_depth, sel_depth;
   U64 tb_hits;
+  MultiArray<Move, kNumPieceTypes, 64> counter_moves;
 };
 
 class Search {

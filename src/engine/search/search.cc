@@ -296,7 +296,7 @@ Score Search::QuiescentSearch(Thread &thread,
   const Score futility_score = best_score + kQsFutMargin;
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack);
+      MovePickerType::kQuiescence, thread, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
@@ -667,7 +667,7 @@ Score Search::PVSearch(Thread &thread,
 
         int moves_seen = 0;
         MovePicker move_picker(
-            MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
+            MovePickerType::kNoisy, thread, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
           if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
               moves_seen > 0) {
@@ -742,7 +742,7 @@ Score Search::PVSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kSearch, board, tt_move, history, stack);
+      MovePickerType::kSearch, thread, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
     if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
       continue;
@@ -968,7 +968,11 @@ Score Search::PVSearch(Thread &thread,
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
+            // Special moves
             stack->AddKillerMove(move);
+            if (prev_stack->move)
+              thread.AddCounterMove(prev_stack->move, prev_stack->moved_piece);
+
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(

@@ -6,6 +6,7 @@
 #include "../../chess/move_gen.h"
 #include "../evaluation/evaluation.h"
 #include "history/history.h"
+#include "search.h"
 
 namespace search {
 
@@ -28,13 +29,14 @@ class MovePicker {
     kGoodNoisys,
     kFirstKiller,
     kSecondKiller,
+    kCounterMove,
     kGenerateQuiets,
     kQuiets,
     kBadNoisys,
   };
 
   MovePicker(MovePickerType type,
-             Board &board,
+             Thread &thread,
              Move tt_move,
              history::History &history,
              StackEntry *stack,
@@ -57,7 +59,7 @@ class MovePicker {
   int ScoreMove(Move &move);
 
  private:
-  Board &board_;
+  Thread &thread_;
   Move tt_move_;
   MovePickerType type_;
   history::History &history_;

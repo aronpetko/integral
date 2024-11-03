@@ -32,12 +32,12 @@ TUNABLE(kMinorPawnThreatScorePos, 7627, 3000, 12000, false);
 TUNABLE(kMinorPawnThreatScoreNeg, 7991, 3000, 12000, false);
 
 MovePicker::MovePicker(MovePickerType type,
-                       Board &board,
+                       Thread &thread,
                        Move tt_move,
                        history::History &history,
                        StackEntry *stack,
                        int see_threshold)
-    : board_(board),
+    : thread_(thread),
       tt_move_(tt_move),
       type_(type),
       history_(history),
@@ -47,12 +47,13 @@ MovePicker::MovePicker(MovePickerType type,
       see_threshold_(see_threshold) {}
 
 Move MovePicker::Next() {
-  const auto &state = board_.GetState();
+  auto &board = thread_.board;
+  const auto &state = board.GetState();
 
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateNoisys;
 
-    if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
+    if (tt_move_ && board.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
           tt_move_.IsNoisy(state)) {
         return tt_move_;
@@ -89,26 +90,41 @@ Move MovePicker::Next() {
     stage_ = Stage::kFirstKiller;
   }
 
+  auto first_killer = Move::NullMove(), second_killer = Move::NullMove();
+
   if (stage_ == Stage::kFirstKiller) {
     stage_ = Stage::kSecondKiller;
 
     if (stack_) {
-      const auto first_killer = stack_->killer_moves[0];
+      first_killer = stack_->killer_moves[0];
       if (first_killer && first_killer != tt_move_ &&
-          board_.IsMovePseudoLegal(first_killer)) {
+          board.IsMovePseudoLegal(first_killer)) {
         return first_killer;
       }
     }
   }
 
   if (stage_ == Stage::kSecondKiller) {
-    stage_ = Stage::kGenerateQuiets;
+    stage_ = Stage::kCounterMove;
 
     if (stack_) {
-      const auto second_killer = stack_->killer_moves[1];
+      second_killer = stack_->killer_moves[1];
       if (second_killer && second_killer != tt_move_ &&
-          board_.IsMovePseudoLegal(second_killer)) {
+          board.IsMovePseudoLegal(second_killer)) {
         return second_killer;
+      }
+    }
+  }
+
+  if (stage_ == Stage::kCounterMove) {
+    stage_ = Stage::kGenerateQuiets;
+
+    if ((stack_ - 1)->move) {
+      const auto counter =
+          thread_.counter_moves[(stack_ - 1)->moved_piece][(stack_ - 1)->move];
+      if (counter && counter != tt_move_ && counter != first_killer &&
+          counter != second_killer && board.IsMovePseudoLegal(counter)) {
+        return counter;
       }
     }
   }
@@ -167,10 +183,18 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = stack_->killer_moves;
-  auto moves = move_gen::GenerateMoves(move_type, board_);
+  auto counter = Move::NullMove();
+
+  if ((stack_ - 1)->move) {
+    counter =
+        thread_.counter_moves[(stack_ - 1)->moved_piece][(stack_ - 1)->move];
+  }
+
+  auto moves = move_gen::GenerateMoves(move_type, thread_.board);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && killers[0] != move && killers[1] != move) {
+    if (move != tt_move_ && killers[0] != move && killers[1] != move &&
+        counter != move) {
       list.Push({move, ScoreMove(move)});
     }
   }
@@ -192,7 +216,7 @@ int MovePicker::ScoreMove(Move &move) {
     }
   }
 
-  auto &state = board_.GetState();
+  auto &state = thread_.board.GetState();
 
   // Winning/neutral captures are searched next
   // Losing captures are searched last
