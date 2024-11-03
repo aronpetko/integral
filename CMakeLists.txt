@@ -19,6 +19,10 @@ option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
+# PGO-specific options
+option(USE_PGO "Enable Profile-Guided Optimization" ON)
+set(BENCH_ARGS "bench" CACHE STRING "Arguments for benchmark run")
+
 # Allow user to specify EVALFILE through CMake
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
@@ -84,6 +88,24 @@ if (LTO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 endif ()
 
+# PGO setup
+if(USE_PGO)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # Use a simpler profile directory name
+        set(PROFILE_DIR "${CMAKE_BINARY_DIR}/profile-data")
+        file(MAKE_DIRECTORY ${PROFILE_DIR})
+
+        # Generate profile data in the profile directory
+        set(PROFILE_GEN_FLAGS "-fprofile-generate=${PROFILE_DIR}")
+
+        # For the final build, we'll create a symbolic target name that matches the profile data
+        set(PROFILE_USE_FLAGS "-fprofile-use=${PROFILE_DIR}" "-fprofile-correction")
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        set(PROFILE_GEN_FLAGS "-fprofile-instr-generate")
+        set(PROFILE_USE_FLAGS "-fprofile-instr-use")
+    endif()
+endif()
+
 # Add Clang-specific flags
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
@@ -102,11 +124,9 @@ include_directories(third-party/fathom)
 include_directories(third-party/fmt/include)
 add_definitions(-DFMT_HEADER_ONLY -DEVALFILE="${EVALFILE}")
 
-# Collect all source files
+# Collect source files
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
-
-# Create the executable
-add_executable(integral ${SOURCES}
+set(COMMON_SOURCES ${SOURCES}
         third-party/fathom/tbconfig.h
         third-party/fathom/tbprobe.h
         third-party/fathom/stdendian.h
@@ -114,3 +134,38 @@ add_executable(integral ${SOURCES}
         src/data_gen/data_gen.h
         src/data_gen/format/binpack.h
         src/engine/search/cuckoo.cc)
+
+if(USE_PGO)
+    # Step 1: Build for profile generation
+    add_executable(integral_gen ${COMMON_SOURCES})
+    target_compile_options(integral_gen PRIVATE ${PROFILE_GEN_FLAGS})
+    target_link_options(integral_gen PRIVATE ${PROFILE_GEN_FLAGS})
+
+    # Step 2: Create a target to run the benchmark
+    add_custom_target(run_benchmark
+            COMMAND ${CMAKE_COMMAND} -E echo "Running benchmark for profile generation..."
+            COMMAND ${CMAKE_BINARY_DIR}/integral_gen ${BENCH_ARGS}
+            DEPENDS integral_gen
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating profile data by running benchmark..."
+            )
+
+    # Step 3: Build the final optimized version
+    add_executable(integral ${COMMON_SOURCES})
+    foreach(flag IN LISTS PROFILE_USE_FLAGS)
+        target_compile_options(integral PRIVATE ${flag})
+        target_link_options(integral PRIVATE ${flag})
+    endforeach()
+
+    # Make the final build depend on the profile generation
+    add_dependencies(integral run_benchmark)
+
+    # Add a custom target to build everything in the right order
+    add_custom_target(build_pgo ALL
+            DEPENDS integral
+            COMMENT "Building PGO-optimized executable..."
+            )
+else()
+    # Regular build without PGO
+    add_executable(integral ${COMMON_SOURCES})
+endif()
