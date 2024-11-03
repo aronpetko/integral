@@ -84,8 +84,9 @@ void Search::IterativeDeepening(Thread &thread) {
     int fail_high_count = 0;
 
     while (true) {
+      const int search_depth = std::max(1, depth - fail_high_count);
       const Score new_score = PVSearch<NodeType::kPV>(
-          thread, depth - fail_high_count, alpha, beta, root_stack, false);
+          thread, search_depth, alpha, beta, root_stack, false);
 
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
@@ -112,7 +113,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
-        if (alpha < 2000 && fail_high_count < 2) {
+        if (alpha < 2000) {
           ++fail_high_count;
         }
       } else {
