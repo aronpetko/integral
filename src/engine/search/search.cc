@@ -969,7 +969,7 @@ Score Search::PVSearch(Thread &thread,
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
-            if (depth > 3 && !quiets.Empty()) {
+            if (depth > 3 || !quiets.Empty()) {
               history.quiet_history->UpdateScore(
                   state, stack, history_depth, stack->threats, quiets);
               history.continuation_history->UpdateScore(
