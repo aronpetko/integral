@@ -103,12 +103,12 @@ void Search::IterativeDeepening(Thread &thread) {
 
         // We failed low which means we don't have a move to play, so we widen
         // alpha
-        alpha = std::max<int>(-kInfiniteScore, alpha - window);
+        alpha = std::max<int>(-kInfiniteScore, score - window);
         fail_high_count = 0;
       } else if (score >= beta) {
         // We failed high on a PV node, which is abnormal and requires further
         // verification
-        beta = std::min<int>(kInfiniteScore, beta + window);
+        beta = std::min<int>(kInfiniteScore, score + window);
 
         // Spend less time searching as we expand the search window, unless
         // we're absolutely winning
