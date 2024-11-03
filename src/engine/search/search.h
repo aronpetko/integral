@@ -54,6 +54,7 @@ struct Thread {
   void Reset() {
     stack.Reset();
     scores.fill(kScoreNone);
+    for (auto &counter : counter_moves) counter.fill(Move::NullMove());
 
     // Reset info data
     nodes_searched = 0;
