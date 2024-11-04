@@ -25,8 +25,7 @@ Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
 Board::Board(const Board &other)
     : state_(other.state_),
-      history_(other.history_),
-      accumulator_(std::make_shared<nnue::Accumulator>(*other.accumulator_)) {}
+      history_(other.history_) {}
 
 Board &Board::operator=(const Board &other) {
   if (this == &other) {
@@ -35,7 +34,6 @@ Board &Board::operator=(const Board &other) {
 
   state_ = other.state_;
   history_ = other.history_;
-  accumulator_ = std::make_shared<nnue::Accumulator>(*other.accumulator_);
   return *this;
 }
 
