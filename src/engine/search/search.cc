@@ -818,8 +818,8 @@ Score Search::PVSearch(Thread &thread,
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
-        const int reduced_depth = (depth - 1) / 2;
-        const Score new_beta = tt_entry->score - 5 * depth / 8;
+        const int reduced_depth = 5 * (depth - 1) / 8;
+        const Score new_beta = tt_entry->score - depth;
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
