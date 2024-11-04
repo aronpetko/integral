@@ -1082,8 +1082,7 @@ void Search::QuitThreads() {
 bool Search::ShouldQuit(Thread &thread) {
   if (stop_.load(std::memory_order_relaxed)) return true;
   if (thread.IsMainThread()) {
-    return thread.stack.Front().best_move &&
-           time_mgmt_.TimesUp(thread.nodes_searched);
+    return time_mgmt_.TimesUp(thread.nodes_searched);
   }
   return false;
 }

@@ -154,7 +154,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
 }
 
 bool TimedLimiter::TimesUp(U32 nodes_searched) {
-  return (nodes_searched & 1023) == 0 && TimeElapsed() >= hard_limit_;
+  return (nodes_searched & 4095) == 0 && TimeElapsed() >= hard_limit_;
 }
 
 void TimedLimiter::Start() {
@@ -182,7 +182,9 @@ void TimedLimiter::CalculateLimits() {
   const int total_time =
       std::max(1, time_left_ + 50 * increment_ - 50 * overhead);
   allocated_time_ = std::min(time_left_ * 0.4193, total_time * 0.0575);
-  hard_limit_ = time_left_ * 0.8 - overhead;
+  hard_limit_ = std::max<I64>(
+      1,
+      std::min(time_left_ * 0.9221 - overhead, allocated_time_ * 5.9280) - 10);
 }
 
 void TimedLimiter::Update(const TimeConfig& config) {
