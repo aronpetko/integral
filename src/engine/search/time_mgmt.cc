@@ -98,7 +98,9 @@ TimedLimiter::TimedLimiter(int time_left, int increment, int move_time)
       move_time_(move_time),
       previous_best_move_(Move::NullMove()),
       best_move_stability_(0) {
-  CalculateLimits();
+  if (time_left) {
+    CalculateLimits();
+  }
 }
 
 int TimedLimiter::GetSearchDepth() const {
@@ -194,15 +196,16 @@ void TimedLimiter::Update(const TimeConfig& config) {
 }
 
 // TimeManagement implementation
-TimeManagement::TimeManagement() = default;
-
-TimeManagement::TimeManagement(const TimeConfig& config) {
-  SetConfig(config);
+TimeManagement::TimeManagement() {
   // Pre-allocate all limiter types
   cached_depth_limiter_ = std::make_unique<DepthLimiter>(1);
   cached_node_limiter_ = std::make_unique<NodeLimiter>(0, 0);
   cached_timed_limiter_ = std::make_unique<TimedLimiter>(0, 0, 0);
   active_limiters_.reserve(3);
+}
+
+TimeManagement::TimeManagement(const TimeConfig& config) {
+  SetConfig(config);
 }
 
 void TimeManagement::SetConfig(const TimeConfig& config) {
