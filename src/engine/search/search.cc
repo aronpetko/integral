@@ -205,7 +205,7 @@ Score Search::QuiescentSearch(Thread &thread,
   stack->pv.Clear();
   ++thread.nodes_searched;
 
-  if (stack->ply >= kMaxPlyFromRoot || ShouldQuit(thread)) {
+  if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
   }
 
@@ -326,10 +326,6 @@ Score Search::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
 
-    if (ShouldQuit(thread)) {
-      return 0;
-    }
-
     moves_seen++;
 
     if (score > best_score) {
@@ -390,6 +386,10 @@ Score Search::PVSearch(Thread &thread,
 
   stack->pv.Clear();
 
+  if (ShouldQuit(thread)) {
+    return 0;
+  }
+
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
   }
@@ -434,10 +434,6 @@ Score Search::PVSearch(Thread &thread,
     if (alpha >= beta) {
       return alpha;
     }
-  }
-
-  if (ShouldQuit(thread)) {
-    return 0;
   }
 
   // Probe the transposition table to see if we have already evaluated this

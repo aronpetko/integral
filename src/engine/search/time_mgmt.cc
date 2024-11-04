@@ -178,7 +178,6 @@ void TimedLimiter::CalculateLimits() {
 
   if (move_time_ != 0) {
     hard_limit_ = move_time_ - overhead;
-    soft_limit_ = hard_limit_;
     return;
   }
 
