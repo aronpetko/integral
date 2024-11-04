@@ -154,10 +154,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
 }
 
 bool TimedLimiter::TimesUp(U32 nodes_searched) {
-  static thread_local int counter = 4096;
-  if (--counter > 0) return false;
-  counter = 4096;
-  return TimeElapsed() >= hard_limit_;
+  return (nodes_searched & 4095) == 0 && TimeElapsed() >= hard_limit_;
 }
 
 void TimedLimiter::Start() {
@@ -201,6 +198,11 @@ TimeManagement::TimeManagement() = default;
 
 TimeManagement::TimeManagement(const TimeConfig& config) {
   SetConfig(config);
+  // Pre-allocate all limiter types
+  cached_depth_limiter_ = std::make_unique<DepthLimiter>(1);
+  cached_node_limiter_ = std::make_unique<NodeLimiter>(0, 0);
+  cached_timed_limiter_ = std::make_unique<TimedLimiter>(0, 0, 0);
+  active_limiters_.reserve(3);
 }
 
 void TimeManagement::SetConfig(const TimeConfig& config) {
@@ -209,24 +211,25 @@ void TimeManagement::SetConfig(const TimeConfig& config) {
 }
 
 void TimeManagement::ConfigureLimiters(const TimeConfig& config) {
-  limiters_.clear();
+  active_limiters_.clear();
 
   if (config.infinite) {
     return;
   }
 
   if (config.depth > 0) {
-    limiters_.push_back(std::make_unique<DepthLimiter>(config.depth));
+    cached_depth_limiter_->Update(config);
+    active_limiters_.push_back(cached_depth_limiter_.get());
   }
 
   if (config.nodes > 0 || config.soft_nodes > 0) {
-    limiters_.push_back(
-        std::make_unique<NodeLimiter>(config.nodes, config.soft_nodes));
+    cached_node_limiter_->Update(config);
+    active_limiters_.push_back(cached_node_limiter_.get());
   }
 
   if (config.move_time > 0 || config.time_left > 0) {
-    limiters_.push_back(std::make_unique<TimedLimiter>(
-        config.time_left, config.increment, config.move_time));
+    cached_timed_limiter_->Update(config);
+    active_limiters_.push_back(cached_timed_limiter_.get());
   }
 }
 
