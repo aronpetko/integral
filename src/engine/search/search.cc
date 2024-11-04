@@ -326,10 +326,6 @@ Score Search::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
 
-    if (ShouldQuit(thread)) {
-      return 0;
-    }
-
     moves_seen++;
 
     if (score > best_score) {
@@ -390,6 +386,10 @@ Score Search::PVSearch(Thread &thread,
 
   stack->pv.Clear();
 
+  if (ShouldQuit(thread)) {
+    return 0;
+  }
+
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
   }
@@ -433,10 +433,6 @@ Score Search::PVSearch(Thread &thread,
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
       return alpha;
-    }
-
-    if (ShouldQuit(thread)) {
-      return 0;
     }
   }
 
@@ -1082,8 +1078,7 @@ void Search::QuitThreads() {
 bool Search::ShouldQuit(Thread &thread) {
   if (stop_.load(std::memory_order_relaxed)) return true;
   if (thread.IsMainThread()) {
-    return thread.stack.Front().best_move &&
-           time_mgmt_.TimesUp(thread.nodes_searched);
+    return time_mgmt_.TimesUp(thread.nodes_searched);
   }
   return false;
 }

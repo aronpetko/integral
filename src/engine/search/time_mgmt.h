@@ -111,6 +111,7 @@ class TimedLimiter : public TimeLimiter {
  private:
   void CalculateLimits();
 
+ private:
   int time_left_;
   int increment_;
   int move_time_;
@@ -150,10 +151,15 @@ class TimeManagement {
  private:
   void ConfigureLimiters(const TimeConfig& config);
 
+ private:
+
   TimeConfig config_;
-  std::vector<std::unique_ptr<TimeLimiter>> limiters_;
   TimeStamp start_time_ = 0;
   TimeStamp end_time_ = 0;
+  std::unique_ptr<DepthLimiter> cached_depth_limiter_ = nullptr;
+  std::unique_ptr<NodeLimiter> cached_node_limiter_ = nullptr;
+  std::unique_ptr<TimedLimiter> cached_timed_limiter_ = nullptr;
+  std::vector<TimeLimiter*> active_limiters_;
 };
 
 }  // namespace search

@@ -98,7 +98,9 @@ TimedLimiter::TimedLimiter(int time_left, int increment, int move_time)
       move_time_(move_time),
       previous_best_move_(Move::NullMove()),
       best_move_stability_(0) {
-  CalculateLimits();
+  if (time_left) {
+    CalculateLimits();
+  }
 }
 
 int TimedLimiter::GetSearchDepth() const {
@@ -175,15 +177,15 @@ void TimedLimiter::CalculateLimits() {
 
   if (move_time_ != 0) {
     hard_limit_ = move_time_ - overhead;
-    soft_limit_ = hard_limit_;
     return;
   }
 
   const int total_time =
       std::max(1, time_left_ + 50 * increment_ - 50 * overhead);
   allocated_time_ = std::min(time_left_ * 0.4193, total_time * 0.0575);
-  hard_limit_ =
-      std::min(time_left_ * 0.9221 - overhead, allocated_time_ * 5.9280) - 10;
+  hard_limit_ = std::max<I64>(
+      1,
+      std::min(time_left_ * 0.9221 - overhead, allocated_time_ * 5.9280) - 10);
 }
 
 void TimedLimiter::Update(const TimeConfig& config) {
@@ -194,7 +196,13 @@ void TimedLimiter::Update(const TimeConfig& config) {
 }
 
 // TimeManagement implementation
-TimeManagement::TimeManagement() = default;
+TimeManagement::TimeManagement() {
+  // Pre-allocate all limiter types
+  cached_depth_limiter_ = std::make_unique<DepthLimiter>(1);
+  cached_node_limiter_ = std::make_unique<NodeLimiter>(0, 0);
+  cached_timed_limiter_ = std::make_unique<TimedLimiter>(0, 0, 0);
+  active_limiters_.reserve(3);
+}
 
 TimeManagement::TimeManagement(const TimeConfig& config) {
   SetConfig(config);
@@ -206,34 +214,30 @@ void TimeManagement::SetConfig(const TimeConfig& config) {
 }
 
 void TimeManagement::ConfigureLimiters(const TimeConfig& config) {
-  limiters_.clear();
+  active_limiters_.clear();
 
   if (config.infinite) {
     return;
   }
 
   if (config.depth > 0) {
-    limiters_.push_back(std::make_unique<DepthLimiter>(config.depth));
+    cached_depth_limiter_->Update(config);
+    active_limiters_.push_back(cached_depth_limiter_.get());
   }
 
   if (config.nodes > 0 || config.soft_nodes > 0) {
-    limiters_.push_back(
-        std::make_unique<NodeLimiter>(config.nodes, config.soft_nodes));
+    cached_node_limiter_->Update(config);
+    active_limiters_.push_back(cached_node_limiter_.get());
   }
 
   if (config.move_time > 0 || config.time_left > 0) {
-    limiters_.push_back(std::make_unique<TimedLimiter>(
-        config.time_left, config.increment, config.move_time));
+    cached_timed_limiter_->Update(config);
+    active_limiters_.push_back(cached_timed_limiter_.get());
   }
 }
 
 TimedLimiter* TimeManagement::GetTimedLimiter() {
-  for (const auto& limiter : limiters_) {
-    if (auto timed_limiter = dynamic_cast<TimedLimiter*>(limiter.get())) {
-      return timed_limiter;
-    }
-  }
-  return nullptr;
+  return cached_timed_limiter_.get();
 }
 
 U64 TimeManagement::TimeElapsed() const {
@@ -242,10 +246,9 @@ U64 TimeManagement::TimeElapsed() const {
 
 int TimeManagement::GetSearchDepth() const {
   int min_depth = search::kMaxSearchDepth;
-  for (const auto& limiter : limiters_) {
+  for (const auto* limiter : active_limiters_) {
     min_depth = std::min(min_depth, limiter->GetSearchDepth());
   }
-
   return min_depth;
 }
 
@@ -255,20 +258,20 @@ bool TimeManagement::IsInfinite() const {
 
 void TimeManagement::Start() {
   start_time_ = GetCurrentTime();
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     limiter->Start();
   }
 }
 
 void TimeManagement::Stop() {
   end_time_ = GetCurrentTime();
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     limiter->Stop();
   }
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, Thread& thread) {
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     if (limiter->ShouldStop(best_move, depth, thread)) {
       return true;
     }
@@ -277,7 +280,7 @@ bool TimeManagement::ShouldStop(Move best_move, int depth, Thread& thread) {
 }
 
 bool TimeManagement::TimesUp(U32 nodes_searched) {
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     if (limiter->TimesUp(nodes_searched)) {
       return true;
     }
