@@ -205,7 +205,7 @@ Score Search::QuiescentSearch(Thread &thread,
   stack->pv.Clear();
   ++thread.nodes_searched;
 
-  if (stack->ply >= kMaxPlyFromRoot) {
+  if (stack->ply >= kMaxPlyFromRoot || ShouldQuit(thread)) {
     return eval::Evaluate(board);
   }
 
