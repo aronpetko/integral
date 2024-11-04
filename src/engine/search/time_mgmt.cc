@@ -234,12 +234,7 @@ void TimeManagement::ConfigureLimiters(const TimeConfig& config) {
 }
 
 TimedLimiter* TimeManagement::GetTimedLimiter() {
-  for (const auto& limiter : limiters_) {
-    if (auto timed_limiter = dynamic_cast<TimedLimiter*>(limiter.get())) {
-      return timed_limiter;
-    }
-  }
-  return nullptr;
+  return cached_timed_limiter_.get();
 }
 
 U64 TimeManagement::TimeElapsed() const {
@@ -248,10 +243,9 @@ U64 TimeManagement::TimeElapsed() const {
 
 int TimeManagement::GetSearchDepth() const {
   int min_depth = search::kMaxSearchDepth;
-  for (const auto& limiter : limiters_) {
+  for (const auto* limiter : active_limiters_) {
     min_depth = std::min(min_depth, limiter->GetSearchDepth());
   }
-
   return min_depth;
 }
 
@@ -261,20 +255,20 @@ bool TimeManagement::IsInfinite() const {
 
 void TimeManagement::Start() {
   start_time_ = GetCurrentTime();
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     limiter->Start();
   }
 }
 
 void TimeManagement::Stop() {
   end_time_ = GetCurrentTime();
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     limiter->Stop();
   }
 }
 
 bool TimeManagement::ShouldStop(Move best_move, int depth, Thread& thread) {
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     if (limiter->ShouldStop(best_move, depth, thread)) {
       return true;
     }
@@ -283,7 +277,7 @@ bool TimeManagement::ShouldStop(Move best_move, int depth, Thread& thread) {
 }
 
 bool TimeManagement::TimesUp(U32 nodes_searched) {
-  for (const auto& limiter : limiters_) {
+  for (auto* limiter : active_limiters_) {
     if (limiter->TimesUp(nodes_searched)) {
       return true;
     }
