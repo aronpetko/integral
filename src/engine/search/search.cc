@@ -434,10 +434,10 @@ Score Search::PVSearch(Thread &thread,
     if (alpha >= beta) {
       return alpha;
     }
+  }
 
-    if (ShouldQuit(thread)) {
-      return 0;
-    }
+  if (ShouldQuit(thread)) {
+    return 0;
   }
 
   // Probe the transposition table to see if we have already evaluated this
