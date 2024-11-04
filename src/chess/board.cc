@@ -34,6 +34,7 @@ Board &Board::operator=(const Board &other) {
 
   state_ = other.state_;
   history_ = other.history_;
+  accumulator_ = std::make_shared<nnue::Accumulator>();
   return *this;
 }
 
