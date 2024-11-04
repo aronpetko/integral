@@ -5,7 +5,14 @@
 namespace eval {
 
 Score Evaluate(Board &board) {
-  return nnue::Evaluate(board);
+  const auto network_eval = nnue::Evaluate(board);
+
+  const auto &state = board.GetState();
+  const int phase =
+      3 * state.Knights().PopCount() + 3 * state.Bishops().PopCount() +
+      5 * state.Rooks().PopCount() + 12 * state.Queens().PopCount();
+
+  return network_eval * (200 + phase) / 256;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
