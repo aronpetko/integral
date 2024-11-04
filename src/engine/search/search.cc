@@ -727,7 +727,7 @@ Score Search::PVSearch(Thread &thread,
   // TT move, so we save time on searching this position now
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
       !stack->excluded_tt_move && !tt_move) {
-    depth--;
+    depth -= 1 + (in_pv_node && !tt_move);
   }
 
   // Keep track of the original alpha for bound determination when updating the
