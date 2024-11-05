@@ -874,6 +874,7 @@ Score Search::PVSearch(Thread &thread,
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
     int reduction = 0;
+    int num_tries = 1;
     bool needs_full_search;
     Score score;
 
@@ -892,6 +893,7 @@ Score Search::PVSearch(Thread &thread,
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
       reduction -=
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
+      reduction -= history.tried_history->GetScore(state, move) > 2;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
@@ -907,6 +909,7 @@ Score Search::PVSearch(Thread &thread,
             score > (best_score + kDoDeeperBase + 2 * new_depth);
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
         new_depth += do_deeper_search - do_shallower_search;
+        ++num_tries;
       }
     } else {
       // If we didn't perform late move reduction, then we search this move at
@@ -932,11 +935,14 @@ Score Search::PVSearch(Thread &thread,
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
+      ++num_tries;
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
 
     board.UndoMove();
+
+    history.tried_history->SetTriedScore(state.turn, move, num_tries);
 
     if (in_root && thread.IsMainThread()) {
       if (auto timed_limiter = time_mgmt_.GetTimedLimiter()) {
