@@ -854,7 +854,7 @@ Score Search::PVSearch(Thread &thread,
         else if (tt_entry->score >= beta) {
           extensions = -2 + in_pv_node;
         } else if (cut_node) {
-          extensions = -1;
+          extensions = -2;
         }
       }
     }
