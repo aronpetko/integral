@@ -254,13 +254,13 @@ Score Search::QuiescentSearch(Thread &thread,
   Score best_score = kScoreNone;
   Score raw_static_eval = kScoreNone;
 
-  if (tt_static_eval != kScoreNone) {
-    raw_static_eval = tt_static_eval;
-  } else {
-    raw_static_eval = eval::Evaluate(board);
-  }
-
   if (!stack->in_check) {
+    if (tt_static_eval != kScoreNone) {
+      raw_static_eval = tt_static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(board);
+    }
+
     stack->static_eval = history.correction_history->CorrectStaticEval(
         state, stack, raw_static_eval);
 
@@ -326,10 +326,6 @@ Score Search::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
 
-    if (ShouldQuit(thread)) {
-      return 0;
-    }
-
     moves_seen++;
 
     if (score > best_score) {
@@ -390,6 +386,10 @@ Score Search::PVSearch(Thread &thread,
 
   stack->pv.Clear();
 
+  if (ShouldQuit(thread)) {
+    return 0;
+  }
+
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
   }
@@ -433,10 +433,6 @@ Score Search::PVSearch(Thread &thread,
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
       return alpha;
-    }
-
-    if (ShouldQuit(thread)) {
-      return 0;
     }
   }
 
@@ -596,7 +592,7 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin -
           static_cast<int>(improving * 1.5 * kRevFutMargin) +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - futility_margin >= beta) {
+      if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
         // bound since we're confident position can't fall below it, but lower
         // than the potentially optimistic static eval since we pruned without
@@ -1082,8 +1078,7 @@ void Search::QuitThreads() {
 bool Search::ShouldQuit(Thread &thread) {
   if (stop_.load(std::memory_order_relaxed)) return true;
   if (thread.IsMainThread()) {
-    return thread.stack.Front().best_move &&
-           time_mgmt_.TimesUp(thread.nodes_searched);
+    return time_mgmt_.TimesUp(thread.nodes_searched);
   }
   return false;
 }

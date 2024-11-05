@@ -26,7 +26,7 @@ void Initialize(search::Search &search) {
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
     search.SetThreadCount(option.GetValue<U16>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
+  listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 100, 0, 10000);
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
     syzygy::SetPath(option.GetValue<std::string>());
   });
