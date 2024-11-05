@@ -818,7 +818,7 @@ Score Search::PVSearch(Thread &thread,
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
-        const int reduced_depth = (depth - 1) / 2;
+        const int reduced_depth = 3 * (depth - 1) / 8;
         const Score new_beta = tt_entry->score - depth;
 
         stack->excluded_tt_move = tt_move;
