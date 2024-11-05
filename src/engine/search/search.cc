@@ -652,7 +652,7 @@ Score Search::PVSearch(Thread &thread,
       // ProbCut: When the current position's score is likely to cause a beta
       // cutoff, we attempt a shallower quiescent-like search and prune early if
       // possible
-      const Score pc_beta = beta + kProbcutBetaDelta;
+      const Score pc_beta = beta + kProbcutBetaDelta - 20 * cut_node;
       if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
