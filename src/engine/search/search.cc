@@ -254,13 +254,13 @@ Score Search::QuiescentSearch(Thread &thread,
   Score best_score = kScoreNone;
   Score raw_static_eval = kScoreNone;
 
-  if (tt_static_eval != kScoreNone) {
-    raw_static_eval = tt_static_eval;
-  } else {
-    raw_static_eval = eval::Evaluate(board);
-  }
-
   if (!stack->in_check) {
+    if (tt_static_eval != kScoreNone) {
+      raw_static_eval = tt_static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(board);
+    }
+
     stack->static_eval = history.correction_history->CorrectStaticEval(
         state, stack, raw_static_eval);
 
@@ -592,7 +592,7 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin -
           static_cast<int>(improving * 1.5 * kRevFutMargin) +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - futility_margin >= beta) {
+      if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
         // bound since we're confident position can't fall below it, but lower
         // than the potentially optimistic static eval since we pruned without
@@ -818,7 +818,7 @@ Score Search::PVSearch(Thread &thread,
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
-        const int reduced_depth = (depth - 1) / 2;
+        const int reduced_depth = 3 * (depth - 1) / 8;
         const Score new_beta = tt_entry->score - depth;
 
         stack->excluded_tt_move = tt_move;
