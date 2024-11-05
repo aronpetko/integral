@@ -8,11 +8,13 @@ Score Evaluate(Board &board) {
   const auto network_eval = nnue::Evaluate(board);
 
   const auto &state = board.GetState();
-  const int phase =
-      3 * state.Knights().PopCount() + 3 * state.Bishops().PopCount() +
-      5 * state.Rooks().PopCount() + 12 * state.Queens().PopCount();
+  const auto material_phase =
+      kSeePieceScores[kKnight] * state.Knights().PopCount() +
+      kSeePieceScores[kBishop] * state.Bishops().PopCount() +
+      kSeePieceScores[kRook] * state.Rooks().PopCount() +
+      kSeePieceScores[kQueen] * state.Queens().PopCount();
 
-  return network_eval * (200 + phase) / 256;
+  return network_eval * (26500 + material_phase) / 32768;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
