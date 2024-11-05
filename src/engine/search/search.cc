@@ -254,13 +254,13 @@ Score Search::QuiescentSearch(Thread &thread,
   Score best_score = kScoreNone;
   Score raw_static_eval = kScoreNone;
 
-  if (tt_static_eval != kScoreNone) {
-    raw_static_eval = tt_static_eval;
-  } else {
-    raw_static_eval = eval::Evaluate(board);
-  }
-
   if (!stack->in_check) {
+    if (tt_static_eval != kScoreNone) {
+      raw_static_eval = tt_static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(board);
+    }
+
     stack->static_eval = history.correction_history->CorrectStaticEval(
         state, stack, raw_static_eval);
 
