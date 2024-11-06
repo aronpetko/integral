@@ -17,15 +17,17 @@ class ContinuationHistory {
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    int depth,
-                   MoveList &quiets) {
-    const int bonus = HistoryBonus(depth);
+                   List<std::pair<Move, int>, 64> &quiets,
+                   int tried_count) {
+    const int bonus = HistoryBonus(depth) * tried_count;
     UpdateMoveScore(state, stack->move, bonus, stack);
 
     // Lower the score of the quiet moves that failed to raise alpha
-    const int penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
+      const auto [bad_quiet, bad_tried_count] = quiets[i];
+      const int penalty = HistoryPenalty(depth) * bad_tried_count;
       // Apply a linear dampening to the penalty as the depth increases
-      UpdateMoveScore(state, quiets[i], penalty, stack);
+      UpdateMoveScore(state, bad_quiet, penalty, stack);
     }
   }
 

@@ -734,7 +734,7 @@ Score Search::PVSearch(Thread &thread,
   // transposition table
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
-  MoveList quiets, captures;
+  List<std::pair<Move, int>, 64> quiets, captures;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -873,7 +873,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
-    int reduction = 0;
+    int reduction = 0, num_tries = 0;
     bool needs_full_search;
     Score score;
 
@@ -899,6 +899,7 @@ Score Search::PVSearch(Thread &thread,
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+      ++num_tries;
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
@@ -918,6 +919,7 @@ Score Search::PVSearch(Thread &thread,
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
+      ++num_tries;
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
 
@@ -932,6 +934,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
+      ++num_tries;
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
@@ -968,11 +971,12 @@ Score Search::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+                state, stack, history_depth, stack->threats, quiets, num_tries);
             history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, quiets, num_tries);
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, stack, history_depth);
+            history.capture_history->UpdateScore(
+                state, stack, history_depth, num_tries);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
@@ -983,9 +987,9 @@ Score Search::PVSearch(Thread &thread,
     // Penalize the history score of moves that failed to raise alpha
     if (move != best_move) {
       if (is_quiet)
-        quiets.Push(move);
+        quiets.Push({move, num_tries});
       else if (is_capture)
-        captures.Push(move);
+        captures.Push({move, num_tries});
     }
   }
 

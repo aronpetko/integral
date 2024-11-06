@@ -11,18 +11,23 @@ class CaptureHistory {
  public:
   CaptureHistory() : table_({}) {}
 
-  void UpdateScore(const BoardState &state, StackEntry *stack, int depth) {
-    const int bonus = HistoryBonus(depth);
+  void UpdateScore(const BoardState &state,
+                   StackEntry *stack,
+                   int depth,
+                   int tried_count) {
+    const int bonus = HistoryBonus(depth) * tried_count;
     // Apply a linear dampening to the bonus as the depth increases
     int &score = table_[state.turn][stack->move.GetFrom()][stack->move.GetTo()];
     score += ScaleBonus(score, bonus);
   }
 
-  void Penalize(const BoardState &state, int depth, MoveList &captures) {
-    const int penalty = HistoryPenalty(depth);
+  void Penalize(const BoardState &state,
+                int depth,
+                List<std::pair<Move, int>, 64> &captures) {
     // Lower the score of the capture moves that failed to raise alpha
     for (int i = 0; i < captures.Size(); i++) {
-      const Move bad_capture = captures[i];
+      const auto [bad_capture, tried_count] = captures[i];
+      const int penalty = HistoryPenalty(depth) * tried_count;
       // Apply a linear dampening to the penalty as the depth increases
       int &bad_capture_score =
           table_[state.turn][bad_capture.GetFrom()][bad_capture.GetTo()];

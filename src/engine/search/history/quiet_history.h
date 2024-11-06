@@ -22,16 +22,18 @@ class QuietHistory {
                    StackEntry *stack,
                    int depth,
                    BitBoard threats,
-                   MoveList &quiets) {
-    const int bonus = HistoryBonus(depth);
+                   List<std::pair<Move, int>, 64> &quiets,
+                   int tried_count) {
+    const int bonus = HistoryBonus(depth) * tried_count;
 
     // Apply a linear dampening to the bonus as the depth increases
     UpdateMoveScore(state.turn, stack->move, threats, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
-    const int penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
-      UpdateMoveScore(state.turn, quiets[i], threats, penalty);
+      const auto [bad_quiet, tried_count] = quiets[i];
+      const int penalty = HistoryPenalty(depth) * tried_count;
+      UpdateMoveScore(state.turn, bad_quiet, threats, penalty);
     }
   }
 
