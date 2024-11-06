@@ -62,7 +62,7 @@ TUNABLE(kDoShallowerBase, 5, 0, 30, false);
 
 TUNABLE(kSeDepth, 6, 6, 12, true);
 TUNABLE(kSeDoubleMargin, 13, 0, 30, false);
-TUNABLE(kSeTripleMargin, 104, 30, 250, false);
+TUNABLE(kSeTripleMargin, 80, 30, 250, false);
 TUNABLE(kSeDepthExtensionDepth, 11, 0, 15, false);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, false);
