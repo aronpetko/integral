@@ -5,7 +5,16 @@
 namespace eval {
 
 Score Evaluate(Board &board) {
-  return nnue::Evaluate(board);
+  const auto network_eval = nnue::Evaluate(board);
+
+  const auto &state = board.GetState();
+  const auto material_phase =
+      kSeePieceScores[kKnight] * state.Knights().PopCount() +
+      kSeePieceScores[kBishop] * state.Bishops().PopCount() +
+      kSeePieceScores[kRook] * state.Rooks().PopCount() +
+      kSeePieceScores[kQueen] * state.Queens().PopCount();
+
+  return network_eval * (26500 + material_phase) / 32768;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
