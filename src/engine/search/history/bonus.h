@@ -11,22 +11,20 @@ TUNABLE(kHistBonusScale, 137, 65, 260, false);
 TUNABLE(kHistPenaltyScale, 150, 65, 260, false);
 TUNABLE(kHistBonusMaxBonus, 1188, 580, 2318, true);
 
-static int HistoryBonus(int depth,
-                        int scale = kHistBonusScale,
-                        int max_bonus = kHistBonusMaxBonus) {
-  return std::clamp(scale * depth, -max_bonus, max_bonus);
+static I16 HistoryBonus(I16 depth,
+                        I16 scale = kHistBonusScale,
+                        I16 max_bonus = kHistBonusMaxBonus) {
+  return std::clamp<I16>(scale * depth, -max_bonus, max_bonus);
 }
 
-static int HistoryPenalty(int depth,
-                        int scale = kHistPenaltyScale,
-                        int max_bonus = kHistBonusMaxBonus) {
-  return std::clamp(-scale * depth, -max_bonus, max_bonus);
+static I16 HistoryPenalty(I16 depth,
+                          I16 scale = kHistPenaltyScale,
+                          I16 max_bonus = kHistBonusMaxBonus) {
+  return std::clamp<I16>(-scale * depth, -max_bonus, max_bonus);
 }
 
 // Linear interpolation of the bonus and maximum score
-static int ScaleBonus(I32 score,
-                      int bonus,
-                      int gravity = kHistBonusGravity) {
+static I16 ScaleBonus(I16 score, I16 bonus, I16 gravity = kHistBonusGravity) {
   return bonus - score * std::abs(bonus) / gravity;
 }
 
