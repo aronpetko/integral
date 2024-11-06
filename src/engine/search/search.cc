@@ -438,29 +438,26 @@ Score Search::PVSearch(Thread &thread,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
-  if (!stack->excluded_tt_move) {
-    tt_entry = transposition_table_.Probe(state.zobrist_key);
-    tt_hit = tt_entry->CompareKey(state.zobrist_key);
+  const auto &tt_entry = transposition_table_.Probe(state.zobrist_key);
+  tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
-    // Use the TT entry's evaluation if possible
-    if (tt_hit) {
-      can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-      tt_was_in_pv |= tt_entry->GetWasPV();
-      tt_move = tt_entry->move;
-      tt_static_eval = tt_entry->static_eval;
-    }
+  // Use the TT entry's evaluation if possible
+  if (tt_hit) {
+    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+    tt_was_in_pv |= tt_entry->GetWasPV();
+    tt_move = tt_entry->move;
+    tt_static_eval = tt_entry->static_eval;
+  }
 
-    // Saved scores from non-PV nodes must fall within the current alpha/beta
-    // window to allow early cutoff
-    if (!in_pv_node && can_use_tt_eval &&
-        (cut_node || tt_entry->score <= alpha) && tt_entry->depth >= depth) {
-      return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
-    }
+  // Saved scores from non-PV nodes must fall within the current alpha/beta
+  // window to allow early cutoff
+  if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
+      (cut_node || tt_entry->score <= alpha) && tt_entry->depth >= depth) {
+    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
   // Probe the Syzygy table bases
