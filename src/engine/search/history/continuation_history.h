@@ -8,7 +8,7 @@
 namespace search::history {
 
 using ContinuationEntry =
-    MultiArray<I32, kNumColors, kNumPieceTypes, kSquareCount>;
+    MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount>;
 
 class ContinuationHistory {
  public:
@@ -16,13 +16,13 @@ class ContinuationHistory {
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
-                   int depth,
+                   I16 depth,
                    MoveList &quiets) {
     const int bonus = HistoryBonus(depth);
     UpdateMoveScore(state, stack->move, bonus, stack);
 
     // Lower the score of the quiet moves that failed to raise alpha
-    const int penalty = HistoryPenalty(depth);
+    const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
       UpdateMoveScore(state, quiets[i], penalty, stack);
@@ -31,7 +31,7 @@ class ContinuationHistory {
 
   void UpdateMoveScore(const BoardState &state,
                        Move move,
-                       int bonus,
+                       I16 bonus,
                        StackEntry *stack) {
     UpdateIndividualScore(state, move, bonus, stack - 1);
     UpdateIndividualScore(state, move, bonus, stack - 2);
@@ -75,7 +75,7 @@ class ContinuationHistory {
     auto &entry =
         *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
 
-    int &score = entry[state.turn][piece][to];
+    I16 &score = entry[state.turn][piece][to];
     score += ScaleBonus(score, bonus);
   }
 
