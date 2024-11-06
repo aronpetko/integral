@@ -457,7 +457,7 @@ Score Search::PVSearch(Thread &thread,
   // window to allow early cutoff
   if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
       (cut_node || tt_entry->score <= alpha) &&
-      (tt_entry->depth + (tt_entry->score >= beta + 20 * depth)) >= depth) {
+      (tt_entry->depth + (tt_entry->score >= beta + 15 * depth)) >= depth) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
