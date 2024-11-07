@@ -286,8 +286,8 @@ Score Search::QuiescentSearch(Thread &thread,
         transposition_table_.Save(
             tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
       }
-
-      return best_score;
+      
+      return (best_score + beta) / 2;
     }
 
     // Alpha can be updated if no cutoff occurred
