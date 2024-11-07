@@ -582,13 +582,16 @@ Score Search::PVSearch(Thread &thread,
   const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+    const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
+
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
       const int futility_margin =
           depth * kRevFutMargin -
-          static_cast<int>((improving)*1.5 * kRevFutMargin) +
+          static_cast<int>((improving && !opponent_easy_capture) * 1.5 *
+                           kRevFutMargin) +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
