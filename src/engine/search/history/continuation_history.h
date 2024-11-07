@@ -42,7 +42,8 @@ class ContinuationHistory {
   [[nodiscard]] ContinuationEntry *GetEntry(const BoardState &state,
                                             Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &table_[state.turn][state.GetPieceType(from)][to];
+    return &table_[move.IsNoisy(state)][state.turn][state.GetPieceType(from)]
+                  [to];
   }
 
   [[nodiscard]] int GetScore(const BoardState &state,
@@ -80,7 +81,7 @@ class ContinuationHistory {
   }
 
  private:
-  MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount>
+  MultiArray<ContinuationEntry, 2, kNumColors, kNumPieceTypes, kSquareCount>
       table_;
 };
 
