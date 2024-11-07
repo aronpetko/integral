@@ -42,7 +42,7 @@ class ContinuationHistory {
   [[nodiscard]] ContinuationEntry *GetEntry(const BoardState &state,
                                             Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &table_[move.IsNoisy(state)][state.turn][state.GetPieceType(from)]
+    return &table_[state.turn][state.GetPieceType(from)][move.IsCapture(state)]
                   [to];
   }
 
@@ -81,7 +81,7 @@ class ContinuationHistory {
   }
 
  private:
-  MultiArray<ContinuationEntry, 2, kNumColors, kNumPieceTypes, kSquareCount>
+  MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, 2, kSquareCount>
       table_;
 };
 
