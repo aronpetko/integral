@@ -615,7 +615,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
-    if ((stack - 1)->move && stack->eval >= beta &&
+    if ((stack - 1)->move && stack->eval >= beta && !opponent_easy_capture &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
         !stack->excluded_tt_move) {
       // Avoid null move pruning a position with high zugzwang potential
@@ -630,8 +630,8 @@ Score Search::PVSearch(Thread &thread,
 
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
-        int reduction = depth / kNmpRedDiv + kNmpRedBase + eval_reduction +
-                        (improving && !opponent_easy_capture);
+        int reduction =
+            depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
         reduction = std::clamp(reduction, 0, depth);
 
         board.MakeNullMove();
