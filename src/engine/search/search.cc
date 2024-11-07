@@ -579,6 +579,7 @@ Score Search::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
@@ -587,7 +588,7 @@ Score Search::PVSearch(Thread &thread,
         stack->eval >= beta) {
       const int futility_margin =
           depth * kRevFutMargin -
-          static_cast<int>((improving) *1.5 * kRevFutMargin) +
+          static_cast<int>((improving)*1.5 * kRevFutMargin) +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
@@ -760,7 +761,6 @@ Score Search::PVSearch(Thread &thread,
       reduction -= stack->history_score /
                    static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
-      reduction += board.GetOpponentWinningCaptures() != 0;
       const int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
@@ -774,8 +774,10 @@ Score Search::PVSearch(Thread &thread,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = kFutMarginBase + kFutMarginMult * lmr_depth +
-                                  stack->history_score / kFutMarginHistDiv;
+      const int futility_margin =
+          kFutMarginBase +
+          kFutMarginMult * (lmr_depth - opponent_easy_capture) +
+          stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
