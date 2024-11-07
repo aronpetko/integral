@@ -583,8 +583,7 @@ Score Search::PVSearch(Thread &thread,
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
-        stack->eval >= beta) {
+    if (depth <= kRevFutDepth && stack->eval >= beta) {
       const int futility_margin =
           depth * kRevFutMargin -
           static_cast<int>(improving * 1.5 * kRevFutMargin) +
