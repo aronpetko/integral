@@ -294,7 +294,8 @@ Score Search::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
-  const Score futility_score = best_score + kQsFutMargin;
+  const Score futility_score =
+      best_score + kQsFutMargin - (stack - 1)->history_score / 450;
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
