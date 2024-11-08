@@ -964,8 +964,9 @@ Score Search::PVSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
-          const int history_depth =
-              depth + (alpha > beta + kHistoryBonusMargin);
+          const int history_depth = depth +
+                                    (alpha > beta + kHistoryBonusMargin) +
+                                    (tt_was_in_pv && best_move != tt_move);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
