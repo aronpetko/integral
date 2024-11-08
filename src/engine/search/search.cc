@@ -847,8 +847,9 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
         // cause a cutoff based on our current search window
-        else if (new_beta >= beta) {
-          return new_beta;
+        else if (tt_move_excluded_score >= beta &&
+                 std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
+          return tt_move_excluded_score;
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
