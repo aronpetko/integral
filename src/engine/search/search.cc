@@ -580,10 +580,9 @@ Score Search::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
-
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
@@ -768,8 +767,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
+      const int lmp_threshold = (kLmpBase + depth * depth) /
+                                (3 - (improving || opponent_easy_capture));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
