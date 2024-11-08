@@ -295,7 +295,7 @@ Score Search::QuiescentSearch(Thread &thread,
   }
 
   const Score futility_score =
-      best_score + kQsFutMargin + (stack - 1)->history_score / 200;
+      best_score + kQsFutMargin - (stack - 1)->history_score / 200;
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
