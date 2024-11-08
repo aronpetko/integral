@@ -820,7 +820,7 @@ Score Search::PVSearch(Thread &thread,
 
       if (is_accurate_tt_score) {
         const int reduced_depth = 3 * (depth - 1) / 8;
-        const Score new_beta = tt_entry->score - depth;
+        const Score new_beta = tt_entry->score - depth * (1 + improving);
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
