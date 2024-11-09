@@ -814,7 +814,7 @@ Score Search::PVSearch(Thread &thread,
     if (!in_root && depth >= kSeDepth && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
-          tt_entry->depth + 3 >= depth &&
+          tt_entry->depth + 3 + cut_node >= depth &&
           tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
