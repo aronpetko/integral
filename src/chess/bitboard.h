@@ -44,17 +44,15 @@ class BitBoard {
 
   class Iterator {
    public:
-    explicit Iterator(U64 bitboard)
-        : bitboard_(bitboard), lsb_(std::countr_zero(bitboard)) {}
+    explicit Iterator(U64 bitboard) : bitboard_(bitboard) {}
 
     Iterator &operator++() {
       bitboard_ &= bitboard_ - 1;  // Remove the LSB
-      lsb_ = std::countr_zero(bitboard_);
       return *this;
     }
 
     U8 operator*() const {
-      return lsb_;
+      return std::countr_zero(bitboard_);
     }
 
     bool operator!=(const Iterator &other) const {
@@ -63,7 +61,6 @@ class BitBoard {
 
    private:
     U64 bitboard_;
-    U8 lsb_;
   };
 
   [[nodiscard]] Iterator begin() const {
