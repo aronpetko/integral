@@ -349,6 +349,10 @@ Score Search::QuiescentSearch(Thread &thread,
     return -kMateScore + stack->ply;
   }
 
+  // Return a more conservative score in the case of a beta cutoff
+  if (best_score >= beta && abs(best_score) < kTBWinInMaxPlyScore)
+    best_score = (best_score + beta) / 2;
+
   TranspositionTableEntry::Flag tt_flag;
   if (alpha >= beta) {
     // Beta cutoff
