@@ -969,10 +969,13 @@ Score Search::PVSearch(Thread &thread,
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
-            history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+
+            if (quiets.Size() > 1 || depth > 3) {
+              history.quiet_history->UpdateScore(
+                  state, stack, history_depth, stack->threats, quiets);
+              history.continuation_history->UpdateScore(
+                  state, stack, history_depth, quiets);
+            }
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, history_depth);
           }
