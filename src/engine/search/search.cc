@@ -789,7 +789,7 @@ Score Search::PVSearch(Thread &thread,
         const auto captured =
             move.IsEnPassant(state) ? kPawn : state.GetPieceType(move.GetTo());
         const int noisy_futility_margin =
-            460 + eval::kSeePieceScores[captured] + 340 * lmr_depth;
+            460 + eval::kSeePieceScores[captured] + 500 * lmr_depth;
         if (lmr_depth <= 8 && !stack->in_check &&
             stack->static_eval + noisy_futility_margin < alpha) {
           continue;
