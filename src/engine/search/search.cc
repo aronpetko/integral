@@ -895,7 +895,7 @@ Score Search::PVSearch(Thread &thread,
       reduction -=
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
-      reduction = std::clamp<int>(reduction, 0, new_depth);
+      reduction = std::clamp<int>(reduction, 0, new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
