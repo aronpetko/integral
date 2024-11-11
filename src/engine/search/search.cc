@@ -788,7 +788,7 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       const int see_threshold =
-          (is_quiet ? kSeeQuietThresh * depth : kSeeNoisyThresh * depth) -
+          (is_quiet ? kSeeQuietThresh * lmr_depth : kSeeNoisyThresh * depth) -
           stack->history_score / kSeePruneHistDiv;
       if (depth <= kSeePruneDepth && moves_seen >= 1 &&
           !eval::StaticExchange(move, see_threshold, state)) {
