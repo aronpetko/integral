@@ -770,7 +770,7 @@ Score Search::PVSearch(Thread &thread,
       // the most promising moves
       const int lmp_threshold =
           static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
-      if (is_quiet && moves_seen >= lmp_threshold) {
+      if (moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
       }
 
@@ -781,6 +781,7 @@ Score Search::PVSearch(Thread &thread,
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
+        continue;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
