@@ -42,6 +42,14 @@ class History {
     return capture_history->GetScore(state, move);
   }
 
+  [[nodiscard]] int GetMoveScore(const BoardState &state,
+                                 Move move,
+                                 StackEntry *stack) const {
+    return move.IsCapture(state)
+             ? GetCaptureMoveScore(state, move)
+             : GetQuietMoveScore(state, move, stack->threats, stack);
+  }
+
  public:
   std::unique_ptr<QuietHistory> quiet_history;
   std::unique_ptr<CaptureHistory> capture_history;
