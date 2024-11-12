@@ -588,7 +588,7 @@ Score Search::PVSearch(Thread &thread,
     // fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta &&
-        (!tt_move || history.GetMoveScore(state, tt_move, stack) > 12000)) {
+        (!tt_move || history.GetMoveScore(state, tt_move, stack) > 4000)) {
       const int futility_margin =
           depth * kRevFutMargin -
           static_cast<int>((improving && !opponent_easy_capture) * 1.5 *
