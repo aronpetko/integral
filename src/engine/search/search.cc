@@ -978,6 +978,9 @@ Score Search::PVSearch(Thread &thread,
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
+        } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
+                   alpha > -kTBWinInMaxPlyScore) {
+          --depth;
         }
       }
     }
