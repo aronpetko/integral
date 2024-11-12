@@ -2,6 +2,7 @@
 #define INTEGRAL_ACCUMULATOR_H
 
 #include "../../../chess/board.h"
+#include "../../../utils/simd.h"
 #include "arch.h"
 #include "nnue.h"
 
@@ -45,9 +46,7 @@ static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
     PieceType piece,
     Color piece_color,
     Color perspective) {
-  if (king_square.File() >= kFileE) {
-    square = square ^ 0b111;
-  }
+  square = square ^ ((king_square.File() >= kFileE) * 0b111);
 
   const int relative_king_square = king_square ^ (56 * perspective);
   const int king_bucket_idx = kKingBucketMap[relative_king_square];
@@ -65,8 +64,12 @@ class PerspectiveAccumulator {
 
   void Reset() {
     // Initialize the accumulator values with the network biases
-    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] = network->feature_biases[i];
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+    for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
+      simd::StoreEpi16(
+          &values_[i],
+          simd::LoadEpi16(&network->feature_biases[i])
+      );
     }
   }
 
@@ -75,15 +78,130 @@ class PerspectiveAccumulator {
 
     const Square king_square = state.King(perspective).GetLsb();
 
-    // Add each piece's features
+    // Process pieces in SIMD-friendly chunks
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+
     for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
+      Square squares[32];  // Max pieces of one type
+      Color colors[32];
+      int count = 0;
+
       for (Square square : state.piece_bbs[piece]) {
-        AddFeature(perspective,
-                   king_square,
-                   square,
-                   static_cast<PieceType>(piece),
-                   state.GetPieceColor(square));
+        squares[count] = square;
+        colors[count] = state.GetPieceColor(square);
+        count++;
       }
+
+      // Process pieces in SIMD-width chunks
+      for (int i = 0; i < count; i += 4) {
+        if (i + 4 <= count) {
+          AddFeatures4(perspective, king_square,
+                       squares[i], squares[i+1], squares[i+2], squares[i+3],
+                       static_cast<PieceType>(piece),
+                       colors[i], colors[i+1], colors[i+2], colors[i+3]);
+        } else {
+          // Handle remaining pieces individually
+          for (int j = i; j < count; ++j) {
+            AddFeature(perspective, king_square, squares[j],
+                       static_cast<PieceType>(piece), colors[j]);
+          }
+        }
+      }
+    }
+  }
+
+  void AddFeatures4(
+      Color perspective,
+      Square king_square,
+      Square square1, Square square2, Square square3, Square square4,
+      PieceType piece,
+      Color color1, Color color2, Color color3, Color color4) {
+
+    const auto& table1 = GetFeatureTable(square1, king_square, piece, color1, perspective);
+    const auto& table2 = GetFeatureTable(square2, king_square, piece, color2, perspective);
+    const auto& table3 = GetFeatureTable(square3, king_square, piece, color3, perspective);
+    const auto& table4 = GetFeatureTable(square4, king_square, piece, color4, perspective);
+
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+
+    // Process in SIMD-width chunks
+    for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
+      auto current = simd::LoadEpi16(&values_[i]);
+      auto vec1 = simd::LoadEpi16(&table1[i]);
+      auto vec2 = simd::LoadEpi16(&table2[i]);
+      auto vec3 = simd::LoadEpi16(&table3[i]);
+      auto vec4 = simd::LoadEpi16(&table4[i]);
+
+      // Add all vectors together
+      current = simd::AddEpi16(current, vec1);
+      current = simd::AddEpi16(current, vec2);
+      current = simd::AddEpi16(current, vec3);
+      current = simd::AddEpi16(current, vec4);
+
+      simd::StoreEpi16(&values_[i], current);
+    }
+  }
+
+  void AddFeature(
+      Color perspective,
+      Square king_square,
+      Square square,
+      PieceType piece,
+      Color piece_color) {
+
+    const auto& table = GetFeatureTable(square, king_square, piece, piece_color, perspective);
+
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+    for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
+      auto current = simd::LoadEpi16(&values_[i]);
+      auto value = simd::LoadEpi16(&table[i]);
+      current = simd::AddEpi16(current, value);
+      simd::StoreEpi16(&values_[i], current);
+    }
+  }
+
+  void SubFeature(
+      Color perspective,
+      Square king_square,
+      Square square,
+      PieceType piece,
+      Color piece_color) {
+
+    const auto& table = GetFeatureTable(square, king_square, piece, piece_color, perspective);
+
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+    for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
+      auto current = simd::LoadEpi16(&values_[i]);
+      auto value = simd::LoadEpi16(&table[i]);
+      // Subtract by adding negative
+      value = simd::MultiplyEpi16(value, simd::SetEpi16(-1));
+      current = simd::AddEpi16(current, value);
+      simd::StoreEpi16(&values_[i], current);
+    }
+  }
+
+  void AddSubFeatures(
+      const PerspectiveAccumulator& previous,
+      Color perspective,
+      Square king_square,
+      Square add_square, PieceType add_piece, Color add_piece_color,
+      Square sub_square, PieceType sub_piece, Color sub_piece_color) {
+
+    const auto& add_table = GetFeatureTable(add_square, king_square, add_piece, add_piece_color, perspective);
+    const auto& sub_table = GetFeatureTable(sub_square, king_square, sub_piece, sub_piece_color, perspective);
+
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+    for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
+      auto prev = simd::LoadEpi16(&previous[i]);
+      auto add = simd::LoadEpi16(&add_table[i]);
+      auto sub = simd::LoadEpi16(&sub_table[i]);
+
+      // Subtract by adding negative
+      sub = simd::MultiplyEpi16(sub, simd::SetEpi16(-1));
+      auto result = simd::AddEpi16(prev, add);
+      result = simd::AddEpi16(result, sub);
+
+      simd::StoreEpi16(&values_[i], result);
     }
   }
 
@@ -93,146 +211,92 @@ class PerspectiveAccumulator {
                    Square king_square) {
     switch (change.type) {
       case AccumulatorChange::kNormal:
-        AddSubFeatures(previous,
-                       perspective,
-                       king_square,
-                       change.add_0.square,
-                       change.add_0.piece,
-                       change.add_0.color,
-                       change.sub_0.square,
-                       change.sub_0.piece,
-                       change.sub_0.color);
+        AddSubFeatures(previous, perspective, king_square,
+                       change.add_0.square, change.add_0.piece, change.add_0.color,
+                       change.sub_0.square, change.sub_0.piece, change.sub_0.color);
         break;
       case AccumulatorChange::kCapture:
-        AddSubSubFeatures(previous,
-                          perspective,
-                          king_square,
-                          change.add_0.square,
-                          change.add_0.piece,
-                          change.add_0.color,
-                          change.sub_0.square,
-                          change.sub_0.piece,
-                          change.sub_0.color,
-                          change.sub_1.square,
-                          change.sub_1.piece,
-                          change.sub_1.color);
+        AddSubSubFeatures(previous, perspective, king_square,
+                          change.add_0.square, change.add_0.piece, change.add_0.color,
+                          change.sub_0.square, change.sub_0.piece, change.sub_0.color,
+                          change.sub_1.square, change.sub_1.piece, change.sub_1.color);
         break;
       case AccumulatorChange::kCastle:
-        AddAddSubSubFeatures(previous,
-                             perspective,
-                             king_square,
-                             change.add_0.square,
-                             change.add_0.piece,
-                             change.add_0.color,
-                             change.add_1.square,
-                             change.add_1.piece,
-                             change.add_1.color,
-                             change.sub_0.square,
-                             change.sub_0.piece,
-                             change.sub_0.color,
-                             change.sub_1.square,
-                             change.sub_1.piece,
-                             change.sub_1.color);
+        AddAddSubSubFeatures(previous, perspective, king_square,
+                             change.add_0.square, change.add_0.piece, change.add_0.color,
+                             change.add_1.square, change.add_1.piece, change.add_1.color,
+                             change.sub_0.square, change.sub_0.piece, change.sub_0.color,
+                             change.sub_1.square, change.sub_1.piece, change.sub_1.color);
         break;
     }
   }
 
-  // Update features by adding a single feature
-  void AddFeature(Color perspective,
-                  Square king_square,
-                  Square square,
-                  PieceType piece,
-                  Color piece_color) {
-    const auto& table =
-        GetFeatureTable(square, king_square, piece, piece_color, perspective);
-    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] += table[i];
+  // ... [previous code remains the same until AddSubFeatures] ...
+
+  void AddSubSubFeatures(
+      const PerspectiveAccumulator& previous,
+      Color perspective,
+      Square king_square,
+      Square add_square, PieceType add_piece, Color add_piece_color,
+      Square sub_square1, PieceType sub_piece1, Color sub_piece_color1,
+      Square sub_square2, PieceType sub_piece2, Color sub_piece_color2) {
+
+    const auto& add_table = GetFeatureTable(add_square, king_square, add_piece, add_piece_color, perspective);
+    const auto& sub_table1 = GetFeatureTable(sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
+    const auto& sub_table2 = GetFeatureTable(sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
+
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+    for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
+      auto prev = simd::LoadEpi16(&previous[i]);
+      auto add = simd::LoadEpi16(&add_table[i]);
+      auto sub1 = simd::LoadEpi16(&sub_table1[i]);
+      auto sub2 = simd::LoadEpi16(&sub_table2[i]);
+
+      // Subtract both by adding negatives
+      sub1 = simd::MultiplyEpi16(sub1, simd::SetEpi16(-1));
+      sub2 = simd::MultiplyEpi16(sub2, simd::SetEpi16(-1));
+
+      auto result = simd::AddEpi16(prev, add);
+      result = simd::AddEpi16(result, sub1);
+      result = simd::AddEpi16(result, sub2);
+
+      simd::StoreEpi16(&values_[i], result);
     }
   }
 
-  // Update features by subtract a single feature
-  void SubFeature(Color perspective,
-                  Square king_square,
-                  Square square,
-                  PieceType piece,
-                  Color piece_color) {
-    const auto& table =
-        GetFeatureTable(square, king_square, piece, piece_color, perspective);
-    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] -= table[i];
-    }
-  }
+  void AddAddSubSubFeatures(
+      const PerspectiveAccumulator& previous,
+      Color perspective,
+      Square king_square,
+      Square add_square1, PieceType add_piece1, Color add_piece_color1,
+      Square add_square2, PieceType add_piece2, Color add_piece_color2,
+      Square sub_square1, PieceType sub_piece1, Color sub_piece_color1,
+      Square sub_square2, PieceType sub_piece2, Color sub_piece_color2) {
 
-  // Update features by adding one feature and subtracting another
-  void AddSubFeatures(const PerspectiveAccumulator& previous,
-                      Color perspective,
-                      Square king_square,
-                      Square add_square,
-                      PieceType add_piece,
-                      Color add_piece_color,
-                      Square sub_square,
-                      PieceType sub_piece,
-                      Color sub_piece_color) {
-    const auto& add_table = GetFeatureTable(
-        add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& sub_table = GetFeatureTable(
-        sub_square, king_square, sub_piece, sub_piece_color, perspective);
-    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table[i];
-    }
-  }
+    const auto& add_table1 = GetFeatureTable(add_square1, king_square, add_piece1, add_piece_color1, perspective);
+    const auto& add_table2 = GetFeatureTable(add_square2, king_square, add_piece2, add_piece_color2, perspective);
+    const auto& sub_table1 = GetFeatureTable(sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
+    const auto& sub_table2 = GetFeatureTable(sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
 
-  // Update features by adding two features and subtracting two features
-  void AddAddSubSubFeatures(const PerspectiveAccumulator& previous,
-                            Color perspective,
-                            Square king_square,
-                            Square add_square1,
-                            PieceType add_piece1,
-                            Color add_piece_color1,
-                            Square add_square2,
-                            PieceType add_piece2,
-                            Color add_piece_color2,
-                            Square sub_square1,
-                            PieceType sub_piece1,
-                            Color sub_piece_color1,
-                            Square sub_square2,
-                            PieceType sub_piece2,
-                            Color sub_piece_color2) {
-    const auto& add_table1 = GetFeatureTable(
-        add_square1, king_square, add_piece1, add_piece_color1, perspective);
-    const auto& add_table2 = GetFeatureTable(
-        add_square2, king_square, add_piece2, add_piece_color2, perspective);
-    const auto& sub_table1 = GetFeatureTable(
-        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& sub_table2 = GetFeatureTable(
-        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
-    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] = previous[i] + add_table1[i] + add_table2[i] - sub_table1[i] -
-                   sub_table2[i];
-    }
-  }
+    constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
+    for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
+      auto prev = simd::LoadEpi16(&previous[i]);
+      auto add1 = simd::LoadEpi16(&add_table1[i]);
+      auto add2 = simd::LoadEpi16(&add_table2[i]);
+      auto sub1 = simd::LoadEpi16(&sub_table1[i]);
+      auto sub2 = simd::LoadEpi16(&sub_table2[i]);
 
-  // Update features by adding one feature and subtracting two features
-  void AddSubSubFeatures(const PerspectiveAccumulator& previous,
-                         Color perspective,
-                         Square king_square,
-                         Square add_square,
-                         PieceType add_piece,
-                         Color add_piece_color,
-                         Square sub_square1,
-                         PieceType sub_piece1,
-                         Color sub_piece_color1,
-                         Square sub_square2,
-                         PieceType sub_piece2,
-                         Color sub_piece_color2) {
-    const auto& add_table = GetFeatureTable(
-        add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& sub_table1 = GetFeatureTable(
-        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& sub_table2 = GetFeatureTable(
-        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
-    for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table1[i] - sub_table2[i];
+      // Subtract by adding negatives
+      sub1 = simd::MultiplyEpi16(sub1, simd::SetEpi16(-1));
+      sub2 = simd::MultiplyEpi16(sub2, simd::SetEpi16(-1));
+
+      // Combine all operations
+      auto result = simd::AddEpi16(prev, add1);
+      result = simd::AddEpi16(result, add2);
+      result = simd::AddEpi16(result, sub1);
+      result = simd::AddEpi16(result, sub2);
+
+      simd::StoreEpi16(&values_[i], result);
     }
   }
 
