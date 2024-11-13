@@ -727,7 +727,8 @@ Score Search::PVSearch(Thread &thread,
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
-      !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 3 < depth)) {
+      !stack->excluded_tt_move &&
+      (!tt_move || tt_entry->depth + 3 + 2 * in_pv_node < depth)) {
     depth--;
   }
 
