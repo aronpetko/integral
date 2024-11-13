@@ -69,7 +69,8 @@ Move MovePicker::Next() {
     while (moves_idx_ < noisys_.Size()) {
       const auto move = SelectionSort(noisys_, moves_idx_);
       const auto score = noisys_[moves_idx_].score;
-      const auto history_score = history_.GetCaptureMoveScore(state, move);
+      const auto history_score =
+          history_.GetCaptureMoveScore(state, move, stack_);
 
       moves_idx_++;
 
@@ -200,7 +201,7 @@ int MovePicker::ScoreMove(Move &move) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
     const int victim_value = kPieceScores[victim] * 100;
-    return victim_value + history_.GetCaptureMoveScore(state, move);
+    return victim_value + history_.GetCaptureMoveScore(state, move, stack_);
   }
 
   const auto us = state.turn;
@@ -236,8 +237,7 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score +
-         history_.GetQuietMoveScore(state, move, state.threats, stack_);
+  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
 }
 
 }  // namespace search

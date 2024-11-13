@@ -29,17 +29,17 @@ class History {
 
   [[nodiscard]] int GetQuietMoveScore(const BoardState &state,
                                       Move move,
-                                      BitBoard threats,
                                       StackEntry *stack) const {
-    return quiet_history->GetScore(state, move, threats) +
+    return quiet_history->GetScore(state, move, stack->threats) +
            continuation_history->GetScore(state, move, stack - 1) +
            continuation_history->GetScore(state, move, stack - 2) +
            continuation_history->GetScore(state, move, stack - 4);
   }
 
   [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
-                                        Move move) const {
-    return capture_history->GetScore(state, move);
+                                        Move move,
+                                        StackEntry *stack) const {
+    return capture_history->GetScore(state, stack, move);
   }
 
  public:
