@@ -301,8 +301,9 @@ Score Search::QuiescentSearch(Thread &thread,
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen > 0) {
+    if (best_score > -kTBWinInMaxPlyScore &&
+        move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+        moves_seen > (state.InCheck() ? 0 : 2)) {
       break;
     }
 
@@ -316,13 +317,6 @@ Score Search::QuiescentSearch(Thread &thread,
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
-    }
-
-    // QS Late Move Pruning: Skip later, less important moves
-    if (best_score > -kTBWinInMaxPlyScore &&
-        move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen >= 2) {
-      break;
     }
 
     // Prefetch the TT entry for the next move as early as possible
