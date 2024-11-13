@@ -318,6 +318,13 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    // QS Late Move Pruning: Skip later, less important moves
+    if (best_score > -kTBWinInMaxPlyScore &&
+        move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+        moves_seen >= 2) {
+      break;
+    }
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
