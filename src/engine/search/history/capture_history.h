@@ -15,7 +15,7 @@ class CaptureHistory {
     const I16 bonus = HistoryBonus(depth);
     // Apply a linear dampening to the bonus as the depth increases
     I16 &score = table_[state.turn][stack->move.GetFrom()][stack->move.GetTo()]
-                       [stack->threats.IsSet(stack->move.GetTo())];
+                       [stack->threats.IsSet(stack->move.GetFrom())];
     score += ScaleBonus(score, bonus);
   }
 
@@ -30,7 +30,7 @@ class CaptureHistory {
       // Apply a linear dampening to the penalty as the depth increases
       I16 &bad_capture_score =
           table_[state.turn][bad_capture.GetFrom()][bad_capture.GetTo()]
-                [stack->threats.IsSet(bad_capture.GetTo())];
+                [stack->threats.IsSet(bad_capture.GetFrom())];
       bad_capture_score += ScaleBonus(bad_capture_score, penalty);
     }
   }
@@ -39,7 +39,7 @@ class CaptureHistory {
                              StackEntry *stack,
                              Move move) const {
     return table_[state.turn][move.GetFrom()][move.GetTo()]
-                 [stack->threats.IsSet(move.GetTo())];
+                 [stack->threats.IsSet(move.GetFrom())];
   }
 
  private:
