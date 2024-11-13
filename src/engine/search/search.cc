@@ -684,6 +684,10 @@ Score Search::PVSearch(Thread &thread,
           stack->capture_move = move.IsCapture(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
+          stack->history_score = move.IsCapture(state)
+                                   ? history.GetCaptureMoveScore(state, move)
+                                   : history.GetQuietMoveScore(
+                                         state, move, stack->threats, stack);
 
           const int probcut_depth = depth - 3;
 
