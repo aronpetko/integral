@@ -741,7 +741,7 @@ Score Search::PVSearch(Thread &thread,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
-  int moves_seen = 0;
+  int moves_seen = 0, fail_low_count = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
@@ -888,7 +888,7 @@ Score Search::PVSearch(Thread &thread,
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
-      reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      reduction = tables::kLateMoveReduction[is_quiet][depth][fail_low_count];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
       reduction -= gives_check;
@@ -988,6 +988,8 @@ Score Search::PVSearch(Thread &thread,
           --depth;
         }
       }
+    } else {
+      ++fail_low_count;
     }
 
     // Penalize the history score of moves that failed to raise alpha
