@@ -546,7 +546,7 @@ Score Search::PVSearch(Thread &thread,
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
 
       if (tt_entry->depth >= depth) {
-        cut_node |= stack->eval >= beta + 10;
+        cut_node |= stack->eval >= beta + 30;
       }
     } else {
       stack->eval = stack->static_eval;
