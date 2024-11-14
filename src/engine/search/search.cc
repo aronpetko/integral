@@ -588,11 +588,10 @@ Score Search::PVSearch(Thread &thread,
     // fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
-      const int improving_margin = static_cast<int>(
-          ((improving && !opponent_easy_capture) || can_use_tt_eval) * 1.5 *
-          kRevFutMargin);
+      const int improving_margin =
+          (improving && !opponent_easy_capture) * 3 * kRevFutMargin / 2;
       const int futility_margin =
-          depth * kRevFutMargin - improving_margin +
+          depth * kRevFutMargin - improving_margin - 20 * can_use_tt_eval +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
