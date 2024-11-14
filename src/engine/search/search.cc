@@ -544,6 +544,10 @@ Score Search::PVSearch(Thread &thread,
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+
+      if (tt_entry->depth >= depth) {
+        cut_node |= stack->eval >= beta + 10;
+      }
     } else {
       stack->eval = stack->static_eval;
     }
@@ -579,7 +583,6 @@ Score Search::PVSearch(Thread &thread,
     improving = stack->static_eval > past_stack->static_eval;
   }
 
-  cut_node |= stack->static_eval >= beta + 70;
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
