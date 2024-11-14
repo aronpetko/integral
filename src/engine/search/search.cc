@@ -579,6 +579,7 @@ Score Search::PVSearch(Thread &thread,
     improving = stack->static_eval > past_stack->static_eval;
   }
 
+  cut_node |= stack->eval >= beta + 50;
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
