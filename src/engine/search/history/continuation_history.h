@@ -35,7 +35,6 @@ class ContinuationHistory {
                        StackEntry *stack) {
     UpdateIndividualScore(state, move, bonus, stack - 1);
     UpdateIndividualScore(state, move, bonus, stack - 2);
-    UpdateIndividualScore(state, move, bonus, stack - 3);
     UpdateIndividualScore(state, move, bonus, stack - 4);
     UpdateIndividualScore(state, move, bonus, stack - 6);
   }
