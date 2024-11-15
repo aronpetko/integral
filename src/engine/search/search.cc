@@ -252,6 +252,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
+  Move best_move = Move::NullMove();
   Score raw_static_eval = kScoreNone;
 
   if (!stack->in_check) {
@@ -332,6 +333,8 @@ Score Search::QuiescentSearch(Thread &thread,
       best_score = score;
 
       if (score > alpha) {
+        best_move = move;
+        
         stack->pv.Clear();
         stack->pv.Push(move);
         stack->pv.AppendPV((stack + 1)->pv);
@@ -365,7 +368,7 @@ Score Search::QuiescentSearch(Thread &thread,
                                              tt_flag,
                                              best_score,
                                              raw_static_eval,
-                                             Move::NullMove(),
+                                             best_move,
                                              tt_was_in_pv);
   transposition_table_.Save(
       tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
