@@ -24,8 +24,7 @@ Board::Board() : history_({}) {}
 Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
 Board::Board(const Board &other)
-    : state_(other.state_),
-      history_(other.history_) {}
+    : state_(other.state_), history_(other.history_) {}
 
 Board &Board::operator=(const Board &other) {
   if (this == &other) {
@@ -49,7 +48,7 @@ void Board::SetFromFen(std::string_view fen_str) {
   CalculateThreats();
 }
 
-bool Board::IsMovePseudoLegal(Move move) {
+bool Board::IsMovePseudoLegal(Move move) const {
   const auto from = move.GetFrom(), to = move.GetTo();
   const Color us = state_.turn;
 
@@ -127,7 +126,7 @@ bool Board::IsMovePseudoLegal(Move move) {
   return possible_moves.IsSet(to);
 }
 
-bool Board::IsMoveLegal(Move move) {
+bool Board::IsMoveLegal(Move move) const {
   const Color us = state_.turn, them = FlipColor(us);
   const bool is_white = state_.turn == Color::kWhite;
 
@@ -574,6 +573,21 @@ BitBoard Board::GetOpponentWinningCaptures() const {
 
   return (queens & rook_threats) | (rooks & minor_threats) |
          (minors & pawn_threats);
+}
+
+MoveList Board::GetLegalMoves() const {
+  auto move_list =
+      move_gen::GenerateMoves(MoveGenType::kAll, const_cast<Board &>(*this));
+  auto legal_move_list = MoveList{};
+
+  for (int i = 0; i < move_list.Size(); i++) {
+    const auto move = move_list[i];
+    if (IsMoveLegal(move)) {
+      legal_move_list.Push(move);
+    }
+  }
+
+  return legal_move_list;
 }
 
 void Board::PrintPieces() {

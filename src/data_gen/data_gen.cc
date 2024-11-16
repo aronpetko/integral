@@ -14,20 +14,6 @@
 
 namespace data_gen {
 
-MoveList GetLegalMoves(Board &board) {
-  auto move_list = move_gen::GenerateMoves(MoveGenType::kAll, board);
-  auto legal_move_list = MoveList{};
-
-  for (int i = 0; i < move_list.Size(); i++) {
-    const auto move = move_list[i];
-    if (board.IsMoveLegal(move)) {
-      legal_move_list.Push(move);
-    }
-  }
-
-  return legal_move_list;
-}
-
 void FindStartingPosition(Board &board,
                           const Config &config,
                           const std::vector<std::string> &fens) {
@@ -48,7 +34,7 @@ void FindStartingPosition(Board &board,
       // Choose a random FEN from the fens list
       board.SetFromFen(fen);
 
-      auto legal_moves = GetLegalMoves(board);
+      auto legal_moves = board.GetLegalMoves();
 
       // If no legal moves are available, reset the board
       if (legal_moves.Empty()) {
@@ -56,24 +42,9 @@ void FindStartingPosition(Board &board,
         continue;
       }
 
-      // Gather all moves that don't lose material
-      MoveList non_losing_moves;
-      for (int i = 0; i < legal_moves.Size(); i++) {
-        const auto move = legal_moves[i];
-        if (eval::StaticExchange(move, 0, board.GetState())) {
-          non_losing_moves.Push(move);
-        }
-      }
-
-      // All moves lose material, so skip this FEN
-      if (non_losing_moves.Empty()) {
-        current_ply = 0;
-        continue;
-      }
-
-      random_move = non_losing_moves[RandomU64(0, non_losing_moves.Size() - 1)];
+      random_move = legal_moves[RandomU64(0, legal_moves.Size() - 1)];
     } else {
-      auto legal_moves = GetLegalMoves(board);
+      auto legal_moves = board.GetLegalMoves();
 
       // If no legal moves are available, reset the board
       if (legal_moves.Empty()) {
@@ -132,7 +103,7 @@ void FindStartingPosition(Board &board,
     board.MakeMove(random_move);
 
     // Prevent the last ply from being a checkmate/stalemate
-    if (++current_ply == target_plies && GetLegalMoves(board).Empty()) {
+    if (++current_ply == target_plies && board.GetLegalMoves().Empty()) {
       current_ply = 0;
       board.SetFromFen(fen::kStartFen);
       continue;

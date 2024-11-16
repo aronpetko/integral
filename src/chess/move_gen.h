@@ -5,9 +5,6 @@
 #include "bitboard.h"
 #include "board.h"
 
-constexpr int kMaxMoves = 256;
-using MoveList = List<Move, kMaxMoves>;
-
 namespace move_gen {
 
 bool IsSquareAttacked(Square square, Color attacker, const BoardState &state);

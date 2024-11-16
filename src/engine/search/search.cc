@@ -63,102 +63,113 @@ template <SearchType type>
 void Search::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
-  const auto root_stack = &thread.stack.Front();
-  root_stack->best_move = Move::NullMove();
+  thread.root_moves = RootMoveList(thread.board);
+  const int multi_pv =
+      std::min(uci::listener.GetOption("MultiPV").GetValue<int>(),
+               thread.root_moves.Size());
 
-  Move best_move = Move::NullMove();
-  Score score = 0;
+  const auto root_stack = &thread.stack.Front();
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
-    thread.sel_depth = 0, thread.root_depth = depth;
+    for (thread.pv_move_idx = 0; thread.pv_move_idx < multi_pv;
+         ++thread.pv_move_idx) {
+      thread.sel_depth = 0, thread.root_depth = depth;
 
-    int window = static_cast<int>(kAspWindowDelta);
-    Score alpha = -kInfiniteScore;
-    Score beta = kInfiniteScore;
+      const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
 
-    if (depth >= kAspWindowDepth) {
-      alpha = std::max<int>(-kInfiniteScore, score - window);
-      beta = std::min<int>(kInfiniteScore, score + window);
-    }
+      int window = static_cast<int>(kAspWindowDelta);
+      Score alpha = -kInfiniteScore;
+      Score beta = kInfiniteScore;
 
-    int fail_high_count = 0;
-
-    while (true) {
-      const Score new_score = PVSearch<NodeType::kPV>(
-          thread, depth - fail_high_count, alpha, beta, root_stack, false);
-
-      if (root_stack->best_move) {
-        best_move = root_stack->best_move;
+      if (depth >= kAspWindowDepth) {
+        alpha = std::max<int>(-kInfiniteScore, cur_best_move.score - window);
+        beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
       }
 
-      if (ShouldQuit(thread)) {
-        break;
-      }
+      int fail_high_count = 0;
 
-      score = new_score;
+      while (true) {
+        const Score score = PVSearch<NodeType::kPV>(
+            thread, depth - fail_high_count, alpha, beta, root_stack, false);
 
-      if (score <= alpha) {
-        // Narrow beta to increase the chance of a fail high
-        beta = (alpha + beta) / 2;
+        thread.root_moves.SortNextMove(thread.pv_move_idx);
 
-        // We failed low which means we don't have a move to play, so we widen
-        // alpha
-        alpha = std::max<int>(-kInfiniteScore, alpha - window);
-        fail_high_count = 0;
-      } else if (score >= beta) {
-        // We failed high on a PV node, which is abnormal and requires further
-        // verification
-        beta = std::min<int>(kInfiniteScore, beta + window);
-
-        // Spend less time searching as we expand the search window, unless
-        // we're absolutely winning
-        if (alpha < 2000 && fail_high_count < 2) {
-          ++fail_high_count;
+        if (ShouldQuit(thread)) {
+          break;
         }
-      } else {
-        // Quit now, since the score fell within the bounds of the aspiration
-        // window
-        break;
-      }
 
-      // Widen the aspiration window for the next iteration if we fail low or
-      // high again
-      window *= kAspWindowGrowth;
+        if (score <= alpha) {
+          // Narrow beta to increase the chance of a fail high
+          beta = (alpha + beta) / 2;
+
+          // We failed low which means we don't have a move to play, so we widen
+          // alpha
+          alpha = std::max<int>(-kInfiniteScore, alpha - window);
+          fail_high_count = 0;
+        } else if (score >= beta) {
+          // We failed high on a PV node, which is abnormal and requires further
+          // verification
+          beta = std::min<int>(kInfiniteScore, beta + window);
+
+          // Spend less time searching as we expand the search window, unless
+          // we're absolutely winning
+          if (alpha < 2000 && fail_high_count < 2) {
+            ++fail_high_count;
+          }
+        } else {
+          // Quit now, since the score fell within the bounds of the aspiration
+          // window
+          break;
+        }
+
+        // Widen the aspiration window for the next iteration if we fail low or
+        // high again
+        window *= kAspWindowGrowth;
+      }
     }
 
-    thread.scores[depth] = score;
+    thread.root_moves.SortNextMove(0);
+    auto &best_move = thread.root_moves[0];
+
+    thread.scores[depth] = best_move.score;
 
     if (thread.IsMainThread() &&
-        time_mgmt_.ShouldStop(best_move, depth, thread)) {
+        time_mgmt_.ShouldStop(best_move.move, depth, thread)) {
       break;
     }
 
-    std::unique_ptr<uci::reporter::ReportInfo> report_info;
-    if (uci::reporter::using_uci) {
-      report_info = std::make_unique<uci::reporter::UCIReportInfo>();
-    } else {
-      report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
-    }
+    if (print_info && thread.IsMainThread() &&
+        !stop_.load(std::memory_order_relaxed)) {
+      std::unique_ptr<uci::reporter::ReportInfo> report_info;
+      if (uci::reporter::using_uci) {
+        report_info = std::make_unique<uci::reporter::UCIReportInfo>();
+      } else {
+        report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+      }
 
-    if (thread.IsMainThread() && !stop_.load(std::memory_order_relaxed) &&
-        print_info) {
-      const bool is_mate = eval::IsMateScore(root_stack->score);
-      const auto nodes_searched = GetNodesSearched();
-      report_info->Print(depth,
-                         thread.sel_depth,
-                         is_mate,
-                         root_stack->score,
-                         nodes_searched,
-                         time_mgmt_.TimeElapsed(),
-                         nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-                         transposition_table_.HashFull(),
-                         syzygy::enabled,
-                         thread.tb_hits,
-                         root_stack->pv.UCIFormat());
+      for (int i = 0; i < multi_pv; ++i) {
+        auto &pv_move = thread.root_moves[i];
+
+        const bool is_mate = eval::IsMateScore(pv_move.score);
+        const auto nodes_searched = GetNodesSearched();
+        report_info->Print(depth,
+                           thread.sel_depth,
+                           is_mate,
+                           pv_move.score,
+                           nodes_searched,
+                           time_mgmt_.TimeElapsed(),
+                           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
+                           transposition_table_.HashFull(),
+                           syzygy::enabled,
+                           thread.tb_hits,
+                           pv_move.pv.UCIFormat(),
+                           i);
+      }
     }
   }
 
-  thread.previous_score = score;
+  const auto &best_move = thread.root_moves[0];
+  thread.previous_score = best_move.score;
 
   const auto SendStoppedSignal = [&]() {
     if constexpr (type == SearchType::kRegular) {
@@ -186,7 +197,7 @@ void Search::IterativeDeepening(Thread &thread) {
     transposition_table_.Age();
 
     if (print_info) {
-      fmt::println("bestmove {}", best_move.ToString());
+      fmt::println("bestmove {}", best_move.move.ToString());
     }
   } else {
     SendStoppedSignal();
@@ -748,6 +759,10 @@ Score Search::PVSearch(Thread &thread,
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
+    if (in_root && !thread.root_moves.MoveExists(move, thread.pv_move_idx)) {
+      continue;
+    }
+
     if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
       continue;
     }
@@ -945,24 +960,38 @@ Score Search::PVSearch(Thread &thread,
 
     board.UndoMove();
 
-    if (in_root && thread.IsMainThread()) {
-      if (auto timed_limiter = time_mgmt_.GetTimedLimiter()) {
-        timed_limiter->NodesSpent(move) +=
-            thread.nodes_searched - prev_nodes_searched;
-      }
-    }
-
     if (ShouldQuit(thread)) {
       return 0;
     }
 
     moves_seen++;
 
+    if (in_root) {
+      // Update the number of nodes we searched for this root move
+      if (thread.IsMainThread()) {
+        if (auto timed_limiter = time_mgmt_.GetTimedLimiter()) {
+          timed_limiter->NodesSpent(move) +=
+              thread.nodes_searched - prev_nodes_searched;
+        }
+      }
+
+      if (const auto root_move = thread.root_moves.FindRootMove(move)) {
+        if (moves_seen == 1 || score > alpha) {
+          root_move->score = score;
+          root_move->pv.Clear();
+          root_move->pv.Push(move);
+          root_move->pv.AppendPV((stack + 1)->pv);
+        } else {
+          root_move->score = kScoreNone;
+        }
+      }
+    }
+
     if (score > best_score) {
       best_score = score;
 
       if (score > alpha) {
-        stack->best_move = best_move = move;
+        best_move = move;
 
         stack->pv.Clear();
         stack->pv.Push(move);
@@ -1155,9 +1184,9 @@ std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
 
   IterativeDeepening<SearchType::kBench>(*thread);
 
-  const auto &stack = thread->stack.Front();
-  return {stack.score * (board_.GetState().turn == Color::kBlack ? -1 : 1),
-          stack.best_move};
+  const auto &best_move = thread->root_moves[0];
+  return {best_move.score * (board_.GetState().turn == Color::kBlack ? -1 : 1),
+          best_move.move};
 }
 
 U64 Search::Bench(int depth) {
