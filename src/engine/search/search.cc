@@ -575,11 +575,12 @@ Score Search::PVSearch(Thread &thread,
     StackEntry *past_stack = nullptr;
     if ((stack - 2)->static_eval != kScoreNone) {
       past_stack = stack - 2;
-      opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
     } else if ((stack - 4)->static_eval != kScoreNone) {
       past_stack = stack - 4;
     }
 
+    opponent_worsening = (stack - 1)->static_eval != kScoreNone &&
+                         stack->static_eval + (stack - 1)->static_eval > 1;
     improving = past_stack && stack->static_eval > past_stack->static_eval;
   }
 
