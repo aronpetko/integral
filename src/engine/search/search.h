@@ -58,7 +58,9 @@ class RootMoveList {
         }
       }
 
-      std::swap(list_[best_idx], list_[i]);
+      if (best_idx != i) {
+        std::swap(list_[best_idx], list_[i]);
+      }
     }
   }
 
