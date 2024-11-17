@@ -37,9 +37,12 @@ struct RootMove {
 class RootMoveList {
  public:
   explicit RootMoveList(Board &board) {
-    auto legal_moves = board.GetLegalMoves();
-    for (int i = 0; i < legal_moves.Size(); ++i) {
-      list_.Push({legal_moves[i], 0});
+    auto move_list = move_gen::GenerateMoves(MoveGenType::kAll, board);
+    for (int i = 0; i < move_list.Size(); i++) {
+      const auto move = move_list[i];
+      if (board.IsMoveLegal(move)) {
+        list_.Push({move, 0});
+      }
     }
   }
 

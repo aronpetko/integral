@@ -70,6 +70,13 @@ void Search::IterativeDeepening(Thread &thread) {
 
   const auto root_stack = &thread.stack.Front();
 
+  std::unique_ptr<uci::reporter::ReportInfo> report_info;
+  if (uci::reporter::using_uci) {
+    report_info = std::make_unique<uci::reporter::UCIReportInfo>();
+  } else {
+    report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+  }
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     for (thread.pv_move_idx = 0; thread.pv_move_idx < multi_pv;
          ++thread.pv_move_idx) {
@@ -140,13 +147,6 @@ void Search::IterativeDeepening(Thread &thread) {
 
     if (print_info && thread.IsMainThread() &&
         !stop_.load(std::memory_order_relaxed)) {
-      std::unique_ptr<uci::reporter::ReportInfo> report_info;
-      if (uci::reporter::using_uci) {
-        report_info = std::make_unique<uci::reporter::UCIReportInfo>();
-      } else {
-        report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
-      }
-
       for (int i = 0; i < multi_pv; ++i) {
         auto &pv_move = thread.root_moves[i];
 
