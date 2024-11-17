@@ -464,6 +464,10 @@ Score Search::PVSearch(Thread &thread,
     tt_static_eval = tt_entry->static_eval;
   }
 
+  if (in_root) {
+    tt_move = thread.root_moves[thread.pv_move_idx].move;
+  }
+
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
   if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
@@ -993,9 +997,11 @@ Score Search::PVSearch(Thread &thread,
       if (score > alpha) {
         best_move = move;
 
-        stack->pv.Clear();
-        stack->pv.Push(move);
-        stack->pv.AppendPV((stack + 1)->pv);
+        if (in_pv_node && !in_root) {
+          stack->pv.Clear();
+          stack->pv.Push(move);
+          stack->pv.AppendPV((stack + 1)->pv);
+        }
 
         alpha = score;
         if (alpha >= beta) {
@@ -1053,17 +1059,19 @@ Score Search::PVSearch(Thread &thread,
       tt_flag = TranspositionTableEntry::kUpperBound;
     }
 
-    // Attempt to update the transposition table with the evaluation of this
-    // position
-    const TranspositionTableEntry new_tt_entry(state.zobrist_key,
-                                               depth,
-                                               tt_flag,
-                                               best_score,
-                                               raw_static_eval,
-                                               best_move,
-                                               tt_was_in_pv);
-    transposition_table_.Save(
-        tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+    if (!in_root || thread.pv_move_idx != 0) {
+      // Attempt to update the transposition table with the evaluation of this
+      // position
+      const TranspositionTableEntry new_tt_entry(state.zobrist_key,
+                                                 depth,
+                                                 tt_flag,
+                                                 best_score,
+                                                 raw_static_eval,
+                                                 best_move,
+                                                 tt_was_in_pv);
+      transposition_table_.Save(
+          tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+    }
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
