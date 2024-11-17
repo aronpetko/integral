@@ -1059,7 +1059,7 @@ Score Search::PVSearch(Thread &thread,
       tt_flag = TranspositionTableEntry::kUpperBound;
     }
 
-    if (!in_root || thread.pv_move_idx != 0) {
+    if (!in_root || thread.pv_move_idx == 0) {
       // Attempt to update the transposition table with the evaluation of this
       // position
       const TranspositionTableEntry new_tt_entry(state.zobrist_key,
