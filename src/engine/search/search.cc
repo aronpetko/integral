@@ -571,16 +571,16 @@ Score Search::PVSearch(Thread &thread,
   // falling
   bool opponent_worsening = false;
 
-  StackEntry *past_stack = nullptr;
-  if ((stack - 2)->static_eval != kScoreNone) {
-    past_stack = stack - 2;
-  } else if ((stack - 4)->static_eval != kScoreNone) {
-    past_stack = stack - 4;
-  }
-
   if (!stack->in_check) {
+    StackEntry *past_stack = nullptr;
+    if ((stack - 2)->static_eval != kScoreNone) {
+      past_stack = stack - 2;
+      opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
+    } else if ((stack - 4)->static_eval != kScoreNone) {
+      past_stack = stack - 4;
+    }
+
     improving = past_stack && stack->static_eval > past_stack->static_eval;
-    opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
   (stack + 1)->ClearKillerMoves();
@@ -595,7 +595,7 @@ Score Search::PVSearch(Thread &thread,
       const int improving_margin =
           (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
-          depth * kRevFutMargin - improving_margin - 15 * opponent_worsening +
+          depth * kRevFutMargin - improving_margin - 25 * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
