@@ -583,7 +583,7 @@ Score Search::PVSearch(Thread &thread,
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
-  (stack + 1)->ClearKillerMoves();
+  (stack + 1)->ClearKillerMove();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
@@ -901,8 +901,7 @@ Score Search::PVSearch(Thread &thread,
       reduction += !improving;
       reduction -=
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
-      reduction -=
-          move == stack->killer_moves[0] || move == stack->killer_moves[1];
+      reduction -= move == stack->killer_move;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
