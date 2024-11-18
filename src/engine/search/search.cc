@@ -634,8 +634,8 @@ Score Search::PVSearch(Thread &thread,
 
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
-        int reduction = depth / kNmpRedDiv + kNmpRedBase + eval_reduction +
-                        improving + cut_node;
+        int reduction =
+            depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
         reduction = std::clamp(reduction, 0, depth);
 
         board.MakeNullMove();
@@ -864,7 +864,7 @@ Score Search::PVSearch(Thread &thread,
         // and it might cause a beta cutoff again.
         else if (tt_entry->score >= beta) {
           extensions = -2 + in_pv_node;
-        } else if (cut_node) {
+        } else if (cut_node || opponent_worsening) {
           extensions = -1;
         }
       }
