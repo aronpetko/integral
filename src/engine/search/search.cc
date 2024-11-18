@@ -399,6 +399,8 @@ Score Search::PVSearch(Thread &thread,
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+  // A node that's expected to fail-low, usually the child of a cut-node
+  const bool in_all_node = !in_pv_node && !cut_node;
   // The root node is also a PV node by default
   const bool in_root = stack->ply == 0;
 
@@ -609,7 +611,7 @@ Score Search::PVSearch(Thread &thread,
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
     if (!stack->excluded_tt_move && depth <= kRazoringDepth &&
-        stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
+        stack->static_eval + kRazoringMult * (depth - !improving) - 50 * in_all_node < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
