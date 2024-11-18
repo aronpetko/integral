@@ -567,6 +567,9 @@ Score Search::PVSearch(Thread &thread,
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   bool improving = false;
+  // Similar idea follows, but we check if the opponent's evaluation has been
+  // falling
+  bool opponent_worsening = false;
 
   StackEntry *past_stack = nullptr;
   if ((stack - 2)->static_eval != kScoreNone) {
@@ -575,8 +578,9 @@ Score Search::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (past_stack && !stack->in_check) {
-    improving = stack->static_eval > past_stack->static_eval;
+  if (!stack->in_check) {
+    improving = past_stack && stack->static_eval > past_stack->static_eval;
+    opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
   (stack + 1)->ClearKillerMoves();
@@ -588,10 +592,10 @@ Score Search::PVSearch(Thread &thread,
     // fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
+      const int improving_margin =
+          (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
-          depth * kRevFutMargin -
-          static_cast<int>((improving && !opponent_easy_capture) * 1.5 *
-                           kRevFutMargin) +
+          depth * kRevFutMargin - improving_margin - 15 * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
