@@ -891,8 +891,7 @@ Score Search::PVSearch(Thread &thread,
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
-        !(in_pv_node && is_capture) &&
-        move_picker.GetStage() > MovePicker::Stage::kGoodNoisys) {
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
@@ -904,6 +903,7 @@ Score Search::PVSearch(Thread &thread,
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
       reduction -=
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
+      reduction -= move_picker.GetStage() == MovePicker::Stage::kGoodNoisys;
 
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(reduction, 0, new_depth - 1);
