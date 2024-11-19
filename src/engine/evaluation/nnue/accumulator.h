@@ -67,7 +67,6 @@ class PerspectiveAccumulator {
 #if BUILD_HAS_SIMD
     constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
     for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
-      std::cout << i << std::endl;
       simd::StoreEpi16(&values_[i],
                        simd::LoadEpi16(&network->feature_biases[i]));
     }
