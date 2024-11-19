@@ -203,7 +203,6 @@ Score Search::QuiescentSearch(Thread &thread,
   const auto &state = board.GetState();
 
   stack->pv.Clear();
-  ++thread.nodes_searched;
 
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
@@ -318,6 +317,8 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    ++thread.nodes_searched;
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
@@ -418,7 +419,6 @@ Score Search::PVSearch(Thread &thread,
   }
 
   stack->in_check = state.InCheck();
-  ++thread.nodes_searched;
 
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
@@ -694,6 +694,7 @@ Score Search::PVSearch(Thread &thread,
                                          state, move, stack->threats, stack);
 
           const int probcut_depth = depth - 3;
+          ++thread.nodes_searched;
 
           board.MakeMove(move);
 
@@ -880,7 +881,7 @@ Score Search::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched = thread.nodes_searched;
+    const U32 prev_nodes_searched = thread.nodes_searched++;
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
