@@ -885,7 +885,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
-    int reduction = 0;
+    int reduction = 0, true_reduction = 0;
     bool needs_full_search;
     Score score;
 
@@ -906,6 +906,7 @@ Score Search::PVSearch(Thread &thread,
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
+      true_reduction = reduction;
       reduction = std::clamp<int>(reduction, -in_pv_node, new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
@@ -930,6 +931,7 @@ Score Search::PVSearch(Thread &thread,
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
+      new_depth += true_reduction < 0;
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
 
