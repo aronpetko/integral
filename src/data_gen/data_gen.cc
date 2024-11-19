@@ -6,7 +6,6 @@
 #include <csignal>
 #include <filesystem>
 #include <fstream>
-#include <unordered_set>
 
 #include "../chess/board.h"
 #include "../engine/search/search.h"
@@ -41,8 +40,6 @@ constexpr std::array<int, 64> kCenterScore = {
   1,  1,  4,  4,  4,  4,  1,  1
 };
 // clang-format on
-
-inline std::unordered_set<U64> seen;
 
 Move SelectPreferredMove(MoveList &moves, Color stm) {
   if (moves.Empty()) return Move();
@@ -159,11 +156,6 @@ void FindStartingPosition(Board &board,
       continue;
     }
   }
-
-  if (seen.contains(board.GetState().zobrist_key)) {
-    fmt::println("bro");
-  }
-  seen.insert(board.GetState().zobrist_key);
 }
 
 std::atomic<U64> positions_written = 0, games_completed = 0, start_time = 0;
