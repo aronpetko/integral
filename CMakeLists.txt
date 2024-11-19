@@ -18,7 +18,8 @@ option(BUILD_AVX2_BMI2 "Build with AVX2 + BMI2 optimizations" OFF)
 option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
-
+SET(BUILD_NATIVE OFF)
+SET(BUILD_SSE41_POPCNT ON)
 # Allow user to specify EVALFILE through CMake
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/raw/main/integral.nnue")
@@ -73,7 +74,7 @@ endif ()
 
 # Set common flags for release and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-pthread")
+set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
 
 # Check for Link-Time Optimization (LTO) support
 check_ipo_supported(RESULT LTO_SUPPORTED)
