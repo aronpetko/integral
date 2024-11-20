@@ -634,8 +634,8 @@ Score Search::PVSearch(Thread &thread,
 
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
-        int reduction =
-            depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
+        int reduction = depth / kNmpRedDiv + kNmpRedBase + eval_reduction +
+                        opponent_worsening;
         reduction = std::clamp(reduction, 0, depth);
 
         board.MakeNullMove();
@@ -906,7 +906,8 @@ Score Search::PVSearch(Thread &thread,
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
