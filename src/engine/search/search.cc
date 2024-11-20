@@ -830,7 +830,8 @@ Score Search::PVSearch(Thread &thread,
 
       if (is_accurate_tt_score) {
         const int reduced_depth = 3 * (depth - 1) / 8;
-        const Score new_beta = tt_entry->score - depth;
+        const Score new_beta =
+            tt_entry->score - depth * (1 + (tt_was_in_pv && !in_pv_node));
 
         stack->excluded_tt_move = tt_move;
         const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
@@ -906,7 +907,8 @@ Score Search::PVSearch(Thread &thread,
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
