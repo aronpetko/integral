@@ -845,8 +845,8 @@ Score Search::PVSearch(Thread &thread,
         // move's search
         if (tt_move_excluded_score < new_beta) {
           // Extend more if the TT move is singular by a big margin
-          if (!in_pv_node &&
-              tt_move_excluded_score < new_beta - kSeDoubleMargin) {
+          if (!in_pv_node && tt_move_excluded_score <
+                                 new_beta - kSeDoubleMargin - 5 * cut_node) {
             extensions = 2 + (is_quiet && tt_move_excluded_score <
                                               new_beta - kSeTripleMargin);
             depth += depth < kSeDepthExtensionDepth;
@@ -906,7 +906,8 @@ Score Search::PVSearch(Thread &thread,
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
