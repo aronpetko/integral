@@ -901,12 +901,14 @@ Score Search::PVSearch(Thread &thread,
                    static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
       reduction -=
-          std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
-      reduction -=
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
+      if (std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff) {
+        reduction -= 1 + depth < 4;
+      }
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
