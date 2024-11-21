@@ -827,9 +827,9 @@ Score Search::PVSearch(Thread &thread,
           tt_entry->depth + 3 >= depth &&
           tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
+      const int reduced_depth = 3 * (depth - 1) / 8;
 
       if (is_accurate_tt_score) {
-        const int reduced_depth = 3 * (depth - 1) / 8;
         const Score new_beta = tt_entry->score - depth;
 
         stack->excluded_tt_move = tt_move;
@@ -864,7 +864,7 @@ Score Search::PVSearch(Thread &thread,
                 state.turn,
                 stack->best_move,
                 stack->threats,
-                history::HistoryBonus(depth));
+                history::HistoryBonus(reduced_depth));
           }
           return tt_move_excluded_score;
         }
