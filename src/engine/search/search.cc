@@ -859,6 +859,10 @@ Score Search::PVSearch(Thread &thread,
         // cause a cutoff based on our current search window
         else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
+          if (is_quiet) {
+            history.quiet_history->UpdateScore(
+                state, stack, depth, stack->threats, quiets);
+          }
           return tt_move_excluded_score;
         }
         // Negative Extensions: Search less since the TT move was not singular,
@@ -906,7 +910,8 @@ Score Search::PVSearch(Thread &thread,
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
