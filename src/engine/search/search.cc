@@ -860,8 +860,11 @@ Score Search::PVSearch(Thread &thread,
         else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           if (is_quiet) {
-            history.quiet_history->UpdateScore(
-                state, stack, depth, stack->threats, quiets);
+            history.quiet_history->UpdateMoveScore(
+                state.turn,
+                stack->best_move,
+                stack->threats,
+                history::HistoryBonus(depth));
           }
           return tt_move_excluded_score;
         }
