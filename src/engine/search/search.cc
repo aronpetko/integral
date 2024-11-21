@@ -802,7 +802,7 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
-              move, is_quiet ? std::min(see_threshold, 0) : 0, state)) {
+              move, is_quiet ? std::min(see_threshold, 0) : see_threshold, state)) {
         continue;
       }
 
