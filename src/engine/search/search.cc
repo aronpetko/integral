@@ -349,12 +349,11 @@ Score Search::QuiescentSearch(Thread &thread,
         alpha = score;
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
-          const int history_depth =
-              1 + (alpha > beta + kHistoryBonusMargin);
+          const int history_depth = 1 + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+                state, stack, history_depth, state.threats, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, history_depth, quiets);
           } else if (is_capture) {
@@ -830,7 +829,9 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
-              move, is_quiet ? std::min(see_threshold, 0) : see_threshold, state)) {
+              move,
+              is_quiet ? std::min(see_threshold, 0) : see_threshold,
+              state)) {
         continue;
       }
 
