@@ -801,7 +801,8 @@ Score Search::PVSearch(Thread &thread,
           stack->history_score / kSeePruneHistDiv;
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-          !eval::StaticExchange(move, see_threshold, state)) {
+          !eval::StaticExchange(
+              move, is_quiet ? std::min(see_threshold, 0) : see_threshold, state)) {
         continue;
       }
 
@@ -906,7 +907,8 @@ Score Search::PVSearch(Thread &thread,
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
