@@ -31,7 +31,7 @@ struct RootMove {
   PVLine pv;
 
   RootMove(Move move, Score score)
-      : move(move), score(score), avg_score(score), pv({}) {}
+      : move(move), score(score), avg_score(kScoreNone), pv({}) {}
   RootMove() = default;
 };
 
