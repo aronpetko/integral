@@ -37,7 +37,7 @@ struct TransposedNetwork {
   alignas(64) MultiArray<I16, arch::kOutputBucketCount> output_biases;
 };
 
-inline std::unique_ptr<TransposedNetwork> network;
+inline std::unique_ptr<TransposedNetwork> network = nullptr;
 
 class Accumulator;
 
