@@ -293,7 +293,11 @@ Score Search::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
+  Move best_move = Move::NullMove();
+
   const Score futility_score = best_score + kQsFutMargin;
+  // Keep track of quiet and capture moves that failed to cause a beta cutoff
+  MoveList quiets, captures;
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
@@ -319,6 +323,9 @@ Score Search::QuiescentSearch(Thread &thread,
 
     ++thread.nodes_searched;
 
+    const bool is_quiet = !move.IsNoisy(state);
+    const bool is_capture = move.IsCapture(state);
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
@@ -333,6 +340,8 @@ Score Search::QuiescentSearch(Thread &thread,
       best_score = score;
 
       if (score > alpha) {
+        best_move = move;
+
         stack->pv.Clear();
         stack->pv.Push(move);
         stack->pv.AppendPV((stack + 1)->pv);
@@ -340,9 +349,28 @@ Score Search::QuiescentSearch(Thread &thread,
         alpha = score;
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
+          const int history_depth =
+              1 + (alpha > beta + kHistoryBonusMargin);
+          if (is_quiet) {
+            stack->AddKillerMove(move);
+            history.quiet_history->UpdateScore(
+                state, stack, history_depth, stack->threats, quiets);
+            history.continuation_history->UpdateScore(
+                state, stack, history_depth, quiets);
+          } else if (is_capture) {
+            history.capture_history->UpdateScore(state, stack, history_depth);
+          }
           break;
         }
       }
+    }
+
+    // Penalize the history score of moves that failed to raise alpha
+    if (move != best_move) {
+      if (is_quiet)
+        quiets.Push(move);
+      else if (is_capture)
+        captures.Push(move);
     }
   }
 
