@@ -326,6 +326,13 @@ Score Search::QuiescentSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
+    // Set the currently searched move in the stack for continuation history
+    stack->move = move;
+    stack->moved_piece = state.GetPieceType(move.GetFrom());
+    stack->capture_move = move.IsCapture(state);
+    stack->continuation_entry =
+        history.continuation_history->GetEntry(state, move);
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
