@@ -214,7 +214,6 @@ Score Search::QuiescentSearch(Thread &thread,
   const auto &state = board.GetState();
 
   stack->pv.Clear();
-  ++thread.nodes_searched;
 
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
@@ -329,6 +328,8 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    ++thread.nodes_searched;
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
@@ -429,7 +430,6 @@ Score Search::PVSearch(Thread &thread,
   }
 
   stack->in_check = state.InCheck();
-  ++thread.nodes_searched;
 
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
@@ -582,6 +582,9 @@ Score Search::PVSearch(Thread &thread,
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   bool improving = false;
+  // Similar idea follows, but we check if the opponent's evaluation has been
+  // falling
+  bool opponent_worsening = false;
 
   StackEntry *past_stack = nullptr;
   if ((stack - 2)->static_eval != kScoreNone) {
@@ -590,8 +593,9 @@ Score Search::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (past_stack && !stack->in_check) {
-    improving = stack->static_eval > past_stack->static_eval;
+  if (!stack->in_check) {
+    improving = past_stack && stack->static_eval > past_stack->static_eval;
+    opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
   (stack + 1)->ClearKillerMoves();
@@ -603,10 +607,10 @@ Score Search::PVSearch(Thread &thread,
     // fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
+      const int improving_margin =
+          (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
-          depth * kRevFutMargin -
-          static_cast<int>((improving && !opponent_easy_capture) * 1.5 *
-                           kRevFutMargin) +
+          depth * kRevFutMargin - improving_margin - 15 * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max(futility_margin, 20) >= beta) {
         // Return (eval + beta) / 2 as a balanced score: higher than the beta
@@ -705,6 +709,7 @@ Score Search::PVSearch(Thread &thread,
                                          state, move, stack->threats, stack);
 
           const int probcut_depth = depth - 3;
+          ++thread.nodes_searched;
 
           board.MakeMove(move);
 
@@ -815,7 +820,8 @@ Score Search::PVSearch(Thread &thread,
           stack->history_score / kSeePruneHistDiv;
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-          !eval::StaticExchange(move, see_threshold, state)) {
+          !eval::StaticExchange(
+              move, is_quiet ? std::min(see_threshold, 0) : see_threshold, state)) {
         continue;
       }
 
@@ -895,7 +901,7 @@ Score Search::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched = thread.nodes_searched;
+    const U32 prev_nodes_searched = thread.nodes_searched++;
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -920,7 +926,8 @@ Score Search::PVSearch(Thread &thread,
           move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, 0, new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
@@ -949,7 +956,7 @@ Score Search::PVSearch(Thread &thread,
 
       if (reduction != 0 && is_quiet) {
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
-                        : score >= beta  ? history::HistoryBonus(new_depth)
+                        : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
         history.continuation_history->UpdateMoveScore(
             board.GetStateHistory().Back(), move, bonus, stack);

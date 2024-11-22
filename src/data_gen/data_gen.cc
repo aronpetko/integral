@@ -14,6 +14,41 @@
 
 namespace data_gen {
 
+// clang-format off
+constexpr std::array<int, 64> kCenterScore = {
+  1,  1,  1,  1,  1,  1,  1,  1,
+  1,  2,  2,  2,  2,  2,  2,  1,
+  2,  3,  3,  3,  3,  3,  3,  2,
+  3,  5,  5,  5,  5,  5,  5,  3,
+  4,  6,  7,  9,  9,  7,  6,  4,
+  4,  6,  8,  8,  8,  8,  6,  4,
+  3,  5,  6,  6,  6,  6,  5,  3,
+  1,  1,  4,  4,  4,  4,  1,  1
+};
+// clang-format on
+
+Move SelectPreferredMove(MoveList &moves, Color stm) {
+  if (moves.Empty()) return Move();
+
+  std::vector<int> move_scores;
+  move_scores.reserve(moves.Size());
+
+  // Score moves based on destination square
+  for (int i = 0; i < moves.Size(); ++i) {
+    const auto to_square = moves[i].GetTo();
+    move_scores.push_back(kCenterScore[to_square.RelativeTo(stm)]);
+  }
+
+  // Create a distribution weighted by scores
+  std::discrete_distribution<> move_dist(move_scores.begin(),
+                                         move_scores.end());
+  static thread_local std::random_device rd;
+  static thread_local std::mt19937 gen(rd());
+
+  int selected_index = move_dist(gen);
+  return moves[selected_index];
+}
+
 void FindStartingPosition(Board &board,
                           const Config &config,
                           const std::vector<std::string> &fens) {
@@ -23,7 +58,7 @@ void FindStartingPosition(Board &board,
   I32 target_plies = RandomU64(config.min_move_plies, config.max_move_plies);
 
   while (current_ply < target_plies) {
-    Move random_move = Move::NullMove();
+    Move random_move;
 
     if (!fens.empty()) {
       const auto fen = fens[RandomU64(0, fens.size() - 1)];
@@ -53,51 +88,34 @@ void FindStartingPosition(Board &board,
         continue;
       }
 
-      constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
-          35, 25, 25, 1, 14, 0};
-
       // Bucket for moves categorized by the piece type
       std::array<MoveList, kNumPieceTypes> piece_moves;
-      std::vector<int> valid_pieces;
-      int total_probability = 0;
 
-      // Gather all moves that don't lose material and count the total
-      // probability from the pieces that can move under our conditions
+      // Gather all moves that don't lose material and bucket them by piece type
       for (int i = 0; i < legal_moves.Size(); i++) {
         const auto move = legal_moves[i];
-        if (eval::StaticExchange(move, 0, board.GetState())) {
-          const auto moving_piece =
-              board.GetState().GetPieceType(move.GetFrom());
-          if (piece_moves[moving_piece].Empty()) {
-            valid_pieces.push_back(moving_piece);
-            total_probability += kPieceProbabilities[moving_piece];
-          }
-          piece_moves[moving_piece].Push(move);
-        }
+        const auto moving_piece =
+            board.GetState().GetPieceType(move.GetFrom());
+        piece_moves[moving_piece].Push(move);
       }
 
-      if (valid_pieces.empty()) {
+      constexpr std::array<int, kNumPieceTypes> kPieceProbabilities = {
+          35, 25, 25, 5, 5, 5};
+
+      static thread_local std::random_device rd;
+      static thread_local std::mt19937 gen(rd());
+      static thread_local std::discrete_distribution<> dist(
+          kPieceProbabilities.begin(), kPieceProbabilities.end());
+
+      int chosen_piece = dist(gen);
+      auto &chosen_moves = piece_moves[chosen_piece];
+      if (!chosen_moves.Empty()) {
+        random_move = SelectPreferredMove(chosen_moves, board.GetState().turn);
+      } else {
         current_ply = 0;
         board.SetFromFen(fen::kStartFen);
         continue;
       }
-
-      // Select a piece type to move based on the weighted probability
-      int chosen_piece = valid_pieces.back();  // Default to last valid piece
-      if (valid_pieces.size() > 1) {
-        int random_value = RandomU64(0, total_probability - 1);
-        for (int piece : valid_pieces) {
-          if (random_value < kPieceProbabilities[piece]) {
-            chosen_piece = piece;
-            break;
-          }
-          random_value -= kPieceProbabilities[piece];
-        }
-      }
-
-      // Choose a random move for the selected piece type
-      auto &chosen_moves = piece_moves[chosen_piece];
-      random_move = chosen_moves[RandomU64(0, chosen_moves.Size() - 1)];
     }
 
     board.MakeMove(random_move);
@@ -196,7 +214,7 @@ void GameLoop(const Config &config,
   constexpr int kWinPliesThreshold = 5;
   constexpr int kDrawThreshold = 2;
   constexpr int kDrawPliesThreshold = 8;
-  constexpr int kInitialScoreThreshold = 600;
+  constexpr int kInitialScoreThreshold = 300;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};

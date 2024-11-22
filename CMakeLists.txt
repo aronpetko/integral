@@ -73,7 +73,7 @@ endif ()
 
 # Set common flags for release and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
-set(CMAKE_CXX_FLAGS_DEBUG "-pthread")
+set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
 
 # Check for Link-Time Optimization (LTO) support
 check_ipo_supported(RESULT LTO_SUPPORTED)
