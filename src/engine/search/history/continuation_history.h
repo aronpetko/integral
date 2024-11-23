@@ -47,7 +47,15 @@ class ContinuationHistory {
 
   [[nodiscard]] int GetScore(const BoardState &state,
                              Move move,
-                             StackEntry *stack) {
+                             StackEntry *stack) const {
+    return GetIndividualScore(state, move, stack - 1) +
+           GetIndividualScore(state, move, stack - 2) +
+           GetIndividualScore(state, move, stack - 4);
+  }
+
+  [[nodiscard]] int GetIndividualScore(const BoardState &state,
+                                       Move move,
+                                       StackEntry *stack) const {
     if (!stack->continuation_entry) {
       return 0;
     }
