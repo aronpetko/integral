@@ -44,7 +44,8 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      see_threshold_(see_threshold) {}
+      see_threshold_(see_threshold),
+      skip_quiets_(false) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
