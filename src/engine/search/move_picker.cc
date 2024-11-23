@@ -113,6 +113,11 @@ Move MovePicker::Next() {
     }
   }
 
+  if (skip_quiets_ && stage_ <= Stage::kQuiets) {
+    stage_ = Stage::kBadNoisys;
+    moves_idx_ = 0;
+  }
+
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
     moves_idx_ = 0;
@@ -140,10 +145,7 @@ Move MovePicker::Next() {
 }
 
 void MovePicker::SkipQuiets() {
-  if (stage_ == Stage::kQuiets) {
-    stage_ = Stage::kBadNoisys;
-    moves_idx_ = 0;
-  }
+  skip_quiets_ = true;
 }
 
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
