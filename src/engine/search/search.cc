@@ -811,7 +811,9 @@ Score Search::PVSearch(Thread &thread,
       const int history_margin =
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
+      if (depth <= kHistPruneDepth &&
+          (is_quiet ? history.continuation_history->GetScore(state, move, stack)
+                    : stack->history_score) <= history_margin) {
         move_picker.SkipQuiets();
         continue;
       }
