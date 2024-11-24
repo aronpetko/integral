@@ -38,8 +38,9 @@ class History {
   }
 
   [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
-                                        Move move) const {
-    return capture_history->GetScore(state, move);
+                                        Move move,
+                                        BitBoard threats) const {
+    return capture_history->GetScore(state, move, threats);
   }
 
  public:
