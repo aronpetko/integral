@@ -93,7 +93,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kFirstKiller) {
     stage_ = Stage::kSecondKiller;
 
-    if (stack_) {
+    if (!skip_quiets_) {
       const auto first_killer = stack_->killer_moves[0];
       if (first_killer && first_killer != tt_move_ &&
           board_.IsMovePseudoLegal(first_killer)) {
@@ -105,7 +105,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kSecondKiller) {
     stage_ = Stage::kGenerateQuiets;
 
-    if (stack_) {
+    if (!skip_quiets_) {
       const auto second_killer = stack_->killer_moves[1];
       if (second_killer && second_killer != tt_move_ &&
           board_.IsMovePseudoLegal(second_killer)) {
@@ -114,19 +114,17 @@ Move MovePicker::Next() {
     }
   }
 
-  if (skip_quiets_ && stage_ <= Stage::kQuiets) {
-    stage_ = Stage::kBadNoisys;
-    moves_idx_ = 0;
-  }
-
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
-    moves_idx_ = 0;
-    GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
+
+    if (!skip_quiets_) {
+      moves_idx_ = 0;
+      GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
+    }
   }
 
   if (stage_ == Stage::kQuiets) {
-    if (moves_idx_ < quiets_.Size()) {
+    if (moves_idx_ < quiets_.Size() && !skip_quiets_) {
       return SelectionSort(quiets_, moves_idx_++);
     }
 
