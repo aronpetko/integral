@@ -169,10 +169,13 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = stack_->killer_moves;
+  const auto &state = board_.GetState();
+
   auto moves = move_gen::GenerateMoves(move_type, board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && killers[0] != move && killers[1] != move) {
+    if (move != tt_move_ && (killers[0] != move && !killers[0].IsNoisy(state)) &&
+        (killers[1] != move && !killers[1].IsNoisy(state))) {
       list.Push({move, ScoreMove(move)});
     }
   }
