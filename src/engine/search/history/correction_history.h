@@ -129,7 +129,7 @@ class CorrectionHistory {
                                        Score scaled_bonus) {
     const Score new_score =
         (current_score * (256.0 - weight) + scaled_bonus * weight) / 256.0;
-    return std::clamp<Score>(new_score, 256 * -64, 256 * 64);
+    return std::clamp<Score>(new_score, 256 * -32, 256 * 32);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
