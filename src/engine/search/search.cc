@@ -757,9 +757,6 @@ Score Search::PVSearch(Thread &thread,
       continue;
     }
 
-    // Prefetch the TT entry for the next move as early as possible
-    transposition_table_.Prefetch(board.PredictKeyAfter(move));
-
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
@@ -816,6 +813,9 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
     }
+
+    // Prefetch the TT entry for the next move as early as possible
+    transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     int extensions = 0;
 
