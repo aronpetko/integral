@@ -282,8 +282,12 @@ Score Search::QuiescentSearch(Thread &thread,
             raw_static_eval,
             Move::NullMove(),
             tt_was_in_pv);
-        transposition_table_.Save(
-            tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+        transposition_table_.Save(tt_entry,
+                                  new_tt_entry,
+                                  state.zobrist_key,
+                                  stack->ply,
+                                  in_pv_node,
+                                  false);
       }
 
       return best_score;
@@ -369,7 +373,7 @@ Score Search::QuiescentSearch(Thread &thread,
                                              Move::NullMove(),
                                              tt_was_in_pv);
   transposition_table_.Save(
-      tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+      tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node, false);
 
   return best_score;
 }
@@ -497,8 +501,12 @@ Score Search::PVSearch(Thread &thread,
                                                    tt_static_eval,
                                                    Move::NullMove(),
                                                    tt_was_in_pv);
-        transposition_table_.Save(
-            tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+        transposition_table_.Save(tt_entry,
+                                  new_tt_entry,
+                                  state.zobrist_key,
+                                  stack->ply,
+                                  in_pv_node,
+                                  cut_node);
         return score;
       }
 
@@ -532,8 +540,12 @@ Score Search::PVSearch(Thread &thread,
                                                  raw_static_eval,
                                                  Move::NullMove(),
                                                  tt_was_in_pv);
-      transposition_table_.Save(
-          tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+      transposition_table_.Save(tt_entry,
+                                new_tt_entry,
+                                state.zobrist_key,
+                                stack->ply,
+                                in_pv_node,
+                                cut_node);
     }
 
     stack->static_eval = history.correction_history->CorrectStaticEval(
@@ -725,7 +737,8 @@ Score Search::PVSearch(Thread &thread,
                                       new_tt_entry,
                                       state.zobrist_key,
                                       stack->ply,
-                                      in_pv_node);
+                                      in_pv_node,
+                                      cut_node);
             return score;
           }
         }
@@ -802,7 +815,9 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
-              move, is_quiet ? std::min(see_threshold, 0) : see_threshold, state)) {
+              move,
+              is_quiet ? std::min(see_threshold, 0) : see_threshold,
+              state)) {
         continue;
       }
 
@@ -1040,8 +1055,12 @@ Score Search::PVSearch(Thread &thread,
                                                raw_static_eval,
                                                best_move,
                                                tt_was_in_pv);
-    transposition_table_.Save(
-        tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+    transposition_table_.Save(tt_entry,
+                              new_tt_entry,
+                              state.zobrist_key,
+                              stack->ply,
+                              in_pv_node,
+                              cut_node);
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(

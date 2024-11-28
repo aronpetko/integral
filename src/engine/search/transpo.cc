@@ -35,14 +35,15 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
                               U16 ply,
-                              bool in_pv) {
+                              bool pv_node,
+                              bool cut_node) {
   if (new_entry.move || !old_entry->CompareKey(key)) {
     old_entry->move = new_entry.move;
   }
 
   if (!old_entry->CompareKey(key) ||
       new_entry.GetFlag() == TranspositionTableEntry::kExact ||
-      new_entry.depth + 3 + 2 * in_pv >= old_entry->depth) {
+      new_entry.depth + 3 + 2 * pv_node - cut_node >= old_entry->depth) {
     new_entry.bits.age = age_;
 
     old_entry->key = static_cast<U16>(key);
