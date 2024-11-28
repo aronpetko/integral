@@ -95,6 +95,7 @@ Move MovePicker::Next() {
     if (stack_) {
       const auto first_killer = stack_->killer_moves[0];
       if (first_killer && first_killer != tt_move_ &&
+          !first_killer.IsNoisy(state) &&
           board_.IsMovePseudoLegal(first_killer)) {
         return first_killer;
       }
@@ -107,6 +108,7 @@ Move MovePicker::Next() {
     if (stack_) {
       const auto second_killer = stack_->killer_moves[1];
       if (second_killer && second_killer != tt_move_ &&
+          !second_killer.IsNoisy(state) &&
           board_.IsMovePseudoLegal(second_killer)) {
         return second_killer;
       }
