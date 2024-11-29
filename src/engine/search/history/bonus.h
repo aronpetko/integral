@@ -22,7 +22,7 @@ static I16 HistoryPenalty(I16 depth,
                           I16 scale = kHistPenaltyScale,
                           I16 max_bonus = kHistBonusMaxBonus) {
   return std::clamp<I16>(
-      -scale * depth - kHistBonusBiasbw, -max_bonus, max_bonus);
+      -scale * depth - kHistBonusBias, -max_bonus, max_bonus);
 }
 
 // Linear interpolation of the bonus and maximum score
