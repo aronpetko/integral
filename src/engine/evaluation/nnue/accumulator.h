@@ -50,9 +50,9 @@ static std::array<I16, arch::kHiddenLayerSize>& GetFeatureTable(
 
   const int relative_king_square = king_square ^ (56 * perspective);
   const int king_bucket_idx = kKingBucketMap[relative_king_square];
-  const int square_idx = static_cast<int>(square ^ (56 * perspective));
-  const int color_idx = static_cast<int>(perspective != piece_color);
-  const int piece_idx = static_cast<int>(piece);
+  const int square_idx = square ^ 56 * perspective;
+  const int color_idx = perspective != piece_color;
+  const int piece_idx = piece;
 
   return network
       ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx];
@@ -133,17 +133,25 @@ class PerspectiveAccumulator {
   }
 
 #if BUILD_HAS_SIMD
-  void AddFeatures4(
-      Color perspective,
-      Square king_square,
-      Square square1, Square square2, Square square3, Square square4,
-      PieceType piece,
-      Color color1, Color color2, Color color3, Color color4) {
-
-    const auto& table1 = GetFeatureTable(square1, king_square, piece, color1, perspective);
-    const auto& table2 = GetFeatureTable(square2, king_square, piece, color2, perspective);
-    const auto& table3 = GetFeatureTable(square3, king_square, piece, color3, perspective);
-    const auto& table4 = GetFeatureTable(square4, king_square, piece, color4, perspective);
+  void AddFeatures4(Color perspective,
+                    Square king_square,
+                    Square square1,
+                    Square square2,
+                    Square square3,
+                    Square square4,
+                    PieceType piece,
+                    Color color1,
+                    Color color2,
+                    Color color3,
+                    Color color4) {
+    const auto& table1 =
+        GetFeatureTable(square1, king_square, piece, color1, perspective);
+    const auto& table2 =
+        GetFeatureTable(square2, king_square, piece, color2, perspective);
+    const auto& table3 =
+        GetFeatureTable(square3, king_square, piece, color3, perspective);
+    const auto& table4 =
+        GetFeatureTable(square4, king_square, piece, color4, perspective);
 
     constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
     for (int i = 0; i < arch::kHiddenLayerSize; i += simd_width) {
@@ -163,14 +171,13 @@ class PerspectiveAccumulator {
   }
 #endif
 
-  void AddFeature(
-      Color perspective,
-      Square king_square,
-      Square square,
-      PieceType piece,
-      Color piece_color) {
-
-    const auto& table = GetFeatureTable(square, king_square, piece, piece_color, perspective);
+  void AddFeature(Color perspective,
+                  Square king_square,
+                  Square square,
+                  PieceType piece,
+                  Color piece_color) {
+    const auto& table =
+        GetFeatureTable(square, king_square, piece, piece_color, perspective);
 
 #if BUILD_HAS_SIMD
     constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
@@ -187,14 +194,13 @@ class PerspectiveAccumulator {
 #endif
   }
 
-  void SubFeature(
-      Color perspective,
-      Square king_square,
-      Square square,
-      PieceType piece,
-      Color piece_color) {
-
-    const auto& table = GetFeatureTable(square, king_square, piece, piece_color, perspective);
+  void SubFeature(Color perspective,
+                  Square king_square,
+                  Square square,
+                  PieceType piece,
+                  Color piece_color) {
+    const auto& table =
+        GetFeatureTable(square, king_square, piece, piece_color, perspective);
 
 #if BUILD_HAS_SIMD
     constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
@@ -212,15 +218,19 @@ class PerspectiveAccumulator {
 #endif
   }
 
-  void AddSubFeatures(
-      const PerspectiveAccumulator& previous,
-      Color perspective,
-      Square king_square,
-      Square add_square, PieceType add_piece, Color add_piece_color,
-      Square sub_square, PieceType sub_piece, Color sub_piece_color) {
-
-    const auto& add_table = GetFeatureTable(add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& sub_table = GetFeatureTable(sub_square, king_square, sub_piece, sub_piece_color, perspective);
+  void AddSubFeatures(const PerspectiveAccumulator& previous,
+                      Color perspective,
+                      Square king_square,
+                      Square add_square,
+                      PieceType add_piece,
+                      Color add_piece_color,
+                      Square sub_square,
+                      PieceType sub_piece,
+                      Color sub_piece_color) {
+    const auto& add_table = GetFeatureTable(
+        add_square, king_square, add_piece, add_piece_color, perspective);
+    const auto& sub_table = GetFeatureTable(
+        sub_square, king_square, sub_piece, sub_piece_color, perspective);
 
 #if BUILD_HAS_SIMD
     constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
@@ -240,17 +250,24 @@ class PerspectiveAccumulator {
 #endif
   }
 
-  void AddSubSubFeatures(
-      const PerspectiveAccumulator& previous,
-      Color perspective,
-      Square king_square,
-      Square add_square, PieceType add_piece, Color add_piece_color,
-      Square sub_square1, PieceType sub_piece1, Color sub_piece_color1,
-      Square sub_square2, PieceType sub_piece2, Color sub_piece_color2) {
-
-    const auto& add_table = GetFeatureTable(add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& sub_table1 = GetFeatureTable(sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& sub_table2 = GetFeatureTable(sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
+  void AddSubSubFeatures(const PerspectiveAccumulator& previous,
+                         Color perspective,
+                         Square king_square,
+                         Square add_square,
+                         PieceType add_piece,
+                         Color add_piece_color,
+                         Square sub_square1,
+                         PieceType sub_piece1,
+                         Color sub_piece_color1,
+                         Square sub_square2,
+                         PieceType sub_piece2,
+                         Color sub_piece_color2) {
+    const auto& add_table = GetFeatureTable(
+        add_square, king_square, add_piece, add_piece_color, perspective);
+    const auto& sub_table1 = GetFeatureTable(
+        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
+    const auto& sub_table2 = GetFeatureTable(
+        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
 
 #if BUILD_HAS_SIMD
     constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
@@ -276,19 +293,29 @@ class PerspectiveAccumulator {
 #endif
   }
 
-  void AddAddSubSubFeatures(
-      const PerspectiveAccumulator& previous,
-      Color perspective,
-      Square king_square,
-      Square add_square1, PieceType add_piece1, Color add_piece_color1,
-      Square add_square2, PieceType add_piece2, Color add_piece_color2,
-      Square sub_square1, PieceType sub_piece1, Color sub_piece_color1,
-      Square sub_square2, PieceType sub_piece2, Color sub_piece_color2) {
-
-    const auto& add_table1 = GetFeatureTable(add_square1, king_square, add_piece1, add_piece_color1, perspective);
-    const auto& add_table2 = GetFeatureTable(add_square2, king_square, add_piece2, add_piece_color2, perspective);
-    const auto& sub_table1 = GetFeatureTable(sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& sub_table2 = GetFeatureTable(sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
+  void AddAddSubSubFeatures(const PerspectiveAccumulator& previous,
+                            Color perspective,
+                            Square king_square,
+                            Square add_square1,
+                            PieceType add_piece1,
+                            Color add_piece_color1,
+                            Square add_square2,
+                            PieceType add_piece2,
+                            Color add_piece_color2,
+                            Square sub_square1,
+                            PieceType sub_piece1,
+                            Color sub_piece_color1,
+                            Square sub_square2,
+                            PieceType sub_piece2,
+                            Color sub_piece_color2) {
+    const auto& add_table1 = GetFeatureTable(
+        add_square1, king_square, add_piece1, add_piece_color1, perspective);
+    const auto& add_table2 = GetFeatureTable(
+        add_square2, king_square, add_piece2, add_piece_color2, perspective);
+    const auto& sub_table1 = GetFeatureTable(
+        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
+    const auto& sub_table2 = GetFeatureTable(
+        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
 
 #if BUILD_HAS_SIMD
     constexpr int simd_width = sizeof(simd::Vepi16) / sizeof(I16);
@@ -311,8 +338,8 @@ class PerspectiveAccumulator {
     }
 #else
     for (int i = 0; i < arch::kHiddenLayerSize; ++i) {
-      values_[i] = previous[i] + add_table1[i] + add_table2[i] -
-                   sub_table1[i] - sub_table2[i];
+      values_[i] = previous[i] + add_table1[i] + add_table2[i] - sub_table1[i] -
+                   sub_table2[i];
     }
 #endif
   }

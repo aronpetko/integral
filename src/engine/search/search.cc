@@ -69,10 +69,17 @@ void Search::IterativeDeepening(Thread &thread) {
   Move best_move = Move::NullMove();
   Score score = 0;
 
+  std::unique_ptr<uci::reporter::ReportInfo> report_info;
+  if (uci::reporter::using_uci) {
+    report_info = std::make_unique<uci::reporter::UCIReportInfo>();
+  } else {
+    report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+  }
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
 
-    int window = static_cast<int>(kAspWindowDelta);
+    int window = kAspWindowDelta;
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
@@ -131,13 +138,6 @@ void Search::IterativeDeepening(Thread &thread) {
     if (thread.IsMainThread() &&
         time_mgmt_.ShouldStop(best_move, depth, thread)) {
       break;
-    }
-
-    std::unique_ptr<uci::reporter::ReportInfo> report_info;
-    if (uci::reporter::using_uci) {
-      report_info = std::make_unique<uci::reporter::UCIReportInfo>();
-    } else {
-      report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
     }
 
     if (thread.IsMainThread() && !stop_.load(std::memory_order_relaxed) &&
@@ -621,7 +621,7 @@ Score Search::PVSearch(Thread &thread,
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
-        !stack->excluded_tt_move) {
+        !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -650,7 +650,18 @@ Score Search::PVSearch(Thread &thread,
         // Prune if the result from our null window search around beta indicates
         // that the opponent still doesn't gain an advantage from the null move
         if (score >= beta) {
-          return score >= kTBWinInMaxPlyScore ? beta : score;
+          if (thread.nmp_min_ply != 0 || depth <= 14) {
+            return score >= kTBWinInMaxPlyScore ? beta : score;
+          }
+
+          thread.nmp_min_ply = stack->ply + 3 * (depth - reduction) / 4;
+          const Score verification_score = PVSearch<NodeType::kNonPV>(
+              thread, depth - reduction, beta - 1, beta, stack, false);
+          thread.nmp_min_ply = 0;
+
+          if (verification_score >= beta) {
+            return verification_score;
+          }
         }
       }
 
@@ -802,7 +813,9 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
-              move, is_quiet ? std::min(see_threshold, 0) : see_threshold, state)) {
+              move,
+              is_quiet ? std::min(see_threshold, 0) : see_threshold,
+              state)) {
         continue;
       }
 

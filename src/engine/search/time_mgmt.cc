@@ -56,7 +56,7 @@ bool DepthLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   return depth >= max_depth_;
 }
 
-bool DepthLimiter::TimesUp(U32 nodes_searched) {
+bool DepthLimiter::TimesUp(U64 nodes_searched) {
   return false;
 }
 
@@ -79,7 +79,7 @@ bool NodeLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   return soft_max_nodes_ != 0 && thread.nodes_searched >= soft_max_nodes_;
 }
 
-bool NodeLimiter::TimesUp(U32 nodes_searched) {
+bool NodeLimiter::TimesUp(U64 nodes_searched) {
   return max_nodes_ != 0 && nodes_searched >= max_nodes_;
 }
 
@@ -155,7 +155,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
                               score_change_factor * node_count_factor;
 }
 
-bool TimedLimiter::TimesUp(U32 nodes_searched) {
+bool TimedLimiter::TimesUp(U64 nodes_searched) {
   return (nodes_searched & 4095) == 0 && TimeElapsed() >= hard_limit_;
 }
 
@@ -277,7 +277,7 @@ bool TimeManagement::ShouldStop(Move best_move, int depth, Thread& thread) {
   return false;
 }
 
-bool TimeManagement::TimesUp(U32 nodes_searched) {
+bool TimeManagement::TimesUp(U64 nodes_searched) {
   for (auto* limiter : active_limiters_) {
     if (limiter->TimesUp(nodes_searched)) {
       return true;
