@@ -71,6 +71,7 @@ struct Thread {
   Score previous_score;
   U16 root_depth, sel_depth;
   U64 tb_hits;
+  U16 nmp_min_ply;
 };
 
 class Search {
