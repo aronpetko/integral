@@ -32,7 +32,8 @@ struct Thread {
         previous_score(kScoreNone),
         nodes_searched(0),
         sel_depth(0),
-        tb_hits(0) {
+        tb_hits(0),
+        nmp_min_ply(0) {
     NewGame();
   }
 
@@ -54,6 +55,8 @@ struct Thread {
   void Reset() {
     stack.Reset();
     scores.fill(kScoreNone);
+
+    nmp_min_ply = 0;
 
     // Reset info data
     nodes_searched = 0;
