@@ -7,20 +7,22 @@
 namespace search::history {
 
 TUNABLE(kHistBonusGravity, 10979, 8192, 32768, false);
-TUNABLE(kHistBonusScale, 137, 65, 260, false);
-TUNABLE(kHistPenaltyScale, 150, 65, 260, false);
+TUNABLE(kHistBonusScale, 167, 65, 260, false);
+TUNABLE(kHistPenaltyScale, 180, 65, 260, false);
 TUNABLE(kHistBonusMaxBonus, 1188, 580, 2318, true);
+TUNABLE(kHistBonusBias, 100, 580, 2318, true);
 
 static I16 HistoryBonus(I16 depth,
                         I16 scale = kHistBonusScale,
                         I16 max_bonus = kHistBonusMaxBonus) {
-  return std::clamp<I16>(scale * depth, -max_bonus, max_bonus);
+  return std::clamp<I16>(scale * depth - kHistBonusBias, -max_bonus, max_bonus);
 }
 
 static I16 HistoryPenalty(I16 depth,
                           I16 scale = kHistPenaltyScale,
                           I16 max_bonus = kHistBonusMaxBonus) {
-  return std::clamp<I16>(-scale * depth, -max_bonus, max_bonus);
+  return std::clamp<I16>(
+      -scale * depth - kHistBonusBias, -max_bonus, max_bonus);
 }
 
 // Linear interpolation of the bonus and maximum score
