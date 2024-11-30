@@ -699,7 +699,7 @@ Score Search::PVSearch(Thread &thread,
           stack->capture_move = move.IsCapture(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
-          stack->history_score = move.IsCapture(state)
+          stack->history_score = move.IsNoisy(state)
                                    ? history.GetCaptureMoveScore(state, move)
                                    : history.GetQuietMoveScore(
                                          state, move, stack->threats, stack);
@@ -772,11 +772,10 @@ Score Search::PVSearch(Thread &thread,
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     const bool is_quiet = !move.IsNoisy(state);
-    const bool is_capture = move.IsCapture(state);
 
-    stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
-                                      : history.GetQuietMoveScore(
-                                            state, move, stack->threats, stack);
+    stack->history_score =
+        is_quiet ? history.GetQuietMoveScore(state, move, stack->threats, stack)
+                 : history.GetCaptureMoveScore(state, move);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -906,7 +905,7 @@ Score Search::PVSearch(Thread &thread,
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
-        !(in_pv_node && is_capture)) {
+        !(in_pv_node && !is_quiet)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
@@ -998,7 +997,7 @@ Score Search::PVSearch(Thread &thread,
                 state, stack, history_depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, history_depth, quiets);
-          } else if (is_capture) {
+          } else {
             history.capture_history->UpdateScore(state, stack, history_depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
@@ -1012,10 +1011,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Penalize the history score of moves that failed to raise alpha
     if (move != best_move) {
-      if (is_quiet)
-        quiets.Push(move);
-      else if (is_capture)
-        captures.Push(move);
+      is_quiet ? quiets.Push(move) : captures.Push(move);
     }
   }
 
