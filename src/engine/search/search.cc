@@ -1069,7 +1069,7 @@ Score Search::PVSearch(Thread &thread,
   const auto &state = thread.board.GetState();
 
   // Scale down the evaluation based on proximity to a fifty-move rule draw
-  evaluation = evaluation - (200 - state.fifty_moves_clock) / 200;
+  evaluation = evaluation * (200 - state.fifty_moves_clock) / 200;
 
   // Correct the static eval based on prior search scores in similar positions
   evaluation = thread.history.correction_history->CorrectStaticEval(
