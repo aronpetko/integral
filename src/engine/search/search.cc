@@ -1073,7 +1073,7 @@ Score Search::PVSearch(Thread &thread,
       state, stack, evaluation);
 
   // Scale down the evaluation based on proximity to a fifty-move rule draw
-  evaluation = evaluation * (250 - state.fifty_moves_clock) / 250;
+  evaluation = evaluation * (200 - state.fifty_moves_clock) / 200;
 
   return std::clamp(
       evaluation, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
