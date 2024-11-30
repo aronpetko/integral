@@ -105,6 +105,10 @@ class Search {
   void ResizeHash(U64 size);
 
  private:
+  [[nodiscard]] Score AdjustStaticEval(Score evaluation,
+                                       Thread &thread,
+                                       StackEntry *stack);
+
   void Run(Thread &thread);
 
   void WaitForThreads();
