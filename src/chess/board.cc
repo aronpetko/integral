@@ -24,8 +24,7 @@ Board::Board() : history_({}) {}
 Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
 Board::Board(const Board &other)
-    : state_(other.state_),
-      history_(other.history_) {}
+    : state_(other.state_), history_(other.history_) {}
 
 Board &Board::operator=(const Board &other) {
   if (this == &other) {
@@ -221,7 +220,7 @@ void Board::MakeMove(Move move) {
   accum_change.sub_0 = {from, piece, us};
   accum_change.add_0 = {to, piece, us};
 
-  int new_fifty_move_clock =
+  state_.fifty_moves_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
 
   if (move_type == MoveType::kEnPassant) {
@@ -232,7 +231,7 @@ void Board::MakeMove(Move move) {
     accum_change.sub_1 = {pawn_square, PieceType::kPawn, them};
   } else if (captured != PieceType::kNone) {
     state_.RemovePiece(to, them);
-    new_fifty_move_clock = 0;
+    state_.fifty_moves_clock = 0;
     accum_change.type = nnue::AccumulatorChange::kCapture;
     accum_change.sub_1 = {to, captured, them};
   } else {
@@ -276,7 +275,6 @@ void Board::MakeMove(Move move) {
   state_.turn = FlipColor(state_.turn);
   state_.zobrist_key ^= zobrist::turn;
 
-  state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
 
   CalculateThreats();
@@ -306,7 +304,8 @@ void Board::MakeNullMove() {
   state_.turn = FlipColor(state_.turn);
   state_.zobrist_key ^= zobrist::turn;
 
-  state_.fifty_moves_clock++;
+  ++state_.fifty_moves_clock;
+  ++state_.half_moves;
 
   CalculateThreats();
 }

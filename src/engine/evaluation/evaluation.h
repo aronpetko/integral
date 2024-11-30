@@ -42,9 +42,13 @@ inline std::array<Tunable<int>, kNumPieceTypes + 1> kSeePieceScores = {
   return evaluation;
 }
 
-bool StaticExchange(Move move, int threshold, const BoardState &state);
+[[nodiscard]] bool StaticExchange(Move move,
+                                  int threshold,
+                                  const BoardState &state);
 
-Score Evaluate(Board &board);
+[[nodiscard]] Score Evaluate(Board &board);
+
+[[nodiscard]] Score AdjustForFmr(Score evaluation, U16 fifty_moves_clock);
 
 }  // namespace eval
 
