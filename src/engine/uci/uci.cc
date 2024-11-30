@@ -26,7 +26,7 @@ void Initialize(search::Search &search) {
   listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
     search.SetThreadCount(option.GetValue<U16>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
+  listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 100, 0, 10000);
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
     syzygy::SetPath(option.GetValue<std::string>());
   });
@@ -130,7 +130,9 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     CreateArgument("min_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("max_moves", ArgumentType::kRequired, LimitedInputProcessor<1>()),
     CreateArgument("out", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+    CreateArgument("book", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [](Command *cmd) {
+    const auto book_file = cmd->ParseArgument<std::string>("book");
     data_gen::Config config{
       .soft_node_limit = *cmd->ParseArgument<U64>("soft_limit"),
       .hard_node_limit = *cmd->ParseArgument<U64>("hard_limit"),
@@ -139,6 +141,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       .min_move_plies = *cmd->ParseArgument<I32>("min_moves"),
       .max_move_plies = *cmd->ParseArgument<I32>("max_moves"),
       .output_file = *cmd->ParseArgument<std::string>("out"),
+      .fens_file = book_file ? *book_file : "",
     };
     data_gen::Generate(config);
   });

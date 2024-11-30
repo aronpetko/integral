@@ -115,7 +115,7 @@ struct TranspositionTableCluster {
   U16 padding;
 };
 
-constexpr int kMaxTTAge = 64;
+constexpr int kMaxTTAge = 32;
 
 class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  public:
@@ -129,7 +129,8 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
   void Save(TranspositionTableEntry *old_entry,
             TranspositionTableEntry new_entry,
             const U64 &key,
-            U16 ply);
+            U16 ply,
+            bool in_pv);
 
   void Age();
 

@@ -2,6 +2,7 @@
 #define INTEGRAL_DATAGEN_H
 
 #include <atomic>
+#include <string>
 
 #include "../utils/types.h"
 
@@ -20,6 +21,7 @@ struct Config {
   I32 num_threads = 0;
   I32 min_move_plies = 8, max_move_plies = 9;
   std::string output_file;
+  std::string fens_file;
 };
 
 void Generate(Config config);

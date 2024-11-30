@@ -27,13 +27,20 @@ enum class SearchType {
 
 struct Thread {
   explicit Thread(U32 id)
-      : id(id), stack({}), nodes_searched(0), sel_depth(0), tb_hits(0) {
+      : id(id),
+        stack({}),
+        previous_score(kScoreNone),
+        nodes_searched(0),
+        sel_depth(0),
+        tb_hits(0),
+        nmp_min_ply(0) {
     NewGame();
   }
 
   void NewGame() {
     history.Clear();
     stack.Reset();
+    previous_score = kScoreNone;
   }
 
   [[nodiscard]] bool IsMainThread() const {
@@ -47,9 +54,12 @@ struct Thread {
 
   void Reset() {
     stack.Reset();
+    scores.fill(kScoreNone);
+
+    nmp_min_ply = 0;
 
     // Reset info data
-    nodes_searched.store(0, std::memory_order_seq_cst);
+    nodes_searched = 0;
     sel_depth = 0;
     tb_hits = 0;
   }
@@ -59,9 +69,12 @@ struct Thread {
   Board board;
   history::History history;
   Stack stack;
-  std::atomic<U64> nodes_searched;
+  U64 nodes_searched;
+  std::array<Score, kMaxSearchDepth + 1> scores;
+  Score previous_score;
   U16 root_depth, sel_depth;
   U64 tb_hits;
+  U16 nmp_min_ply;
 };
 
 class Search {

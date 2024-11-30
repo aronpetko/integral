@@ -178,6 +178,10 @@ inline Vepi16 Clip(Vepi16 vector, int l1q) {
   return _mm256_min_epi16(_mm256_max_epi16(vector, ZeroEpi16()), SetEpi16(l1q));
 }
 
+inline void StoreEpi16(void* memory_address, Vepi16 vector) {
+  _mm256_store_si256(reinterpret_cast<__m256i*>(memory_address), vector);
+}
+
 // Implementation from Alexandria
 inline int ReduceAddEpi32(Vepi32 vector) {
   // Split the __m256i into 2 __m128i vectors, and add them together

@@ -1,6 +1,7 @@
 #include "search.h"
 
 #include <algorithm>
+#include <numeric>
 #include <thread>
 
 #include "../uci/reporter.h"
@@ -30,16 +31,16 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
       table[true][depth][move] =
-          CalculateLMR(depth, move, lmr_quiet_base, lmr_quiet_div);
+          CalculateLMR(depth, move, kLmrQuietBase, kLmrQuietDiv);
       table[false][depth][move] =
-          CalculateLMR(depth, move, lmr_tact_base, lmr_tact_div);
+          CalculateLMR(depth, move, kLmrTactBase, kLmrTactDiv);
     }
   }
 
   return table;
 }
 
-const LateMoveReductionTable kLateMoveReduction =
+inline LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
 
 }  // namespace tables
@@ -68,14 +69,21 @@ void Search::IterativeDeepening(Thread &thread) {
   Move best_move = Move::NullMove();
   Score score = 0;
 
+  std::unique_ptr<uci::reporter::ReportInfo> report_info;
+  if (uci::reporter::using_uci) {
+    report_info = std::make_unique<uci::reporter::UCIReportInfo>();
+  } else {
+    report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+  }
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     thread.sel_depth = 0, thread.root_depth = depth;
 
-    int window = static_cast<int>(asp_window_delta);
+    int window = kAspWindowDelta;
     Score alpha = -kInfiniteScore;
     Score beta = kInfiniteScore;
 
-    if (depth >= asp_window_depth) {
+    if (depth >= kAspWindowDepth) {
       alpha = std::max<int>(-kInfiniteScore, score - window);
       beta = std::min<int>(kInfiniteScore, score + window);
     }
@@ -88,8 +96,13 @@ void Search::IterativeDeepening(Thread &thread) {
 
       if (root_stack->best_move) {
         best_move = root_stack->best_move;
-        score = new_score;
       }
+
+      if (ShouldQuit(thread)) {
+        break;
+      }
+
+      score = new_score;
 
       if (score <= alpha) {
         // Narrow beta to increase the chance of a fail high
@@ -117,23 +130,18 @@ void Search::IterativeDeepening(Thread &thread) {
 
       // Widen the aspiration window for the next iteration if we fail low or
       // high again
-      window *= asp_window_growth;
+      window *= kAspWindowGrowth;
     }
 
-    if (ShouldQuit(thread) ||
-        (thread.IsMainThread() &&
-         time_mgmt_.ShouldStop(best_move, depth, thread.nodes_searched))) {
+    thread.scores[depth] = score;
+
+    if (thread.IsMainThread() &&
+        time_mgmt_.ShouldStop(best_move, depth, thread)) {
       break;
     }
 
-    std::unique_ptr<uci::reporter::ReportInfo> report_info;
-    if (uci::reporter::using_uci) {
-      report_info = std::make_unique<uci::reporter::UCIReportInfo>();
-    } else {
-      report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
-    }
-
-    if (thread.IsMainThread() && !stop_ && print_info) {
+    if (thread.IsMainThread() && !stop_.load(std::memory_order_relaxed) &&
+        print_info) {
       const bool is_mate = eval::IsMateScore(root_stack->score);
       const auto nodes_searched = GetNodesSearched();
       report_info->Print(depth,
@@ -149,6 +157,8 @@ void Search::IterativeDeepening(Thread &thread) {
                          root_stack->pv.UCIFormat());
     }
   }
+
+  thread.previous_score = score;
 
   const auto SendStoppedSignal = [&]() {
     if constexpr (type == SearchType::kRegular) {
@@ -243,15 +253,15 @@ Score Search::QuiescentSearch(Thread &thread,
   Score best_score = kScoreNone;
   Score raw_static_eval = kScoreNone;
 
-  if (tt_static_eval != kScoreNone) {
-    raw_static_eval = tt_static_eval;
-  } else {
-    raw_static_eval = eval::Evaluate(board);
-  }
-
   if (!stack->in_check) {
-    stack->static_eval =
-        history.correction_history->CorrectStaticEval(state, raw_static_eval);
+    if (tt_static_eval != kScoreNone) {
+      raw_static_eval = tt_static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(board);
+    }
+
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, stack, raw_static_eval);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -262,6 +272,20 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // Early beta cutoff
     if (best_score >= beta) {
+      // Save the static eval in the TT if we have nothing yet
+      if (!tt_hit) {
+        const TranspositionTableEntry new_tt_entry(
+            state.zobrist_key,
+            tt_depth,
+            TranspositionTableEntry::kNone,
+            kScoreNone,
+            raw_static_eval,
+            Move::NullMove(),
+            tt_was_in_pv);
+        transposition_table_.Save(
+            tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
+      }
+
       return best_score;
     }
 
@@ -269,7 +293,7 @@ Score Search::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
-  const Score futility_score = best_score + qs_fut_margin;
+  const Score futility_score = best_score + kQsFutMargin;
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
@@ -293,19 +317,15 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    ++thread.nodes_searched;
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
-
-    ++thread.nodes_searched;
 
     board.MakeMove(move);
     const Score score =
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
-
-    if (ShouldQuit(thread)) {
-      return 0;
-    }
 
     moves_seen++;
 
@@ -349,7 +369,7 @@ Score Search::QuiescentSearch(Thread &thread,
                                              Move::NullMove(),
                                              tt_was_in_pv);
   transposition_table_.Save(
-      tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+      tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
 
   return best_score;
 }
@@ -367,11 +387,30 @@ Score Search::PVSearch(Thread &thread,
 
   stack->pv.Clear();
 
+  if (ShouldQuit(thread)) {
+    return 0;
+  }
+
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
   }
 
   thread.sel_depth = std::max(thread.sel_depth, stack->ply);
+
+  // A principal variation (PV) node falls inside the [alpha, beta] window and
+  // is one which has most of its child moves searched
+  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+  // The root node is also a PV node by default
+  const bool in_root = stack->ply == 0;
+
+  // If the position has a move that causes a repetition, and we are losing,
+  // then we can cut off early since we can secure a draw
+  if (!in_root && alpha < kDrawScore &&
+      board.HasUpcomingRepetition(stack->ply)) {
+    if ((alpha = kDrawScore) >= beta) {
+      return alpha;
+    }
+  }
 
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
@@ -380,12 +419,6 @@ Score Search::PVSearch(Thread &thread,
   }
 
   stack->in_check = state.InCheck();
-
-  // A principal variation (PV) node falls inside the [alpha, beta] window and
-  // is one which has most of its child moves searched
-  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
-  // The root node is also a PV node by default
-  const bool in_root = stack->ply == 0;
 
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
@@ -401,36 +434,31 @@ Score Search::PVSearch(Thread &thread,
     if (alpha >= beta) {
       return alpha;
     }
-
-    if (ShouldQuit(thread)) {
-      return 0;
-    }
   }
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  TranspositionTableEntry *tt_entry = nullptr;
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
-  if (!stack->excluded_tt_move) {
-    tt_entry = transposition_table_.Probe(state.zobrist_key);
-    tt_hit = tt_entry->CompareKey(state.zobrist_key);
+  const auto &tt_entry = transposition_table_.Probe(state.zobrist_key);
+  tt_hit = tt_entry->CompareKey(state.zobrist_key);
 
-    // Use the TT entry's evaluation if possible
-    if (tt_hit) {
-      can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-      tt_was_in_pv |= tt_entry->GetWasPV();
-      tt_move = tt_entry->move;
-      tt_static_eval = tt_entry->static_eval;
-    }
+  // Use the TT entry's evaluation if possible
+  if (tt_hit) {
+    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+    tt_was_in_pv |= tt_entry->GetWasPV();
+    tt_move = tt_entry->move;
+    tt_static_eval = tt_entry->static_eval;
+  }
 
-    // Saved scores from non-PV nodes must fall within the current alpha/beta
-    // window to allow early cutoff
-    if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= depth) {
-      return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
-    }
+  // Saved scores from non-PV nodes must fall within the current alpha/beta
+  // window to allow early cutoff
+  if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
+      (cut_node || tt_entry->score <= alpha) &&
+      tt_entry->depth > depth - (tt_entry->score <= beta)) {
+    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
   // Probe the Syzygy table bases
@@ -470,7 +498,7 @@ Score Search::PVSearch(Thread &thread,
                                                    Move::NullMove(),
                                                    tt_was_in_pv);
         transposition_table_.Save(
-            tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+            tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
         return score;
       }
 
@@ -505,11 +533,11 @@ Score Search::PVSearch(Thread &thread,
                                                  Move::NullMove(),
                                                  tt_was_in_pv);
       transposition_table_.Save(
-          tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+          tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval =
-        history.correction_history->CorrectStaticEval(state, raw_static_eval);
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, stack, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
@@ -524,8 +552,11 @@ Score Search::PVSearch(Thread &thread,
   const auto &prev_stack = stack - 1;
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
-    const int bonus = std::clamp(
-        -60 * (stack->static_eval + prev_stack->static_eval) / 10, -65, 100);
+    const int bonus =
+        std::clamp<int>(-kEvalHistUpdateMult *
+                            (stack->static_eval + prev_stack->static_eval) / 10,
+                        -kEvalHistUpdateMin,
+                        kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
@@ -536,6 +567,9 @@ Score Search::PVSearch(Thread &thread,
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   bool improving = false;
+  // Similar idea follows, but we check if the opponent's evaluation has been
+  // falling
+  bool opponent_worsening = false;
 
   StackEntry *past_stack = nullptr;
   if ((stack - 2)->static_eval != kScoreNone) {
@@ -544,30 +578,38 @@ Score Search::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (past_stack && !stack->in_check) {
-    improving = stack->static_eval > past_stack->static_eval;
+  if (!stack->in_check) {
+    improving = past_stack && stack->static_eval > past_stack->static_eval;
+    opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+    const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
+
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
-    if (depth <= rev_fut_depth && !stack->excluded_tt_move &&
+    if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
+      const int improving_margin =
+          (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
-          depth * rev_fut_margin -
-          static_cast<int>(improving * 1.5 * rev_fut_margin) +
-          (stack - 1)->history_score / 600;
-      if (stack->eval - futility_margin >= beta) {
-        return stack->eval;
+          depth * kRevFutMargin - improving_margin - 15 * opponent_worsening +
+          (stack - 1)->history_score / kRevFutHistoryDiv;
+      if (stack->eval - std::max(futility_margin, 20) >= beta) {
+        // Return (eval + beta) / 2 as a balanced score: higher than the beta
+        // bound since we're confident position can't fall below it, but lower
+        // than the potentially optimistic static eval since we pruned without
+        // full search
+        return (stack->eval + beta) / 2;
       }
     }
 
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
-    if (!stack->excluded_tt_move && depth <= 4 &&
-        stack->static_eval + 450 * (depth - !improving) < alpha) {
+    if (!stack->excluded_tt_move && depth <= kRazoringDepth &&
+        stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
@@ -578,8 +620,8 @@ Score Search::PVSearch(Thread &thread,
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
     // have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
-        stack->static_eval >= beta + 170 - 24 * depth &&
-        !stack->excluded_tt_move) {
+        stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
+        !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -587,12 +629,14 @@ Score Search::PVSearch(Thread &thread,
         // Set the currently searched move in the stack for continuation history
         stack->move = Move::NullMove();
         stack->capture_move = false;
+        stack->moved_piece = kNone;
         stack->continuation_entry = nullptr;
 
         const int eval_reduction =
-            std::min<int>(2, (stack->eval - beta) / null_move_re);
-        const int reduction = std::clamp<int>(
-            depth / null_move_rf + null_move_rb + eval_reduction, 0, depth);
+            std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
+        int reduction =
+            depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
+        reduction = std::clamp(reduction, 0, depth);
 
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
@@ -606,15 +650,26 @@ Score Search::PVSearch(Thread &thread,
         // Prune if the result from our null window search around beta indicates
         // that the opponent still doesn't gain an advantage from the null move
         if (score >= beta) {
-          return score >= kTBWinInMaxPlyScore ? beta : score;
+          if (thread.nmp_min_ply != 0 || depth <= 14) {
+            return score >= kTBWinInMaxPlyScore ? beta : score;
+          }
+
+          thread.nmp_min_ply = stack->ply + 3 * (depth - reduction) / 4;
+          const Score verification_score = PVSearch<NodeType::kNonPV>(
+              thread, depth - reduction, beta - 1, beta, stack, false);
+          thread.nmp_min_ply = 0;
+
+          if (verification_score >= beta) {
+            return verification_score;
+          }
         }
       }
 
       // ProbCut: When the current position's score is likely to cause a beta
       // cutoff, we attempt a shallower quiescent-like search and prune early if
       // possible
-      const Score pc_beta = beta + probcut_beta_delta;
-      if (depth >= 5 && std::abs(beta) < kTBWinInMaxPlyScore &&
+      const Score pc_beta = beta + kProbcutBetaDelta;
+      if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - raw_static_eval;
@@ -640,11 +695,17 @@ Score Search::PVSearch(Thread &thread,
           // Set the currently searched move in the stack for continuation
           // history
           stack->move = move;
+          stack->moved_piece = state.GetPieceType(move.GetFrom());
           stack->capture_move = move.IsCapture(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
+          stack->history_score = move.IsCapture(state)
+                                   ? history.GetCaptureMoveScore(state, move)
+                                   : history.GetQuietMoveScore(
+                                         state, move, stack->threats, stack);
 
           const int probcut_depth = depth - 3;
+          ++thread.nodes_searched;
 
           board.MakeMove(move);
 
@@ -671,8 +732,11 @@ Score Search::PVSearch(Thread &thread,
                 raw_static_eval,
                 Move::NullMove(),
                 tt_was_in_pv);
-            transposition_table_.Save(
-                tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+            transposition_table_.Save(tt_entry,
+                                      new_tt_entry,
+                                      state.zobrist_key,
+                                      stack->ply,
+                                      in_pv_node);
             return score;
           }
         }
@@ -682,8 +746,8 @@ Score Search::PVSearch(Thread &thread,
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
   // TT move, so we save time on searching this position now
-  if ((in_pv_node || cut_node) && depth >= iir_depth &&
-      !stack->excluded_tt_move && !tt_move) {
+  if ((in_pv_node || cut_node) && depth >= kIirDepth &&
+      !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 4 < depth)) {
     depth--;
   }
 
@@ -717,16 +781,15 @@ Score Search::PVSearch(Thread &thread,
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction -=
-          stack->history_score /
-          static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
+      reduction -= stack->history_score /
+                   static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
       const int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
-          static_cast<int>((lmp_base + depth * depth) / (lmp_mult - improving));
+          static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -734,9 +797,10 @@ Score Search::PVSearch(Thread &thread,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = fut_margin_base + fut_margin_mult * lmr_depth;
-      if (lmr_depth <= fut_prune_depth && !stack->in_check && is_quiet &&
-          stack->eval + futility_margin < alpha) {
+      const int futility_margin = kFutMarginBase + kFutMarginMult * lmr_depth +
+                                  stack->history_score / kFutMarginHistDiv;
+      if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+          stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
       }
@@ -744,19 +808,23 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       const int see_threshold =
-          is_quiet ? see_quiet_thresh * depth
-                   : see_noisy_thresh * depth - stack->history_score / 150;
-      if (depth <= see_prune_depth && moves_seen >= 1 &&
-          !eval::StaticExchange(move, see_threshold, state)) {
+          (is_quiet ? kSeeQuietThresh * depth : kSeeNoisyThresh * depth) -
+          stack->history_score / kSeePruneHistDiv;
+      if (depth <= kSeePruneDepth &&
+          move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          !eval::StaticExchange(
+              move,
+              is_quiet ? std::min(see_threshold, 0) : see_threshold,
+              state)) {
         continue;
       }
 
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
       const int history_margin =
-          is_quiet ? hist_thresh_base + hist_thresh_mult * depth
-                   : capt_hist_thresh_base + capt_hist_thresh_mult * depth;
-      if (depth <= hist_prune_depth && stack->history_score <= history_margin) {
+          is_quiet ? kHistThreshBase + kHistThreshMult * depth
+                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
+      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
       }
@@ -767,7 +835,7 @@ Score Search::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
-    if (!in_root && depth >= se_depth && move == tt_move &&
+    if (!in_root && depth >= kSeDepth && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 3 >= depth &&
@@ -775,7 +843,7 @@ Score Search::PVSearch(Thread &thread,
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
-        const int reduced_depth = (depth - 1) / 2;
+        const int reduced_depth = 3 * (depth - 1) / 8;
         const Score new_beta = tt_entry->score - depth;
 
         stack->excluded_tt_move = tt_move;
@@ -792,10 +860,10 @@ Score Search::PVSearch(Thread &thread,
         if (tt_move_excluded_score < new_beta) {
           // Extend more if the TT move is singular by a big margin
           if (!in_pv_node &&
-              tt_move_excluded_score < new_beta - se_double_margin) {
+              tt_move_excluded_score < new_beta - kSeDoubleMargin) {
             extensions = 2 + (is_quiet && tt_move_excluded_score <
-                                              new_beta - se_triple_margin);
-            depth += depth < 10;
+                                              new_beta - kSeTripleMargin);
+            depth += depth < kSeDepthExtensionDepth;
           } else {
             extensions = 1;
           }
@@ -803,12 +871,15 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that the
         // TT move was not singular. Therefore, we prune if the same score would
         // cause a cutoff based on our current search window
-        else if (new_beta >= beta) {
-          return new_beta;
+        else if (tt_move_excluded_score >= beta &&
+                 std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
+          return tt_move_excluded_score;
         }
         // Negative Extensions: Search less since the TT move was not singular,
         // and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta || cut_node) {
+        else if (tt_entry->score >= beta) {
+          extensions = -2 + in_pv_node;
+        } else if (cut_node) {
           extensions = -1;
         }
       }
@@ -816,6 +887,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
+    stack->moved_piece = state.GetPieceType(move.GetFrom());
     stack->capture_move = move.IsCapture(state);
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
@@ -823,10 +895,7 @@ Score Search::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-
-    ++thread.nodes_searched;
-
-    const U32 prev_nodes_searched = thread.nodes_searched;
+    const U32 prev_nodes_searched = thread.nodes_searched++;
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -836,19 +905,23 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 && !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+        !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
       reduction -= gives_check;
-      reduction -=
-          stack->history_score /
-          static_cast<int>(is_quiet ? lmr_hist_div : lmr_capt_hist_div);
+      reduction -= stack->history_score /
+                   static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
-      reduction -= std::abs(stack->static_eval - raw_static_eval) > 80;
+      reduction -=
+          std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
+      reduction -=
+          move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(reduction, 0, new_depth - 1);
+      reduction = std::clamp<int>(
+          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
@@ -857,8 +930,9 @@ Score Search::PVSearch(Thread &thread,
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
         // reduced-depth search indicates a promising score
-        const bool do_deeper_search = score > (best_score + 35 + 2 * new_depth);
-        const bool do_shallower_search = score < best_score + 8;
+        const bool do_deeper_search =
+            score > (best_score + kDoDeeperBase + 2 * new_depth);
+        const bool do_shallower_search = score < best_score + kDoShallowerBase;
         new_depth += do_deeper_search - do_shallower_search;
       }
     } else {
@@ -875,8 +949,8 @@ Score Search::PVSearch(Thread &thread,
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
 
       if (reduction != 0 && is_quiet) {
-        const int bonus = score <= alpha ? -history::HistoryBonus(new_depth)
-                        : score >= beta  ? history::HistoryBonus(new_depth)
+        const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
+                        : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
         history.continuation_history->UpdateMoveScore(
             board.GetStateHistory().Back(), move, bonus, stack);
@@ -916,17 +990,22 @@ Score Search::PVSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
+          const int history_depth =
+              depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, depth, stack->threats, quiets);
+                state, stack, history_depth, stack->threats, quiets);
             history.continuation_history->UpdateScore(
-                state, stack, depth, quiets);
+                state, stack, history_depth, quiets);
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, stack, depth);
+            history.capture_history->UpdateScore(state, stack, history_depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
+        } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
+                   alpha > -kTBWinInMaxPlyScore) {
+          --depth;
         }
       }
     }
@@ -975,7 +1054,7 @@ Score Search::PVSearch(Thread &thread,
                                                best_move,
                                                tt_was_in_pv);
     transposition_table_.Save(
-        tt_entry, new_tt_entry, state.zobrist_key, stack->ply);
+        tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
@@ -1029,8 +1108,7 @@ void Search::QuitThreads() {
 bool Search::ShouldQuit(Thread &thread) {
   if (stop_.load(std::memory_order_relaxed)) return true;
   if (thread.IsMainThread()) {
-    return thread.stack.Front().best_move &&
-           time_mgmt_.TimesUp(thread.nodes_searched);
+    return time_mgmt_.TimesUp(thread.nodes_searched);
   }
   return false;
 }
@@ -1125,7 +1203,7 @@ void Search::Stop() {
 void Search::NewGame(bool clear_tables) {
   if (clear_tables) {
     transposition_table_.Clear();
-    eval::pawn_cache.Clear();
+    tables::kLateMoveReduction = tables::GenerateLateMoveReductionTable();
   }
 
   for (auto &thread : threads_) {
