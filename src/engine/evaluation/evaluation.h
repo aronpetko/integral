@@ -48,8 +48,6 @@ inline std::array<Tunable<int>, kNumPieceTypes + 1> kSeePieceScores = {
 
 [[nodiscard]] Score Evaluate(Board &board);
 
-[[nodiscard]] Score AdjustForFmr(Score evaluation, U16 fifty_moves_clock);
-
 }  // namespace eval
 
 #endif  // INTEGRAL_EVAL_H_

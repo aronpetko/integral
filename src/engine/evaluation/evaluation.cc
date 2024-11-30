@@ -18,11 +18,6 @@ Score Evaluate(Board &board) {
   return network_eval * (26500 + material_phase) / 32768;
 }
 
-[[nodiscard]] Score AdjustForFmr(Score evaluation, U16 fifty_moves_clock) {
-  // Scale down the evaluation based on proximity to a fifty-move rule draw
-  return evaluation * (200 - fifty_moves_clock) / 200;
-}
-
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
   const auto from = move.GetFrom();
   const auto to = move.GetTo();

@@ -266,8 +266,7 @@ Score Search::QuiescentSearch(Thread &thread,
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       best_score = tt_entry->score;
     } else {
-      best_score =
-          eval::AdjustForFmr(stack->static_eval, state.fifty_moves_clock);
+      best_score = stack->static_eval;
     }
 
     // Early beta cutoff
@@ -544,8 +543,7 @@ Score Search::PVSearch(Thread &thread,
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
-      stack->eval =
-          eval::AdjustForFmr(stack->static_eval, state.fifty_moves_clock);
+      stack->eval = stack->static_eval;
     }
   }
 
@@ -1073,6 +1071,9 @@ Score Search::PVSearch(Thread &thread,
   // Correct the static eval based on prior search scores in similar positions
   evaluation = thread.history.correction_history->CorrectStaticEval(
       state, stack, evaluation);
+
+  // Scale down the evaluation based on proximity to a fifty-move rule draw
+  evaluation = evaluation * (250 - state.fifty_moves_clock) / 250;
 
   return std::clamp(
       evaluation, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
