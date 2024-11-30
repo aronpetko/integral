@@ -795,11 +795,13 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
+      const bool maybe_futile = is_quiet || move.IsUnderPromotion();
+
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin = kFutMarginBase + kFutMarginMult * lmr_depth +
                                   stack->history_score / kFutMarginHistDiv;
-      if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+      if (lmr_depth <= kFutPruneDepth && !stack->in_check && maybe_futile &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
@@ -808,7 +810,7 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
       // material
       const int see_threshold =
-          (is_quiet ? kSeeQuietThresh * depth : kSeeNoisyThresh * depth) -
+          (maybe_futile ? kSeeQuietThresh * depth : kSeeNoisyThresh * depth) -
           stack->history_score / kSeePruneHistDiv;
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
@@ -822,8 +824,8 @@ Score Search::PVSearch(Thread &thread,
       // History Pruning: Prune quiet moves with a low history score moves at
       // near-leaf nodes
       const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth
-                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
+          maybe_futile ? kHistThreshBase + kHistThreshMult * depth
+                       : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
