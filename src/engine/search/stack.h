@@ -59,8 +59,6 @@ struct StackEntry {
   I64 history_score;
   // Best moves following down this ply
   PVLine pv;
-  // The move with the best score
-  Move best_move;
   // Currently searched move at this ply
   Move move;
   bool capture_move;
@@ -93,7 +91,6 @@ struct StackEntry {
         static_eval(kScoreNone),
         eval(kScoreNone),
         history_score(0),
-        best_move(Move::NullMove()),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),

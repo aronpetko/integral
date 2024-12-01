@@ -81,7 +81,6 @@ class Listener {
   }
 
   [[maybe_unused]] Option &GetOption(std::string_view option) {
-    std::lock_guard lock(mtx_);
     return options_[option];
   }
 

@@ -12,6 +12,9 @@
 #include "bitboard.h"
 #include "fen.h"
 
+constexpr int kMaxMoves = 256;
+using MoveList = List<Move, kMaxMoves>;
+
 namespace nnue {
 
 class Accumulator;
@@ -275,10 +278,10 @@ class Board {
   Board(const BoardState &state);
 
   // Copy constructor for deep copy of the accumulator
-  Board(const Board& other);
+  Board(const Board &other);
 
   // Copy assignment operator for deep copy of the accumulator
-  Board& operator=(const Board& other);
+  Board &operator=(const Board &other);
 
   inline auto &GetState() {
     return state_;
@@ -305,9 +308,9 @@ class Board {
 
   void PrintPieces();
 
-  [[nodiscard]] bool IsMovePseudoLegal(Move move);
+  [[nodiscard]] bool IsMovePseudoLegal(Move move) const;
 
-  [[nodiscard]] bool IsMoveLegal(Move move);
+  [[nodiscard]] bool IsMoveLegal(Move move) const;
 
   [[nodiscard]] U64 PredictKeyAfter(Move move);
 
@@ -320,6 +323,8 @@ class Board {
   void CalculateThreats();
 
   [[nodiscard]] BitBoard GetOpponentWinningCaptures() const;
+
+  [[nodiscard]] MoveList GetLegalMoves() const;
 
  private:
   void HandleCastling(Move move);
