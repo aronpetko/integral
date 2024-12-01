@@ -84,7 +84,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
 
-      int window = static_cast<int>(kAspWindowDelta);
+      int window = kAspWindowDelta;
       Score alpha = -kInfiniteScore;
       Score beta = kInfiniteScore;
 

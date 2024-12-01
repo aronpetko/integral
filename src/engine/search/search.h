@@ -102,7 +102,8 @@ struct Thread {
         previous_score(kScoreNone),
         nodes_searched(0),
         sel_depth(0),
-        tb_hits(0) {
+        tb_hits(0),
+        nmp_min_ply(0) {
     NewGame();
   }
 
@@ -125,6 +126,8 @@ struct Thread {
     stack.Reset();
     scores.fill(kScoreNone);
 
+    nmp_min_ply = 0;
+
     // Reset info data
     nodes_searched = 0;
     sel_depth = 0;
@@ -143,6 +146,7 @@ struct Thread {
   U64 tb_hits;
   int pv_move_idx;
   RootMoveList root_moves;
+  U16 nmp_min_ply;
 };
 
 class Search {

@@ -36,7 +36,7 @@ class TimeLimiter {
 
   virtual bool ShouldStop(Move best_move, int depth, Thread &thread) = 0;
 
-  virtual bool TimesUp(U32 nodes_searched) = 0;
+  virtual bool TimesUp(U64 nodes_searched) = 0;
 
   virtual void Start() = 0;
 
@@ -53,7 +53,7 @@ class DepthLimiter : public TimeLimiter {
 
   bool ShouldStop(Move best_move, int depth, Thread &thread) override;
 
-  bool TimesUp(U32 nodes_searched) override;
+  bool TimesUp(U64 nodes_searched) override;
 
   void Start() override;
 
@@ -73,7 +73,7 @@ class NodeLimiter : public TimeLimiter {
 
   bool ShouldStop(Move best_move, int depth, Thread &thread) override;
 
-  bool TimesUp(U32 nodes_searched) override;
+  bool TimesUp(U64 nodes_searched) override;
 
   void Start() override;
 
@@ -94,7 +94,7 @@ class TimedLimiter : public TimeLimiter {
 
   bool ShouldStop(Move best_move, int depth, Thread &thread) override;
 
-  bool TimesUp(U32 nodes_searched) override;
+  bool TimesUp(U64 nodes_searched) override;
 
   void Start() override;
 
@@ -138,7 +138,7 @@ class TimeManagement {
 
   bool ShouldStop(Move best_move, int depth, Thread &thread);
 
-  bool TimesUp(U32 nodes_searched);
+  bool TimesUp(U64 nodes_searched);
 
   TimedLimiter* GetTimedLimiter();
 
