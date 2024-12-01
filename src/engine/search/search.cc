@@ -606,7 +606,7 @@ Score Search::PVSearch(Thread &thread,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
     // fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
-        stack->eval >= beta) {
+        stack->eval >= beta)  {
       const int improving_margin =
           (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
@@ -708,7 +708,7 @@ Score Search::PVSearch(Thread &thread,
                                    : history.GetQuietMoveScore(
                                          state, move, stack->threats, stack);
 
-          const int probcut_depth = depth - 3;
+          const int probcut_depth = depth - 3 - cut_node;
           ++thread.nodes_searched;
 
           board.MakeMove(move);
