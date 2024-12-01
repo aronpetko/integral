@@ -304,6 +304,22 @@ Score Search::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
+  // This condition is dependent on if the side to move's static evaluation
+  // has improved in the past two or four plies. It also used as a metric for
+  // adjusting pruning thresholds
+  bool improving = false;
+
+  StackEntry *past_stack = nullptr;
+  if ((stack - 2)->static_eval != kScoreNone) {
+    past_stack = stack - 2;
+  } else if ((stack - 4)->static_eval != kScoreNone) {
+    past_stack = stack - 4;
+  }
+
+  if (!stack->in_check) {
+    improving = past_stack && stack->static_eval > past_stack->static_eval;
+  }
+
   const Score futility_score = best_score + kQsFutMargin;
 
   MovePicker move_picker(
@@ -323,7 +339,7 @@ Score Search::QuiescentSearch(Thread &thread,
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
     if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1, state)) {
+        !eval::StaticExchange(move, 1 + 10 * !improving, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
     }
@@ -821,7 +837,9 @@ Score Search::PVSearch(Thread &thread,
       if (depth <= kSeePruneDepth &&
           move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
-              move, is_quiet ? std::min(see_threshold, 0) : see_threshold, state)) {
+              move,
+              is_quiet ? std::min(see_threshold, 0) : see_threshold,
+              state)) {
         continue;
       }
 
