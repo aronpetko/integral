@@ -84,7 +84,11 @@ void Search::IterativeDeepening(Thread &thread) {
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
 
-      int window = kAspWindowDelta;
+      const int avg_score_delta_modifier =
+          cur_best_move.average_score != kScoreNone
+              ? std::pow(cur_best_move.average_score, 2) / 12000
+              : 0;
+      int window = kAspWindowDelta + avg_score_delta_modifier;
       Score alpha = -kInfiniteScore;
       Score beta = kInfiniteScore;
 
@@ -673,7 +677,7 @@ Score Search::PVSearch(Thread &thread,
           const Score verification_score = PVSearch<NodeType::kNonPV>(
               thread, depth - reduction, beta - 1, beta, stack, false);
           thread.nmp_min_ply = 0;
-          
+
           if (verification_score >= beta) {
             return verification_score;
           }
@@ -1002,6 +1006,9 @@ Score Search::PVSearch(Thread &thread,
       if (const auto root_move = thread.root_moves.FindRootMove(move)) {
         if (moves_seen == 1 || score > alpha) {
           root_move->score = score;
+          root_move->average_score = root_move->average_score == kScoreNone
+                                       ? score
+                                       : (root_move->average_score + score) / 2;
           root_move->pv.Clear();
           root_move->pv.Push(move);
           root_move->pv.AppendPV((stack + 1)->pv);
