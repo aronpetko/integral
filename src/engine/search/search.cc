@@ -673,7 +673,7 @@ Score Search::PVSearch(Thread &thread,
           const Score verification_score = PVSearch<NodeType::kNonPV>(
               thread, depth - reduction, beta - 1, beta, stack, false);
           thread.nmp_min_ply = 0;
-          
+
           if (verification_score >= beta) {
             return verification_score;
           }
@@ -757,6 +757,16 @@ Score Search::PVSearch(Thread &thread,
         }
       }
     }
+  }
+
+  // "Small ProbCut Idea" from StockFish
+  if (stack->in_check && tt_hit) {
+    const auto small_pc_beta = beta + 417;
+    if (tt_entry->bits.flag != TranspositionTableEntry::kUpperBound &&
+        tt_entry->depth >= depth - 4 && tt_entry->score >= small_pc_beta &&
+        std::abs(beta) < kTBWinInMaxPlyScore &&
+        std::abs(tt_entry->score) < kTBWinInMaxPlyScore)
+      return small_pc_beta;
   }
 
   // Internal Iterative Reduction: Move ordering is expected to be worse with no
