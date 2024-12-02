@@ -760,8 +760,8 @@ Score Search::PVSearch(Thread &thread,
   }
 
   // "Small ProbCut Idea" from StockFish
-  if (stack->in_check && tt_hit) {
-    const auto small_pc_beta = beta + 417;
+  if (stack->in_check && !in_pv_node && tt_move && tt_move.IsCapture(state)) {
+    const auto small_pc_beta = beta + 420;
     if (tt_entry->bits.flag != TranspositionTableEntry::kUpperBound &&
         tt_entry->depth >= depth - 4 && tt_entry->score >= small_pc_beta &&
         std::abs(beta) < kTBWinInMaxPlyScore &&
