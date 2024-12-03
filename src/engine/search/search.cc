@@ -945,9 +945,10 @@ Score Search::PVSearch(Thread &thread,
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
 
+      // The move has potential, perform a search at a normal depth
       if (score > alpha && reduction != 0) {
         // Search deeper or shallower depending on if the result of the
-        // reduced-depth search indicates a promising score
+        // reduced-depth search indicates a more promising score
         const bool do_deeper_search =
             score > (best_score + kDoDeeperBase + 2 * new_depth);
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
@@ -969,12 +970,13 @@ Score Search::PVSearch(Thread &thread,
     // full depth with a null window search if we don't expect it to be a PV
     // move
     else if (!in_pv_node || moves_seen >= 1) {
-      score = -PVSearch<NodeType::kNonPV>(thread,
-                                          new_depth - (reduction > 3),
-                                          -alpha - 1,
-                                          -alpha,
-                                          stack + 1,
-                                          !cut_node);
+      score =
+          -PVSearch<NodeType::kNonPV>(thread,
+                                      std::max(0, new_depth - (reduction > 3)),
+                                      -alpha - 1,
+                                      -alpha,
+                                      stack + 1,
+                                      !cut_node);
     }
 
     // Perform a full window search on this move if it's known to be good
