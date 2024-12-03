@@ -673,7 +673,7 @@ Score Search::PVSearch(Thread &thread,
           const Score verification_score = PVSearch<NodeType::kNonPV>(
               thread, depth - reduction, beta - 1, beta, stack, false);
           thread.nmp_min_ply = 0;
-          
+
           if (verification_score >= beta) {
             return verification_score;
           }
@@ -1026,7 +1026,7 @@ Score Search::PVSearch(Thread &thread,
         alpha = score;
         if (alpha >= beta) {
           const int history_depth =
-              depth + (alpha > beta + kHistoryBonusMargin);
+              new_depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
