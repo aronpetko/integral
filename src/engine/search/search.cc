@@ -921,8 +921,7 @@ Score Search::PVSearch(Thread &thread,
     bool needs_full_search;
     Score score;
 
-    int reduction = 0;
-    reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+    int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
     reduction += !in_pv_node - tt_was_in_pv;
     reduction += 2 * cut_node;
     reduction -= gives_check;
