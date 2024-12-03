@@ -673,7 +673,7 @@ Score Search::PVSearch(Thread &thread,
           const Score verification_score = PVSearch<NodeType::kNonPV>(
               thread, depth - reduction, beta - 1, beta, stack, false);
           thread.nmp_min_ply = 0;
-          
+
           if (verification_score >= beta) {
             return verification_score;
           }
@@ -918,26 +918,26 @@ Score Search::PVSearch(Thread &thread,
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
-    int reduction = 0;
     bool needs_full_search;
     Score score;
+
+    int reduction = 0;
+    reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+    reduction += !in_pv_node - tt_was_in_pv;
+    reduction += 2 * cut_node;
+    reduction -= gives_check;
+    reduction -= stack->history_score /
+                 static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
+    reduction += !improving;
+    reduction -=
+        std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
+    reduction -=
+        move == stack->killer_moves[0] || move == stack->killer_moves[1];
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
-      reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-      reduction += !in_pv_node - tt_was_in_pv;
-      reduction += 2 * cut_node;
-      reduction -= gives_check;
-      reduction -= stack->history_score /
-                   static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
-      reduction += !improving;
-      reduction -=
-          std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
-      reduction -=
-          move == stack->killer_moves[0] || move == stack->killer_moves[1];
-
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(
           reduction, -(!in_pv_node && !cut_node), new_depth - 1);
@@ -964,8 +964,14 @@ Score Search::PVSearch(Thread &thread,
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
-      score = -PVSearch<NodeType::kNonPV>(
-          thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+      const bool reduce_depth =
+          (!in_pv_node || moves_seen >= 1) && (reduction > 3);
+      score = -PVSearch<NodeType::kNonPV>(thread,
+                                          new_depth - reduce_depth,
+                                          -alpha - 1,
+                                          -alpha,
+                                          stack + 1,
+                                          !cut_node);
 
       if (reduction != 0 && is_quiet) {
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
