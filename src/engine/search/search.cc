@@ -970,13 +970,12 @@ Score Search::PVSearch(Thread &thread,
     // full depth with a null window search if we don't expect it to be a PV
     // move
     else if (!in_pv_node || moves_seen >= 1) {
-      score =
-          -PVSearch<NodeType::kNonPV>(thread,
-                                      std::max(0, new_depth - (reduction > 4)),
-                                      -alpha - 1,
-                                      -alpha,
-                                      stack + 1,
-                                      !cut_node);
+      score = -PVSearch<NodeType::kNonPV>(thread,
+                                          new_depth + (reduction < 0),
+                                          -alpha - 1,
+                                          -alpha,
+                                          stack + 1,
+                                          !cut_node);
     }
 
     // Perform a full window search on this move if it's known to be good
