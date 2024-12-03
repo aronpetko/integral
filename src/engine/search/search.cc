@@ -673,7 +673,7 @@ Score Search::PVSearch(Thread &thread,
           const Score verification_score = PVSearch<NodeType::kNonPV>(
               thread, depth - reduction, beta - 1, beta, stack, false);
           thread.nmp_min_ply = 0;
-          
+
           if (verification_score >= beta) {
             return verification_score;
           }
@@ -952,7 +952,8 @@ Score Search::PVSearch(Thread &thread,
         const bool do_deeper_search =
             score > (best_score + kDoDeeperBase + 2 * new_depth);
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
-        new_depth += do_deeper_search - do_shallower_search;
+        new_depth +=
+            do_deeper_search * (1 + reduction < 0) - do_shallower_search;
       }
     } else {
       // If we didn't perform late move reduction, then we search this move at
