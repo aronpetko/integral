@@ -673,7 +673,7 @@ Score Search::PVSearch(Thread &thread,
           const Score verification_score = PVSearch<NodeType::kNonPV>(
               thread, depth - reduction, beta - 1, beta, stack, false);
           thread.nmp_min_ply = 0;
-          
+
           if (verification_score >= beta) {
             return verification_score;
           }
@@ -714,10 +714,11 @@ Score Search::PVSearch(Thread &thread,
           stack->capture_move = move.IsCapture(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
-          stack->history_score = move.IsCapture(state)
-                                   ? history.GetCaptureMoveScore(state, move)
-                                   : history.GetQuietMoveScore(
-                                         state, move, stack->threats, stack);
+          stack->history_score =
+              move.IsCapture(state)
+                  ? history.GetCaptureMoveScore(state, move, stack->threats)
+                  : history.GetQuietMoveScore(
+                        state, move, stack->threats, stack);
 
           const int probcut_depth = depth - 3;
           ++thread.nodes_searched;
@@ -793,9 +794,10 @@ Score Search::PVSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
-                                      : history.GetQuietMoveScore(
-                                            state, move, stack->threats, stack);
+    stack->history_score =
+        is_capture
+            ? history.GetCaptureMoveScore(state, move, stack->threats)
+            : history.GetQuietMoveScore(state, move, stack->threats, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -1062,7 +1064,7 @@ Score Search::PVSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, depth, captures);
+    history.capture_history->Penalize(state, depth, captures, stack->threats);
   }
 
   if (syzygy::enabled) {
