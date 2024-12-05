@@ -37,9 +37,9 @@ TUNABLE(kIirDepth, 4, 2, 8, true);
 
 TUNABLE(kLmpBase, 5.0, 1.5, 5.0, false);
 
-TUNABLE(kFutPruneDepth, 8, 6, 12, true);
+TUNABLE(kFutPruneDepth, 10, 6, 12, true);
 TUNABLE(kFutMarginBase, 202, 100, 250, false);
-TUNABLE(kFutMarginMult, 93, 50, 200, false);
+TUNABLE(kFutMarginMult, 113, 50, 200, false);
 TUNABLE(kFutMarginHistDiv, 147, 32, 256, false);
 
 TUNABLE(kSeePruneDepth, 8, 6, 12, true);
