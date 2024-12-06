@@ -83,7 +83,6 @@ class RootMoveList {
   }
 
   inline RootMove &operator[](int i) {
-    assert(i >= 0 && i < count_);
     return list_[i];
   }
 
