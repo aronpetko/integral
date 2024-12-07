@@ -561,7 +561,7 @@ Score Search::PVSearch(Thread &thread,
         state, stack, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
-    if (tt_hit &&
+    if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
@@ -629,7 +629,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
-    if (!stack->excluded_tt_move && depth <= kRazoringDepth &&
+    if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
         stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
