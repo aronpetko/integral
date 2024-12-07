@@ -90,6 +90,10 @@ class RootMoveList {
     return list_.Size();
   }
 
+  [[nodiscard]] inline bool Empty() const {
+    return list_.Empty();
+  }
+
  private:
   List<RootMove, 256> list_;
 };
