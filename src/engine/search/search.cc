@@ -64,6 +64,12 @@ void Search::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
   thread.root_moves = RootMoveList(thread.board);
+  if (thread.root_moves.Empty()) {
+    if (type == SearchType::kRegular)
+      fmt::println("info error: no legal moves");
+    return;
+  }
+
   const int multi_pv =
       std::min(uci::listener.GetOption("MultiPV").GetValue<int>(),
                thread.root_moves.Size());
@@ -673,7 +679,7 @@ Score Search::PVSearch(Thread &thread,
           const Score verification_score = PVSearch<NodeType::kNonPV>(
               thread, depth - reduction, beta - 1, beta, stack, false);
           thread.nmp_min_ply = 0;
-          
+
           if (verification_score >= beta) {
             return verification_score;
           }
@@ -1212,7 +1218,9 @@ std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
 
   IterativeDeepening<SearchType::kBench>(*thread);
 
-  const auto &best_move = thread->root_moves[0];
+  const auto best_move = thread->root_moves.Empty()
+                           ? RootMove(Move::NullMove(), kScoreNone)
+                           : thread->root_moves[0];
   return {best_move.score * (board_.GetState().turn == Color::kBlack ? -1 : 1),
           best_move.move};
 }
