@@ -15,7 +15,6 @@ namespace search {
       const auto entry = &cluster.entries[i];
       // If this entry is available, we can attempt to write to it
       if (entry->key == 0 || entry->CompareKey(key)) {
-        entry->SetAge(age_);
         return entry;
       }
       // Always prefer the lowest quality entry
