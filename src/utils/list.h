@@ -5,8 +5,6 @@
 #include <array>
 #include <cassert>
 
-#include "fmt/format.h"
-
 template <class T, std::size_t length>
 class List {
  public:
