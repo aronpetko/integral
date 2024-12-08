@@ -13,14 +13,12 @@ class List {
   List() : count_(0) {}
 
   inline T &operator[](int i) {
-    if (i < 0 || i >= count_) fmt::println("{}", i);
     assert(i >= 0 && i < count_);
     return container_[i];
   }
 
   inline T operator[](int i) const {
     assert(i >= 0 && i < count_);
-    if (i < 0 || i >= count_) fmt::println("{}", i);
     return container_[i];
   }
 
