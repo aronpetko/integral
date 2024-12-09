@@ -5,27 +5,16 @@
 
 namespace search {
 
-TUNABLE(kBaseTimeScale, 0.05733820228980802, 0, 0.10, false);
-TUNABLE(kIncrementScale, 0.9760856856329947, 0, 1.00, false);
-TUNABLE(kPercentLimit, 0.8276195006604234, 0, 1.00, false);
-TUNABLE(kHardLimitScale, 3.393784908696118, 1.00, 4.50, false);
-TUNABLE(kSoftLimitScale, 0.8237969047606986, 0, 1.50, false);
-TUNABLE(kNodeFractionBase, 1.4523797051230019, 0.50, 2.50, false);
-TUNABLE(kNodeFractionScale, 1.5525960191419124, 0.50, 2.50, false);
-TUNABLE(kMoveStabilityScale1, 2.4030366505287315, 1.5, 3.0, false);
-TUNABLE(kMoveStabilityScale2, 1.30317921803015, 0.5, 2.0, false);
-TUNABLE(kMoveStabilityScale3, 1.0659706093407642, 0.5, 2.0, false);
-TUNABLE(kMoveStabilityScale4, 0.7862126398768999, 0.2, 1.5, false);
-TUNABLE(kMoveStabilityScale5, 0.6949568477601432, 0.2, 1.5, false);
-// clang-format off
-inline std::array<Tunable<double>, 5> kMoveStabilityScale = {
-    kMoveStabilityScale1,
-    kMoveStabilityScale2,
-    kMoveStabilityScale3,
-    kMoveStabilityScale4,
-    kMoveStabilityScale5
-};
-// clang-format on
+TUNABLE(kStabilityBase, 1.3110, 1.0, 2.0, false);
+TUNABLE(kStabilitySlope, 0.0533, 0.0, 0.1, false);
+TUNABLE(kScoreChangeBase, 0.1127, 0.0, 0.2, false);
+TUNABLE(kSearchScoreCoeff, 0.0262, 0.0, 0.05, false);
+TUNABLE(kPreviousScoreCoeff, 0.0261, 0.0, 0.05, false);
+TUNABLE(kScoreChangeMin, 0.5028, 0.4, 0.6, false);
+TUNABLE(kScoreChangeMax, 1.6561, 1.5, 2.0, false);
+TUNABLE(kNodeFactorBase, 0.5630, 0.5, 0.7, false);
+TUNABLE(kNodeFactorSlope, 2.2669, 2.0, 3.0, false);
+TUNABLE(kNodeFactorIntercept, 0.4499, 0.4, 0.6, false);
 
 U64 GetCurrentTime() {
   const auto duration = std::chrono::steady_clock::now().time_since_epoch();
@@ -129,7 +118,8 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
     best_move_stability_++;
   }
 
-  const double stability_factor = 1.3110 - 0.0533 * best_move_stability_;
+  const double stability_factor =
+      kStabilityBase - kStabilitySlope * best_move_stability_;
 
   const Score best_score = thread.scores[depth];
   Score search_score_diff = thread.scores[depth - 3] - best_score;
@@ -142,15 +132,18 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   }
 
   double score_change_factor =
-      0.1127 + 0.0262 * search_score_diff * (search_score_diff > 0) +
-      0.0261 * previous_score_diff * (previous_score_diff > 0);
-  score_change_factor = std::max(0.5028, std::min(1.6561, score_change_factor));
+      kScoreChangeBase +
+      kSearchScoreCoeff * search_score_diff * (search_score_diff > 0) +
+      kPreviousScoreCoeff * previous_score_diff * (previous_score_diff > 0);
+  score_change_factor = std::max<double>(
+      kScoreChangeMin, std::min<double>(kScoreChangeMax, score_change_factor));
 
   const auto best_move_nodes = NodesSpent(best_move);
   const auto percent_nodes_not_best =
       1.0 - static_cast<double>(best_move_nodes) / thread.nodes_searched;
-  const double node_count_factor =
-      std::max(0.5630, percent_nodes_not_best * 2.2669 + 0.4499);
+  const double node_count_factor = std::max<double>(
+      kNodeFactorBase,
+      percent_nodes_not_best * kNodeFactorSlope + kNodeFactorIntercept);
 
   return TimeElapsed() >= allocated_time_ * stability_factor *
                               score_change_factor * node_count_factor;
