@@ -5,16 +5,16 @@
 
 namespace search {
 
-TUNABLE(kStabilityBase, 1.3110, 1.0, 2.0, false);
-TUNABLE(kStabilitySlope, 0.0533, 0.0, 0.1, false);
-TUNABLE(kScoreChangeBase, 0.1127, 0.0, 0.2, false);
-TUNABLE(kSearchScoreCoeff, 0.0262, 0.0, 0.05, false);
-TUNABLE(kPreviousScoreCoeff, 0.0261, 0.0, 0.05, false);
-TUNABLE(kScoreChangeMin, 0.5028, 0.4, 0.6, false);
-TUNABLE(kScoreChangeMax, 1.6561, 1.5, 2.0, false);
-TUNABLE(kNodeFactorBase, 0.5630, 0.5, 0.7, false);
-TUNABLE(kNodeFactorSlope, 2.2669, 2.0, 3.0, false);
-TUNABLE(kNodeFactorIntercept, 0.4499, 0.4, 0.6, false);
+TUNABLE(kStabilityBase, 1.2866, 1.0, 2.0, false);
+TUNABLE(kStabilitySlope, 0.0525, 0.0, 0.1, false);
+TUNABLE(kScoreChangeBase, 0.1095, 0.0, 0.2, false);
+TUNABLE(kSearchScoreCoeff, 0.0257, 0.0, 0.05, false);
+TUNABLE(kPreviousScoreCoeff, 0.0249, 0.0, 0.05, false);
+TUNABLE(kScoreChangeMin, 0.5073, 0.4, 0.6, false);
+TUNABLE(kScoreChangeMax, 1.6586, 1.5, 2.0, false);
+TUNABLE(kNodeFactorBase, 0.5622, 0.5, 0.7, false);
+TUNABLE(kNodeFactorSlope, 2.2641, 2.0, 3.0, false);
+TUNABLE(kNodeFactorIntercept, 0.4465, 0.4, 0.6, false);
 
 U64 GetCurrentTime() {
   const auto duration = std::chrono::steady_clock::now().time_since_epoch();
