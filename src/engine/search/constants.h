@@ -22,6 +22,9 @@ TUNABLE(kEvalHistUpdateMax, 105, 40, 200, false);
 
 TUNABLE(kRevFutDepth, 6, 4, 10, true);
 TUNABLE(kRevFutMargin, 65, 50, 150, false);
+TUNABLE(kRevFutOppWorseningMargin, 15, 50, 150, false);
+TUNABLE(kRevFutMinMargin, 20, 50, 150, false);
+TUNABLE(kRevFutLerpFactor, 0.5, 0.0, 1.0, false);
 TUNABLE(kRevFutHistoryDiv, 582, 200, 800, false);
 
 TUNABLE(kRazoringDepth, 4, 1, 8, true);
@@ -61,6 +64,7 @@ TUNABLE(kDoDeeperBase, 35, 5, 70, false);
 TUNABLE(kDoShallowerBase, 5, 0, 30, false);
 
 TUNABLE(kSeDepth, 6, 6, 12, true);
+TUNABLE(kSeDepthReduction, 6, 0, 30, false);
 TUNABLE(kSeDoubleMargin, 13, 0, 30, false);
 TUNABLE(kSeTripleMargin, 80, 30, 250, false);
 TUNABLE(kSeDepthExtensionDepth, 11, 0, 15, false);
