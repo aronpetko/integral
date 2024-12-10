@@ -2,7 +2,7 @@
 
 namespace search {
 
-TUNABLE(kSeeNoisyHistoryDiv, 64, 32, 250, false);
+TUNABLE(kSeeNoisyHistoryDiv, 32, 16, 250, false);
 
 TUNABLE(kPawnScore, 97, 50, 150, false);
 TUNABLE(kKnightScore, 304, 200, 400, false);
