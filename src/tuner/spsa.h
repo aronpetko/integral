@@ -12,6 +12,9 @@
 #define TUNABLE(name, value, min, max, disabled) \
   inline Tunable<decltype(value)> name(#name, value, min, max, (max - min) / 20, disabled)
 
+#define TUNABLE_STEP(name, value, min, max, disabled, step) \
+  inline Tunable<decltype(value)> name(#name, value, min, max, step, disabled)
+
 constexpr double kLearningRate = 0.002;
 
 template<typename T>

@@ -444,8 +444,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
     // mate
-    alpha = std::max<Score>(alpha, -kMateScore + stack->ply);
-    beta = std::min<Score>(beta, kMateScore - stack->ply - 1);
+    alpha = std::max(alpha, -kMateScore + stack->ply);
+    beta = std::min(beta, kMateScore - stack->ply - 1);
 
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
