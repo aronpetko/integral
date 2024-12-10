@@ -2,7 +2,7 @@
 
 namespace search {
 
-TUNABLE(kSeeNoisyHistoryDiv, 110, 32, 250, false);
+TUNABLE(kSeeNoisyHistoryDiv, 64, 32, 250, false);
 
 TUNABLE(kPawnScore, 97, 50, 150, false);
 TUNABLE(kKnightScore, 304, 200, 400, false);
@@ -69,7 +69,8 @@ Move MovePicker::Next() {
     while (moves_idx_ < noisys_.Size()) {
       const auto move = SelectionSort(noisys_, moves_idx_);
       const auto score = noisys_[moves_idx_].score;
-      const auto history_score = history_.GetCaptureMoveScore(state, move);
+      const auto history_score =
+          move.IsCapture(state) ? history_.GetCaptureMoveScore(state, move) : 0;
 
       moves_idx_++;
 
