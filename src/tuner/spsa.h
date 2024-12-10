@@ -77,6 +77,9 @@ class Tunable {
 #define TUNABLE(name, value, min, max, disabled) \
   static constexpr auto name = value
 
+#define TUNABLE_STEP(name, value, min, max, disabled, step) \
+  static constexpr auto name = value
+
 template<typename T>
 using Tunable = T;
 #endif
