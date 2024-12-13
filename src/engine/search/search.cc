@@ -444,8 +444,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
     // mate
-    alpha = std::max<Score>(alpha, -kMateScore + stack->ply);
-    beta = std::min<Score>(beta, kMateScore - stack->ply - 1);
+    alpha = std::max(alpha, -kMateScore + stack->ply);
+    beta = std::min(beta, kMateScore - stack->ply - 1);
 
     // A beta cutoff may occur after reducing the search space
     if (alpha >= beta) {
@@ -616,14 +616,12 @@ Score Search::PVSearch(Thread &thread,
       const int improving_margin =
           (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
-          depth * kRevFutMargin - improving_margin - 15 * opponent_worsening +
+          depth * kRevFutMargin - improving_margin -
+          kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max(futility_margin, 20) >= beta) {
-        // Return (eval + beta) / 2 as a balanced score: higher than the beta
-        // bound since we're confident position can't fall below it, but lower
-        // than the potentially optimistic static eval since we pruned without
-        // full search
-        return (stack->eval + beta) / 2;
+      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
+          beta) {
+        return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
 
@@ -868,7 +866,7 @@ Score Search::PVSearch(Thread &thread,
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
-        const int reduced_depth = 3 * (depth - 1) / 8;
+        const int reduced_depth = kSeDepthReduction * (depth - 1) / 16;
         const Score new_beta = tt_entry->score - depth;
 
         stack->excluded_tt_move = tt_move;
