@@ -30,27 +30,23 @@ class CorrectionHistory {
       return;
     }
 
-    const int weight = CalculateWeight(depth);
-    const Score scaled_bonus =
-        CalculateScaledBonus(stack->static_eval, search_score);
+    const Score bonus = CalculateBonus(stack->static_eval, search_score, depth);
 
     // Update pawn table score
     auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
-    pawn_table_score = UpdateTableScore(pawn_table_score, weight, scaled_bonus);
+    pawn_table_score = UpdateTableScore(pawn_table_score, bonus);
 
     // Update major piece table score
     auto &major_table_score =
         major_table_[state.turn][GetMajorTableIndex(state)];
-    major_table_score =
-        UpdateTableScore(major_table_score, weight, scaled_bonus);
+    major_table_score = UpdateTableScore(major_table_score, bonus);
 
     // Update non-pawn table scores for both colors
     for (Color color : {Color::kWhite, Color::kBlack}) {
       auto &non_pawn_table_score =
           non_pawn_table_[state.turn][color]
                          [GetNonPawnTableIndex(state, color)];
-      non_pawn_table_score =
-          UpdateTableScore(non_pawn_table_score, weight, scaled_bonus);
+      non_pawn_table_score = UpdateTableScore(non_pawn_table_score, bonus);
     }
 
     // Update continuation table scores
@@ -61,7 +57,7 @@ class CorrectionHistory {
                              [(stack - 1)->moved_piece]
                              [(stack - 1)->move.GetTo()];
       continuation_table_score =
-          UpdateTableScore(continuation_table_score, weight, scaled_bonus);
+          UpdateTableScore(continuation_table_score, bonus);
     }
   }
 
@@ -100,28 +96,21 @@ class CorrectionHistory {
     const I32 correction = pawn_correction + non_pawn_white_correction +
                            non_pawn_black_correction + major_correction +
                            continuation_correction;
-    const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 256;
+    const I32 adjusted_score = static_cast<I32>(static_eval) + correction;
     // Ensure no static evaluations are mate scores
     return std::clamp(
         adjusted_score, -kMateInMaxPlyScore + 1, kMateInMaxPlyScore - 1);
   }
 
  private:
-  [[nodiscard]] int CalculateWeight(int depth) {
-    return std::min(1 + depth, 16);
+  [[nodiscard]] Score CalculateBonus(Score static_eval,
+                                     Score search_score,
+                                     int depth) {
+    return std::clamp((search_score - static_eval) * depth / 8, -256, 256);
   }
 
-  [[nodiscard]] Score CalculateScaledBonus(Score static_eval,
-                                           Score search_score) {
-    return (search_score - static_eval) * 256;
-  }
-
-  [[nodiscard]] Score UpdateTableScore(Score current_score,
-                                       int weight,
-                                       Score scaled_bonus) {
-    const Score new_score =
-        (current_score * (256.0 - weight) + scaled_bonus * weight) / 256.0;
-    return std::clamp<Score>(new_score, 256 * -64, 256 * 64);
+  [[nodiscard]] Score UpdateTableScore(Score &current_score, Score bonus) {
+    current_score += ScaleBonus(current_score, bonus, 1024);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
