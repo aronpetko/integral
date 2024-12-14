@@ -20,8 +20,8 @@ TUNABLE(kEvalHistUpdateMult, 62, 20, 100, false);
 TUNABLE(kEvalHistUpdateMin, 57, 5, 150, false);
 TUNABLE(kEvalHistUpdateMax, 101, 40, 200, false);
 
-TUNABLE(kRevFutDepth, 6, 4, 10, true);
-TUNABLE(kRevFutMargin, 57, 50, 150, false);
+TUNABLE(kRevFutDepth, 9, 4, 10, true);
+TUNABLE(kRevFutMargin, 65, 50, 150, false);
 TUNABLE(kRevFutOppWorseningMargin, 17, 5, 70, false);
 TUNABLE(kRevFutMinMargin, 19, 5, 100, false);
 TUNABLE_STEP(kRevFutLerpFactor, 0.4313712445065815, 0.0, 1.0, false, 0.1);
