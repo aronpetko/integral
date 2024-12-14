@@ -64,11 +64,6 @@ void Search::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
   thread.root_moves = RootMoveList(thread.board);
-  if (thread.root_moves.Empty()) {
-    if (type == SearchType::kRegular)
-      fmt::println("info error: no legal moves");
-    return;
-  }
 
   const int multi_pv =
       std::min(uci::listener.GetOption("MultiPV").GetValue<int>(),

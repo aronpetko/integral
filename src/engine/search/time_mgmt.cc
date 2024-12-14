@@ -66,7 +66,7 @@ int NodeLimiter::GetSearchDepth() const {
 
 bool NodeLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   return soft_max_nodes_ != 0 && thread.nodes_searched >= soft_max_nodes_ ||
-         TimesUp(thread.nodes_searched);
+         max_nodes_ != 0 && TimesUp(thread.nodes_searched);
 }
 
 bool NodeLimiter::TimesUp(U64 nodes_searched) {
