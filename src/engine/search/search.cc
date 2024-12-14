@@ -310,23 +310,31 @@ Score Search::QuiescentSearch(Thread &thread,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
-    // Stop searching since all the good noisy moves have been searched,
-    // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen > 0) {
-      break;
-    }
-
     if (!board.IsMoveLegal(move)) {
       continue;
     }
 
-    // QS Futility Pruning: Prune capture moves that don't win material if the
-    // static eval is behind alpha by some margin
-    if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1, state)) {
-      best_score = std::max(best_score, futility_score);
-      continue;
+    if (best_score > -kTBWinInMaxPlyScore) {
+      // Stop searching since all the good noisy moves have been searched,
+      // unless we need to find a quiet evasion
+      if (stack->in_check &&
+          move_picker.GetStage() > MovePicker::Stage::kGoodNoisys) {
+        break;
+      }
+
+      // QS Futility Pruning: Prune capture moves that don't win material if the
+      // static eval is behind alpha by some margin
+      if (!stack->in_check && move.IsCapture(state) &&
+          futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
+        best_score = std::max(best_score, futility_score);
+        continue;
+      }
+
+      // QS SEE Pruning: Prune moves that lose too much material
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          !eval::StaticExchange(move, -20, state)) {
+        continue;
+      }
     }
 
     ++thread.nodes_searched;
