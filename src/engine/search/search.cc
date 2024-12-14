@@ -945,7 +945,7 @@ Score Search::PVSearch(Thread &thread,
       score = -PVSearch<NodeType::kNonPV>(
           thread, reduced_depth, -alpha - 1, -alpha, stack + 1, true);
 
-      if (score > alpha && reduction != 0) {
+      if (score > alpha && reduced_depth < 0) {
         // Search deeper or shallower depending on if the result of the
         // reduced-depth search indicates a promising score
         const bool do_deeper_search =
@@ -957,7 +957,7 @@ Score Search::PVSearch(Thread &thread,
         // this higher depth
         if (reduced_depth < new_depth) {
           score = -PVSearch<NodeType::kNonPV>(
-              thread, new_depth, -alpha - 1, -alpha, stack + 1, true);
+              thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
         }
 
         if (is_quiet) {
