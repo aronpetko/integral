@@ -278,8 +278,10 @@ Score Search::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack, FmrScaleStaticEval(raw_static_eval, state));
+    stack->static_eval =
+        FmrScaleStaticEval(history.correction_history->CorrectStaticEval(
+                               state, stack, raw_static_eval),
+                           state);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -558,8 +560,10 @@ Score Search::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack, FmrScaleStaticEval(raw_static_eval, state));
+    stack->static_eval =
+        FmrScaleStaticEval(history.correction_history->CorrectStaticEval(
+                               state, stack, raw_static_eval),
+                           state);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
