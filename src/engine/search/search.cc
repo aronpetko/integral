@@ -205,12 +205,6 @@ void Search::IterativeDeepening(Thread &thread) {
   }
 }
 
-[[nodiscard]] Score FmrScaleStaticEval(Score static_eval,
-                                       const BoardState &state) {
-  // Scale based on proximity to a 50 move rule draw
-  return static_eval * (250 - state.fifty_moves_clock) / 250;
-}
-
 template <NodeType node_type>
 Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
@@ -278,10 +272,8 @@ Score Search::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval =
-        FmrScaleStaticEval(history.correction_history->CorrectStaticEval(
-                               state, stack, raw_static_eval),
-                           state);
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, stack, raw_static_eval);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -560,10 +552,8 @@ Score Search::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval =
-        FmrScaleStaticEval(history.correction_history->CorrectStaticEval(
-                               state, stack, raw_static_eval),
-                           state);
+    stack->static_eval = history.correction_history->CorrectStaticEval(
+        state, stack, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit &&
