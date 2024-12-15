@@ -208,7 +208,7 @@ void Search::IterativeDeepening(Thread &thread) {
 [[nodiscard]] Score FmrScaleStaticEval(Score static_eval,
                                        const BoardState &state) {
   // Scale based on proximity to a 50 move rule draw
-  return static_eval * (200 - state.fifty_moves_clock) / 200;
+  return static_eval * (250 - state.fifty_moves_clock) / 250;
 }
 
 template <NodeType node_type>
