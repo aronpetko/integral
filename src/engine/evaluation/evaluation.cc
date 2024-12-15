@@ -17,10 +17,8 @@ Score Evaluate(Board &board) {
   // Scale based on number of material left on the board
   network_eval = network_eval * (26500 + material_phase) / 32768;
 
-  // Scale based on proximity to a 50 move rule draw
-  network_eval = network_eval * (250 - state.fifty_moves_clock) / 250;
-
-  return network_eval;
+  return std::clamp(
+      network_eval, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
