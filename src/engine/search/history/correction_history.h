@@ -33,31 +33,26 @@ class CorrectionHistory {
     const Score bonus = CalculateBonus(stack->static_eval, search_score, depth);
 
     // Update pawn table score
-    auto &pawn_table_score = pawn_table_[state.turn][GetPawnTableIndex(state)];
-    pawn_table_score = UpdateTableScore(pawn_table_score, bonus);
+    UpdateTableScore(pawn_table_[state.turn][GetPawnTableIndex(state)], bonus);
 
     // Update major piece table score
-    auto &major_table_score =
-        major_table_[state.turn][GetMajorTableIndex(state)];
-    major_table_score = UpdateTableScore(major_table_score, bonus);
+    UpdateTableScore(major_table_[state.turn][GetMajorTableIndex(state)],
+                     bonus);
 
     // Update non-pawn table scores for both colors
     for (Color color : {Color::kWhite, Color::kBlack}) {
-      auto &non_pawn_table_score =
-          non_pawn_table_[state.turn][color]
-                         [GetNonPawnTableIndex(state, color)];
-      non_pawn_table_score = UpdateTableScore(non_pawn_table_score, bonus);
+      UpdateTableScore(non_pawn_table_[state.turn][color]
+                                      [GetNonPawnTableIndex(state, color)],
+                       bonus);
     }
 
     // Update continuation table scores
     if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
-      auto &continuation_table_score =
-          continuation_table_[state.turn][(stack - 2)->moved_piece]
-                             [(stack - 2)->move.GetTo()]
-                             [(stack - 1)->moved_piece]
-                             [(stack - 1)->move.GetTo()];
-      continuation_table_score =
-          UpdateTableScore(continuation_table_score, bonus);
+      UpdateTableScore(continuation_table_[state.turn][(stack - 2)->moved_piece]
+                                          [(stack - 2)->move.GetTo()]
+                                          [(stack - 1)->moved_piece]
+                                          [(stack - 1)->move.GetTo()],
+                       bonus);
     }
   }
 
@@ -96,7 +91,7 @@ class CorrectionHistory {
     const I32 correction = pawn_correction + non_pawn_white_correction +
                            non_pawn_black_correction + major_correction +
                            continuation_correction;
-    const I32 adjusted_score = static_cast<I32>(static_eval) + correction;
+    const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 512;
     // Ensure no static evaluations are mate scores
     return std::clamp(
         adjusted_score, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
@@ -109,7 +104,7 @@ class CorrectionHistory {
     return std::clamp((search_score - static_eval) * depth / 8, -256, 256);
   }
 
-  [[nodiscard]] Score UpdateTableScore(Score &current_score, Score bonus) {
+  void UpdateTableScore(Score &current_score, Score bonus) {
     current_score += ScaleBonus(current_score, bonus, 1024);
   }
 
