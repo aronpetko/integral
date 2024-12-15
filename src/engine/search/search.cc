@@ -339,6 +339,15 @@ Score Search::QuiescentSearch(Thread &thread,
     const bool is_capture = move.IsCapture(state);
 
     stack->move = move;
+    stack->moved_piece = state.GetPieceType(move.GetFrom());
+    stack->capture_move = move.IsCapture(state);
+    stack->continuation_entry =
+        history.continuation_history->GetEntry(state, move);
+    stack->history_score =
+        move.IsCapture(state)
+            ? history.GetCaptureMoveScore(state, move)
+            : history.GetQuietMoveScore(state, move, stack->threats, stack);
+
     ++thread.nodes_searched;
 
     board.MakeMove(move);
