@@ -324,9 +324,6 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    const bool is_quiet = !move.IsNoisy(state);
-    const bool is_capture = move.IsCapture(state);
-
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
     if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
@@ -335,10 +332,14 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    ++thread.nodes_searched;
-
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
+
+    const bool is_quiet = !move.IsNoisy(state);
+    const bool is_capture = move.IsCapture(state);
+
+    stack->move = move;
+    ++thread.nodes_searched;
 
     board.MakeMove(move);
     const Score score =
