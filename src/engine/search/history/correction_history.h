@@ -7,10 +7,10 @@
 
 namespace search::history {
 
-TUNABLE(kPawnCorrectionWeight, 241, 0, 300, false);
-TUNABLE(kNonPawnCorrectionWeight, 234, 0, 300, false);
-TUNABLE(kMajorCorrectionWeight, 254, 0, 300, false);
-TUNABLE(kContinuationCorrectionWeight, 243, 0, 300, false);
+TUNABLE(kPawnCorrectionWeight, 60, 0, 300, false);
+TUNABLE(kNonPawnCorrectionWeight, 58, 0, 300, false);
+TUNABLE(kMajorCorrectionWeight, 64, 0, 300, false);
+TUNABLE(kContinuationCorrectionWeight, 60, 0, 300, false);
 
 class CorrectionHistory {
  public:
@@ -60,31 +60,26 @@ class CorrectionHistory {
                                         StackEntry *stack,
                                         Score static_eval) const {
     const Score pawn_correction =
-        (pawn_table_[state.turn][GetPawnTableIndex(state)] *
-         kPawnCorrectionWeight) /
-        256;
+        pawn_table_[state.turn][GetPawnTableIndex(state)] *
+        kPawnCorrectionWeight;
     const I32 non_pawn_white_correction =
-        (non_pawn_table_[state.turn][Color::kWhite]
-                        [GetNonPawnTableIndex(state, Color::kWhite)] *
-         kNonPawnCorrectionWeight) /
-        256;
+        non_pawn_table_[state.turn][Color::kWhite]
+                       [GetNonPawnTableIndex(state, Color::kWhite)] *
+        kNonPawnCorrectionWeight;
     const I32 non_pawn_black_correction =
-        (non_pawn_table_[state.turn][Color::kBlack]
-                        [GetNonPawnTableIndex(state, Color::kBlack)] *
-         kNonPawnCorrectionWeight) /
-        256;
+        non_pawn_table_[state.turn][Color::kBlack]
+                       [GetNonPawnTableIndex(state, Color::kBlack)] *
+        kNonPawnCorrectionWeight;
     const I32 major_correction =
-        (major_table_[state.turn][GetMajorTableIndex(state)] *
-         kMajorCorrectionWeight) /
-        256;
+        major_table_[state.turn][GetMajorTableIndex(state)] *
+        kMajorCorrectionWeight;
     const I32 continuation_correction = [&]() -> I32 {
       if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
-        return (continuation_table_[state.turn][(stack - 2)->moved_piece]
-                                   [(stack - 2)->move.GetTo()]
-                                   [(stack - 1)->moved_piece]
-                                   [(stack - 1)->move.GetTo()] *
-                kContinuationCorrectionWeight) /
-               256;
+        return continuation_table_[state.turn][(stack - 2)->moved_piece]
+                                  [(stack - 2)->move.GetTo()]
+                                  [(stack - 1)->moved_piece]
+                                  [(stack - 1)->move.GetTo()] *
+               kContinuationCorrectionWeight;
       }
       return 0;
     }();
