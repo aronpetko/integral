@@ -306,6 +306,9 @@ Score Search::QuiescentSearch(Thread &thread,
   }
 
   const Score futility_score = best_score + kQsFutMargin;
+  // Keep track of quiet and capture moves that failed to cause a beta cutoff
+  MoveList quiets, captures;
+  Move best_move = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
@@ -320,6 +323,9 @@ Score Search::QuiescentSearch(Thread &thread,
     if (!board.IsMoveLegal(move)) {
       continue;
     }
+
+    const bool is_quiet = !move.IsNoisy(state);
+    const bool is_capture = move.IsCapture(state);
 
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
@@ -345,6 +351,8 @@ Score Search::QuiescentSearch(Thread &thread,
       best_score = score;
 
       if (score > alpha) {
+        best_move = move;
+
         stack->pv.Clear();
         stack->pv.Push(move);
         stack->pv.AppendPV((stack + 1)->pv);
@@ -352,14 +360,31 @@ Score Search::QuiescentSearch(Thread &thread,
         alpha = score;
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
+          if (is_capture) {
+            history.capture_history->UpdateScore(state, stack, 1);
+          }
           break;
         }
       }
+    }
+
+    // Penalize the history score of moves that failed to raise alpha
+    if (move != best_move) {
+      if (is_quiet)
+        quiets.Push(move);
+      else if (is_capture)
+        captures.Push(move);
     }
   }
 
   if (stack->in_check && moves_seen == 0) {
     return -kMateScore + stack->ply;
+  }
+
+  if (best_move) {
+    // Since "good" captures are expected to be the best moves, we apply a
+    // penalty to all captures even in the case where the best move was quiet
+    history.capture_history->Penalize(state, 1, captures);
   }
 
   TranspositionTableEntry::Flag tt_flag;
