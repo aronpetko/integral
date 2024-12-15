@@ -99,7 +99,7 @@ class CorrectionHistory {
     const I32 adjusted_score = static_cast<I32>(static_eval) + correction;
     // Ensure no static evaluations are mate scores
     return std::clamp(
-        adjusted_score, -kMateInMaxPlyScore + 1, kMateInMaxPlyScore - 1);
+        adjusted_score, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
   }
 
  private:
