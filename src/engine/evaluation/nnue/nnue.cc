@@ -29,6 +29,10 @@ I32 SquaredCReLU(I16 value) {
 }
 #endif
 
+[[nodiscard]] float CReLU(float value) {
+  return std::clamp(value, 0.0f, 1.0f);
+}
+
 void LoadFromIncBin() {
   auto raw_network = std::make_unique<RawNetwork>();
   std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
@@ -46,88 +50,59 @@ void LoadFromIncBin() {
 
 Score Evaluate(Board &board) {
   auto &state = board.GetState();
-  auto &accumulator = board.GetAccumulator();
+  auto &accumulator = *board.GetAccumulator();
 
-  accumulator->ApplyChanges(board);
+  accumulator.ApplyChanges();
 
   const auto turn = state.turn;
-  const auto bucket = accumulator->GetOutputBucket(state);
+  const auto bucket = accumulator.GetOutputBucket(state);
 
-  Score eval;
+  // Activate the feature layer via pair-wise CReLU multiplication
+  std::array<float, arch::kL1Size> feature_output{};
+  for (int i = 0; i < arch::kL1Size / 2; i++) {
+    const float our_value = CReLU(accumulator[turn][i]) *
+                            CReLU(accumulator[turn][i + arch::kL1Size / 2]);
+    feature_output[i] = our_value;
 
-#if BUILD_HAS_SIMD
-  constexpr int kChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
-
-  auto sum = simd::ZeroEpi32();
-
-  // Compute evaluation from our perspective
-  for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
-    const auto accumulator_value = simd::LoadEpi16(&(*accumulator)[turn][i]);
-    const auto weight_value =
-        simd::LoadEpi16(&network->output_weights[bucket][0][i]);
-
-    // Clip the accumulator values
-    const auto clipped =
-        simd::Clip(accumulator_value, arch::kHiddenLayerQuantization);
-
-    // Multiply weights by clipped values (still in i16, no overflow)
-    const auto product = simd::MultiplyEpi16(clipped, weight_value);
-
-    // Perform the second multiplication with widening to i32, accumulating the
-    // result
-    const auto result = simd::MultiplyAddEpi16(product, clipped);
-
-    // Accumulate the results in 32-bit integers
-    sum = simd::AddEpi32(sum, result);
+    const float their_value = CReLU(accumulator[!turn][i]) *
+                              CReLU(accumulator[!turn][i + arch::kL1Size / 2]);
+    feature_output[i + arch::kL1Size / 2] = their_value;
   }
 
-  // Compute evaluation from their perspective
-  for (int i = 0; i < arch::kHiddenLayerSize; i += kChunkSize) {
-    const auto accumulator_value = simd::LoadEpi16(&(*accumulator)[!turn][i]);
-    const auto weight_value =
-        simd::LoadEpi16(&network->output_weights[bucket][1][i]);
-
-    // Clip the accumulator values
-    const auto clipped =
-        simd::Clip(accumulator_value, arch::kHiddenLayerQuantization);
-
-    // Multiply weights by clipped values (still in i16, no overflow)
-    const auto product = simd::MultiplyEpi16(clipped, weight_value);
-
-    // Perform the second multiplication with widening to i32, accumulating the
-    // result
-    const auto result = simd::MultiplyAddEpi16(product, clipped);
-
-    // Accumulate the results in 32-bit integers
-    sum = simd::AddEpi32(sum, result);
+  // Forward the feature layer neurons to the 2nd layer
+  std::array<float, arch::kL2Size> l1_output{};
+  for (int i = 0; i < arch::kL1Size; i++) {
+    for (int j = 0; j < arch::kL2Size; j++) {
+      l1_output[j] += feature_output[i] * network->l1_weights[i][bucket][j];
+    }
   }
 
-  // Perform a horizontal sum to get the final result
-  eval = simd::ReduceAddEpi32(sum);
-#else
-  eval = 0;
-  for (int i = 0; i < arch::kHiddenLayerSize; i++) {
-    const Score our_value = SquaredCReLU((*accumulator)[turn][i]) *
-                            network->output_weights[bucket][0][i];
-    const Score their_value = SquaredCReLU((*accumulator)[!turn][i]) *
-                              network->output_weights[bucket][1][i];
-    eval += our_value + their_value;
+  // Activate 2nd layer neurons
+  for (int i = 0; i < arch::kL2Size; i++) {
+    l1_output[i] = CReLU(l1_output[i] + network->l1_biases[bucket][i]);
   }
-#endif
 
-  // De-quantize the evaluation because of our squared activation function
-  eval /= arch::kHiddenLayerQuantization;
+  // Forward the 2nd layer neurons to the 3rd layer
+  std::array<float, arch::kL3Size> l2_output{};
+  for (int i = 0; i < arch::kL2Size; i++) {
+    for (int j = 0; j < arch::kL3Size; j++) {
+      l2_output[j] += l1_output[i] * network->l2_weights[i][bucket][j];
+    }
+  }
 
-  // Add final output bias
-  eval += network->output_biases[bucket];
+  // Activate 3rd layer neurons
+  for (int i = 0; i < arch::kL3Size; i++) {
+    l2_output[i] = CReLU(l2_output[i] + network->l2_biases[bucket][i]);
+  }
 
-  // Scale the evaluation
-  eval *= arch::kEvalScale;
+  // Forward 3rd layer neurons to output layer
+  float l3_output = network->l3_biases[bucket];
+  for (int i = 0; i < arch::kL3Size; i++) {
+    l3_output += l2_output[i] * network->l3_weights[i][bucket];
+  }
 
-  // De-quantize again
-  eval /= arch::kHiddenLayerQuantization * arch::kOutputQuantization;
-
-  return eval;
+  // Scale output
+  return static_cast<Score>(l3_output * arch::kEvalScale);
 }
 
 }  // namespace nnue

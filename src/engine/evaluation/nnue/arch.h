@@ -14,7 +14,7 @@ constexpr std::size_t kOutputBucketCount = 8;
 constexpr std::int32_t kL1Quantization = 255;
 constexpr std::int32_t kOutputQuantization = 64;
 
-constexpr std::int32_t kEvalScale = 200;
+constexpr std::int32_t kEvalScale = 400;
 
 };  // namespace nnue::arch
 
