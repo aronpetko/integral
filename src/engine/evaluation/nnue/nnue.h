@@ -21,14 +21,14 @@ struct RawNetwork {
 };
 
 struct alignas(64) AlignedNetwork {
-MultiArray<float, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
-MultiArray<float, arch::kL1Size> feature_biases;
-MultiArray<float, arch::kL1Size, arch::kOutputBucketCount, arch::kL2Size> l1_weights;
-MultiArray<float, arch::kOutputBucketCount, arch::kL2Size> l1_biases;
-MultiArray<float, arch::kL2Size, arch::kOutputBucketCount, arch::kL3Size> l2_weights;
-MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l2_biases;
-MultiArray<float, arch::kL3Size, arch::kOutputBucketCount> l3_weights;
-MultiArray<float, arch::kOutputBucketCount> l3_biases;
+alignas(64) MultiArray<float, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
+alignas(64) MultiArray<float, arch::kL1Size> feature_biases;
+alignas(64) MultiArray<float, arch::kL1Size, arch::kOutputBucketCount, arch::kL2Size> l1_weights;
+alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size> l1_biases;
+alignas(64) MultiArray<float, arch::kL2Size, arch::kOutputBucketCount, arch::kL3Size> l2_weights;
+alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l2_biases;
+alignas(64) MultiArray<float, arch::kL3Size, arch::kOutputBucketCount> l3_weights;
+alignas(64) MultiArray<float, arch::kOutputBucketCount> l3_biases;
 };
 // clang-format on
 

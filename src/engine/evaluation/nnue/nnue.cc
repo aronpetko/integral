@@ -33,6 +33,11 @@ I32 SquaredCReLU(I16 value) {
   return std::clamp(value, 0.0f, 1.0f);
 }
 
+[[nodiscard]] float SCReLU(float value) {
+  const float clipped = std::clamp(value, 0.0f, 1.0f);
+  return clipped * clipped;
+}
+
 void LoadFromIncBin() {
   auto raw_network = std::make_unique<RawNetwork>();
   std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
@@ -79,7 +84,7 @@ Score Evaluate(Board &board) {
 
   // Activate 2nd layer neurons
   for (int i = 0; i < arch::kL2Size; i++) {
-    l1_output[i] = CReLU(l1_output[i] + network->l1_biases[bucket][i]);
+    l1_output[i] = SCReLU(l1_output[i] + network->l1_biases[bucket][i]);
   }
 
   // Forward the 2nd layer neurons to the 3rd layer
@@ -92,7 +97,7 @@ Score Evaluate(Board &board) {
 
   // Activate 3rd layer neurons
   for (int i = 0; i < arch::kL3Size; i++) {
-    l2_output[i] = CReLU(l2_output[i] + network->l2_biases[bucket][i]);
+    l2_output[i] = SCReLU(l2_output[i] + network->l2_biases[bucket][i]);
   }
 
   // Forward 3rd layer neurons to output layer
