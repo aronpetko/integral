@@ -33,25 +33,15 @@ void LoadFromIncBin() {
   auto raw_network = std::make_unique<RawNetwork>();
   std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
 
-  network = std::make_unique<TransposedNetwork>();
+  network = std::make_unique<AlignedNetwork>();
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
-
-  // We transpose the output weights from Bullet since we get better cache hits
-  // with this layout
-  MultiArray<I16, arch::kOutputBucketCount, 2, arch::kHiddenLayerSize>
-      transposed_output_weights;
-  for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
-    for (Color perspective : {Color::kBlack, Color::kWhite}) {
-      for (int weight = 0; weight < arch::kHiddenLayerSize; weight++) {
-        transposed_output_weights[bucket][perspective][weight] =
-            raw_network->output_weights[perspective][weight][bucket];
-      }
-    }
-  }
-
-  network->output_weights = transposed_output_weights;
-  network->output_biases = raw_network->output_biases;
+  network->l1_weights = raw_network->l1_weights;
+  network->l1_biases = raw_network->l1_biases;
+  network->l2_weights = raw_network->l2_weights;
+  network->l2_biases = raw_network->l2_biases;
+  network->l3_weights = raw_network->l3_weights;
+  network->l3_biases = raw_network->l3_biases;
 }
 
 Score Evaluate(Board &board) {
