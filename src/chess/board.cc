@@ -316,8 +316,10 @@ void Board::MakeNullMove() {
 }
 
 U64 Board::PredictKeyAfter(Move move) {
-  auto key = state_.zobrist_key ^ zobrist::turn;
-  if (move == Move::NullMove()) return key;
+  auto key = state_.zobrist_key ^ zobrist::turn ^
+             zobrist::fifty_move_rule[state_.fifty_moves_clock / 5];
+  if (move == Move::NullMove())
+    return key ^ zobrist::fifty_move_rule[(state_.fifty_moves_clock + 1) / 5];
 
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
