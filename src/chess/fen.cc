@@ -77,6 +77,8 @@ BoardState StringToBoard(std::string_view fen_str) {
   }
 
   stream >> state.fifty_moves_clock;
+  state.zobrist_key ^= zobrist::fifty_move_rule[state.fifty_moves_clock / 5];
+
   return state;
 }
 
