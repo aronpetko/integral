@@ -413,7 +413,8 @@ bool Board::HasUpcomingRepetition(U16 ply) {
 }
 
 bool Board::IsDraw(U16 ply) {
-  if (state_.fifty_moves_clock >= 100) {
+  if (state_.fifty_moves_clock >= 100 &&
+      (!state_.InCheck() || !GetLegalMoves().Empty())) {
     return true;
   }
 
