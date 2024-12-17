@@ -5,9 +5,7 @@
 #include <string>
 
 #include "../../ascii_logo.h"
-#include "../../chess/move_gen.h"
 #include "../../data_gen/data_gen.h"
-#include "../../engine/evaluation/pawn_structure_cache.h"
 #include "../../tests/tests.h"
 #include "../search/search.h"
 #include "../search/syzygy/syzygy.h"
@@ -161,7 +159,8 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
   });
 
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
-    fmt::println("info cp {}", eval::Evaluate(board));
+    const auto eval = eval::Evaluate(board);
+    fmt::println("info cp {}\ninfo normalized cp {}", eval, eval::NormalizeScore(eval, board.GetState().MaterialCount()));
   });
 
   listener.RegisterCommand("print", CommandType::kUnordered, {}, [&board](Command *cmd) {
