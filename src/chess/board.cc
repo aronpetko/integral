@@ -353,6 +353,11 @@ U64 Board::PredictKeyAfter(Move move) {
   const int colored_new_piece = new_piece * 2 + state_.turn;
   key ^= zobrist::pieces[colored_new_piece][to];
 
+  const int new_fifty_moves_clock =
+      (move.IsCapture(state_) || piece == kPawn ? 0
+                                                : state_.fifty_moves_clock + 1);
+  key ^= zobrist::fifty_move_rule[new_fifty_moves_clock / 5];
+
   return key;
 }
 
