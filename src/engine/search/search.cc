@@ -207,7 +207,7 @@ void Search::IterativeDeepening(Thread &thread) {
 
 [[nodiscard]] U64 AdjustedKey(const BoardState &state) {
   return state.zobrist_key ^
-         zobrist::fifty_move_rule[state.fifty_moves_clock / 5];
+         zobrist::fifty_move_rule[state.fifty_moves_clock / 10];
 }
 
 template <NodeType node_type>
