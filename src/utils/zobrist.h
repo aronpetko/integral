@@ -44,7 +44,12 @@ const auto en_passant = GenerateEnPassantTable();
 
 static FiftyMoveRuleTable GenerateFiftyMoveRuleTable() {
   FiftyMoveRuleTable fifty_move_rule_table;
-  for (U64& entry : fifty_move_rule_table) entry = RandomU64();
+  for (int i = 0; i < 120; i += 8) {
+    const auto key = RandomU64();
+    for (int j = 0; j < 8; j++) {
+      fifty_move_rule_table[i + j] = key;
+    }
+  }
   return fifty_move_rule_table;
 }
 
