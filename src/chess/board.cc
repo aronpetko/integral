@@ -356,7 +356,7 @@ U64 Board::PredictKeyAfter(Move move) {
   const int new_fifty_moves_clock =
       (move.IsCapture(state_) || piece == kPawn ? 0
                                                 : state_.fifty_moves_clock + 1);
-  key ^= zobrist::fifty_move_rule[new_fifty_moves_clock / 5];
+  key ^= zobrist::fifty_move_rule[new_fifty_moves_clock];
 
   return key;
 }
