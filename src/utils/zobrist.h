@@ -13,7 +13,7 @@ namespace zobrist {
 using PieceTable = MultiArray<U64, 12, Squares::kSquareCount>;
 using CastleRightsTable = std::array<U64, 16>;
 using EnPassantTable = std::array<U64, 8>;
-using FiftyMoveRuleTable = std::array<U64, 12>;
+using FiftyMoveRuleTable = std::array<U64, 120>;
 
 const auto turn = RandomU64();
 
