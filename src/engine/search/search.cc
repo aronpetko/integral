@@ -16,8 +16,7 @@ namespace search {
 
 namespace tables {
 
-using LateMoveReductionTable =
-    MultiArray<int, 2, kMaxSearchDepth + 1, kMaxMoves>;
+using LateMoveReductionTable = MultiArray<int, kMaxSearchDepth + 1, kMaxMoves>;
 
 int CalculateLMR(int depth, int moves, double base, double divisor) {
   auto ln_depth = std::log(depth), ln_moves = std::log(moves);
@@ -30,10 +29,8 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
     for (int move = 1; move < kMaxMoves; move++) {
-      table[true][depth][move] =
+      table[depth][move] =
           CalculateLMR(depth, move, kLmrQuietBase, kLmrQuietDiv);
-      table[false][depth][move] =
-          CalculateLMR(depth, move, kLmrTactBase, kLmrTactDiv);
     }
   }
 
@@ -835,7 +832,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
-      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      int reduction = tables::kLateMoveReduction[depth][moves_seen];
       reduction -= stack->history_score /
                    static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
@@ -962,7 +959,7 @@ Score Search::PVSearch(Thread &thread,
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen > 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
-      reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      reduction = tables::kLateMoveReduction[depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
       reduction -= gives_check;
@@ -1023,7 +1020,7 @@ Score Search::PVSearch(Thread &thread,
     if (ShouldQuit(thread)) {
       return 0;
     }
-    
+
     if (in_root) {
       // Update the number of nodes we searched for this root move
       if (thread.IsMainThread()) {

@@ -5,10 +5,8 @@
 
 namespace search {
 
-TUNABLE(kLmrQuietBase, 0.8108281963087768, 0.5, 2.0, false);
-TUNABLE(kLmrQuietDiv, 2.00963684380911, 0.5, 3.0, false);
-TUNABLE(kLmrTactBase, -0.26539563743301553, -1.0, 0.5, false);
-TUNABLE(kLmrTactDiv, 2.7225202957220636, 1.0, 4.0, false);
+TUNABLE(kLmrQuietBase, 0.249, 0.5, 2.0, false);
+TUNABLE(kLmrQuietDiv, 2.035, 0.5, 3.0, false);
 
 TUNABLE(kAspWindowDepth, 4, 2, 8, true);
 TUNABLE(kAspWindowDelta, 8, 1, 50, false);
