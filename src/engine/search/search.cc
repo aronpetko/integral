@@ -806,7 +806,7 @@ Score Search::PVSearch(Thread &thread,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
-  int moves_seen = 0;
+  int moves_searched = 0, moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
@@ -835,7 +835,8 @@ Score Search::PVSearch(Thread &thread,
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
-      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      int reduction =
+          tables::kLateMoveReduction[is_quiet][depth][moves_searched];
       reduction -= stack->history_score /
                    static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
@@ -843,11 +844,9 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
-      if (is_quiet && moves_seen >= lmp_threshold) {
+      const int lmp_threshold = (kLmpBase + depth * depth) / (2 - improving);
+      if (moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
-        continue;
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
@@ -962,7 +961,7 @@ Score Search::PVSearch(Thread &thread,
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen > 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
-      reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      reduction = tables::kLateMoveReduction[is_quiet][depth][moves_searched];
       reduction += !in_pv_node - tt_was_in_pv;
       reduction += 2 * cut_node;
       reduction -= gives_check;
@@ -1018,12 +1017,14 @@ Score Search::PVSearch(Thread &thread,
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
 
+    ++moves_searched;
+
     board.UndoMove();
 
     if (ShouldQuit(thread)) {
       return 0;
     }
-    
+
     if (in_root) {
       // Update the number of nodes we searched for this root move
       if (thread.IsMainThread()) {
