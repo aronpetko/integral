@@ -846,7 +846,6 @@ Score Search::PVSearch(Thread &thread,
       const int lmp_threshold = (kLmpBase + depth * depth) / (2 - improving);
       if (moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
-        continue;
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
