@@ -116,6 +116,7 @@ Move MovePicker::Next() {
 
   if (skip_quiets_ && stage_ != Stage::kBadNoisys) {
     stage_ = Stage::kBadNoisys;
+    moves_idx_ = 0;
   }
 
   if (stage_ == Stage::kGenerateQuiets) {
