@@ -831,6 +831,8 @@ Score Search::PVSearch(Thread &thread,
                                       : history.GetQuietMoveScore(
                                             state, move, stack->threats, stack);
 
+    moves_seen++;
+
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
@@ -841,9 +843,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
-      if (is_quiet && moves_seen >= lmp_threshold) {
+      const int lmp_threshold = (kLmpBase + depth * depth) / (2 - improving);
+      if (moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
       }
@@ -958,7 +959,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+    if (depth > 2 && moves_seen > 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
       reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
       reduction += !in_pv_node - tt_was_in_pv;
@@ -992,7 +993,7 @@ Score Search::PVSearch(Thread &thread,
       // If we didn't perform late move reduction, then we search this move at
       // full depth with a null window search if we don't expect it to be a PV
       // move
-      needs_full_search = !in_pv_node || moves_seen >= 1;
+      needs_full_search = !in_pv_node || moves_seen > 1;
     }
 
     // Either the move has potential from a reduced depth search or it's not
@@ -1011,7 +1012,7 @@ Score Search::PVSearch(Thread &thread,
     }
 
     // Perform a full window search on this move if it's known to be good
-    if (in_pv_node && (score > alpha || moves_seen == 0)) {
+    if (in_pv_node && (score > alpha || moves_seen == 1)) {
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
@@ -1021,8 +1022,6 @@ Score Search::PVSearch(Thread &thread,
     if (ShouldQuit(thread)) {
       return 0;
     }
-
-    moves_seen++;
 
     if (in_root) {
       // Update the number of nodes we searched for this root move
