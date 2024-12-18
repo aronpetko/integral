@@ -40,15 +40,15 @@ LateMoveReductionTable GenerateLateMoveReductionTable() {
 inline LateMoveReductionTable kLateMoveReduction =
     GenerateLateMoveReductionTable();
 
-using LateMovePruningTable = MultiArray<int, 2, kMaxMoves>;
+using LateMovePruningTable = MultiArray<int, 2, kMaxSearchDepth>;
 
 LateMovePruningTable GenerateLateMovePruningTable() {
   LateMovePruningTable table;
 
   // Initialize the depth reduction table for Late Move Reduction
-  for (int move = 1; move < kMaxMoves; move++) {
-    table[false][move] = 1.305 + 0.3503 * move * move;
-    table[true][move] = 2.1885 + 0.9911 * move * move;
+  for (int depth = 1; depth < kMaxSearchDepth; depth++) {
+    table[false][depth] = 1.305 + 0.3503 * depth * depth;
+    table[true][depth] = 2.1885 + 0.9911 * depth * depth;
   }
 
   return table;
@@ -857,7 +857,7 @@ Score Search::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       if (is_quiet &&
-          moves_seen >= tables::kLateMovePruning[improving][moves_seen]) {
+          moves_seen >= tables::kLateMovePruning[improving][depth]) {
         move_picker.SkipQuiets();
         continue;
       }
