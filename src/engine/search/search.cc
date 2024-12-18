@@ -844,7 +844,7 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = (kLmpBase + depth * depth) / (3 - improving);
+      const int lmp_threshold = (kLmpBase + depth * depth) / (2 - improving);
       if (moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
       }
@@ -879,7 +879,7 @@ Score Search::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
+        if (is_quiet) move_picker.SkipQuiets();
         continue;
       }
     }
