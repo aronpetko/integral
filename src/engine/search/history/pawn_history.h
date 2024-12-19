@@ -9,7 +9,9 @@ namespace search::history {
 
 class PawnHistory {
  public:
-  PawnHistory() : table_({}) {}
+  PawnHistory() : table_({}) {
+    std::memset(table_.data(), -1000, sizeof(table_));
+  }
 
   void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
     // Apply a linear dampening to the bonus as the depth increases
