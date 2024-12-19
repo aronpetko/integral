@@ -1181,7 +1181,12 @@ void Search::QuitThreads() {
 bool Search::ShouldQuit(Thread &thread) {
   if (stop_.load(std::memory_order_relaxed)) return true;
   if (thread.IsMainThread()) {
-    return time_mgmt_.TimesUp(thread.nodes_searched);
+    static thread_local int counter = 0;
+    if ((++counter & 4095) == 0) {
+      counter = 0;
+      return time_mgmt_.TimesUp(thread.nodes_searched);
+    }
+    return false;
   }
   return false;
 }
