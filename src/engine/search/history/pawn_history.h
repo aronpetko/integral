@@ -9,7 +9,7 @@ namespace search::history {
 
 class PawnHistory {
  public:
-  PawnHistory() : table_({}) {
+  PawnHistory() {
     std::memset(table_.data(), -1000, sizeof(table_));
   }
 
