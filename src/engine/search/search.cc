@@ -142,7 +142,8 @@ void Search::IterativeDeepening(Thread &thread) {
     thread.scores[depth] = best_move.score;
 
     if (thread.IsMainThread() &&
-        time_mgmt_.ShouldStop(best_move.move, depth, thread)) {
+        (time_mgmt_.ShouldStop(best_move.move, depth, thread) ||
+         ShouldQuit(thread))) {
       break;
     }
 
@@ -433,6 +434,14 @@ Score Search::PVSearch(Thread &thread,
   const auto &state = board.GetState();
 
   stack->pv.Clear();
+
+  static thread_local int counter = 0;
+  if (thread.IsMainThread() && (++counter & 4095) == 0) {
+    counter = 0;
+    if (time_mgmt_.TimesUp(thread.nodes_searched)) {
+      stop_.store(true, std::memory_order_relaxed);
+    }
+  }
 
   if (ShouldQuit(thread)) {
     return 0;
@@ -1179,16 +1188,7 @@ void Search::QuitThreads() {
 }
 
 bool Search::ShouldQuit(Thread &thread) {
-  if (stop_.load(std::memory_order_relaxed)) return true;
-  if (thread.IsMainThread()) {
-    static thread_local int counter = 0;
-    if ((++counter & 4095) == 0) {
-      counter = 0;
-      return time_mgmt_.TimesUp(thread.nodes_searched);
-    }
-    return false;
-  }
-  return false;
+  return stop_.load(std::memory_order_relaxed));
 }
 
 void Search::SetThreadCount(U16 count) {
