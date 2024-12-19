@@ -1188,7 +1188,7 @@ void Search::QuitThreads() {
 }
 
 bool Search::ShouldQuit(Thread &thread) {
-  return stop_.load(std::memory_order_relaxed));
+  return stop_.load(std::memory_order_relaxed);
 }
 
 void Search::SetThreadCount(U16 count) {
