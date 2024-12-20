@@ -231,21 +231,7 @@ bool Board::IsMoveLegal(Move move) const {
   }
 
   // Direct check
-  if (possible_moves.IsSet(their_king_square)) {
-    return true;
-  }
-
-  // Discovered check
-  auto our_occupancy = state_.Occupied();
-  our_occupancy.ClearBit(from);
-  our_occupancy.SetBit(to);
-
-  if (move_gen::GetSlidingAttackersTo(
-          state_, their_king_square, our_occupancy, state_.turn)) {
-    return true;
-  }
-
-  return false;
+  return possible_moves.IsSet(their_king_square);
 }
 
 template void Board::MakeMove<true>(Move move);
