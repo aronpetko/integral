@@ -178,7 +178,6 @@ void TimedLimiter::CalculateLimits() {
       std::max(1, time_left_ + 50 * increment_ - 50 * overhead);
   allocated_time_ = std::min(time_left_ * 0.4193, total_time * 0.0575);
   hard_limit_ = std::max(1.0, std::min(time_left_ * 0.9221 - overhead, allocated_time_ * 5.928) - 10);
-  fmt::println("{}", hard_limit_);
 }
 
 void TimedLimiter::Update(const TimeConfig& config) {
