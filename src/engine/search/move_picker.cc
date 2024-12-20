@@ -146,6 +146,16 @@ void MovePicker::SkipQuiets() {
   }
 }
 
+void MovePicker::SkipBadQuiets() {
+  if (stage_ == Stage::kQuiets) {
+    for (int i = moves_idx_; i < quiets_.Size(); i++) {
+      if (!board_.MoveGivesCheck(quiets_[i].move)) {
+        quiets_.Erase(i--);
+      }
+    }
+  }
+}
+
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
                                 const int &index) {
   int best_move_idx = index;

@@ -44,6 +44,8 @@ class MovePicker {
 
   void SkipQuiets();
 
+  void SkipBadQuiets();
+
   [[nodiscard]] Stage GetStage() const {
     return stage_;
   }

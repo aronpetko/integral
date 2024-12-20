@@ -864,7 +864,7 @@ Score Search::PVSearch(Thread &thread,
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           !board.MoveGivesCheck(move) &&
           stack->static_eval + futility_margin < alpha) {
-        move_picker.SkipQuiets();
+        move_picker.SkipBadQuiets();
         continue;
       }
 
