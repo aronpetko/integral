@@ -236,7 +236,10 @@ bool Board::IsMoveLegal(Move move) const {
   }
 
   // Discovered check
-  const auto our_occupancy = state_.Occupied() ^ from;
+  auto our_occupancy = state_.Occupied();
+  our_occupancy.ClearBit(from);
+  our_occupancy.SetBit(to);
+
   if (move_gen::GetSlidingAttackersTo(
           state_, their_king_square, our_occupancy, state_.turn)) {
     return true;
