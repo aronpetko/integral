@@ -236,7 +236,7 @@ bool Board::IsMoveLegal(Move move) const {
   }
 
   // Discovered check
-  const auto our_occupancy = state_.Occupied(state_.turn) ^ from;
+  const auto our_occupancy = state_.Occupied() ^ from;
   if (move_gen::GetSlidingAttackersTo(
           state_, their_king_square, our_occupancy, state_.turn)) {
     return true;
