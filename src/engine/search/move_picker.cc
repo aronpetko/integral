@@ -30,6 +30,7 @@ TUNABLE(kRookMinorThreatScorePos, 12288, 5000, 20000, false);
 TUNABLE(kRookMinorThreatScoreNeg, 12664, 5000, 20000, false);
 TUNABLE(kMinorPawnThreatScorePos, 7793, 3000, 12000, false);
 TUNABLE(kMinorPawnThreatScoreNeg, 8025, 3000, 12000, false);
+TUNABLE(kGivesCheckBonus, 8000, 3000, 12000, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -146,16 +147,6 @@ void MovePicker::SkipQuiets() {
   }
 }
 
-void MovePicker::SkipBadQuiets() {
-  if (stage_ == Stage::kQuiets) {
-    for (int i = moves_idx_; i < quiets_.Size(); i++) {
-      if (!board_.MoveGivesCheck(quiets_[i].move)) {
-        quiets_.Erase(i--);
-      }
-    }
-  }
-}
-
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
                                 const int &index) {
   int best_move_idx = index;
@@ -213,6 +204,8 @@ int MovePicker::ScoreMove(Move &move) {
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
+  int quiet_move_score = 0;
+
   const auto us = state.turn;
 
   const BitBoard queens = state.Queens(us);
@@ -243,11 +236,20 @@ int MovePicker::ScoreMove(Move &move) {
       break;
   }
 
+  // Adjust the score of this move depending on whether it moves a piece in or
+  // out of a serious threat
+  quiet_move_score += threat_score;
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score +
-         history_.GetQuietMoveScore(state, move, state.threats, stack_);
+  quiet_move_score +=
+      history_.GetQuietMoveScore(state, move, state.threats, stack_);
+  // Moves that give a check to the enemy king are given a bonus
+  if (board_.MoveGivesCheck(move)) {
+    quiet_move_score += kGivesCheckBonus;
+  }
+
+  return quiet_move_score;
 }
 
 }  // namespace search

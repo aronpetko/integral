@@ -44,8 +44,6 @@ class MovePicker {
 
   void SkipQuiets();
 
-  void SkipBadQuiets();
-
   [[nodiscard]] Stage GetStage() const {
     return stage_;
   }
@@ -66,7 +64,7 @@ class MovePicker {
   StackEntry *stack_;
   Stage stage_;
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
-  List<ScoredMove, kMaxMoves> quiets_;
+  List<ScoredMove, kMaxMoves> quiet_checks_, quiets_;
   int moves_idx_;
   int see_threshold_;
 };
