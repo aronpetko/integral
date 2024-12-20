@@ -862,6 +862,7 @@ Score Search::PVSearch(Thread &thread,
       const int futility_margin = kFutMarginBase + kFutMarginMult * lmr_depth +
                                   stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+          !board.MoveGivesCheck(move) &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;

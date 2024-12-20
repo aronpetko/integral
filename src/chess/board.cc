@@ -201,6 +201,50 @@ bool Board::IsMoveLegal(Move move) const {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
+[[nodiscard]] bool Board::MoveGivesCheck(Move move) const {
+  const auto their_king_square = state_.King(FlipColor(state_.turn)).PopLsb();
+
+  const auto from = move.GetFrom(), to = move.GetTo();
+  const auto piece = state_.GetPieceType(from);
+
+  BitBoard possible_moves;
+  switch (piece) {
+    case PieceType::kPawn:
+      possible_moves = move_gen::PawnAttacks(to, state_.turn);
+    case PieceType::kKnight:
+      possible_moves = move_gen::KnightMoves(to);
+      break;
+    case PieceType::kBishop:
+      possible_moves = move_gen::BishopMoves(to, 0);
+      break;
+    case PieceType::kRook:
+      possible_moves = move_gen::RookMoves(to, 0);
+      break;
+    case PieceType::kQueen:
+      possible_moves = move_gen::QueenMoves(to, 0);
+      break;
+    case PieceType::kKing:
+      possible_moves = move_gen::KingAttacks(to);
+      break;
+    default:
+      return false;
+  }
+
+  // Direct check
+  if (possible_moves.IsSet(their_king_square)) {
+    return true;
+  }
+
+  // Discovered check
+  const auto our_occupancy = state_.Occupied(state_.turn) ^ from;
+  if (move_gen::GetSlidingAttackersTo(
+          state_, their_king_square, our_occupancy, state_.turn)) {
+    return true;
+  }
+
+  return false;
+}
+
 template void Board::MakeMove<true>(Move move);
 template void Board::MakeMove<false>(Move move);
 
