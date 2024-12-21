@@ -656,7 +656,8 @@ Score Search::PVSearch(Thread &thread,
           (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
           depth * kRevFutMargin - improving_margin -
-          kRevFutOppWorseningMargin * opponent_worsening +
+          kRevFutOppWorseningMargin * opponent_worsening -
+          can_use_tt_eval * 15 +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
