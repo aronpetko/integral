@@ -241,12 +241,14 @@ Score Search::QuiescentSearch(Thread &thread,
 
   auto tt_move = Move::NullMove();
   bool tt_was_in_pv = in_pv_node;
+  bool tt_move_noisy = false;
   Score tt_static_eval = kScoreNone;
 
   if (tt_hit) {
     tt_was_in_pv |= tt_entry->GetWasPV();
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    tt_move_noisy = tt_move && tt_move.IsNoisy(state);
   }
 
   // Use the TT entry's evaluation if possible
@@ -273,8 +275,10 @@ Score Search::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack, raw_static_eval);
+    stack->static_eval = tt_move_noisy
+                           ? raw_static_eval
+                           : history.correction_history->CorrectStaticEval(
+                                 state, stack, raw_static_eval);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -495,7 +499,8 @@ Score Search::PVSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node,
+       tt_move_noisy = false;
   Score tt_static_eval = kScoreNone;
 
   const auto &tt_entry = transposition_table_.Probe(state.zobrist_key);
@@ -507,6 +512,7 @@ Score Search::PVSearch(Thread &thread,
     tt_was_in_pv |= tt_entry->GetWasPV();
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    tt_move_noisy = tt_move && tt_move.IsNoisy(state);
   }
 
   if (in_root) {
@@ -596,8 +602,10 @@ Score Search::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, state.zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack, raw_static_eval);
+    stack->static_eval = tt_move_noisy
+                           ? raw_static_eval
+                           : history.correction_history->CorrectStaticEval(
+                                 state, stack, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
