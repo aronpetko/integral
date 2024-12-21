@@ -142,7 +142,8 @@ void Search::IterativeDeepening(Thread &thread) {
     thread.scores[depth] = best_move.score;
 
     if (thread.IsMainThread() &&
-        time_mgmt_.ShouldStop(best_move.move, depth, thread)) {
+        (time_mgmt_.ShouldStop(best_move.move, depth, thread) ||
+         ShouldQuit(thread))) {
       break;
     }
 
@@ -434,6 +435,14 @@ Score Search::PVSearch(Thread &thread,
 
   stack->pv.Clear();
 
+  static thread_local int counter = 0;
+  if (thread.IsMainThread() && (++counter & 4095) == 0) {
+    counter = 0;
+    if (time_mgmt_.TimesUp(thread.nodes_searched)) {
+      stop_.store(true, std::memory_order_relaxed);
+    }
+  }
+
   if (ShouldQuit(thread)) {
     return 0;
   }
@@ -591,7 +600,7 @@ Score Search::PVSearch(Thread &thread,
         state, stack, raw_static_eval);
 
     // Adjust eval depending on if we can use the score stored in the TT
-    if (tt_hit &&
+    if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
@@ -657,7 +666,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Razoring: At low depths, if this node seems like it might fail low, we do
     // a quiescent search to determine if we should prune
-    if (!stack->excluded_tt_move && depth <= kRazoringDepth &&
+    if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
         stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
@@ -1065,6 +1074,8 @@ Score Search::PVSearch(Thread &thread,
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
+            history.pawn_history->UpdateScore(
+                state, stack, history_depth, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, history_depth, quiets);
           } else if (is_capture) {
@@ -1177,11 +1188,7 @@ void Search::QuitThreads() {
 }
 
 bool Search::ShouldQuit(Thread &thread) {
-  if (stop_.load(std::memory_order_relaxed)) return true;
-  if (thread.IsMainThread()) {
-    return time_mgmt_.TimesUp(thread.nodes_searched);
-  }
-  return false;
+  return stop_.load(std::memory_order_relaxed);
 }
 
 void Search::SetThreadCount(U16 count) {
