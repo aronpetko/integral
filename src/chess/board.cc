@@ -207,6 +207,10 @@ bool Board::IsMoveLegal(Move move) const {
   const auto from = move.GetFrom(), to = move.GetTo();
   const auto piece = state_.GetPieceType(from);
 
+  auto occupied = state_.Occupied();
+  occupied.ClearBit(from);
+  occupied.SetBit(to);
+
   BitBoard possible_moves;
   switch (piece) {
     case PieceType::kPawn:
@@ -215,13 +219,13 @@ bool Board::IsMoveLegal(Move move) const {
       possible_moves = move_gen::KnightMoves(to);
       break;
     case PieceType::kBishop:
-      possible_moves = move_gen::BishopMoves(to, 0);
+      possible_moves = move_gen::BishopMoves(to, occupied);
       break;
     case PieceType::kRook:
-      possible_moves = move_gen::RookMoves(to, 0);
+      possible_moves = move_gen::RookMoves(to, occupied);
       break;
     case PieceType::kQueen:
-      possible_moves = move_gen::QueenMoves(to, 0);
+      possible_moves = move_gen::QueenMoves(to, occupied);
       break;
     case PieceType::kKing:
       possible_moves = move_gen::KingAttacks(to);
