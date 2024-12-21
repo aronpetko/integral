@@ -846,6 +846,8 @@ Score Search::PVSearch(Thread &thread,
       reduction -= stack->history_score /
                    static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
+      reduction -=
+          move == stack->killer_moves[0] || move == stack->killer_moves[1];
       const int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
@@ -942,7 +944,7 @@ Score Search::PVSearch(Thread &thread,
         else if (tt_entry->score >= beta) {
           extensions = -2 + in_pv_node;
         } else if (cut_node) {
-          extensions = -2;
+          extensions = -1;
         }
       }
     }
