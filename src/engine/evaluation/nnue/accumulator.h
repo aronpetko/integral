@@ -104,11 +104,8 @@ class PerspectiveAccumulator {
                   Color piece_color) {
     const auto& table =
         GetFeatureTable(square, king_square, piece, piece_color, perspective);
-    const auto& factorizer_table = GetFactorizerTable(
-        square, king_square, piece, piece_color, perspective);
-
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] += table[i] + factorizer_table[i];
+      values_[i] += table[i];
     }
   }
 
@@ -119,10 +116,8 @@ class PerspectiveAccumulator {
                   Color piece_color) {
     const auto& table =
         GetFeatureTable(square, king_square, piece, piece_color, perspective);
-    const auto& factorizer_table = GetFactorizerTable(
-        square, king_square, piece, piece_color, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] -= table[i] + factorizer_table[i];
+      values_[i] -= table[i];
     }
   }
 
@@ -139,13 +134,8 @@ class PerspectiveAccumulator {
         add_square, king_square, add_piece, add_piece_color, perspective);
     const auto& sub_table = GetFeatureTable(
         sub_square, king_square, sub_piece, sub_piece_color, perspective);
-    const auto& factorizer_add_table = GetFactorizerTable(
-        add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& factorizer_sub_table = GetFactorizerTable(
-        sub_square, king_square, sub_piece, sub_piece_color, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] + factorizer_add_table[i] -
-                   sub_table[i] - factorizer_sub_table[i];
+      values_[i] = previous[i] + add_table[i] - sub_table[i];
     }
   }
 
@@ -163,20 +153,12 @@ class PerspectiveAccumulator {
                          Color sub_piece_color2) {
     const auto& add_table = GetFeatureTable(
         add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& factorizer_add_table = GetFactorizerTable(
-        add_square, king_square, add_piece, add_piece_color, perspective);
     const auto& sub_table1 = GetFeatureTable(
-        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& factorizer_sub1_table = GetFactorizerTable(
         sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
     const auto& sub_table2 = GetFeatureTable(
         sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
-    const auto& factorizer_sub2_table = GetFactorizerTable(
-        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] + factorizer_add_table[i] -
-                   sub_table1[i] - factorizer_sub1_table[i] - sub_table2[i] -
-                   factorizer_sub2_table[i];
+      values_[i] = previous[i] + add_table[i] - sub_table1[i] - sub_table2[i];
     }
   }
 
@@ -197,24 +179,14 @@ class PerspectiveAccumulator {
                             Color sub_piece_color2) {
     const auto& add_table1 = GetFeatureTable(
         add_square1, king_square, add_piece1, add_piece_color1, perspective);
-    const auto& factorizer_add1_table = GetFactorizerTable(
-        add_square1, king_square, add_piece1, add_piece_color1, perspective);
     const auto& add_table2 = GetFeatureTable(
-        add_square2, king_square, add_piece2, add_piece_color2, perspective);
-    const auto& factorizer_add2_table = GetFactorizerTable(
         add_square2, king_square, add_piece2, add_piece_color2, perspective);
     const auto& sub_table1 = GetFeatureTable(
         sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& factorizer_sub1_table = GetFactorizerTable(
-        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
     const auto& sub_table2 = GetFeatureTable(
         sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
-    const auto& factorizer_sub2_table = GetFactorizerTable(
-        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table1[i] + factorizer_add1_table[i] +
-                   factorizer_add2_table[i] + add_table2[i] - sub_table1[i] -
-                   factorizer_sub1_table[i] - factorizer_sub2_table[i] -
+      values_[i] = previous[i] + add_table1[i] + add_table2[i] - sub_table1[i] -
                    sub_table2[i];
     }
   }
