@@ -5,7 +5,7 @@
 
 namespace nnue::arch {
 
-constexpr std::size_t kHiddenLayerSize = 1536;
+constexpr std::size_t kHiddenLayerSize = 128;
 constexpr std::size_t kInputBucketCount = 9;
 constexpr std::size_t kOutputBucketCount = 8;
 
