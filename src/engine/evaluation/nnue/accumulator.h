@@ -13,14 +13,14 @@ constexpr U8 kBucketDivisor =
 
 // clang-format off
 constexpr std::array<int, 64> kKingBucketMap {
-0, 1, 2, 3, 3, 2, 1, 0,
-4, 4, 5, 5, 5, 5, 4, 4,
-6, 6, 6, 6, 6, 6, 6, 6,
-7, 7, 7, 7, 7, 7, 7, 7,
-8, 8, 8, 8, 8, 8, 8, 8,
-8, 8, 8, 8, 8, 8, 8, 8,
-8, 8, 8, 8, 8, 8, 8, 8,
-8, 8, 8, 8, 8, 8, 8, 8
+  0,  1,  2,  3,  3,  2,  1,  0,
+  4,  5,  6,  7,  7,  6,  5,  4,
+  8,  8,  9,  9,  9,  9,  8,  8,
+  10, 10, 10, 10, 10, 10, 10, 10,
+  10, 10, 10, 10, 10, 10, 10, 10,
+  12, 12, 12, 12, 12, 12, 12, 12,
+  12, 12, 12, 12, 12, 12, 12, 12,
+  12, 12, 12, 12, 12, 12, 12, 12,
 };
 // clang-format on
 
@@ -40,11 +40,11 @@ struct AccumulatorChange {
   } type;
 };
 
-static std::array<float, arch::kL1Size>& GetFeatureTable(Square square,
-                                                         Square king_square,
-                                                         PieceType piece,
-                                                         Color piece_color,
-                                                         Color perspective) {
+static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
+                                                       Square king_square,
+                                                       PieceType piece,
+                                                       Color piece_color,
+                                                       Color perspective) {
   square = square ^ ((king_square.File() >= kFileE) * 0b111);
 
   const int relative_king_square = king_square ^ (56 * perspective);
@@ -55,21 +55,6 @@ static std::array<float, arch::kL1Size>& GetFeatureTable(Square square,
 
   return network
       ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx];
-}
-
-static std::array<float, arch::kL1Size>& GetFactorizerTable(Square square,
-                                                            Square king_square,
-                                                            PieceType piece,
-                                                            Color piece_color,
-                                                            Color perspective) {
-  square = square ^ ((king_square.File() >= kFileE) * 0b111);
-
-  const int square_idx = square ^ 56 * perspective;
-  const int color_idx = perspective != piece_color;
-  const int piece_idx = piece;
-
-  return network->feature_weights[arch::kInputBucketCount - 1][color_idx]
-                                 [piece_idx][square_idx];
 }
 
 class PerspectiveAccumulator {
@@ -241,16 +226,16 @@ class PerspectiveAccumulator {
     }
   }
 
-  float& operator[](int idx) {
+  I16& operator[](int idx) {
     return values_[idx];
   }
 
-  const float& operator[](int idx) const {
+  const I16& operator[](int idx) const {
     return values_[idx];
   }
 
  private:
-  alignas(64) std::array<float, arch::kL1Size> values_;
+  alignas(64) std::array<I16, arch::kL1Size> values_;
 };
 
 struct AccumulatorEntry {

@@ -5,16 +5,16 @@
 
 namespace nnue::arch {
 
-constexpr std::size_t kL1Size = 1536;
+constexpr std::size_t kL1Size = 1024;
 constexpr std::size_t kL2Size = 16;
 constexpr std::size_t kL3Size = 32;
-constexpr std::size_t kInputBucketCount = 10;
+constexpr std::size_t kInputBucketCount = 13;
 constexpr std::size_t kOutputBucketCount = 8;
 
 constexpr std::int32_t kL1Quantization = 255;
 constexpr std::int32_t kOutputQuantization = 64;
 
-constexpr std::int32_t kEvalScale = 400;
+constexpr std::int32_t kEvalScale = 200;
 
 };  // namespace nnue::arch
 
