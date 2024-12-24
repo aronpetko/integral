@@ -341,7 +341,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
     stack->move = move;
     stack->moved_piece = state.GetPieceType(move.GetFrom());
-    stack->capture_move = move.IsCapture(state);
+    stack->capture_move = move.IsNoisy(state);
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
     stack->history_score =
@@ -610,13 +610,9 @@ Score Search::PVSearch(Thread &thread,
   }
 
   const auto &prev_stack = stack - 1;
-  if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
-      !prev_stack->in_check) {
-    const int bonus =
-        std::clamp<int>(-kEvalHistUpdateMult *
-                            (stack->static_eval + prev_stack->static_eval) / 10,
-                        -kEvalHistUpdateMin,
-                        kEvalHistUpdateMax);
+  if (prev_stack->move && !prev_stack->capture_move && !prev_stack->in_check) {
+    const int their_loss = (stack->static_eval + prev_stack->static_eval) * -10;
+    const int bonus = std::clamp(their_loss, -1500, 1500) + 600;
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
   }
@@ -754,7 +750,7 @@ Score Search::PVSearch(Thread &thread,
           // history
           stack->move = move;
           stack->moved_piece = state.GetPieceType(move.GetFrom());
-          stack->capture_move = move.IsCapture(state);
+          stack->capture_move = move.IsNoisy(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
           stack->history_score = move.IsCapture(state)
@@ -950,7 +946,7 @@ Score Search::PVSearch(Thread &thread,
     // Set the currently searched move in the stack for continuation history
     stack->move = move;
     stack->moved_piece = state.GetPieceType(move.GetFrom());
-    stack->capture_move = move.IsCapture(state);
+    stack->capture_move = move.IsNoisy(state);
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
 
