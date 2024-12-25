@@ -23,7 +23,7 @@ struct RawNetwork {
 struct alignas(64) AlignedNetwork {
 alignas(64) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
 alignas(64) MultiArray<I16, arch::kL1Size> feature_biases;
-alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL1Size,  arch::kL2Size> l1_weights;
+alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL1Size, arch::kL2Size> l1_weights;
 alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size> l1_biases;
 alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size, arch::kL3Size> l2_weights;
 alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l2_biases;

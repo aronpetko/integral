@@ -29,12 +29,12 @@ I32 SquaredCReLU(I16 value) {
 }
 #endif
 
-[[nodiscard]] float CReLU(float value) {
-  return std::clamp<float>(value, 0.0, 1.0f);
+[[nodiscard]] I32 CReLU(I16 value) {
+  return std::clamp<I32>(value, 0, arch::kL1Quantization);
 }
 
-[[nodiscard]] I32 SCReLU(I16 value) {
-  const I32 clipped = std::clamp<I32>(value, 0, 255);
+[[nodiscard]] float SCReLU(float value) {
+  const float clipped = std::clamp<float>(value, 0.0f, 1.0f);
   return clipped * clipped;
 }
 
@@ -63,29 +63,28 @@ Score Evaluate(Board &board) {
   const auto bucket = accumulator.GetOutputBucket(state);
 
   // Activate the feature layer via pair-wise CReLU multiplication
-  std::array<I32, arch::kL1Size> feature_output{};
+  std::array<float, arch::kL1Size> feature_output{};
   for (int i = 0; i < arch::kL1Size / 2; i++) {
-    const I32 our_value = SCReLU(accumulator[turn][i]) *
-                          SCReLU(accumulator[turn][i + arch::kL1Size / 2]);
-    feature_output[i] = our_value;
+    const I32 our_value = CReLU(accumulator[turn][i]) *
+                          CReLU(accumulator[turn][i + arch::kL1Size / 2]);
+    feature_output[i] = our_value / 255.0f;
 
-    const I32 their_value = SCReLU(accumulator[!turn][i]) *
-                            SCReLU(accumulator[!turn][i + arch::kL1Size / 2]);
-    feature_output[i + arch::kL1Size / 2] = their_value;
+    const I32 their_value = CReLU(accumulator[!turn][i]) *
+                            CReLU(accumulator[!turn][i + arch::kL1Size / 2]);
+    feature_output[i + arch::kL1Size / 2] = their_value / 255.0f;
   }
 
   // Forward the feature layer neurons to the 2nd layer
   std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL1Size; i++) {
-    float dequantized_feature = feature_output[i] / 255.0f; // Dequantize feature output
     for (int j = 0; j < arch::kL2Size; j++) {
-      l1_output[j] += dequantized_feature * network->l1_weights[bucket][i][j];
+      l1_output[j] += feature_output[i] * network->l1_weights[bucket][i][j];
     }
   }
 
   // Activate 2nd layer neurons
   for (int i = 0; i < arch::kL2Size; i++) {
-    l1_output[i] = CReLU(l1_output[i] + network->l1_biases[bucket][i]);
+    l1_output[i] = SCReLU(l1_output[i] + network->l1_biases[bucket][i]);
   }
 
   // Forward the 2nd layer neurons to the 3rd layer
@@ -98,7 +97,7 @@ Score Evaluate(Board &board) {
 
   // Activate 3rd layer neurons
   for (int i = 0; i < arch::kL3Size; i++) {
-    l2_output[i] = CReLU(l2_output[i] + network->l2_biases[bucket][i]);
+    l2_output[i] = SCReLU(l2_output[i] + network->l2_biases[bucket][i]);
   }
 
   // Forward 3rd layer neurons to output layer
