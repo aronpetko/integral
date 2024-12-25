@@ -67,11 +67,11 @@ Score Evaluate(Board &board) {
   for (int i = 0; i < arch::kL1Size / 2; i++) {
     const I32 our_value = CReLU(accumulator[turn][i]) *
                           CReLU(accumulator[turn][i + arch::kL1Size / 2]);
-    feature_output[i] = our_value / 255.0f;
+    feature_output[i] = our_value / (255.0f * 255.0f);
 
     const I32 their_value = CReLU(accumulator[!turn][i]) *
                             CReLU(accumulator[!turn][i + arch::kL1Size / 2]);
-    feature_output[i + arch::kL1Size / 2] = their_value / 255.0f;
+    feature_output[i + arch::kL1Size / 2] = their_value  /(255.0f * 255.0f);
   }
 
   // Forward the feature layer neurons to the 2nd layer
