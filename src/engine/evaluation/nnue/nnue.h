@@ -12,9 +12,9 @@ namespace nnue {
 struct RawNetwork {
   MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   MultiArray<I16, arch::kL1Size> feature_biases;
-  MultiArray<float, arch::kOutputBucketCount, arch::kL1Size, arch::kL2Size> l1_weights;
+  MultiArray<float, arch::kOutputBucketCount, arch::kL2Size, arch::kL1Size> l1_weights;
   MultiArray<float, arch::kOutputBucketCount, arch::kL2Size> l1_biases;
-  MultiArray<float, arch::kOutputBucketCount, arch::kL2Size, arch::kL3Size> l2_weights;
+  MultiArray<float, arch::kOutputBucketCount, arch::kL3Size, arch::kL2Size> l2_weights;
   MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l2_biases;
   MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l3_weights;
   MultiArray<float, arch::kOutputBucketCount> l3_biases;
@@ -23,9 +23,9 @@ struct RawNetwork {
 struct alignas(64) AlignedNetwork {
 alignas(64) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
 alignas(64) MultiArray<I16, arch::kL1Size> feature_biases;
-alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL1Size, arch::kL2Size> l1_weights;
+alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size, arch::kL1Size> l1_weights;
 alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size> l1_biases;
-alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size, arch::kL3Size> l2_weights;
+alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size, arch::kL2Size> l2_weights;
 alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l2_biases;
 alignas(64) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l3_weights;
 alignas(64) MultiArray<float, arch::kOutputBucketCount> l3_biases;

@@ -78,7 +78,7 @@ Score Evaluate(Board &board) {
   std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL1Size; i++) {
     for (int j = 0; j < arch::kL2Size; j++) {
-      l1_output[j] += feature_output[i] * network->l1_weights[bucket][i][j];
+      l1_output[j] += feature_output[i] * network->l1_weights[bucket][j][i];
     }
   }
 
@@ -91,7 +91,7 @@ Score Evaluate(Board &board) {
   std::array<float, arch::kL3Size> l2_output{};
   for (int i = 0; i < arch::kL2Size; i++) {
     for (int j = 0; j < arch::kL3Size; j++) {
-      l2_output[j] += l1_output[i] * network->l2_weights[bucket][i][j];
+      l2_output[j] += l1_output[i] * network->l2_weights[bucket][j][i];
     }
   }
 
