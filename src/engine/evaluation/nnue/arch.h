@@ -5,7 +5,7 @@
 
 namespace nnue::arch {
 
-constexpr std::size_t kL1Size = 1024;
+constexpr std::size_t kL1Size = 1280;
 constexpr std::size_t kL2Size = 16;
 constexpr std::size_t kL3Size = 32;
 constexpr std::size_t kInputBucketCount = 12;
