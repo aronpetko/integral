@@ -131,6 +131,30 @@ inline int ReduceAddEpi32(Vepi32 v) {
   return _mm512_reduce_add_epi32(v);
 }
 
+inline __m512 ConvertEpi16uToPs(Vepi16 v) {
+  return _mm512_cvtepu16_ps(v);  // Direct conversion from u16 to float
+}
+
+inline __m512 ConvertEpi32ToPs(Vepi32 v) {
+  return _mm512_cvtepi32_ps(v);
+}
+
+inline void StorePs(float* memory_address, __m512 v) {
+  _mm512_store_ps(memory_address, v);
+}
+
+inline __m512 SetPs(float value) {
+  return _mm512_set1_ps(value);
+}
+
+inline __m512 MultiplyPs(__m512 v1, __m512 v2) {
+  return _mm512_mul_ps(v1, v2);
+}
+
+inline void StoreEpi32(void* memory_address, Vepi32 vector) {
+  _mm512_store_si512(memory_address, vector);
+}
+
 #elif BUILD_HAS_AVX2
 
 using Vepi16 = __m256i;
@@ -202,6 +226,26 @@ inline int ReduceAddEpi32(Vepi32 vector) {
 
   // Return the bottom 32 bits of sum32
   return _mm_cvtsi128_si32(sum32);
+}
+
+inline __m256 ConvertEpi32ToPs(Vepi32 v) {
+  return _mm256_cvtepi32_ps(v);
+}
+
+inline void StorePs(float* memory_address, __m256 v) {
+  _mm256_store_ps(memory_address, v);
+}
+
+inline __m256 SetPs(float value) {
+  return _mm256_set1_ps(value);
+}
+
+inline __m256 MultiplyPs(__m256 v1, __m256 v2) {
+  return _mm256_mul_ps(v1, v2);
+}
+
+inline void StoreEpi32(void* memory_address, Vepi32 vector) {
+  _mm256_store_si256(reinterpret_cast<__m256i*>(memory_address), vector);
 }
 
 #endif  // AVX2

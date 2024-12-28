@@ -37,11 +37,6 @@ I32 SquaredCReLU(I16 value) {
   return std::clamp<float>(value, 0.0f, 1.0f);
 }
 
-[[nodiscard]] float SCReLU(float value) {
-  const float clipped = std::clamp<float>(value, 0.0f, 1.0f);
-  return clipped * clipped;
-}
-
 void LoadFromIncBin() {
   auto raw_network = std::make_unique<RawNetwork>();
   std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
@@ -66,6 +61,37 @@ Score Evaluate(Board &board) {
   const auto turn = state.turn;
   const auto bucket = accumulator.GetOutputBucket(state);
 
+#ifdef BUILD_HAS_SIMD
+  constexpr int kChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
+
+  constexpr float scale =
+      1.0f / static_cast<float>(arch::kL1Quantization * arch::kL1Quantization);
+  const auto scale_vector = simd::SetPs(scale);
+
+  alignas(64) std::array<float, arch::kL1Size> feature_output{};
+  for (int i = 0; i < arch::kL1Size / 2; i += kChunkSize) {
+    const auto accumulator_value = simd::LoadEpi16(&accumulator[turn][i]);
+    const auto pair_accumulator_value =
+        simd::LoadEpi16(&accumulator[turn][i + arch::kL1Size / 2]);
+
+    // Clip accumulator values (CReLU)
+    const auto clipped_value =
+        simd::Clip(accumulator_value, arch::kL1Quantization);
+    const auto clipped_pair_value =
+        simd::Clip(pair_accumulator_value, arch::kL1Quantization);
+
+    // Perform the pair-wise multiplication
+    const auto feature =
+        simd::MultiplyEpi16(clipped_value, clipped_pair_value);
+
+    // Convert it to a float vector and store it
+    const auto float_result =
+        simd::MultiplyPs(simd::ConvertEpi32ToPs(feature), scale_vector);
+    simd::StorePs(&feature_output[i], float_result);
+  }
+
+  alignas(64) std::array<float, arch::kL2Size> l1_output{};
+#else
   // Activate the feature layer via pair-wise CReLU multiplication
   std::array<float, arch::kL1Size> feature_output{};
   for (int i = 0; i < arch::kL1Size / 2; i++) {
@@ -75,7 +101,7 @@ Score Evaluate(Board &board) {
 
     const I32 their_value = CReLU(accumulator[!turn][i]) *
                             CReLU(accumulator[!turn][i + arch::kL1Size / 2]);
-    feature_output[i + arch::kL1Size / 2] = their_value  /(255.0f * 255.0f);
+    feature_output[i + arch::kL1Size / 2] = their_value / (255.0f * 255.0f);
   }
 
   // Forward the feature layer neurons to the 2nd layer
@@ -112,6 +138,7 @@ Score Evaluate(Board &board) {
 
   // Scale output
   return static_cast<Score>(l3_output * arch::kEvalScale);
+#endif
 }
 
 }  // namespace nnue
