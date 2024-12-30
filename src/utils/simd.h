@@ -78,14 +78,37 @@ namespace simd {
 
 #if BUILD_HAS_AVX512
 
+using Vepi8 = __m512i;
 using Vepi16 = __m512i;
 using Vepi32 = __m512i;
+using Vepf32 = __m512;
+
+constexpr int kPackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
+
+constexpr int kAlignment = std::max<int>(8, sizeof(Vepi16));
+
+#ifdef BUILD_HAS_AVX512VNNI
+inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
+  return _mm512_dpbusd_epi32(sum, first, second);
+}
+#else
+inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
+  VecI32 sum32 = _mm512_madd_epi16(_mm512_maddubs_epi16(first, second),
+                                   _mm512_set1_epi16(1));
+  return _mm512_add_epi32(sum32, sum);
+}
+#endif
 
 inline Vepi16 ZeroEpi16() {
   return _mm512_setzero_si512();
 }
+
 inline Vepi32 ZeroEpi32() {
   return _mm512_setzero_si512();
+}
+
+inline Vepf32 ZeroPs() {
+  return _mm512_setzero_ps();
 }
 
 inline Vepi16 LoadEpi16(const int16_t* memory_address) {
@@ -123,6 +146,30 @@ inline Vepi32 MultiplyAddEpi16(Vepi16 v1, Vepi16 v2) {
   return _mm512_madd_epi16(v1, v2);
 }
 
+inline Vepi16 SlliEpi16(Vepi16 x, int shift) {
+  return _mm512_slli_epi16(x, shift);
+}
+
+inline Vepi16 MulhiEpi16(Vepi16 x, Vepi16 y) {
+  return _mm512_mulhi_epi16(x, y);
+}
+
+inline Vepi16 Min(Vepi16 one, Vepi16 two) {
+  return _mm512_min_epi16(one, two);
+}
+
+inline Vepf32 Max(Vepf32 one, Vepf32 two) {
+  return _mm512_max_ps(one, two);
+}
+
+inline Vepf32 MinPs(Vepf32 one, Vepf32 two) {
+  return _mm512_min_ps(one, two);
+}
+
+inline Vepf32 MaxPs(Vepf32 one, Vepf32 two) {
+  return _mm512_max_ps(one, two);
+}
+
 inline Vepi16 Clip(Vepi16 vector, int l1q) {
   return _mm512_min_epi16(_mm512_max_epi16(vector, ZeroEpi16()), SetEpi16(l1q));
 }
@@ -131,8 +178,12 @@ inline int ReduceAddEpi32(Vepi32 v) {
   return _mm512_reduce_add_epi32(v);
 }
 
-inline __m512 ConvertEpi16uToPs(Vepi16 v) {
-  return _mm512_cvtepu16_ps(v);  // Direct conversion from u16 to float
+inline float ReduceAddPs(Vepf32 v) {
+  return _mm512_reduce_add_ps(v);
+}
+
+inline Vepi16 PackusEpi16(Vepi16 a, Vepi16 b) {
+  return _mm512_packus_epi16(a, b);
 }
 
 inline __m512 ConvertEpi32ToPs(Vepi32 v) {
@@ -151,6 +202,10 @@ inline __m512 MultiplyPs(__m512 v1, __m512 v2) {
   return _mm512_mul_ps(v1, v2);
 }
 
+inline __m512 MultiplyAddPs(__m512 sum, __m512 v1, __m512 v2) {
+  return _mm512_fmadd_ps(sum, v1, v2);
+}
+
 inline void StoreEpi32(void* memory_address, Vepi32 vector) {
   _mm512_store_si512(memory_address, vector);
 }
@@ -159,6 +214,12 @@ inline void StoreEpi32(void* memory_address, Vepi32 vector) {
 
 using Vepi16 = __m256i;
 using Vepi32 = __m256i;
+
+inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
+  VecI32 sum32 = _mm256_madd_epi16(_mm256_maddubs_epi16(first, second),
+                                   _mm256_set1_epi16(1));
+  return _mm256_add_epi32(sum32, sum);
+}
 
 inline Vepi16 ZeroEpi16() {
   return _mm256_setzero_si256();
@@ -198,6 +259,34 @@ inline Vepi32 MultiplyAddEpi16(Vepi16 v1, Vepi16 v2) {
   return _mm256_madd_epi16(v1, v2);
 }
 
+inline Vepi16 MulhiEpi16(Vepi16 a, Vepi16 b) {
+  return _mm256_mulhi_epi16(a, b);
+}
+
+inline Vepi16 SlliEpi16(Vepi16 a, int shift) {
+  return _mm256_slli_epi16(a, shift);
+}
+
+inline Vepi16 PackusEpi16(Vepi16 a, Vepi16 b) {
+  return _mm256_packus_epi16(a, b);
+}
+
+inline Vepi16 Min(Vepi16 one, Vepi16 two) {
+  return _mm256_min_epi16(one, two);
+}
+
+inline Vepi16 Max(Vepi16 one, Vepi16 two) {
+  return _mm256_max_epi16(one, two);
+}
+
+inline Vepf32 MaxPs(Vepf32 one, Vepf32 two) {
+  return _mm256_max_ps(one, two);
+}
+
+inline Vepf32 MinPs(Vepf32 one, Vepf32 two) {
+  return _mm256_min_ps(one, two);
+}
+
 inline Vepi16 Clip(Vepi16 vector, int l1q) {
   return _mm256_min_epi16(_mm256_max_epi16(vector, ZeroEpi16()), SetEpi16(l1q));
 }
@@ -226,6 +315,10 @@ inline int ReduceAddEpi32(Vepi32 vector) {
 
   // Return the bottom 32 bits of sum32
   return _mm_cvtsi128_si32(sum32);
+}
+
+inline float ReduceAddPs(Vepf32 v) {
+  return _mm256_reduce_add_ps(v);
 }
 
 inline __m256 ConvertEpi32ToPs(Vepi32 v) {
