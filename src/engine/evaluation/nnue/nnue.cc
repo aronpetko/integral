@@ -37,49 +37,85 @@ I32 SquaredCReLU(I16 value) {
   return std::clamp<float>(value, 0.0f, 1.0f);
 }
 
-void TransposeWeightsForPackus(std::unique_ptr<AlignedNetwork> &network) {
-  constexpr int weightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
-  constexpr int NumRegs = sizeof(simd::Vepi8) / sizeof(__m128i);
-  __m128i regs[NumRegs];
+void TransposeL1Weights() {
+  // Create a temporary buffer to store transposed weights
+  auto temp = std::make_unique<std::array<I8, sizeof(network->l1_weights)>>();
 
-  // Process feature weights
-  __m128i *weights =
-      reinterpret_cast<__m128i *>(network->feature_weights.data());
-  for (int i = 0;
-       i < arch::kInputBucketCount * 2 * PieceType::kNumPieceTypes *
-               Squares::kSquareCount * arch::kL1Size / weightsPerBlock;
-       i += NumRegs) {
-    for (int j = 0; j < NumRegs; j++) regs[j] = weights[i + j];
+  constexpr int kChannels = sizeof(I32) / sizeof(I8);  // INT8_PER_INT32
 
-    for (int j = 0; j < NumRegs; j++)
-      weights[i + j] = regs[simd::kPackusOrder[j]];
+  // Get raw pointer to source (original) and destination (temp buffer)
+  const I8 *src = reinterpret_cast<const I8 *>(network->l1_weights.data());
+  I8 *dst = temp->data();
+
+  for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
+    for (int l1 = 0; l1 < arch::kL1Size / kChannels; l1++) {
+      for (int l2 = 0; l2 < arch::kL2Size; l2++) {
+        for (int c = 0; c < kChannels; c++) {
+          // Destination layout: [b][l1_group * L2_SIZE * INT8_PER_INT32 + l2 *
+          // INT8_PER_INT32 + c]
+          const int dst_idx = bucket * (arch::kL1Size * arch::kL2Size) +
+                              (l1 * kChannels * arch::kL2Size) +
+                              (l2 * kChannels) + c;
+
+          // Source layout: [(l1 * INT8_PER_INT32 + c) * OUTPUT_BUCKETS *
+          // L2_SIZE + b * L2_SIZE + l2]
+          const int src_idx = (l1 * kChannels + c) *
+                                  (arch::kOutputBucketCount * arch::kL2Size) +
+                              bucket * arch::kL2Size + l2;
+
+          dst[dst_idx] = src[src_idx];
+        }
+      }
+    }
   }
 
-  // Process feature biases
-  __m128i *biases = reinterpret_cast<__m128i *>(network->feature_biases.data());
-  for (int i = 0; i < arch::kL1Size / weightsPerBlock; i += NumRegs) {
-    for (int j = 0; j < NumRegs; j++) regs[j] = biases[i + j];
-
-    for (int j = 0; j < NumRegs; j++)
-      biases[i + j] = regs[simd::kPackusOrder[j]];
-  }
+  // Copy back the transposed data
+  std::memcpy(
+      network->l1_weights.data(), temp->data(), sizeof(network->l1_weights));
 }
 
 void LoadFromIncBin() {
+  // Load raw network from binary data
   auto raw_network = std::make_unique<RawNetwork>();
   std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
 
-  network = std::make_unique<AlignedNetwork>();
+  network = std::make_unique<ProcessedNetwork>();
+
+  // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
-  network->l1_weights = raw_network->l1_weights;
   network->l1_biases = raw_network->l1_biases;
-  network->l2_weights = raw_network->l2_weights;
   network->l2_biases = raw_network->l2_biases;
   network->l3_weights = raw_network->l3_weights;
   network->l3_biases = raw_network->l3_biases;
 
-  TransposeWeightsForPackus(network);
+  // Transpose l1_weights from [b][l2][l1] to [b][l1][l2]
+  for (int b = 0; b < arch::kOutputBucketCount; b++) {
+    for (int l1 = 0; l1 < arch::kL1Size; l1++) {
+      for (int l2 = 0; l2 < arch::kL2Size; l2++) {
+        network->l1_weights[b][l1][l2] = raw_network->l1_weights[b][l2][l1];
+      }
+    }
+  }
+
+  {
+    const auto tmp = std::make_shared<ProcessedNetwork>(*network);
+    for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++)
+      for (int i = 0; i < arch::kL1Size; i += 4)
+        for (int j = 0; j < arch::kL2Size; ++j)
+          for (int k = 0; k < 4; k++)
+            network->l1_weights_alt[bucket][i * arch::kL2Size + j * 4 + k] =
+                tmp->l1_weights[bucket][i + k][j];
+  }
+
+  // Transpose l2_weights from [b][l3][l2] to [b][l2][l3]
+  for (int b = 0; b < arch::kOutputBucketCount; b++) {
+    for (int l2 = 0; l2 < arch::kL2Size; l2++) {
+      for (int l3 = 0; l3 < arch::kL3Size; l3++) {
+        network->l2_weights[b][l2][l3] = raw_network->l2_weights[b][l3][l2];
+      }
+    }
+  }
 }
 
 Score Evaluate(Board &board) {
@@ -95,9 +131,9 @@ Score Evaluate(Board &board) {
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
   constexpr int kF32ChunkSize = sizeof(simd::Vepi16) / sizeof(float);
-  constexpr int kFtShift = 9;
+  constexpr int kFtShift = 10;
 
-  const auto quantise_vector = simd::SetEpi16(arch::kL1Quantization);
+  const auto quantise_vector = simd::SetEpi16(arch::kFtQuantization);
 
   int counter = 0;
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output{};
@@ -109,7 +145,7 @@ Score Evaluate(Board &board) {
       const auto pair_accumulator_value =
           simd::LoadEpi16(&stm_accumulator[i + arch::kL1Size / 2]);
       const auto clipped_value =
-          simd::Clip(accumulator_value, arch::kL1Quantization);
+          simd::Clip(accumulator_value, arch::kFtQuantization);
       const auto clipped_pair_value =
           simd::Min(pair_accumulator_value, quantise_vector);
 
@@ -119,7 +155,7 @@ Score Evaluate(Board &board) {
       const auto pair_accumulator_value1 = simd::LoadEpi16(
           &stm_accumulator[i + arch::kL1Size / 2 + kI16ChunkSize]);
       const auto clipped_value1 =
-          simd::Clip(accumulator_value1, arch::kL1Quantization);
+          simd::Clip(accumulator_value1, arch::kFtQuantization);
       const auto clipped_pair_value1 =
           simd::Min(pair_accumulator_value1, quantise_vector);
 
@@ -146,7 +182,7 @@ Score Evaluate(Board &board) {
         simd::SetEpi32(*std::bit_cast<U32 *>(&feature_output[i]));
     for (int j = 0; j < arch::kL2Size; j += kF32ChunkSize) {
       const auto weight_vector =
-          *reinterpret_cast<simd::Vepi32 *>(&network->l1_weights[bucket][j][i]);
+          *reinterpret_cast<simd::Vepi8 *>(&network->l1_weights[bucket][i][j]);
       auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
       features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
     }
@@ -183,7 +219,7 @@ Score Evaluate(Board &board) {
     const auto l1_vector = simd::SetPs(l1_output[i]);
     for (int j = 0; j < arch::kL3Size; j += kF32ChunkSize) {
       const auto weight_vector =
-          *reinterpret_cast<simd::Vepf32 *>(&network->l2_weights[bucket][j][i]);
+          *reinterpret_cast<simd::Vepf32 *>(&network->l2_weights[bucket][i][j]);
       auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[j]);
       features = simd::MultiplyAddPs(weight_vector, l1_vector, features);
     }

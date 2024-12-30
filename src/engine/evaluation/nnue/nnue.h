@@ -21,19 +21,22 @@ struct RawNetwork {
   MultiArray<float, arch::kOutputBucketCount> l3_biases;
 };
 
-struct alignas(simd::kAlignment) AlignedNetwork {
+struct alignas(simd::kAlignment) ProcessedNetwork {
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
-  alignas(simd::kAlignment) MultiArray<I8, arch::kOutputBucketCount, arch::kL2Size, arch::kL1Size> l1_weights;
+  union {
+    alignas(simd::kAlignment) MultiArray<I8, arch::kOutputBucketCount, arch::kL1Size, arch::kL2Size> l1_weights;
+    alignas(simd::kAlignment) MultiArray<I8, arch::kOutputBucketCount, arch::kL1Size * arch::kL2Size> l1_weights_alt;
+  };
   alignas(simd::kAlignment) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size> l1_biases;
-  alignas(simd::kAlignment) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size, arch::kL2Size> l2_weights;
+  alignas(simd::kAlignment) MultiArray<float, arch::kOutputBucketCount, arch::kL2Size, arch::kL3Size> l2_weights;
   alignas(simd::kAlignment) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l2_biases;
   alignas(simd::kAlignment) MultiArray<float, arch::kOutputBucketCount, arch::kL3Size> l3_weights;
   alignas(simd::kAlignment) MultiArray<float, arch::kOutputBucketCount> l3_biases;
 };
 // clang-format on
 
-inline std::unique_ptr<AlignedNetwork> network = nullptr;
+inline std::shared_ptr<ProcessedNetwork> network = nullptr;
 
 class Accumulator;
 

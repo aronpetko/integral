@@ -183,7 +183,9 @@ inline float ReduceAddPs(Vepf32 v) {
 }
 
 inline Vepi16 PackusEpi16(Vepi16 a, Vepi16 b) {
-  return _mm512_packus_epi16(a, b);
+  const auto packed = _mm512_packus_epi16(a, b);
+  return _mm512_permutexvar_epi64(_mm512_setr_epi64(0, 2, 4, 6, 1, 3, 5, 7),
+                                  packed);
 }
 
 inline __m512 ConvertEpi32ToPs(Vepi32 v) {
