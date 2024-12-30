@@ -37,43 +37,6 @@ I32 SquaredCReLU(I16 value) {
   return std::clamp<float>(value, 0.0f, 1.0f);
 }
 
-void TransposeL1Weights() {
-  // Create a temporary buffer to store transposed weights
-  auto temp = std::make_unique<std::array<I8, sizeof(network->l1_weights)>>();
-
-  constexpr int kChannels = sizeof(I32) / sizeof(I8);  // INT8_PER_INT32
-
-  // Get raw pointer to source (original) and destination (temp buffer)
-  const I8 *src = reinterpret_cast<const I8 *>(network->l1_weights.data());
-  I8 *dst = temp->data();
-
-  for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
-    for (int l1 = 0; l1 < arch::kL1Size / kChannels; l1++) {
-      for (int l2 = 0; l2 < arch::kL2Size; l2++) {
-        for (int c = 0; c < kChannels; c++) {
-          // Destination layout: [b][l1_group * L2_SIZE * INT8_PER_INT32 + l2 *
-          // INT8_PER_INT32 + c]
-          const int dst_idx = bucket * (arch::kL1Size * arch::kL2Size) +
-                              (l1 * kChannels * arch::kL2Size) +
-                              (l2 * kChannels) + c;
-
-          // Source layout: [(l1 * INT8_PER_INT32 + c) * OUTPUT_BUCKETS *
-          // L2_SIZE + b * L2_SIZE + l2]
-          const int src_idx = (l1 * kChannels + c) *
-                                  (arch::kOutputBucketCount * arch::kL2Size) +
-                              bucket * arch::kL2Size + l2;
-
-          dst[dst_idx] = src[src_idx];
-        }
-      }
-    }
-  }
-
-  // Copy back the transposed data
-  std::memcpy(
-      network->l1_weights.data(), temp->data(), sizeof(network->l1_weights));
-}
-
 void LoadFromIncBin() {
   // Load raw network from binary data
   auto raw_network = std::make_unique<RawNetwork>();
@@ -131,11 +94,10 @@ Score Evaluate(Board &board) {
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
   constexpr int kF32ChunkSize = sizeof(simd::Vepi16) / sizeof(float);
-  constexpr int kFtShift = 10;
+  constexpr int kFtShift = 9;
 
   const auto quantise_vector = simd::SetEpi16(arch::kFtQuantization);
 
-  int counter = 0;
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output{};
   for (int them = 0; them <= 1; them++) {
     const auto &stm_accumulator = accumulator[state.turn ^ them];
