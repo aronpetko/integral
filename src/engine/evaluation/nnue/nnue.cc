@@ -209,47 +209,59 @@ Score Evaluate(Board &board) {
 
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
-  std::array<float, arch::kL1Size> feature_output{};
-  for (int i = 0; i < arch::kL1Size / 2; i++) {
-    const I32 our_value = CReLU(accumulator[turn][i]) *
-                          CReLU(accumulator[turn][i + arch::kL1Size / 2]);
-    feature_output[i] = our_value / (255.0f * 255.0f);
+  std::array<U8, arch::kL1Size> feature_output{};
+  for (int them = 0; them <= 1; them++) {
+    const auto &stm_accumulator = accumulator[state.turn ^ them];
+    for (int i = 0; i < arch::kL1Size / 2; i++) {
+      const auto first_val = CReLU(stm_accumulator[i]);
+      const auto second_val = CReLU(stm_accumulator[i + arch::kL1Size / 2]);
 
-    const I32 their_value = CReLU(accumulator[!turn][i]) *
-                            CReLU(accumulator[!turn][i + arch::kL1Size / 2]);
-    feature_output[i + arch::kL1Size / 2] = their_value / (255.0f * 255.0f);
+      const auto product = (first_val * second_val) >> 9;
+      feature_output[i + them * arch::kL1Size / 2] = static_cast<U8>(product);
+    }
   }
 
+  const float kL1Normalization =
+      static_cast<float>(1 << 9) /
+      static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
+                         arch::kL1Quantization);
+
   // Forward the feature layer neurons to the 2nd layer
-  std::array<float, arch::kL2Size> l1_output{};
+  std::array<I32, arch::kL2Size> l1_sums{};
   for (int i = 0; i < arch::kL1Size; i++) {
     for (int j = 0; j < arch::kL2Size; j++) {
-      l1_output[j] += feature_output[i] * network->l1_weights[bucket][j][i];
+      l1_sums[j] += feature_output[i] * network->l1_weights[bucket][i][j];
     }
   }
 
   // Activate 2nd layer neurons
+  std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL2Size; i++) {
-    l1_output[i] = CReLU(l1_output[i] + network->l1_biases[bucket][i]);
+    l1_output[i] = CReLU(std::fma(static_cast<float>(l1_sums[i]),
+                                  kL1Normalization,
+                                  network->l1_biases[bucket][i]));
   }
 
   // Forward the 2nd layer neurons to the 3rd layer
   std::array<float, arch::kL3Size> l2_output{};
+  std::memcpy(
+      l2_output.data(), network->l2_biases[bucket].data(), sizeof(l2_output));
   for (int i = 0; i < arch::kL2Size; i++) {
     for (int j = 0; j < arch::kL3Size; j++) {
-      l2_output[j] += l1_output[i] * network->l2_weights[bucket][j][i];
+      l2_output[j] += l1_output[i] * network->l2_weights[bucket][i][j];
     }
   }
 
   // Activate 3rd layer neurons
   for (int i = 0; i < arch::kL3Size; i++) {
-    l2_output[i] = CReLU(l2_output[i] + network->l2_biases[bucket][i]);
+    l2_output[i] = CReLU(l2_output[i]);
   }
 
   // Forward 3rd layer neurons to output layer
   float l3_output = network->l3_biases[bucket];
   for (int i = 0; i < arch::kL3Size; i++) {
-    l3_output += l2_output[i] * network->l3_weights[bucket][i];
+    l3_output =
+        std::fma(l2_output[i], network->l3_weights[bucket][i], l3_output);
   }
 
   // Scale output
