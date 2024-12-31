@@ -83,8 +83,6 @@ using Vepi16 = __m512i;
 using Vepi32 = __m512i;
 using Vepf32 = __m512;
 
-constexpr int kPackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
-
 constexpr int kAlignment = std::max<int>(8, sizeof(Vepi16));
 
 #ifdef BUILD_HAS_AVX512VNNI
@@ -214,11 +212,15 @@ inline void StoreEpi32(void* memory_address, Vepi32 vector) {
 
 #elif BUILD_HAS_AVX2
 
+using Vepi8 = __m256i;
 using Vepi16 = __m256i;
 using Vepi32 = __m256i;
+using Vepf32 = __m256;
+
+constexpr int kAlignment = std::max<int>(8, sizeof(Vepi16));
 
 inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
-  VecI32 sum32 = _mm256_madd_epi16(_mm256_maddubs_epi16(first, second),
+  Vepi32 sum32 = _mm256_madd_epi16(_mm256_maddubs_epi16(first, second),
                                    _mm256_set1_epi16(1));
   return _mm256_add_epi32(sum32, sum);
 }
@@ -226,8 +228,9 @@ inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
 inline Vepi16 ZeroEpi16() {
   return _mm256_setzero_si256();
 }
-inline Vepi32 ZeroEpi32() {
-  return _mm256_setzero_si256();
+
+inline Vepf32 ZeroPs() {
+  return _mm256_setzero_ps();
 }
 
 inline Vepi16 LoadEpi16(const int16_t* memory_address) {
@@ -241,6 +244,7 @@ inline Vepi32 LoadEpi32(const int32_t* memory_address) {
 inline Vepi16 SetEpi16(int num) {
   return _mm256_set1_epi16(num);
 }
+
 inline Vepi32 SetEpi32(int num) {
   return _mm256_set1_epi32(num);
 }
@@ -269,8 +273,9 @@ inline Vepi16 SlliEpi16(Vepi16 a, int shift) {
   return _mm256_slli_epi16(a, shift);
 }
 
-inline Vepi16 PackusEpi16(Vepi16 a, Vepi16 b) {
-  return _mm256_packus_epi16(a, b);
+inline Vepi8 PackusEpi16(Vepi16 a, Vepi16 b) {
+  const auto packed = _mm256_packus_epi16(a, b);
+  return _mm256_permute4x64_epi64(packed, _MM_SHUFFLE(3, 1, 2, 0));
 }
 
 inline Vepi16 Min(Vepi16 one, Vepi16 two) {
@@ -319,8 +324,27 @@ inline int ReduceAddEpi32(Vepi32 vector) {
   return _mm_cvtsi128_si32(sum32);
 }
 
-inline float ReduceAddPs(Vepf32 v) {
-  return _mm256_reduce_add_ps(v);
+inline float ReduceAddPsImpl(float* sums, int length) {
+  if (length == 2) return sums[0] + sums[1];
+  length /= 2;
+  for (int i = 0; i < length; ++i) sums[i] += sums[i + length];
+  return ReduceAddPsImpl(sums, length);
+}
+
+inline float ReduceAddPs(Vepf32* sums) {
+  return ReduceAddPsImpl(reinterpret_cast<float*>(sums), 64 / sizeof(float));
+}
+
+inline float ReduceAddPs(Vepf32 vec) {
+  __m128 sum_128 = _mm_add_ps(_mm256_castps256_ps128(vec), _mm256_extractf128_ps(vec, 1));
+
+  __m128 upper_64 = _mm_movehl_ps(sum_128, sum_128);
+  __m128 sum_64 = _mm_add_ps(sum_128, upper_64);
+
+  __m128 upper_32 = _mm_shuffle_ps(sum_64, sum_64, 1);
+  __m128 sum_32 = _mm_add_ss(sum_64, upper_32);
+
+  return _mm_cvtss_f32(sum_32);
 }
 
 inline __m256 ConvertEpi32ToPs(Vepi32 v) {
@@ -335,8 +359,12 @@ inline __m256 SetPs(float value) {
   return _mm256_set1_ps(value);
 }
 
-inline __m256 MultiplyPs(__m256 v1, __m256 v2) {
+inline Vepf32 MultiplyPs(Vepf32 v1, Vepf32 v2) {
   return _mm256_mul_ps(v1, v2);
+}
+
+inline Vepf32 MultiplyAddPs(Vepf32 v1, Vepf32 v2, Vepf32 sum) {
+  return _mm256_fmadd_ps(v1, v2, sum);
 }
 
 inline void StoreEpi32(void* memory_address, Vepi32 vector) {

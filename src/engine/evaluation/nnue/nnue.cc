@@ -86,15 +86,15 @@ Score Evaluate(Board &board) {
   auto &accumulator = *board.GetAccumulator();
 
   accumulator.ApplyChanges();
-
   const auto bucket = accumulator.GetOutputBucket(state);
+
+  constexpr int kFtShift = 9;
 
 #ifdef BUILD_HAS_SIMD
   constexpr int kI32ChunkSize = sizeof(simd::Vepi16) / sizeof(I32);
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
   constexpr int kF32ChunkSize = sizeof(simd::Vepi16) / sizeof(float);
-  constexpr int kFtShift = 9;
 
   const auto quantise_vector = simd::SetEpi16(arch::kFtQuantization);
 
@@ -142,20 +142,20 @@ Score Evaluate(Board &board) {
   for (int i = 0; i < arch::kL1Size; i += sizeof(I32) / sizeof(U8)) {
     const auto feature_vector =
         simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[i]));
-    for (int j = 0; j < arch::kL2Size; j += kF32ChunkSize) {
-      const auto weight_vector =
-          *reinterpret_cast<simd::Vepi8 *>(&network->l1_weights[bucket][i][j]);
+    for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
+      const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
+          &network->l1_weights[bucket][i + j / 4]);
       auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
       features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
     }
   }
 
   // Quantisation constants to convert to float
-  constexpr float kL1Multiplier =
+  constexpr float kL1Normalization =
       static_cast<float>(1 << kFtShift) /
       static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
                          arch::kL1Quantization);
-  const auto l1_multiplier_vector = simd::SetPs(kL1Multiplier);
+  const auto l1_multiplier_vector = simd::SetPs(kL1Normalization);
   const auto zero_float_vector = simd::ZeroPs(),
              one_float_vector = simd::SetPs(1.0f);
 
@@ -222,7 +222,7 @@ Score Evaluate(Board &board) {
   }
 
   const float kL1Normalization =
-      static_cast<float>(1 << 9) /
+      static_cast<float>(1 << kFtShift) /
       static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
                          arch::kL1Quantization);
 
