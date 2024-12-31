@@ -141,7 +141,7 @@ Score Evaluate(Board &board) {
   alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
   for (int i = 0; i < arch::kL1Size; i += sizeof(I32) / sizeof(U8)) {
     const auto feature_vector =
-        simd::SetEpi32(*std::bit_cast<U32 *>(&feature_output[i]));
+        simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[i]));
     for (int j = 0; j < arch::kL2Size; j += kF32ChunkSize) {
       const auto weight_vector =
           *reinterpret_cast<simd::Vepi8 *>(&network->l1_weights[bucket][i][j]);
@@ -152,9 +152,9 @@ Score Evaluate(Board &board) {
 
   // Quantisation constants to convert to float
   constexpr float kL1Multiplier =
-      1.0f /
-      (arch::kFtQuantization * arch::kFtQuantization * arch::kL1Quantization >>
-       kFtShift);
+      static_cast<float>(1 << kFtShift) /
+      static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
+                         arch::kL1Quantization);
   const auto l1_multiplier_vector = simd::SetPs(kL1Multiplier);
   const auto zero_float_vector = simd::ZeroPs(),
              one_float_vector = simd::SetPs(1.0f);

@@ -204,8 +204,8 @@ inline __m512 MultiplyPs(__m512 v1, __m512 v2) {
   return _mm512_mul_ps(v1, v2);
 }
 
-inline __m512 MultiplyAddPs(__m512 sum, __m512 v1, __m512 v2) {
-  return _mm512_fmadd_ps(sum, v1, v2);
+inline __m512 MultiplyAddPs(__m512 v1, __m512 v2, __m512 sum) {
+  return _mm512_fmadd_ps(v1, v2, sum);
 }
 
 inline void StoreEpi32(void* memory_address, Vepi32 vector) {
