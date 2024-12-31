@@ -270,7 +270,8 @@ inline Vepi16 SlliEpi16(Vepi16 a, int shift) {
 }
 
 inline Vepi16 PackusEpi16(Vepi16 a, Vepi16 b) {
-  return _mm256_packus_epi16(a, b);
+  const auto packed = _mm256_packus_epi16(a, b);
+  return _mm256_permutexvar_epi64(_mm256_setr_epi64(0, 2, 1, 3), packed);
 }
 
 inline Vepi16 Min(Vepi16 one, Vepi16 two) {
