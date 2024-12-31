@@ -21,14 +21,6 @@ INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
-#if !BUILD_HAS_SIMD
-I32 SquaredCReLU(I16 value) {
-  const I32 clipped = std::clamp<I32>(
-      static_cast<I32>(value), 0, arch::kHiddenLayerQuantization);
-  return clipped * clipped;
-}
-#endif
-
 [[nodiscard]] I32 CReLU(I16 value) {
   return std::clamp<I32>(value, 0, arch::kFtQuantization);
 }
@@ -47,6 +39,30 @@ void LoadFromIncBin() {
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
+
+  constexpr int weightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
+  constexpr int NumRegs = sizeof(simd::Vepi16) / 8;
+  __m128i regs[NumRegs];
+
+  auto weights = (__m128i *)&network->feature_weights;
+  auto biases = (__m128i *)&network->feature_biases;
+
+  for (int i = 0;
+       i < arch::kInputBucketCount * 768 * arch::kL1Size / weightsPerBlock;
+       i += NumRegs) {
+    for (int j = 0; j < NumRegs; j++) regs[j] = weights[i + j];
+
+    for (int j = 0; j < NumRegs; j++)
+      weights[i + j] = regs[simd::kPackusOrder[j]];
+  }
+
+  for (int i = 0; i < arch::kL1Size / weightsPerBlock; i += NumRegs) {
+    for (int j = 0; j < NumRegs; j++) regs[j] = biases[i + j];
+
+    for (int j = 0; j < NumRegs; j++)
+      biases[i + j] = regs[simd::kPackusOrder[j]];
+  }
+
   network->l1_biases = raw_network->l1_biases;
   network->l2_biases = raw_network->l2_biases;
   network->l3_weights = raw_network->l3_weights;
@@ -61,15 +77,21 @@ void LoadFromIncBin() {
     }
   }
 
+#ifdef BUILD_HAS_SIMD
   {
     const auto tmp = std::make_shared<ProcessedNetwork>(*network);
-    for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++)
-      for (int i = 0; i < arch::kL1Size; i += 4)
-        for (int j = 0; j < arch::kL2Size; ++j)
-          for (int k = 0; k < 4; k++)
+    for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
+      for (int i = 0; i < arch::kL1Size; i += 4) {
+        for (int j = 0; j < arch::kL2Size; ++j) {
+          for (int k = 0; k < 4; k++) {
             network->l1_weights_alt[bucket][i * arch::kL2Size + j * 4 + k] =
                 tmp->l1_weights[bucket][i + k][j];
+          }
+        }
+      }
+    }
   }
+#endif
 
   // Transpose l2_weights from [b][l3][l2] to [b][l2][l3]
   for (int b = 0; b < arch::kOutputBucketCount; b++) {
@@ -139,14 +161,22 @@ Score Evaluate(Board &board) {
 
   // Forward the feature layer neurons to the 2nd layer
   alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
-  for (int i = 0; i < arch::kL1Size; i += sizeof(I32) / sizeof(U8)) {
+  for (int i = 0; i < arch::kL1Size; i += sizeof(I32) / sizeof(U8) * 2) {
     const auto feature_vector =
         simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[i]));
+    const auto feature1_vector =
+        simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[i + 4]));
     for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
       const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
           &network->l1_weights[bucket][i + j / 4]);
+      const auto weight1_vector = *reinterpret_cast<simd::Vepi8 *>(
+          &network->l1_weights[bucket][i + 4 + j / 4]);
       auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
-      features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
+      features = simd::DpbusdEpi32x2(features,
+                                     feature_vector,
+                                     weight_vector,
+                                     feature1_vector,
+                                     weight1_vector);
     }
   }
 
