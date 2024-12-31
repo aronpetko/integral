@@ -193,24 +193,23 @@ Score Evaluate(Board &board) {
   const auto turn = state.turn;
 
   // Activate the feature layer via pair-wise CReLU multiplication
-  std::array<I32, arch::kL1Size> feature_output{};
+  std::array<float, arch::kL1Size> feature_output{};
   for (int i = 0; i < arch::kL1Size / 2; i++) {
     const I32 our_value = CReLU(accumulator[turn][i]) *
                           CReLU(accumulator[turn][i + arch::kL1Size / 2]);
-    feature_output[i] = our_value;
+    feature_output[i] = our_value / (255.0f * 255.0f);
 
     const I32 their_value = CReLU(accumulator[!turn][i]) *
                             CReLU(accumulator[!turn][i + arch::kL1Size / 2]);
-    feature_output[i + arch::kL1Size / 2] = their_value;
+    feature_output[i + arch::kL1Size / 2] = their_value / (255.0f * 255.0f);
   }
 
   // Forward the feature layer neurons to the 2nd layer
   std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL1Size; i++) {
     for (int j = 0; j < arch::kL2Size; j++) {
-      l1_output[j] += static_cast<float>(feature_output[i] *
-                                         network->l1_weights[bucket][i][j]) /
-                      (255.0f * 255.0f * 64.0f);
+      l1_output[j] += static_cast<float>(feature_output[i]) *
+                      (network->l1_weights[bucket][i][j] / 64.0f);
     }
   }
 
