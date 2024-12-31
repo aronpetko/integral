@@ -221,6 +221,10 @@ inline void StoreEpi32(void* memory_address, Vepi32 vector) {
   _mm512_store_si512(memory_address, vector);
 }
 
+inline U16 GetNnzMask(Vepi16 x) {
+  return _mm512_cmpgt_epi32_mask(x, _mm512_setzero_si512());
+}
+
 #elif BUILD_HAS_AVX2
 
 using Vepi8 = __m256i;
@@ -378,6 +382,11 @@ inline Vepf32 MultiplyAddPs(Vepf32 v1, Vepf32 v2, Vepf32 sum) {
 
 inline void StoreEpi32(void* memory_address, Vepi32 vector) {
   _mm256_store_si256(reinterpret_cast<__m256i*>(memory_address), vector);
+}
+
+inline U8 GetNnzMask(Vepi16 x) {
+  return _mm256_movemask_ps(
+      _mm256_castsi256_ps(_mm256_cmpgt_epi32(x, _mm256_setzero_si256())));
 }
 
 #endif  // AVX2

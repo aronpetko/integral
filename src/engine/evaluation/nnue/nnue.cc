@@ -21,6 +21,14 @@ INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
+// We store the number and index of each set bit for every possible U16 number
+struct NNZEntry {
+  std::array<U16, 8> indices;
+  int count;
+};
+
+std::array<NNZEntry, 256> nnz_table;
+
 [[nodiscard]] I32 CReLU(I16 value) {
   return std::clamp<I32>(value, 0, arch::kFtQuantization);
 }
@@ -101,6 +109,18 @@ void LoadFromIncBin() {
       }
     }
   }
+
+  for (I16 i = 0; i < 256; i++) {
+    // Count the number of set bits for this number
+    nnz_table[i].count = BitBoard(i).PopCount();
+
+    // Save the index of every set bit
+    int num_bits = 0;
+    const BitBoard bits = i;
+    for (int set_bit : bits) {
+      nnz_table[i].indices[num_bits++] = set_bit;
+    }
+  }
 }
 
 Score Evaluate(Board &board) {
@@ -120,6 +140,12 @@ Score Evaluate(Board &board) {
 
   const auto quantise_vector = simd::SetEpi16(arch::kFtQuantization);
 
+  std::array<U16, arch::kL1Size / 4> nnz_indices;
+  int nnz_count = 0;
+  auto nnz_base = _mm_setzero_si128();
+  const auto lookup_increment = _mm_set1_epi16(8);
+
+  // Activate the feature layer neurons
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output{};
   for (int them = 0; them <= 1; them++) {
     const auto &stm_accumulator = accumulator[state.turn ^ them];
@@ -156,27 +182,32 @@ Score Evaluate(Board &board) {
       auto &features = *reinterpret_cast<simd::Vepi8 *>(
           &feature_output[i + them * arch::kL1Size / 2]);
       features = simd::PackusEpi16(first_product, second_product);
+
+      // I will understand this at some point
+      const auto nnz_mask = simd::GetNnzMask(features);
+      for (int lookup = 0; lookup < kF32ChunkSize; lookup += 8) {
+        const U8 slice = (nnz_mask >> lookup) & 0xFF;
+        const auto indices = _mm_loadu_si128(
+            reinterpret_cast<__m128i *>(&nnz_table[slice].indices));
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
+                         _mm_add_epi16(nnz_base, indices));
+        nnz_count += nnz_table[slice].count;
+        nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
+      }
     }
   }
 
   // Forward the feature layer neurons to the 2nd layer
   alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
-  for (int i = 0; i < arch::kL1Size; i += sizeof(I32) / sizeof(U8) * 2) {
+  for (int i = 0; i < nnz_count; i++) {
+    const int idx = nnz_indices[i] * 4;
     const auto feature_vector =
-        simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[i]));
-    const auto feature1_vector =
-        simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[i + 4]));
+        simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[idx]));
     for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
       const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
-          &network->l1_weights[bucket][i + j / 4]);
-      const auto weight1_vector = *reinterpret_cast<simd::Vepi8 *>(
-          &network->l1_weights[bucket][i + 4 + j / 4]);
+          &network->l1_weights[bucket][idx + j / 4]);
       auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
-      features = simd::DpbusdEpi32x2(features,
-                                     feature_vector,
-                                     weight_vector,
-                                     feature1_vector,
-                                     weight1_vector);
+      features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
     }
   }
 
