@@ -86,6 +86,7 @@ void LoadFromIncBin() {
   }
 
 #ifdef BUILD_HAS_SIMD
+  // Weight permutation for DpbusdEpi32
   {
     const auto tmp = std::make_shared<ProcessedNetwork>(*network);
     for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
@@ -178,7 +179,7 @@ Score Evaluate(Board &board) {
 
       // Pack the two I16 vectors into an I8 vector, which will clamp negative
       // values to 0 because of unsigned saturation. This is why we didn't clamp
-      // the pair values to 0 earlier, effectively saving us an operation.
+      // the pair values to 0 earlier, effectively saving us an operation
       auto &features = *reinterpret_cast<simd::Vepi8 *>(
           &feature_output[i + them * arch::kL1Size / 2]);
       features = simd::PackusEpi16(first_product, second_product);
@@ -189,7 +190,7 @@ Score Evaluate(Board &board) {
       // -----------------------------------------------------------------------
       // Get a mask of all positive, non-zero elements
       // Each bit in `nnz_mask` corresponds to whether a specific feature is
-      // positive (1) or zero (0).
+      // positive (1) or zero (0)
       const auto nnz_mask = simd::GetNnzMask(features);
       // Loop through 8-bit (U8) slices of this 16-bit mask
       for (int chunk = 0; chunk < kI32ChunkSize; chunk += 8) {
@@ -201,11 +202,11 @@ Score Evaluate(Board &board) {
         const auto indices = _mm_loadu_si128(
             reinterpret_cast<__m128i *>(&nnz_table[slice].indices));
         // Store these absolute indices into our table. We account for the fact
-        // that they are relative indices (to this slice) by adding nnz_base,
+        // that they are relative indices (to this slice) by adding `nnz_base`,
         // which will reflect the position each element is in the entire table
         _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
                          _mm_add_epi16(nnz_base, indices));
-        // Update to reflect the total number of non-zero features processed.
+        // Update to reflect the total number of non-zero features processed
         nnz_count += nnz_table[slice].count;
         // Increment to reflect the starting index of the next slice
         nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
