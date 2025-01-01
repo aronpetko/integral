@@ -193,6 +193,10 @@ inline float ReduceAddPs(Vepf32 v) {
   return _mm512_reduce_add_ps(v);
 }
 
+inline float ReduceAddPs(Vepf32* vec) {
+  return _mm512_reduce_add_ps(vec[0]);
+}
+
 inline Vepi16 PackusEpi16(Vepi16 a, Vepi16 b) {
   return _mm512_packus_epi16(a, b);
 }
@@ -221,7 +225,7 @@ inline void StoreEpi32(void* memory_address, Vepi32 vector) {
   _mm512_store_si512(memory_address, vector);
 }
 
-inline U16 GetNnzMask(Vepi16 x) {
+inline U16 GetNnzMask(Vepi32 x) {
   return _mm512_cmpgt_epi32_mask(x, _mm512_setzero_si512());
 }
 
@@ -360,6 +364,18 @@ inline float ReduceAddPs(Vepf32 vec) {
   return _mm_cvtss_f32(sum_32);
 }
 
+inline float ReduceAddPs(Vepf32* v) {
+  v[0] = _mm256_add_ps(v[0], v[1]);
+  __m128 high = _mm256_extractf128_ps(v[0], 1);
+  __m128 low = _mm256_castps256_ps128(v[0]);
+  __m128 sum = _mm_add_ps(high, low);
+  __m128 high64 = _mm_movehl_ps(sum, sum);
+  __m128 sum64 = _mm_add_ps(sum, high64);
+
+  return reinterpret_cast<float*>(&sum64)[0] +
+         reinterpret_cast<float*>(&sum64)[1];
+}
+
 inline __m256 ConvertEpi32ToPs(Vepi32 v) {
   return _mm256_cvtepi32_ps(v);
 }
@@ -384,7 +400,7 @@ inline void StoreEpi32(void* memory_address, Vepi32 vector) {
   _mm256_store_si256(reinterpret_cast<__m256i*>(memory_address), vector);
 }
 
-inline U8 GetNnzMask(Vepi16 x) {
+inline U8 GetNnzMask(Vepi32 x) {
   return _mm256_movemask_ps(
       _mm256_castsi256_ps(_mm256_cmpgt_epi32(x, _mm256_setzero_si256())));
 }

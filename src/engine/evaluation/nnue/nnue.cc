@@ -21,7 +21,7 @@ INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
-// We store the number and index of each set bit for every possible U16 number
+// We store the number and index of each set bit for every possible U8 number
 struct NNZEntry {
   std::array<U16, 8> indices;
   int count;
@@ -183,15 +183,31 @@ Score Evaluate(Board &board) {
           &feature_output[i + them * arch::kL1Size / 2]);
       features = simd::PackusEpi16(first_product, second_product);
 
-      // I will understand this at some point
+      // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
+      // perform to minimize the amount of computation done by only mat-mulling
+      // the positive, non-zero activated features with the next layer's weights
+      // -----------------------------------------------------------------------
+      // Get a mask of all positive, non-zero elements
+      // Each bit in `nnz_mask` corresponds to whether a specific feature is
+      // positive (1) or zero (0).
       const auto nnz_mask = simd::GetNnzMask(features);
-      for (int lookup = 0; lookup < kF32ChunkSize; lookup += 8) {
-        const U8 slice = (nnz_mask >> lookup) & 0xFF;
+      // Loop through 8-bit (U8) slices of this 16-bit mask
+      for (int chunk = 0; chunk < kI32ChunkSize; chunk += 8) {
+        // Extract the 8-bit slice from the mask
+        const U8 slice = (nnz_mask >> chunk) & 0xFF;
+        // Lookup the relative indices for each set bit in the mask, essentially
+        // retrieving the indices for each positive element as an 8-element
+        // vector of I16s
         const auto indices = _mm_loadu_si128(
             reinterpret_cast<__m128i *>(&nnz_table[slice].indices));
+        // Store these absolute indices into our table. We account for the fact
+        // that they are relative indices (to this slice) by adding nnz_base,
+        // which will reflect the position each element is in the entire table
         _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
                          _mm_add_epi16(nnz_base, indices));
+        // Update to reflect the total number of non-zero features processed.
         nnz_count += nnz_table[slice].count;
+        // Increment to reflect the starting index of the next slice
         nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
       }
     }
@@ -256,17 +272,28 @@ Score Evaluate(Board &board) {
                            one_float_vector);
   }
 
-  auto l3_sum = simd::SetPs(0.0f);
-  for (int i = 0; i < arch::kL3Size; i += kF32ChunkSize) {
-    const auto weight_vector =
-        *reinterpret_cast<simd::Vepf32 *>(&network->l3_weights[bucket][i]);
-    const auto &l2_vector = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
-    l3_sum = simd::MultiplyAddPs(l2_vector, weight_vector, l3_sum);
+  // Forward the feature layer neurons to the 3rd (final) layer
+  constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
+  const auto zero_ps = simd::SetPs(0.0f);
+
+  std::array<simd::Vepf32, kResultChunks> result_sums;
+  result_sums.fill(zero_ps);
+
+  for (int i = 0; i < arch::kL3Size / kF32ChunkSize; i += kResultChunks) {
+    for (int chunk = 0; chunk < kResultChunks; chunk++) {
+      const auto weight_vector = *reinterpret_cast<simd::Vepf32 *>(
+          &network->l3_weights[bucket][(i + chunk) * kF32ChunkSize]);
+      const auto &l2_vector = *reinterpret_cast<simd::Vepf32 *>(
+          &l2_output[(i + chunk) * kF32ChunkSize]);
+      result_sums[chunk] =
+          simd::MultiplyAddPs(l2_vector, weight_vector, result_sums[chunk]);
+    }
   }
 
-  const auto l3_output = simd::ReduceAddPs(l3_sum) + network->l3_biases[bucket];
+  const auto l3_output =
+      simd::ReduceAddPs(result_sums.data()) + network->l3_biases[bucket];
 
-  return l3_output * arch::kEvalScale;
+  return static_cast<Score>(l3_output * arch::kEvalScale);
 
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
