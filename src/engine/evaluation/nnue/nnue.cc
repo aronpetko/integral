@@ -48,26 +48,27 @@ void LoadFromIncBin() {
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
 
-  constexpr int weightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
-  constexpr int NumRegs = sizeof(simd::Vepi16) / 8;
-  __m128i regs[NumRegs];
+  // Permute weights for PackusEpi16
+  constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
+  constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
+  std::array<__m128i, kNumRegs> regs;
 
-  auto weights = (__m128i *)&network->feature_weights;
-  auto biases = (__m128i *)&network->feature_biases;
+  auto weights = reinterpret_cast<__m128i *>(&network->feature_weights);
+  auto biases = reinterpret_cast<__m128i *>(&network->feature_biases);
 
   for (int i = 0;
-       i < arch::kInputBucketCount * 768 * arch::kL1Size / weightsPerBlock;
-       i += NumRegs) {
-    for (int j = 0; j < NumRegs; j++) regs[j] = weights[i + j];
+       i < arch::kInputBucketCount * 768 * arch::kL1Size / kWeightsPerBlock;
+       i += kNumRegs) {
+    for (int j = 0; j < kNumRegs; j++) regs[j] = weights[i + j];
 
-    for (int j = 0; j < NumRegs; j++)
+    for (int j = 0; j < kNumRegs; j++)
       weights[i + j] = regs[simd::kPackusOrder[j]];
   }
 
-  for (int i = 0; i < arch::kL1Size / weightsPerBlock; i += NumRegs) {
-    for (int j = 0; j < NumRegs; j++) regs[j] = biases[i + j];
+  for (int i = 0; i < arch::kL1Size / kWeightsPerBlock; i += kNumRegs) {
+    for (int j = 0; j < kNumRegs; j++) regs[j] = biases[i + j];
 
-    for (int j = 0; j < NumRegs; j++)
+    for (int j = 0; j < kNumRegs; j++)
       biases[i + j] = regs[simd::kPackusOrder[j]];
   }
 

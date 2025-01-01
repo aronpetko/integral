@@ -14,7 +14,10 @@ Score Evaluate(Board &board) {
       kSeePieceScores[kRook] * state.Rooks().PopCount() +
       kSeePieceScores[kQueen] * state.Queens().PopCount();
 
-  return network_eval * (26500 + material_phase) / 32768;
+  auto eval = network_eval * (26500 + material_phase) / 32768;
+  eval = eval * (200 - state.fifty_moves_clock) / 200;
+
+  return eval;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
