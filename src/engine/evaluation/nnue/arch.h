@@ -12,7 +12,7 @@ constexpr std::size_t kInputBucketCount = 12;
 constexpr std::size_t kOutputBucketCount = 8;
 
 constexpr std::int32_t kFtQuantization = 255;
-constexpr std::int32_t kL1Quantization = 64;
+constexpr std::int32_t kL1Quantization = 128;
 
 constexpr std::int32_t kEvalScale = 200;
 
