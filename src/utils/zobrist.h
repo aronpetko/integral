@@ -13,6 +13,7 @@ namespace zobrist {
 using PieceTable = MultiArray<U64, 12, Squares::kSquareCount>;
 using CastleRightsTable = std::array<U64, 16>;
 using EnPassantTable = std::array<U64, 8>;
+using FiftyMoveTable = std::array<U64, 100>;
 
 const auto turn = RandomU64();
 
@@ -40,6 +41,20 @@ static EnPassantTable GenerateEnPassantTable() {
 }
 
 const auto en_passant = GenerateEnPassantTable();
+
+static FiftyMoveTable GenerateFiftyMoveTable() {
+  FiftyMoveTable fifty_move_table{};
+  constexpr int kStep = 8;
+  for (int i = kStep; i < 100 - kStep; i += kStep) {
+    const U64 key = RandomU64();
+    for (int j = 0; j < kStep; j++) {
+      fifty_move_table[i + j] = key;
+    }
+  }
+  return fifty_move_table;
+}
+
+const auto fifty_move = GenerateFiftyMoveTable();
 
 }  // namespace zobrist
 
