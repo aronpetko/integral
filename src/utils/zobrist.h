@@ -45,7 +45,7 @@ const auto en_passant = GenerateEnPassantTable();
 static FiftyMoveTable GenerateFiftyMoveTable() {
   FiftyMoveTable fifty_move_table{};
   constexpr int kStep = 8;
-  for (int i = kStep; i < 100 - kStep; i += kStep) {
+  for (int i = 0; i < 88; i += kStep) {
     const U64 key = RandomU64();
     for (int j = 0; j < kStep; j++) {
       fifty_move_table[i + j] = key;
