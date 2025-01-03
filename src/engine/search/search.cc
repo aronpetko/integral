@@ -237,7 +237,7 @@ Score Search::QuiescentSearch(Thread &thread,
   // position
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
-  
+
   const int tt_depth = state.InCheck();
   const auto tt_entry = transposition_table_.Probe(zobrist_key);
   const bool tt_hit = tt_entry->CompareKey(zobrist_key);
