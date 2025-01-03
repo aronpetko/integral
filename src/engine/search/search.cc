@@ -843,6 +843,7 @@ Score Search::PVSearch(Thread &thread,
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+      reduction += !in_pv_node;
       reduction -= stack->history_score /
                    static_cast<int>(is_quiet ? kLmrHistDiv : kLmrCaptHistDiv);
       reduction += !improving;
