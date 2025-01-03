@@ -1224,7 +1224,7 @@ void Search::Start(TimeConfig time_config) {
     return;
   }
 
-  // Wait untl all search threads have stopped
+  // Wait until all search threads have stopped
   stop_barrier_.ArriveAndWait();
   stop_.store(false, std::memory_order_relaxed);
 
