@@ -643,6 +643,9 @@ Score Search::PVSearch(Thread &thread,
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
+  if (depth <= 7 && !(stack - 2)->capture_move && stack->eval >= beta + 50)
+    cut_node = true;
+
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
