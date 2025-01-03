@@ -48,6 +48,7 @@ void LoadFromIncBin() {
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
 
+#if BUILD_HAS_SIMD
   constexpr int weightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
   constexpr int NumRegs = sizeof(simd::Vepi16) / 8;
   __m128i regs[NumRegs];
@@ -70,6 +71,7 @@ void LoadFromIncBin() {
     for (int j = 0; j < NumRegs; j++)
       biases[i + j] = regs[simd::kPackusOrder[j]];
   }
+#endif
 
   network->l1_biases = raw_network->l1_biases;
   network->l2_biases = raw_network->l2_biases;
@@ -85,7 +87,7 @@ void LoadFromIncBin() {
     }
   }
 
-#ifdef BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD
   // Weight permutation for DpbusdEpi32
   {
     const auto tmp = std::make_shared<ProcessedNetwork>(*network);
@@ -133,7 +135,7 @@ Score Evaluate(Board &board) {
 
   constexpr int kFtShift = 9;
 
-#ifdef BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD
   constexpr int kI32ChunkSize = sizeof(simd::Vepi16) / sizeof(I32);
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);

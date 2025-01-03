@@ -405,6 +405,8 @@ inline U8 GetNnzMask(Vepi32 x) {
       _mm256_castsi256_ps(_mm256_cmpgt_epi32(x, _mm256_setzero_si256())));
 }
 
+#else
+constexpr int kAlignment = 64;
 #endif  // AVX2
 
 }  // namespace simd
