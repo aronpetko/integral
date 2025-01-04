@@ -6,7 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include "../engine/evaluation/terms.h"
 #include "../engine/search/transpo.h"
 #include "../utils/zobrist.h"
 #include "bitboard.h"
@@ -253,6 +252,12 @@ struct BoardState {
 
   [[nodiscard]] constexpr bool InCheck() const {
     return checkers != 0;
+  }
+
+  [[nodiscard]] constexpr int MaterialCount() const {
+    return 1 * Pawns().PopCount() + 3 * Knights().PopCount() +
+           3 * Bishops().PopCount() + 5 * Rooks().PopCount() +
+           9 * Queens().PopCount();
   }
 
   std::array<BitBoard, kNumPieceTypes> piece_bbs;
