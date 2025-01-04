@@ -264,7 +264,7 @@ struct BoardState {
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, kSquareCount> piece_on_square;
   Color turn;
-  U16 fifty_moves_clock;
+  U8 fifty_moves_clock;
   U16 half_moves;
   Square en_passant;
   CastleRights castle_rights;
