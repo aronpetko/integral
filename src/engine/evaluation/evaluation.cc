@@ -21,7 +21,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
 
-  const PieceType &from_piece = state.GetPieceType(from);
+  const PieceType from_piece = state.GetPieceType(from);
   // Ignore en passant captures and castling
   if (move.IsEnPassant(state) ||
       (from_piece == kKing && std::abs(static_cast<int>(from) - to) == 2)) {
@@ -30,13 +30,23 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   // Score represents the maximum number of points the opponent can gain with
   // the next capture
-  Score score = kSeePieceScores[state.GetPieceType(to)] - threshold;
+  const PieceType captured_piece = state.GetPieceType(to);
+  const Score captured_piece_score =
+      captured_piece == kBishop &&
+              state.Bishops(FlipColor(state.turn)).MoreThanOne()
+          ? kSeeBishopWithPairScore
+          : kSeePieceScores[from_piece];
+  Score score = kSeePieceScores[captured_piece] - threshold;
   // If the captured piece is worth less than what we can give up, we lose
   if (score < 0) {
     return false;
   }
 
-  score = kSeePieceScores[from_piece] - score;
+  const Score from_piece_score =
+      from_piece == kBishop && state.Bishops(state.turn).MoreThanOne()
+          ? kSeeBishopWithPairScore
+          : kSeePieceScores[from_piece];
+  score = from_piece_score - score;
   // If we captured a piece with equal/greater value than our capturing piece,
   // we win
   if (score <= 0) {
