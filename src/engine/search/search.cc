@@ -625,6 +625,8 @@ Score Search::PVSearch(Thread &thread,
                         kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
+    history.pawn_history->UpdateMoveScore(
+        board.GetStateHistory().Back(), prev_stack->move, bonus);
   }
 
   stack->threats = state.threats;
