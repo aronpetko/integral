@@ -35,7 +35,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
       captured_piece == kBishop &&
               state.Bishops(FlipColor(state.turn)).MoreThanOne()
           ? kSeeBishopWithPairScore
-          : kSeePieceScores[from_piece];
+          : kSeePieceScores[captured_piece];
   Score score = captured_piece_score - threshold;
   // If the captured piece is worth less than what we can give up, we lose
   if (score < 0) {
