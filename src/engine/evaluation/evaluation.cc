@@ -119,7 +119,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
       attacker_value = kSeePieceScores[kKnight];
       occupied.ClearBit(next_attacker.GetLsb());
     } else if ((next_attacker = our_attackers & bishops)) {
-      attacker_value = state.Bishops(turn).MoreThanOne()
+      attacker_value = state.Bishops(FlipColor(turn)).MoreThanOne()
                          ? kSeeBishopWithPairScore
                          : kSeePieceScores[kBishop];
       occupied.ClearBit(next_attacker.GetLsb());
