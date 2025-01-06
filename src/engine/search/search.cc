@@ -7,6 +7,7 @@
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
+#include "history/bonus.h"
 #include "move_picker.h"
 #include "syzygy/syzygy.h"
 #include "time_mgmt.h"
@@ -1110,6 +1111,13 @@ Score Search::PVSearch(Thread &thread,
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
+  } else if (!prev_stack->capture_move &&
+             !(prev_stack->move.GetType() == MoveType::kPromotion) &&
+             !prev_stack->move.IsNull()) {
+    history.quiet_history->UpdateMoveScore(FlipColor(state.turn),
+                                           prev_stack->move,
+                                           prev_stack->threats,
+                                           history::HistoryBonus(depth));
   }
 
   if (syzygy::enabled) {
