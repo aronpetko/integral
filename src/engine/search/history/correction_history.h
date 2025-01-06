@@ -114,8 +114,7 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] int GetPawnTableIndex(const BoardState &state) const {
-    return (state.pawn_key ^ zobrist::fifty_move[state.fifty_moves_clock]) &
-           16383;
+    return state.pawn_key & 16383;
   }
 
   [[nodiscard]] int GetMajorTableIndex(const BoardState &state) const {
@@ -124,7 +123,9 @@ class CorrectionHistory {
 
   [[nodiscard]] int GetNonPawnTableIndex(const BoardState &state,
                                          Color color) const {
-    return state.non_pawn_keys[color] & 16383;
+    return (state.non_pawn_keys[color] ^
+            zobrist::fifty_move[state.fifty_moves_clock]) &
+           16383;
   }
 
  private:
