@@ -5,22 +5,16 @@
 namespace eval {
 
 Score Evaluate(Board &board) {
+  const auto network_eval = nnue::Evaluate(board);
+
   const auto &state = board.GetState();
-
-  auto network_eval = nnue::Evaluate(board);
-
-  // Scale based on material
   const auto material_phase =
       kSeePieceScores[kKnight] * state.Knights().PopCount() +
       kSeePieceScores[kBishop] * state.Bishops().PopCount() +
       kSeePieceScores[kRook] * state.Rooks().PopCount() +
       kSeePieceScores[kQueen] * state.Queens().PopCount();
-  network_eval * (26500 + material_phase) / 32768;
 
-  // Scale down based on proximity to 50 move rule draw
-  network_eval = network_eval * (220 - state.fifty_moves_clock) / 220;
-
-  return network_eval;
+  return network_eval * (26500 + material_phase) / 32768;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {

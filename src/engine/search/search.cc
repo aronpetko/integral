@@ -206,6 +206,21 @@ void Search::IterativeDeepening(Thread &thread) {
   }
 }
 
+[[nodiscard]] Score AdjustStaticEval(Score static_eval,
+                                     Thread &thread,
+                                     StackEntry *stack) {
+  const auto &state = thread.board.GetState();
+
+  // Adjust based on prior search scores in similar positions
+  static_eval = thread.history.correction_history->CorrectStaticEval(
+      state, stack, static_eval);
+
+  // Adjust based on proximity to a fifty-move-rule draw
+  static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
+
+  return static_eval;
+}
+
 template <NodeType node_type>
 Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
@@ -276,8 +291,7 @@ Score Search::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack, raw_static_eval);
+    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -602,8 +616,7 @@ Score Search::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval = history.correction_history->CorrectStaticEval(
-        state, stack, raw_static_eval);
+    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
