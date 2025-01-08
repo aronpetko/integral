@@ -63,7 +63,7 @@ TUNABLE(kLmrComplexityDiff, 81, 5, 150, false);
 TUNABLE(kDoDeeperBase, 35, 5, 70, false);
 TUNABLE(kDoShallowerBase, 5, 0, 30, false);
 
-TUNABLE(kSeDepth, 6, 6, 12, true);
+TUNABLE(kSeDepth, 5, 6, 12, true);
 TUNABLE(kSeDepthReduction, 7, 0, 30, false);
 TUNABLE(kSeDoubleMargin, 11, 0, 50, false);
 TUNABLE(kSeTripleMargin, 81, 20, 250, false);

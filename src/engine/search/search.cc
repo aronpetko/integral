@@ -890,7 +890,7 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
-      // History Pruning: Prune quiet moves with a low history score moves at
+      // History Pruning: Prune moves with a low history score moves at
       // near-leaf nodes
       const int history_margin =
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
@@ -901,11 +901,10 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    int extensions = 0;
-
     // Singular Extensions: If a TT move exists and its score is accurate enough
     // (close enough in depth), we perform a reduced-depth search with the TT
     // move excluded to see if any other moves can beat it.
+    int extensions = 0;
     if (!in_root && depth >= kSeDepth && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
@@ -951,7 +950,7 @@ Score Search::PVSearch(Thread &thread,
         else if (tt_entry->score >= beta) {
           extensions = -2 + in_pv_node;
         } else if (cut_node) {
-          extensions = -1;
+          extensions = -2;
         }
       }
     }
