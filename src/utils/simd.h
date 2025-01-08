@@ -86,7 +86,7 @@ using Vepf32 = __m512;
 constexpr int kPackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
 constexpr int kAlignment = 64;
 
-#ifdef BUILD_HAS_AVX512VNNI
+#if BUILD_HAS_AVX512VNNI
 inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
   return _mm512_dpbusd_epi32(sum, first, second);
 }
@@ -405,7 +405,9 @@ inline U8 GetNnzMask(Vepi32 x) {
       _mm256_castsi256_ps(_mm256_cmpgt_epi32(x, _mm256_setzero_si256())));
 }
 
-#endif  // AVX2
+#else
+constexpr int kAlignment = 64;
+#endif
 
 }  // namespace simd
 
