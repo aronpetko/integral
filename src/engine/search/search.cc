@@ -1137,7 +1137,7 @@ Score Search::PVSearch(Thread &thread,
     const auto history_bonus = history::HistoryBonus(depth);
     const auto past_turn = FlipColor(state.turn);
     history.quiet_history->UpdateMoveScore(
-        past_turn, prev_stack->move, prev_stack->threats, past_turn);
+        past_turn, prev_stack->move, prev_stack->threats, history_bonus);
     history.pawn_history->UpdateMoveScore(
         board.GetStateHistory().Back(), prev_stack->move, history_bonus);
   }
