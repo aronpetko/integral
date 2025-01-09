@@ -1139,7 +1139,7 @@ Score Search::PVSearch(Thread &thread,
     history.quiet_history->UpdateMoveScore(
         past_turn, prev_stack->move, prev_stack->threats, history_bonus);
     history.pawn_history->UpdateMoveScore(
-        board.GetStateHistory().Back(), prev_stack->move, history_bonus);
+        board.GetStateHistory().Back(), prev_stack->move, history_bonus / 2);
   }
 
   if (syzygy::enabled) {
