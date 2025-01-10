@@ -3,16 +3,14 @@
 
 #include "../../chess/board.h"
 #include "../../tuner/spsa.h"
-#include "pawn_structure_cache.h"
-#include "terms.h"
 
 namespace eval {
 
-TUNABLE(kSeePawnScore, 102, 50, 150, false);
-TUNABLE(kSeeKnightScore, 294, 200, 400, false);
-TUNABLE(kSeeBishopScore, 305, 200, 400, false);
-TUNABLE(kSeeRookScore, 526, 400, 600, false);
-TUNABLE(kSeeQueenScore, 931, 700, 1100, false);
+TUNABLE(kSeePawnScore, 99, 50, 150, false);
+TUNABLE(kSeeKnightScore, 295, 200, 400, false);
+TUNABLE(kSeeBishopScore, 309, 200, 400, false);
+TUNABLE(kSeeRookScore, 535, 400, 600, false);
+TUNABLE(kSeeQueenScore, 923, 700, 1100, false);
 TUNABLE(kSeeKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kSeeNoneScore, 0, 0, 0, true);  // Always 0
 
@@ -28,11 +26,28 @@ inline std::array<Tunable<int>, kNumPieceTypes + 1> kSeePieceScores = {
 };
 // clang-format on
 
-[[maybe_unused]] static bool IsMateScore(int evaluation) {
+// Constants derived from WDL_model
+constexpr std::array kAs = {
+    52.44311451, -197.92668497, 168.31113282, 109.73439040};
+
+[[nodiscard]] static Score NormalizeScore(Score score, int material_count) {
+  if (score == 0 || std::abs(score) >= kTBWinInMaxPlyScore) return score;
+
+  const auto material_constant =
+      static_cast<double>(std::clamp(material_count, 17, 78)) / 58.0;
+  const auto wdl_param =
+      ((kAs[0] * material_constant + kAs[1]) * material_constant + kAs[2]) *
+          material_constant +
+      kAs[3];
+  return static_cast<Score>(
+      std::round(100.0 * static_cast<double>(score) / wdl_param));
+}
+
+[[nodiscard]] static bool IsMateScore(int evaluation) {
   return kMateScore - std::abs(evaluation) <= kMaxPlyFromRoot;
 }
 
-[[maybe_unused]] static int MateIn(int evaluation) {
+[[nodiscard]] static int MateIn(int evaluation) {
   if (evaluation > 0 && evaluation <= kMateScore) {  // Mate in favor
     return (kMateScore - evaluation + 1) / 2;
   } else if (evaluation < 0 && evaluation >= -kMateScore) {  // Mate against

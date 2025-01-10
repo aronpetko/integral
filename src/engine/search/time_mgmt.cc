@@ -5,16 +5,16 @@
 
 namespace search {
 
-TUNABLE(kStabilityBase, 1.3110, 1.0, 2.0, false);
-TUNABLE(kStabilitySlope, 0.0533, 0.0, 0.1, false);
-TUNABLE(kScoreChangeBase, 0.1127, 0.0, 0.2, false);
-TUNABLE(kSearchScoreCoeff, 0.0262, 0.0, 0.05, false);
-TUNABLE(kPreviousScoreCoeff, 0.0261, 0.0, 0.05, false);
-TUNABLE(kScoreChangeMin, 0.5028, 0.4, 0.6, false);
-TUNABLE(kScoreChangeMax, 1.6561, 1.5, 2.0, false);
-TUNABLE(kNodeFactorBase, 0.5630, 0.5, 0.7, false);
-TUNABLE(kNodeFactorSlope, 2.2669, 2.0, 3.0, false);
-TUNABLE(kNodeFactorIntercept, 0.4499, 0.4, 0.6, false);
+TUNABLE(kStabilityBase, 1.3016343835452844, 0.5, 2.0, false);
+TUNABLE(kStabilitySlope, 0.05598465466016829, 0.0, 0.25, false);
+TUNABLE(kScoreChangeBase, 0.10899333443947289, 0.0, 0.2, false);
+TUNABLE(kSearchScoreCoeff, 0.024781680887691854, 0.0, 0.05, false);
+TUNABLE(kPreviousScoreCoeff, 0.023955545789994755, 0.0, 0.05, false);
+TUNABLE(kScoreChangeMin, 0.5073325256823985, 0.3, 0.7, false);
+TUNABLE(kScoreChangeMax, 1.6525072044919396, 1.25, 2.0, false);
+TUNABLE(kNodeFactorBase, 0.5497120909391846, 0.3, 0.7, false);
+TUNABLE(kNodeFactorSlope, 2.2776174563428637, 1.8, 3.0, false);
+TUNABLE(kNodeFactorIntercept, 0.447321836576184, 0.2, 0.65, false);
 
 U64 GetCurrentTime() {
   const auto duration = std::chrono::steady_clock::now().time_since_epoch();
@@ -66,7 +66,7 @@ int NodeLimiter::GetSearchDepth() const {
 
 bool NodeLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   return soft_max_nodes_ != 0 && thread.nodes_searched >= soft_max_nodes_ ||
-         TimesUp(thread.nodes_searched);
+         max_nodes_ != 0 && TimesUp(thread.nodes_searched);
 }
 
 bool NodeLimiter::TimesUp(U64 nodes_searched) {
@@ -150,7 +150,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
 }
 
 bool TimedLimiter::TimesUp(U64 nodes_searched) {
-  return (nodes_searched & 4095) == 0 && TimeElapsed() >= hard_limit_;
+  return TimeElapsed() >= hard_limit_;
 }
 
 void TimedLimiter::Start() {
@@ -177,7 +177,7 @@ void TimedLimiter::CalculateLimits() {
   const int total_time =
       std::max(1, time_left_ + 50 * increment_ - 50 * overhead);
   allocated_time_ = std::min(time_left_ * 0.4193, total_time * 0.0575);
-  hard_limit_ = time_left_ * 0.8 - overhead;
+  hard_limit_ = std::max(1.0, std::min(time_left_ * 0.9221 - overhead, allocated_time_ * 5.928) - 10);
 }
 
 void TimedLimiter::Update(const TimeConfig& config) {

@@ -15,18 +15,18 @@ Integral implements the widely adopted negamax search approach with alpha-beta p
 Integral utilizes an efficiently updatable neural network (NNUE) for its evaluation function.
 
 ### Architecture
-Integral's neural network is a horizontally mirrored perspective network, containing nine king input buckets, eight output buckets, and a hidden layer of 1536 neurons.
-`(768x9 -> 1536)x2 -> 1x8`
+Integral's neural network is a horizontally mirrored perspective network, containing 12 factorized king input buckets, an L1 of 1280 neurons, an L2 of 16 neurons, an L3 of 32 neurons, and 8 output buckets.
+`(768x12 (Factorized) -> 1280)x2 -> (16 -> 32 -> 1)1x8`
 
 ### Data Generation Process
-This neural network is trained on millions of self-play games. Each self-play game has a unique opening of six to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. Additionally, all moves that lose material are eliminated. This approach intuitively leaves the openings to be entirely positional in nature and thus, hopefully makes Integral's neural network able to learn more positional knowledge. Lastly, 5-man Syzygy endgame tables are used in both the search and for game adjudication. 
+This neural network is trained on tens of millions of self-play games. Each self-play game has a unique opening of eight to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. The probability distribution is also slightly skews moves toward the center of the board, hopefully encouraging meaningful openings. Lastly, the 5-man Syzygy endgame tablebases are used in the search. 
 
 ### Training Process
 The first iteration of Integral's neural network was trained on data from version 4, which had a powerful hand-crafted evaluation (HCE). Each iteration of Integral's neural network since then has been generated on a fresh dataset using the prior network.
 
 ## Compiling Integral
 > [!NOTE]  
-> Integral should be compiled with GCC v13 (or higher)
+> Integral should be compiled with GCC >= v13 or Clang >= v10
 
 Integral provides a Makefile for compilation, but you can use CMake as well.\
 To compile Integral, enter the following commands in a terminal:

@@ -312,7 +312,9 @@ void Board::MakeNullMove() {
 
 U64 Board::PredictKeyAfter(Move move) {
   auto key = state_.zobrist_key ^ zobrist::turn;
-  if (move == Move::NullMove()) return key;
+  if (move == Move::NullMove()) {
+    return key ^ zobrist::fifty_move[state_.fifty_moves_clock + 1];
+  }
 
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
@@ -352,6 +354,11 @@ U64 Board::PredictKeyAfter(Move move) {
 
   const int colored_new_piece = new_piece * 2 + state_.turn;
   key ^= zobrist::pieces[colored_new_piece][to];
+
+  const int new_fifty_moves_clock =
+      (move.IsCapture(state_) || piece == kPawn ? 0
+                                                : state_.fifty_moves_clock + 1);
+  key ^= zobrist::fifty_move[new_fifty_moves_clock];
 
   return key;
 }
@@ -408,7 +415,8 @@ bool Board::HasUpcomingRepetition(U16 ply) {
 }
 
 bool Board::IsDraw(U16 ply) {
-  if (state_.fifty_moves_clock >= 100) {
+  if (state_.fifty_moves_clock >= 100 &&
+      (!state_.InCheck() || !GetLegalMoves().Empty())) {
     return true;
   }
 
