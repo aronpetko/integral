@@ -74,6 +74,8 @@ TUNABLE(kProbcutBetaDelta, 238, 50, 400, false);
 
 TUNABLE(kHistoryBonusMargin, 49, 5, 200, false);
 
+TUNABLE(kCorrectionDepthComplexity, 50, 5, 200, false);
+
 }  // namespace search
 
 #endif  // INTEGRAL_CONSTANTS_H

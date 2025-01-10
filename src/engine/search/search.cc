@@ -812,11 +812,8 @@ Score Search::PVSearch(Thread &thread,
                 raw_static_eval,
                 Move::NullMove(),
                 tt_was_in_pv);
-            transposition_table_.Save(tt_entry,
-                                      new_tt_entry,
-                                      zobrist_key,
-                                      stack->ply,
-                                      in_pv_node);
+            transposition_table_.Save(
+                tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
           }
         }
@@ -1168,8 +1165,11 @@ Score Search::PVSearch(Thread &thread,
     }
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
+      const auto correction_difference = std::abs(best_score - raw_static_eval);
+      const auto correction_depth =
+          depth + (correction_difference > kCorrectionDepthComplexity);
       history.correction_history->UpdateScore(
-          state, stack, best_score, tt_flag, depth);
+          state, stack, best_score, tt_flag, correction_depth);
     }
   }
 
