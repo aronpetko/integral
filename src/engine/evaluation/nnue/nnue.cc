@@ -252,6 +252,7 @@ Score Evaluate(Board &board) {
     auto &features = *reinterpret_cast<simd::Vepf32 *>(&l1_output[i]);
     features = simd::MinPs(simd::MaxPs(casted_sum, zero_float_vector),
                            one_float_vector);
+    features = simd::MultiplyPs(features, features);
   }
 
   // Forward the feature layer neurons to the 2nd layer
@@ -275,6 +276,7 @@ Score Evaluate(Board &board) {
     auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
     features = simd::MinPs(simd::MaxPs(sum_vector, zero_float_vector),
                            one_float_vector);
+    features = simd::MultiplyPs(features, features);
   }
 
   // Forward the feature layer neurons to the 3rd (final) layer
