@@ -812,11 +812,8 @@ Score Search::PVSearch(Thread &thread,
                 raw_static_eval,
                 Move::NullMove(),
                 tt_was_in_pv);
-            transposition_table_.Save(tt_entry,
-                                      new_tt_entry,
-                                      zobrist_key,
-                                      stack->ply,
-                                      in_pv_node);
+            transposition_table_.Save(
+                tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
           }
         }
@@ -873,8 +870,10 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
+      const bool complex_position =
+          std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
       const int lmp_threshold =
-          static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
+          (kLmpBase + depth * depth) / (3 - improving && !complex_position);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
