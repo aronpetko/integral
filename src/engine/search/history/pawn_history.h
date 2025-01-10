@@ -12,7 +12,7 @@ TUNABLE(kPawnHistFill, -1000, -3000, 0, false);
 class PawnHistory {
  public:
   PawnHistory() : table_({}) {
-    std::memset(table_.data(), -kPawnHistFill, sizeof(table_));
+    std::memset(table_.data(), kPawnHistFill, sizeof(table_));
   }
 
   void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
