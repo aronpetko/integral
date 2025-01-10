@@ -873,7 +873,7 @@ Score Search::PVSearch(Thread &thread,
       const bool complex_position =
           std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff;
       const int lmp_threshold =
-          (kLmpBase + depth * depth) / (3 - (improving && !complex_position));
+          (kLmpBase + depth * depth) / (3 - improving - complex_position);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
