@@ -7,10 +7,10 @@
 
 namespace search::history {
 
-TUNABLE_STEP(kPawnCorrectionWeight, 50, 0, 125, false, 8);
-TUNABLE_STEP(kNonPawnCorrectionWeight, 50, 0, 125, false, 8);
+TUNABLE_STEP(kPawnCorrectionWeight, 39, 0, 125, false, 8);
+TUNABLE_STEP(kNonPawnCorrectionWeight, 55, 0, 125, false, 8);
 TUNABLE_STEP(kMajorCorrectionWeight, 50, 0, 125, false, 8);
-TUNABLE_STEP(kContinuationCorrectionWeight, 50, 0, 125, false, 8);
+TUNABLE_STEP(kContinuationCorrectionWeight, 45, 0, 125, false, 8);
 
 class CorrectionHistory {
  public:

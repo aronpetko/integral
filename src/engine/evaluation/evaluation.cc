@@ -4,7 +4,7 @@
 
 namespace eval {
 
-TUNABLE_STEP(kMaterialScaleBase, 26500, 10000, 32768, false, 2000);
+TUNABLE_STEP(kMaterialScaleBase, 29439, 10000, 32768, false, 2000);
 
 Score Evaluate(Board &board) {
   const auto network_eval = nnue::Evaluate(board);
