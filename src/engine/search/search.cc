@@ -237,7 +237,7 @@ Score Search::QuiescentSearch(Thread &thread,
     return eval::Evaluate(board);
   }
 
-  thread.sel_depth = std::max(thread.sel_depth, stack->ply);
+  thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
   if (board.IsDraw(stack->ply)) {
     return kDrawScore;
@@ -296,7 +296,8 @@ Score Search::QuiescentSearch(Thread &thread,
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
-      best_score = tt_entry->score;
+      best_score =
+          TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
       best_score = stack->static_eval;
     }
@@ -469,7 +470,7 @@ Score Search::PVSearch(Thread &thread,
     return eval::Evaluate(board);
   }
 
-  thread.sel_depth = std::max(thread.sel_depth, stack->ply);
+  thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
@@ -812,11 +813,8 @@ Score Search::PVSearch(Thread &thread,
                 raw_static_eval,
                 Move::NullMove(),
                 tt_was_in_pv);
-            transposition_table_.Save(tt_entry,
-                                      new_tt_entry,
-                                      zobrist_key,
-                                      stack->ply,
-                                      in_pv_node);
+            transposition_table_.Save(
+                tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
           }
         }
