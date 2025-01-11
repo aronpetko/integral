@@ -5,12 +5,12 @@
 #include <type_traits>
 #include "../engine/uci/uci.h"
 
-// #define SPSA_TUNE
+#define SPSA_TUNE
 #define PRINT_SPSA_INPUTS
 
 #ifdef SPSA_TUNE
 #define TUNABLE(name, value, min, max, disabled) \
-  inline Tunable<decltype(value)> name(#name, value, min, max, (max - min) / 15, disabled)
+  inline Tunable<decltype(value)> name(#name, value, min, max, (max - min) / 20, disabled)
 
 #define TUNABLE_STEP(name, value, min, max, disabled, step) \
   inline Tunable<decltype(value)> name(#name, value, min, max, step, disabled)

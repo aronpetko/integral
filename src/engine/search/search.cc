@@ -217,8 +217,7 @@ void Search::IterativeDeepening(Thread &thread) {
       state, stack, static_eval);
 
   // Adjust based on proximity to a fifty-move-rule draw
-  static_eval =
-      static_eval * (kFiftyMoveRuleBase - state.fifty_moves_clock) / 220;
+  static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
 
   return static_eval;
 }
