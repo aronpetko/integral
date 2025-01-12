@@ -53,7 +53,7 @@ struct PVLine {
 
 struct StackEntry {
   // Number of ply from root
-  U16 ply;
+  I32 ply;
   // Scores at this ply
   Score static_eval, eval, score;
   I64 history_score;

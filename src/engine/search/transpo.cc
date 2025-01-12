@@ -33,7 +33,7 @@ namespace search {
 void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
-                              U16 ply,
+                              I32 ply,
                               bool in_pv) {
   if (new_entry.move || !old_entry->CompareKey(key)) {
     old_entry->move = new_entry.move;

@@ -38,22 +38,22 @@ TUNABLE(kNmpEvalDiv, 174, 100, 300, false);
 
 TUNABLE(kIirDepth, 4, 2, 8, true);
 
-TUNABLE_STEP(kLmrDepthNonPvNode, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthHistQuiet, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthHistCapture, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthNotImproving, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthRoundingCutoff, 512, 512, 2048, false, 20);
+TUNABLE_STEP(kLmrDepthNonPvNode, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrDepthHistQuiet, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrDepthHistCapture, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrDepthNotImproving, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrDepthRoundingCutoff, 512, 512, 2048, false, 150);
 
 TUNABLE(kLmpBase, 5.0, 1.5, 5.0, true);
 
 TUNABLE(kFutPruneDepth, 8, 6, 12, true);
-TUNABLE(kFutMarginBase, 201, 100, 250, false);
-TUNABLE(kFutMarginMult, 82, 50, 200, false);
+TUNABLE_STEP(kFutMarginBase, 201, 100, 250, false, 15);
+TUNABLE_STEP(kFutMarginMult, 82, 50, 200, false, 5);
 TUNABLE(kFutMarginHistDiv, 137, 32, 256, false);
 
 TUNABLE(kSeePruneDepth, 8, 6, 12, true);
-TUNABLE(kSeeQuietThresh, -62, -200, -5, false);
-TUNABLE(kSeeNoisyThresh, -112, -200, -5, false);
+TUNABLE(kSeeQuietThresh, -62, -150, -5, false);
+TUNABLE(kSeeNoisyThresh, -112, -150, -5, false);
 TUNABLE(kSeePruneHistDiv, 137, 50, 300, false);
 
 TUNABLE(kHistPruneDepth, 5, 3, 8, true);
@@ -66,25 +66,25 @@ TUNABLE(kLmrHistDiv, 11105, 5000, 15000, false);
 TUNABLE(kLmrCaptHistDiv, 10468, 5000, 15000, false);
 TUNABLE_STEP(kLmrComplexityDiff, 81, 5, 150, false, 7);
 
-TUNABLE(kDoDeeperBase, 35, 10, 60, false);
-TUNABLE(kDoShallowerBase, 5, 0, 30, false);
+TUNABLE_STEP(kDoDeeperBase, 35, 10, 60, false, 3);
+TUNABLE_STEP(kDoShallowerBase, 5, 0, 30, false, 2);
 
 TUNABLE(kSeDepth, 5, 6, 12, true);
 TUNABLE_STEP(kSeDepthReduction, 7, 0, 30, false, 1);
 TUNABLE_STEP(kSeDoubleMargin, 11, 0, 50, false, 2);
-TUNABLE_STEP(kSeTripleMargin, 81, 20, 250, false, 5);
+TUNABLE_STEP(kSeTripleMargin, 81, 20, 250, false, 10);
 TUNABLE_STEP(kSeDepthExtensionDepth, 11, 0, 20, false, 1);
 
-TUNABLE_STEP(kLmrNonPvNode, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrWasPvNode, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrCutNode, 2048, 1024, 4096, false, 140);
-TUNABLE_STEP(kLmrGivesCheck, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrHistQuiet, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrHistCapture, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrNotImproving, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrComplexity, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrKillerMoves, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrRoundingCutoff, 512, 512, 2048, false, 20);
+TUNABLE_STEP(kLmrNonPvNode, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrWasPvNode, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrCutNode, 2048, 1024, 4096, false, 300);
+TUNABLE_STEP(kLmrGivesCheck, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrHistQuiet, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrHistCapture, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrNotImproving, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrComplexity, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrKillerMoves, 1024, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrRoundingCutoff, 512, 512, 2048, false, 120);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 238, 50, 300, false);

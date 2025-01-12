@@ -60,7 +60,7 @@ struct TranspositionTableEntry {
   }
 
   // Adjusts mate scores to correctly indicate the ply until mate
-  [[nodiscard]] static Score CorrectScore(Score score, U16 ply) {
+  [[nodiscard]] static Score CorrectScore(Score score, I32 ply) {
     if (score >= kTBWinInMaxPlyScore) {
       score -= ply;
     } else if (score <= -kTBWinInMaxPlyScore) {
@@ -129,7 +129,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
   void Save(TranspositionTableEntry *old_entry,
             TranspositionTableEntry new_entry,
             const U64 &key,
-            U16 ply,
+            I32 ply,
             bool in_pv);
 
   void Age();
