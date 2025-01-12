@@ -10,15 +10,7 @@ namespace search::history {
 class PawnHistory {
  public:
   PawnHistory() : table_({}) {
-    for (auto &one : table_) {
-      for (auto &two : one) {
-        for (auto &three : two) {
-          for (auto &four : three) {
-            four = -1000;
-          }
-        }
-      }
-    }
+    table_.fill(-1000);
   }
 
   void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
