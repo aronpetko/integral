@@ -38,11 +38,11 @@ TUNABLE(kNmpEvalDiv, 174, 100, 300, false);
 
 TUNABLE(kIirDepth, 4, 2, 8, true);
 
-TUNABLE_STEP(kLmrDepthNonPvNode, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthHistQuiet, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthHistCapture, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthNotImproving, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrDepthRoundingCutoff, 512, 512, 2048, false, 20);
+TUNABLE_STEP(kLmrDepthNonPvNode, 1040, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrDepthHistQuiet, 1038, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrDepthHistCapture, 1007, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrDepthNotImproving, 1019, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrDepthRoundingCutoff, 515, 512, 2048, false, 20);
 
 TUNABLE(kLmpBase, 5.0, 1.5, 5.0, true);
 
@@ -75,16 +75,16 @@ TUNABLE_STEP(kSeDoubleMargin, 11, 0, 50, false, 2);
 TUNABLE_STEP(kSeTripleMargin, 81, 20, 250, false, 5);
 TUNABLE_STEP(kSeDepthExtensionDepth, 11, 0, 20, false, 1);
 
-TUNABLE_STEP(kLmrNonPvNode, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrWasPvNode, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrCutNode, 2048, 1024, 4096, false, 140);
-TUNABLE_STEP(kLmrGivesCheck, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrHistQuiet, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrHistCapture, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrNotImproving, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrComplexity, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrKillerMoves, 1024, 512, 2048, false, 80);
-TUNABLE_STEP(kLmrRoundingCutoff, 512, 512, 2048, false, 20);
+TUNABLE_STEP(kLmrNonPvNode, 1036, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrWasPvNode, 1035, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrCutNode, 2057, 1024, 4096, false, 140);
+TUNABLE_STEP(kLmrGivesCheck, 1023, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrHistQuiet, 1007, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrHistCapture, 1036, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrNotImproving, 980, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrComplexity, 1005, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrKillerMoves, 977, 512, 2048, false, 80);
+TUNABLE_STEP(kLmrRoundingCutoff, 517, 512, 2048, false, 20);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 238, 50, 300, false);
