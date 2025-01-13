@@ -940,11 +940,15 @@ Score Search::PVSearch(Thread &thread,
         // No move was able to beat the TT entries score, so we extend the TT
         // move's search
         if (tt_move_excluded_score < new_beta) {
+          const int correction_amount =
+              std::abs(stack->static_eval - raw_static_eval) / 10;
+          const int double_margin = kSeDoubleMargin - correction_amount,
+                    triple_margin = kSeTripleMargin - correction_amount;
           // Extend more if the TT move is singular by a big margin
           if (!in_pv_node &&
-              tt_move_excluded_score < new_beta - kSeDoubleMargin) {
+              tt_move_excluded_score < new_beta - double_margin) {
             extensions = 2 + (is_quiet && tt_move_excluded_score <
-                                              new_beta - kSeTripleMargin);
+                                              new_beta - triple_margin);
             depth += depth < kSeDepthExtensionDepth;
           } else {
             extensions = 1;
