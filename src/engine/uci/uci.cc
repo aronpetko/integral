@@ -1,12 +1,11 @@
 #include "uci.h"
 
-#include <tbprobe.h>
-
 #include <string>
 
 #include "../../ascii_logo.h"
 #include "../../data_gen/data_gen.h"
 #include "../../tests/tests.h"
+#include "../evaluation/nnue/sparse.h"
 #include "../search/search.h"
 #include "../search/syzygy/syzygy.h"
 #include "fmt/format.h"
@@ -196,6 +195,15 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     if (bench_depth) tests::BenchSuite(*bench_depth);
     else tests::BenchSuite(tests::kDefaultBenchDepth);
   });
+
+#ifdef SPARSE_PERMUTE
+  listener.RegisterCommand("permute", CommandType::kUnordered, {
+    CreateArgument("out", ArgumentType::kRequired, LimitedInputProcessor<1>()),
+  }, [](Command *cmd) {
+    tests::BenchSuite(tests::kDefaultBenchDepth);
+    nnue::sparse::SavePermutedNetwork(*cmd->ParseArgument<std::string>("out"));
+  });
+#endif
 
   listener.RegisterCommand("uci", CommandType::kUnordered, {}, [](Command *cmd) {
     fmt::println(
