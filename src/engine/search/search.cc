@@ -1046,8 +1046,9 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      const int complexity = std::abs(stack->static_eval - raw_static_eval);
-      reduction -= 10 * complexity;
+      if (!state.InCheck()) {
+        reduction -= 10 * std::abs(stack->static_eval - raw_static_eval);
+      }
 
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
