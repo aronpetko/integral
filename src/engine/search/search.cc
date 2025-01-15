@@ -69,6 +69,7 @@ void Search::IterativeDeepening(Thread &thread) {
   const int multi_pv =
       std::min(uci::listener.GetOption("MultiPV").GetValue<int>(),
                thread.root_moves.Size());
+  const bool minimal = uci::listener.GetOption("Minimal").GetValue<bool>();
 
   const auto root_stack = &thread.stack.Front();
 
@@ -148,7 +149,7 @@ void Search::IterativeDeepening(Thread &thread) {
       break;
     }
 
-    if (print_info && thread.IsMainThread() &&
+    if (print_info && !minimal && thread.IsMainThread() &&
         !stop_.load(std::memory_order_relaxed)) {
       for (int i = 0; i < multi_pv; ++i) {
         auto &pv_move = thread.root_moves[i];
