@@ -5,16 +5,16 @@
 
 namespace search {
 
-TUNABLE(kStabilityBase, 1.2525159944773525, 0.5, 2.0, false);
-TUNABLE(kStabilitySlope, 0.05325456173938685, 0.02, 0.07, false);
-TUNABLE(kScoreChangeBase, 0.121116340847686, 0.05, 0.2, false);
-TUNABLE(kSearchScoreCoeff, 0.02483659806288017, 0.01, 0.04, false);
-TUNABLE(kPreviousScoreCoeff, 0.024382376624200692, 0.01, 0.04, false);
-TUNABLE(kScoreChangeMin, 0.5228923409397196, 0.3, 0.7, false);
-TUNABLE(kScoreChangeMax, 1.6877567831018803, 1.25, 2.0, false);
-TUNABLE(kNodeFactorBase, 0.5527566020812797, 0.3, 0.7, false);
-TUNABLE(kNodeFactorSlope, 2.283722166709185, 1.8, 2.5, false);
-TUNABLE(kNodeFactorIntercept, 0.46622003939758583, 0.2, 0.65, false);
+TUNABLE(kStabilityBase, 1.2559156675610113, 0.5, 2.0, false);
+TUNABLE(kStabilitySlope, 0.05368320373532239, 0.02, 0.07, false);
+TUNABLE(kScoreChangeBase, 0.1230296079822865, 0.05, 0.2, false);
+TUNABLE(kSearchScoreCoeff, 0.024346768671184297, 0.01, 0.04, false);
+TUNABLE(kPreviousScoreCoeff, 0.024513589899696073, 0.01, 0.04, false);
+TUNABLE(kScoreChangeMin, 0.5165608513427664, 0.3, 0.7, false);
+TUNABLE(kScoreChangeMax, 1.69665050924867, 1.25, 2.0, false);
+TUNABLE(kNodeFactorBase, 0.5433510451726099, 0.3, 0.7, false);
+TUNABLE(kNodeFactorSlope, 2.2890193673854635, 1.8, 2.5, false);
+TUNABLE(kNodeFactorIntercept, 0.46183762314193877, 0.2, 0.65, false);
 
 U64 GetCurrentTime() {
   const auto duration = std::chrono::steady_clock::now().time_since_epoch();
