@@ -12,15 +12,7 @@ TUNABLE(kPawnHistFill, -955, -3000, 0, false);
 class PawnHistory {
  public:
   PawnHistory() : table_({}) {
-    for (auto &one : table_) {
-      for (auto &two : one) {
-        for (auto &three : two) {
-          for (auto &four : three) {
-            four = kPawnHistFill;
-          }
-        }
-      }
-    }
+    table_.fill(-kPawnHistFill);
   }
 
   void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
