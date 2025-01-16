@@ -49,7 +49,7 @@ void LoadFromIncBin() {
   network->feature_biases = raw_network->feature_biases;
   network->psqt_weights = raw_network->psqt_weights;
 
-#if !BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
   constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
   std::array<__m128i, kNumRegs> regs;
@@ -88,7 +88,7 @@ void LoadFromIncBin() {
     }
   }
 
-#if !BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD
   // Weight permutation for DpbusdEpi32
   {
     const auto tmp = std::make_shared<ProcessedNetwork>(*network);
@@ -114,7 +114,7 @@ void LoadFromIncBin() {
     }
   }
 
-#if !BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD
   for (I16 i = 0; i < 256; i++) {
     // Count the number of set bits for this number
     nnz_table[i].count = BitBoard(i).PopCount();
@@ -138,7 +138,7 @@ Score Evaluate(Board &board) {
 
   constexpr int kFtShift = 9;
 
-#if !BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD
   constexpr int kI32ChunkSize = sizeof(simd::Vepi16) / sizeof(I32);
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
@@ -157,9 +157,10 @@ Score Evaluate(Board &board) {
     const auto &stm_accumulator = accumulator[state.turn ^ them];
     for (int i = 0; i < arch::kL1Size / 2; i += kI8ChunkSize) {
       // Clip first accumulator values
-      const auto accumulator_value = simd::LoadEpi16(&stm_accumulator[i]);
+      const auto accumulator_value =
+          simd::LoadEpi16(&stm_accumulator.Positional(i));
       const auto pair_accumulator_value =
-          simd::LoadEpi16(&stm_accumulator[i + arch::kL1Size / 2]);
+          simd::LoadEpi16(&stm_accumulator.Positional(i + arch::kL1Size / 2));
       const auto clipped_value =
           simd::Clip(accumulator_value, arch::kFtQuantization);
       const auto clipped_pair_value =
@@ -167,9 +168,9 @@ Score Evaluate(Board &board) {
 
       // Clip second accumulator values
       const auto accumulator_value1 =
-          simd::LoadEpi16(&stm_accumulator[i + kI16ChunkSize]);
+          simd::LoadEpi16(&stm_accumulator.Positional(i + kI16ChunkSize));
       const auto pair_accumulator_value1 = simd::LoadEpi16(
-          &stm_accumulator[i + arch::kL1Size / 2 + kI16ChunkSize]);
+          &stm_accumulator.Positional(i + arch::kL1Size / 2 + kI16ChunkSize));
       const auto clipped_value1 =
           simd::Clip(accumulator_value1, arch::kFtQuantization);
       const auto clipped_pair_value1 =
@@ -299,7 +300,8 @@ Score Evaluate(Board &board) {
   const auto l3_output =
       simd::ReduceAddPs(result_sums.data()) + network->l3_biases[bucket];
 
-  return static_cast<Score>(l3_output * arch::kEvalScale);
+  return static_cast<Score>((l3_output + accumulator[state.turn].Material()) *
+                            arch::kEvalScale);
 
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
@@ -307,8 +309,9 @@ Score Evaluate(Board &board) {
   for (int them = 0; them <= 1; them++) {
     const auto &stm_accumulator = accumulator[state.turn ^ them];
     for (int i = 0; i < arch::kL1Size / 2; i++) {
-      const auto first_val = CReLU(stm_accumulator[i]);
-      const auto second_val = CReLU(stm_accumulator[i + arch::kL1Size / 2]);
+      const auto first_val = CReLU(stm_accumulator.Positional(i));
+      const auto second_val =
+          CReLU(stm_accumulator.Positional(i + arch::kL1Size / 2));
 
       const auto product = (first_val * second_val) >> 9;
       feature_output[i + them * arch::kL1Size / 2] = static_cast<U8>(product);
@@ -358,36 +361,12 @@ Score Evaluate(Board &board) {
         std::fma(l2_output[i], network->l3_weights[bucket][i], l3_output);
   }
 
-  // Scale output
   const auto positional_eval = l3_output;
-
-  // Compute piece-square (material) evaluation
-  const Color us = state.turn, them = FlipColor(us);
-
-  const auto king_square = Square(state.King(us).GetLsb());
-  const auto king_bucket = Accumulator::GetKingBucket(king_square, us);
-
-  float material_eval = 0;
-  for (int piece = kPawn; piece <= kKing; ++piece) {
-    const auto our_piece_bb = state.piece_bbs[piece] & state.side_bbs[us];
-    for (Square square : our_piece_bb) {
-      // Horizontally mirror if king is on the other half
-      square = square ^ ((king_square.File() >= kFileE) * 0b111);
-      square = square ^ (56 * us);
-      material_eval += network->psqt_weights[king_bucket][0][piece][square];
-    }
-
-    const auto their_piece_bb = state.piece_bbs[piece] & state.side_bbs[them];
-    for (Square square : their_piece_bb) {
-      // Horizontally mirror if king is on the other half
-      square = square ^ ((king_square.File() >= kFileE) * 0b111);
-      square = square ^ (56 * us);
-      material_eval += network->psqt_weights[king_bucket][1][piece][square];
-    }
-  }
+  const auto material_eval = accumulator[state.turn].Material();
 
   // Scale output
-  return static_cast<Score>((material_eval + positional_eval) * arch::kEvalScale);
+  return static_cast<Score>((material_eval + positional_eval) *
+                            arch::kEvalScale);
 
 #endif
 }

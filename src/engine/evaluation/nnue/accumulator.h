@@ -58,11 +58,29 @@ static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
       .as_array();
 }
 
+static float GetMaterialValue(Square square,
+                              Square king_square,
+                              PieceType piece,
+                              Color piece_color,
+                              Color perspective) {
+  square = square ^ ((king_square.File() >= kFileE) * 0b111);
+
+  const int relative_king_square = king_square ^ (56 * perspective);
+  const int king_bucket_idx = kKingBucketMap[relative_king_square];
+  const int square_idx = square ^ 56 * perspective;
+  const int color_idx = perspective != piece_color;
+  const int piece_idx = piece;
+
+  return network
+      ->psqt_weights[king_bucket_idx][color_idx][piece_idx][square_idx];
+}
+
 class PerspectiveAccumulator {
  public:
-  PerspectiveAccumulator() : values_({}) {}
+  PerspectiveAccumulator() : values_({}), psqt_value_(0.0f) {}
 
   void Reset() {
+    psqt_value_ = 0.0f;
     // Initialize the accumulator values with the network biases
     for (int i = 0; i < arch::kL1Size; ++i) {
       values_[i] = network->feature_biases[i];
@@ -93,6 +111,8 @@ class PerspectiveAccumulator {
     for (int i = 0; i < arch::kL1Size; ++i) {
       values_[i] += table[i];
     }
+    psqt_value_ +=
+        GetMaterialValue(square, king_square, piece, piece_color, perspective);
   }
 
   void SubFeature(Color perspective,
@@ -105,6 +125,8 @@ class PerspectiveAccumulator {
     for (int i = 0; i < arch::kL1Size; ++i) {
       values_[i] -= table[i];
     }
+    psqt_value_ -=
+        GetMaterialValue(square, king_square, piece, piece_color, perspective);
   }
 
   void AddSubFeatures(const PerspectiveAccumulator& previous,
@@ -121,8 +143,14 @@ class PerspectiveAccumulator {
     const auto& sub_table = GetFeatureTable(
         sub_square, king_square, sub_piece, sub_piece_color, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table[i];
+      values_[i] = previous.Positional(i) + add_table[i] - sub_table[i];
     }
+
+    const auto material_add = GetMaterialValue(
+        add_square, king_square, add_piece, add_piece_color, perspective);
+    const auto material_sub = GetMaterialValue(
+        sub_square, king_square, sub_piece, sub_piece_color, perspective);
+    psqt_value_ = previous.Material() + material_add - material_sub;
   }
 
   void AddSubSubFeatures(const PerspectiveAccumulator& previous,
@@ -144,8 +172,18 @@ class PerspectiveAccumulator {
     const auto& sub_table2 = GetFeatureTable(
         sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table1[i] - sub_table2[i];
+      values_[i] =
+          previous.Positional(i) + add_table[i] - sub_table1[i] - sub_table2[i];
     }
+
+    const auto material_add = GetMaterialValue(
+        add_square, king_square, add_piece, add_piece_color, perspective);
+    const auto material_sub1 = GetMaterialValue(
+        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
+    const auto material_sub2 = GetMaterialValue(
+        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
+    psqt_value_ =
+        previous.Material() + material_add - material_sub1 - material_sub2;
   }
 
   void AddAddSubSubFeatures(const PerspectiveAccumulator& previous,
@@ -172,9 +210,20 @@ class PerspectiveAccumulator {
     const auto& sub_table2 = GetFeatureTable(
         sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table1[i] + add_table2[i] - sub_table1[i] -
-                   sub_table2[i];
+      values_[i] = previous.Positional(i) + add_table1[i] + add_table2[i] -
+                   sub_table1[i] - sub_table2[i];
     }
+
+    const auto material_add1 = GetMaterialValue(
+        add_square1, king_square, add_piece1, add_piece_color1, perspective);
+    const auto material_add2 = GetMaterialValue(
+        add_square2, king_square, add_piece2, add_piece_color2, perspective);
+    const auto material_sub1 = GetMaterialValue(
+        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
+    const auto material_sub2 = GetMaterialValue(
+        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
+    psqt_value_ = previous.Material() + material_add1 + material_add2 -
+                  material_sub1 - material_sub2;
   }
 
   void ApplyChange(const PerspectiveAccumulator& previous,
@@ -227,16 +276,17 @@ class PerspectiveAccumulator {
     }
   }
 
-  I16& operator[](int idx) {
+  [[nodiscard]] const I16 &Positional(int idx) const {
     return values_[idx];
   }
 
-  const I16& operator[](int idx) const {
-    return values_[idx];
+  [[nodiscard]] float Material() const {
+    return psqt_value_;
   }
 
  private:
   alignas(64) std::array<I16, arch::kL1Size> values_;
+  float psqt_value_;
 };
 
 struct AccumulatorEntry {
