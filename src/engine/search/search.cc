@@ -143,14 +143,14 @@ void Search::IterativeDeepening(Thread &thread) {
 
     thread.scores[depth] = best_move.score;
 
-    if (thread.IsMainThread() &&
-        (time_mgmt_.ShouldStop(best_move.move, depth, thread) ||
-         ShouldQuit(thread))) {
-      break;
-    }
+    const bool soft_timeout =
+        thread.IsMainThread() &&
+        time_mgmt_.ShouldStop(best_move.move, depth, thread);
+    const bool hard_timeout =
+        stop_.load(std::memory_order_relaxed) || ShouldQuit(thread);
 
-    if (print_info && !minimal && thread.IsMainThread() &&
-        !stop_.load(std::memory_order_relaxed)) {
+    if (print_info && (!minimal || soft_timeout) && thread.IsMainThread() &&
+        !hard_timeout) {
       for (int i = 0; i < multi_pv; ++i) {
         auto &pv_move = thread.root_moves[i];
 
@@ -169,6 +169,10 @@ void Search::IterativeDeepening(Thread &thread) {
                            pv_move.pv.UCIFormat(),
                            i);
       }
+    }
+
+    if (soft_timeout || hard_timeout) {
+      break;
     }
   }
 
@@ -278,8 +282,8 @@ Score Search::QuiescentSearch(Thread &thread,
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
-  // Keep track of the original alpha for bound determination when updating the
-  // transposition table
+  // Keep track of the original alpha for bound determination when updating
+  // the transposition table
   const int original_alpha = alpha;
 
   int moves_seen = 0;
@@ -672,8 +676,8 @@ Score Search::PVSearch(Thread &thread,
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
-    // Reverse (Static) Futility Pruning: Cutoff if we think the position can't
-    // fall below beta anytime soon
+    // Reverse (Static) Futility Pruning: Cutoff if we think the position
+    // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
       const int improving_margin =
@@ -688,8 +692,8 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    // Razoring: At low depths, if this node seems like it might fail low, we do
-    // a quiescent search to determine if we should prune
+    // Razoring: At low depths, if this node seems like it might fail low, we
+    // do a quiescent search to determine if we should prune
     if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
         stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
       const Score razoring_score =
@@ -699,8 +703,8 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    // Null Move Pruning: Forfeit a move to our opponent and cutoff if we still
-    // have the advantage
+    // Null Move Pruning: Forfeit a move to our opponent and cutoff if we
+    // still have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
         !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
@@ -708,7 +712,8 @@ Score Search::PVSearch(Thread &thread,
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
       if (non_pawn_king_pieces) {
-        // Set the currently searched move in the stack for continuation history
+        // Set the currently searched move in the stack for continuation
+        // history
         stack->move = Move::NullMove();
         stack->capture_move = false;
         stack->moved_piece = kNone;
@@ -729,8 +734,9 @@ Score Search::PVSearch(Thread &thread,
           return 0;
         }
 
-        // Prune if the result from our null window search around beta indicates
-        // that the opponent still doesn't gain an advantage from the null move
+        // Prune if the result from our null window search around beta
+        // indicates that the opponent still doesn't gain an advantage from
+        // the null move
         if (score >= beta) {
           if (thread.nmp_min_ply != 0 || depth <= 14) {
             return score >= kTBWinInMaxPlyScore ? beta : score;
@@ -748,8 +754,8 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // ProbCut: When the current position's score is likely to cause a beta
-      // cutoff, we attempt a shallower quiescent-like search and prune early if
-      // possible
+      // cutoff, we attempt a shallower quiescent-like search and prune early
+      // if possible
       const Score pc_beta = beta + kProbcutBetaDelta;
       if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
@@ -823,15 +829,15 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
-  // Internal Iterative Reduction: Move ordering is expected to be worse with no
-  // TT move, so we save time on searching this position now
+  // Internal Iterative Reduction: Move ordering is expected to be worse with
+  // no TT move, so we save time on searching this position now
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
       !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 4 < depth)) {
     depth--;
   }
 
-  // Keep track of the original alpha for bound determination when updating the
-  // transposition table
+  // Keep track of the original alpha for bound determination when updating
+  // the transposition table
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
@@ -908,8 +914,8 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
-      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too much
-      // material
+      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
+      // much material
       const int see_threshold =
           (is_quiet ? kSeeQuietThresh * depth : kSeeNoisyThresh * depth) -
           stack->history_score / kSeePruneHistDiv;
@@ -933,9 +939,9 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    // Singular Extensions: If a TT move exists and its score is accurate enough
-    // (close enough in depth), we perform a reduced-depth search with the TT
-    // move excluded to see if any other moves can beat it.
+    // Singular Extensions: If a TT move exists and its score is accurate
+    // enough (close enough in depth), we perform a reduced-depth search with
+    // the TT move excluded to see if any other moves can beat it.
     int extensions = 0;
     if (!in_root && depth >= kSeDepth && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
@@ -970,15 +976,15 @@ Score Search::PVSearch(Thread &thread,
             extensions = 1;
           }
         }
-        // Multi-cut: The singular search had a beta cutoff, indicating that the
-        // TT move was not singular. Therefore, we prune if the same score would
-        // cause a cutoff based on our current search window
+        // Multi-cut: The singular search had a beta cutoff, indicating that
+        // the TT move was not singular. Therefore, we prune if the same score
+        // would cause a cutoff based on our current search window
         else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
-        // Negative Extensions: Search less since the TT move was not singular,
-        // and it might cause a beta cutoff again.
+        // Negative Extensions: Search less since the TT move was not
+        // singular, and it might cause a beta cutoff again.
         else if (tt_entry->score >= beta) {
           extensions = -2 + in_pv_node;
         } else if (cut_node) {
