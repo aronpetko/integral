@@ -212,19 +212,22 @@ void Search::IterativeDeepening(Thread &thread) {
   }
 }
 
-[[nodiscard]] Score AdjustStaticEval(Score static_eval,
-                                     Thread &thread,
-                                     StackEntry *stack) {
+[[nodiscard]] std::pair<Score, Score> AdjustStaticEval(Score static_eval,
+                                                       Thread &thread,
+                                                       StackEntry *stack) {
   const auto &state = thread.board.GetState();
 
   // Adjust based on prior search scores in similar positions
-  static_eval = thread.history.correction_history->CorrectStaticEval(
-      state, stack, static_eval);
+  auto corrected_static_eval =
+      thread.history.correction_history->CorrectStaticEval(
+          state, stack, static_eval);
+
+  const auto correction_difference = corrected_static_eval - static_eval;
 
   // Adjust based on proximity to a fifty-move-rule draw
-  static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
+  corrected_static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
 
-  return static_eval;
+  return {corrected_static_eval, correction_difference};
 }
 
 template <NodeType node_type>
@@ -289,6 +292,7 @@ Score Search::QuiescentSearch(Thread &thread,
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Score raw_static_eval = kScoreNone;
+  Score correction_difference = 0;
 
   if (!stack->in_check) {
     if (tt_static_eval != kScoreNone) {
@@ -297,7 +301,8 @@ Score Search::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    std::tie(stack->static_eval, correction_difference) =
+        AdjustStaticEval(raw_static_eval, thread, stack);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -602,6 +607,7 @@ Score Search::PVSearch(Thread &thread,
   }
 
   Score raw_static_eval;
+  Score correction_difference = 0;
 
   // Approximate the current evaluation at this node
   if (stack->in_check) {
@@ -623,7 +629,8 @@ Score Search::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    std::tie(stack->static_eval, correction_difference) =
+        AdjustStaticEval(raw_static_eval, thread, stack);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
@@ -1052,7 +1059,7 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      if (std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff) {
+      if (std::abs(correction_difference) > kLmrComplexityDiff) {
         reduction -= kLmrComplexity;
       }
 
