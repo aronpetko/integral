@@ -1047,7 +1047,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Reduce less if the static evaluation has been corrected a lot
       if (!stack->in_check) {
-        reduction -= 10 * std::abs(stack->static_eval - raw_static_eval);
+        reduction -=
+            std::min(10 * std::abs(stack->static_eval - raw_static_eval), 1500);
       }
 
       // Reduce less if this move is a killer move
