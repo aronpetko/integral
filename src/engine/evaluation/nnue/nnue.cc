@@ -47,6 +47,7 @@ void LoadFromIncBin() {
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
+  network->psqt_weights = raw_network->psqt_weights;
 
 #if BUILD_HAS_SIMD
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
@@ -137,7 +138,7 @@ Score Evaluate(Board &board) {
 
   constexpr int kFtShift = 9;
 
-#if BUILD_HAS_SIMD
+#if !BUILD_HAS_SIMD
   constexpr int kI32ChunkSize = sizeof(simd::Vepi16) / sizeof(I32);
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
@@ -358,7 +359,34 @@ Score Evaluate(Board &board) {
   }
 
   // Scale output
-  return static_cast<Score>(l3_output * arch::kEvalScale);
+  const auto positional_eval = l3_output;
+
+  // Compute piece-square (material) evaluation
+  const Color us = state.turn, them = FlipColor(us);
+
+  const auto king_square = Square(state.King(us).GetLsb());
+  const auto king_bucket = Accumulator::GetKingBucket(king_square, us);
+
+  float material_eval = 0;
+  for (int piece = kPawn; piece <= kKing; ++piece) {
+    const auto our_piece_bb = state.piece_bbs[piece] & state.side_bbs[us];
+    for (Square square : our_piece_bb) {
+      // Horizontally mirror if king is on the other half
+      square = square ^ ((king_square.File() >= kFileE) * 0b111);
+      material_eval += network->psqt_weights[king_bucket][0][piece][square];
+    }
+
+    const auto their_piece_bb = state.piece_bbs[piece] & state.side_bbs[them];
+    for (Square square : their_piece_bb) {
+      // Horizontally mirror if king is on the other half
+      square = square ^ ((king_square.File() >= kFileE) * 0b111);
+      material_eval += network->psqt_weights[king_bucket][1][piece][square];
+    }
+  }
+
+  // Scale output
+  return static_cast<Score>((material_eval + positional_eval) * arch::kEvalScale);
+
 #endif
 }
 

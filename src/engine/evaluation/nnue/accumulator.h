@@ -437,9 +437,8 @@ class Accumulator {
     return stack_[head_idx_].perspectives[perspective];
   }
 
- private:
-  [[nodiscard]] inline int GetKingBucket(Square king_square,
-                                         Color king_color) const {
+ public:
+  [[nodiscard]] static int GetKingBucket(Square king_square, Color king_color) {
     return kKingBucketMap[king_square ^ (56 * king_color)];
   }
 
