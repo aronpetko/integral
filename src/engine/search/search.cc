@@ -1053,7 +1053,12 @@ Score Search::PVSearch(Thread &thread,
 
       // Reduce less if the static evaluation has been corrected a lot
       if (!stack->in_check) {
-        reduction -= 25 * std::abs(stack->static_eval - raw_static_eval) / 5;
+        const auto corrected_static_eval =
+            thread.history.correction_history->CorrectStaticEval(
+                state, stack, raw_static_eval);
+        const auto complexity =
+            std::abs(corrected_static_eval - raw_static_eval);
+        reduction -= 25 * complexity / 5;
       }
 
       // Reduce less if this move is a killer move
