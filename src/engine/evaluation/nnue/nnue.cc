@@ -49,7 +49,7 @@ void LoadFromIncBin() {
   network->feature_biases = raw_network->feature_biases;
   network->psqt_weights = raw_network->psqt_weights;
 
-#if BUILD_HAS_SIMD
+#if !BUILD_HAS_SIMD
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
   constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
   std::array<__m128i, kNumRegs> regs;
@@ -88,7 +88,7 @@ void LoadFromIncBin() {
     }
   }
 
-#if BUILD_HAS_SIMD
+#if !BUILD_HAS_SIMD
   // Weight permutation for DpbusdEpi32
   {
     const auto tmp = std::make_shared<ProcessedNetwork>(*network);
@@ -114,7 +114,7 @@ void LoadFromIncBin() {
     }
   }
 
-#if BUILD_HAS_SIMD
+#if !BUILD_HAS_SIMD
   for (I16 i = 0; i < 256; i++) {
     // Count the number of set bits for this number
     nnz_table[i].count = BitBoard(i).PopCount();
@@ -383,8 +383,6 @@ Score Evaluate(Board &board) {
       material_eval += network->psqt_weights[king_bucket][1][piece][square];
     }
   }
-
-  fmt::println("{}", material_eval * arch::kEvalScale);
 
   // Scale output
   return static_cast<Score>((material_eval + positional_eval) * arch::kEvalScale);
