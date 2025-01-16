@@ -373,6 +373,7 @@ Score Evaluate(Board &board) {
     for (Square square : our_piece_bb) {
       // Horizontally mirror if king is on the other half
       square = square ^ ((king_square.File() >= kFileE) * 0b111);
+      square = square ^ (56 * us);
       material_eval += network->psqt_weights[king_bucket][0][piece][square];
     }
 
@@ -380,6 +381,7 @@ Score Evaluate(Board &board) {
     for (Square square : their_piece_bb) {
       // Horizontally mirror if king is on the other half
       square = square ^ ((king_square.File() >= kFileE) * 0b111);
+      square = square ^ (56 * us);
       material_eval += network->psqt_weights[king_bucket][1][piece][square];
     }
   }
