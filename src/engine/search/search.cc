@@ -1058,7 +1058,7 @@ Score Search::PVSearch(Thread &thread,
                 state, stack, raw_static_eval);
         const auto complexity =
             std::abs(corrected_static_eval - raw_static_eval);
-        reduction -= 25 * complexity / 5;
+        reduction -= 15 * complexity;
       }
 
       // Reduce less if this move is a killer move
