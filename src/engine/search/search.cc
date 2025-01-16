@@ -1046,7 +1046,7 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      if (!state.InCheck()) {
+      if (!stack->in_check) {
         reduction -= 10 * std::abs(stack->static_eval - raw_static_eval);
       }
 
