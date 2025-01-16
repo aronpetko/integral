@@ -384,6 +384,8 @@ Score Evaluate(Board &board) {
     }
   }
 
+  fmt::println("{}", material_eval * arch::kEvalScale);
+
   // Scale output
   return static_cast<Score>((material_eval + positional_eval) * arch::kEvalScale);
 
