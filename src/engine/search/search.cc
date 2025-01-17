@@ -225,7 +225,8 @@ void Search::IterativeDeepening(Thread &thread) {
   const auto correction_difference = corrected_static_eval - static_eval;
 
   // Adjust based on proximity to a fifty-move-rule draw
-  corrected_static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
+  corrected_static_eval =
+      corrected_static_eval * (220 - state.fifty_moves_clock) / 220;
 
   return {corrected_static_eval, correction_difference};
 }
