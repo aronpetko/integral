@@ -86,15 +86,13 @@ void Search::IterativeDeepening(Thread &thread) {
       thread.sel_depth = 0, thread.root_depth = depth;
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
+      const auto average_score = cur_best_move.average_score;
 
-      int window = kAspWindowDelta;
-      Score alpha = -kInfiniteScore;
-      Score beta = kInfiniteScore;
+      int window = kAspWindowDelta + average_score * average_score / 16384;
 
-      if (depth >= kAspWindowDepth) {
-        alpha = std::max<int>(-kInfiniteScore, cur_best_move.score - window);
-        beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
-      }
+      Score alpha =
+          std::max<int>(-kInfiniteScore, cur_best_move.score - window);
+      Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
 
       int fail_high_count = 0;
 
@@ -1127,6 +1125,9 @@ Score Search::PVSearch(Thread &thread,
       if (const auto root_move = thread.root_moves.FindRootMove(move)) {
         if (moves_seen == 1 || score > alpha) {
           root_move->score = score;
+          root_move->average_score = root_move->average_score == kScoreNone
+                                       ? score
+                                       : (root_move->average_score + score) / 2;
           root_move->pv.Clear();
           root_move->pv.Push(move);
           root_move->pv.AppendPV((stack + 1)->pv);
