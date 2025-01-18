@@ -338,8 +338,9 @@ Score Search::QuiescentSearch(Thread &thread,
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen > 0) {
+    if (best_score > -kTBWinInMaxPlyScore &&
+        move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+        moves_seen >= 2 - stack->in_check) {
       break;
     }
 
@@ -349,7 +350,8 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
-    if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
+    if (best_score > -kTBWinInMaxPlyScore && !stack->in_check &&
+        move.IsCapture(state) && futility_score <= alpha &&
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
