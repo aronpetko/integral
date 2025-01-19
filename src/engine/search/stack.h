@@ -68,18 +68,18 @@ struct StackEntry {
   // Continuation history entry for this move
   void *continuation_entry;
   // Moves that caused a beta cutoff at this ply
-  MultiArray<Move, 16384, 2> killer_table;
+  MultiArray<Move, 64, 2> killer_table;
   // Was in check at this ply
   bool in_check;
   // Threats
   BitBoard threats;
 
   const MultiArray<Move, 2> &GetKillers(const U64 &pawn_key) {
-    return killer_table[pawn_key % 16384];
+    return killer_table[pawn_key % 64];
   }
 
   void AddKillerMove(const U64 &pawn_key, Move killer_move) {
-    auto &killers = killer_table[pawn_key % 16384];
+    auto &killers = killer_table[pawn_key % 64];
     // Ensure we don't have duplicate killer moves
     if (killer_move != killers.front()) {
       killers[1] = killers[0];
