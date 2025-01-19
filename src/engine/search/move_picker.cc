@@ -89,11 +89,13 @@ Move MovePicker::Next() {
     stage_ = Stage::kFirstKiller;
   }
 
+  const auto &killers = stack_->GetKillers(state.pawn_key);
+
   if (stage_ == Stage::kFirstKiller) {
     stage_ = Stage::kSecondKiller;
 
     if (stack_) {
-      const auto first_killer = stack_->killer_moves[0];
+      const auto first_killer = killers[0];
       if (first_killer && first_killer != tt_move_ &&
           board_.IsMovePseudoLegal(first_killer)) {
         return first_killer;
@@ -105,7 +107,7 @@ Move MovePicker::Next() {
     stage_ = Stage::kGenerateQuiets;
 
     if (stack_) {
-      const auto second_killer = stack_->killer_moves[1];
+      const auto second_killer = killers[1];
       if (second_killer && second_killer != tt_move_ &&
           board_.IsMovePseudoLegal(second_killer)) {
         return second_killer;
@@ -166,7 +168,7 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 
 template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
-  const auto &killers = stack_->killer_moves;
+  const auto &killers = stack_->GetKillers(board_.GetState().pawn_key);
   auto moves = move_gen::GenerateMoves(move_type, board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];

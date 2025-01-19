@@ -1055,7 +1055,8 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Reduce less if this move is a killer move
-      if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
+      const auto &killers = stack->GetKillers(state.pawn_key);
+      if (move == killers[0] || move == killers[1]) {
         reduction -= kLmrKillerMoves;
       }
 
@@ -1154,7 +1155,7 @@ Score Search::PVSearch(Thread &thread,
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
-            stack->AddKillerMove(move);
+            stack->AddKillerMove(state.pawn_key, move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
             history.pawn_history->UpdateScore(

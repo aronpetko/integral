@@ -68,22 +68,29 @@ struct StackEntry {
   // Continuation history entry for this move
   void *continuation_entry;
   // Moves that caused a beta cutoff at this ply
-  std::array<Move, 2> killer_moves;
+  MultiArray<Move, 16384, 2> killer_table;
   // Was in check at this ply
   bool in_check;
   // Threats
   BitBoard threats;
 
-  void AddKillerMove(Move killer_move) {
+  const MultiArray<Move, 2> &GetKillers(const U64 &pawn_key) {
+    return killer_table[pawn_key % 16384];
+  }
+
+  void AddKillerMove(const U64 &pawn_key, Move killer_move) {
+    auto &killers = killer_table[pawn_key % 16384];
     // Ensure we don't have duplicate killer moves
-    if (killer_move != killer_moves.front()) {
-      killer_moves[1] = killer_moves[0];
-      killer_moves[0] = killer_move;
+    if (killer_move != killers.front()) {
+      killers[1] = killers[0];
+      killers[0] = killer_move;
     }
   }
 
   void ClearKillerMoves() {
-    killer_moves.fill(Move::NullMove());
+    for (auto &killers : killer_table) {
+      killers.fill(Move::NullMove());
+    }
   }
 
   explicit StackEntry(U16 ply)
@@ -93,7 +100,7 @@ struct StackEntry {
         history_score(0),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
-        killer_moves({}),
+        killer_table({}),
         continuation_entry(nullptr) {
     ClearKillerMoves();
   }
