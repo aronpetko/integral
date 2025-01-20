@@ -40,11 +40,12 @@ struct AccumulatorChange {
   } type;
 };
 
-static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
-                                                       Square king_square,
-                                                       PieceType piece,
-                                                       Color piece_color,
-                                                       Color perspective) {
+[[nodiscard]] static std::array<I16, arch::kL1Size>& GetFeatureTable(
+    Square square,
+    Square king_square,
+    PieceType piece,
+    Color piece_color,
+    Color perspective) {
   square = square ^ ((king_square.File() >= kFileE) * 0b111);
 
   const int relative_king_square = king_square ^ (56 * perspective);
@@ -58,15 +59,40 @@ static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
       .as_array();
 }
 
+[[nodiscard]] static float& GetPSQTValue(Square square,
+                                         Square king_square,
+                                         PieceType piece,
+                                         Color piece_color,
+                                         Color perspective,
+                                         int output_bucket) {
+  square = square ^ ((king_square.File() >= kFileE) * 0b111);
+
+  const int relative_king_square = king_square ^ (56 * perspective);
+  const int king_bucket_idx = kKingBucketMap[relative_king_square];
+  const int square_idx = square ^ 56 * perspective;
+  const int color_idx = perspective != piece_color;
+  const int piece_idx = piece;
+
+  return network->psqt_weights[king_bucket_idx][color_idx][piece_idx]
+                              [square_idx][output_bucket];
+}
+
+[[nodiscard]] static int GetOutputBucket(const BoardState& state) {
+  return std::min((state.Occupied().PopCount() - 2) / kBucketDivisor,
+                  static_cast<int>(arch::kOutputBucketCount - 1));
+}
+
 class PerspectiveAccumulator {
  public:
-  PerspectiveAccumulator() : values_({}) {}
+  PerspectiveAccumulator() : values_({}), material_eval_({}) {}
 
   void Reset() {
-    // Initialize the accumulator values with the network biases
+    // Initialize the positional values with the deep network biases
     for (int i = 0; i < arch::kL1Size; ++i) {
       values_[i] = network->feature_biases[i];
     }
+    // Initialize the material (subnet) evaluation with 0
+    material_eval_.fill(0.0f);
   }
 
   void Refresh(const BoardState& state, Color perspective) {
@@ -93,6 +119,11 @@ class PerspectiveAccumulator {
     for (int i = 0; i < arch::kL1Size; ++i) {
       values_[i] += table[i];
     }
+
+    for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+      material_eval_[bucket] += GetPSQTValue(
+          square, king_square, piece, piece_color, perspective, bucket);
+    }
   }
 
   void SubFeature(Color perspective,
@@ -104,6 +135,11 @@ class PerspectiveAccumulator {
         GetFeatureTable(square, king_square, piece, piece_color, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
       values_[i] -= table[i];
+    }
+
+    for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+      material_eval_[bucket] -= GetPSQTValue(
+          square, king_square, piece, piece_color, perspective, bucket);
     }
   }
 
@@ -121,7 +157,23 @@ class PerspectiveAccumulator {
     const auto& sub_table = GetFeatureTable(
         sub_square, king_square, sub_piece, sub_piece_color, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table[i];
+      values_[i] = previous.Positional(i) + add_table[i] - sub_table[i];
+    }
+
+    for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+      material_eval_[bucket] = previous.Material(bucket) +
+                               GetPSQTValue(add_square,
+                                            king_square,
+                                            add_piece,
+                                            add_piece_color,
+                                            perspective,
+                                            bucket) -
+                               GetPSQTValue(sub_square,
+                                            king_square,
+                                            sub_piece,
+                                            sub_piece_color,
+                                            perspective,
+                                            bucket);
     }
   }
 
@@ -144,7 +196,30 @@ class PerspectiveAccumulator {
     const auto& sub_table2 = GetFeatureTable(
         sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table1[i] - sub_table2[i];
+      values_[i] =
+          previous.Positional(i) + add_table[i] - sub_table1[i] - sub_table2[i];
+    }
+
+    for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+      material_eval_[bucket] = previous.Material(bucket) +
+                               GetPSQTValue(add_square,
+                                            king_square,
+                                            add_piece,
+                                            add_piece_color,
+                                            perspective,
+                                            bucket) -
+                               GetPSQTValue(sub_square1,
+                                            king_square,
+                                            sub_piece1,
+                                            sub_piece_color1,
+                                            perspective,
+                                            bucket) -
+                               GetPSQTValue(sub_square2,
+                                            king_square,
+                                            sub_piece2,
+                                            sub_piece_color2,
+                                            perspective,
+                                            bucket);
     }
   }
 
@@ -172,15 +247,44 @@ class PerspectiveAccumulator {
     const auto& sub_table2 = GetFeatureTable(
         sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table1[i] + add_table2[i] - sub_table1[i] -
-                   sub_table2[i];
+      values_[i] = previous.Positional(i) + add_table1[i] + add_table2[i] -
+                   sub_table1[i] - sub_table2[i];
+    }
+
+    for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+      material_eval_[bucket] = previous.Material(bucket) +
+                               GetPSQTValue(add_square1,
+                                            king_square,
+                                            add_piece1,
+                                            add_piece_color1,
+                                            perspective,
+                                            bucket) +
+                               GetPSQTValue(add_square2,
+                                            king_square,
+                                            add_piece2,
+                                            add_piece_color2,
+                                            perspective,
+                                            bucket) -
+                               GetPSQTValue(sub_square1,
+                                            king_square,
+                                            sub_piece1,
+                                            sub_piece_color1,
+                                            perspective,
+                                            bucket) -
+                               GetPSQTValue(sub_square2,
+                                            king_square,
+                                            sub_piece2,
+                                            sub_piece_color2,
+                                            perspective,
+                                            bucket);
     }
   }
 
   void ApplyChange(const PerspectiveAccumulator& previous,
                    const AccumulatorChange& change,
                    Color perspective,
-                   Square king_square) {
+                   Square king_square,
+                   const BoardState& state) {
     switch (change.type) {
       case AccumulatorChange::kNormal:
         AddSubFeatures(previous,
@@ -227,16 +331,17 @@ class PerspectiveAccumulator {
     }
   }
 
-  I16& operator[](int idx) {
+  [[nodiscard]] const I16 &Positional(int idx) const {
     return values_[idx];
   }
 
-  const I16& operator[](int idx) const {
-    return values_[idx];
+  [[nodiscard]] const float &Material(int bucket) const {
+    return material_eval_[bucket];
   }
 
  private:
   alignas(64) std::array<I16, arch::kL1Size> values_;
+  alignas(64) std::array<float, arch::kOutputBucketCount> material_eval_;
 };
 
 struct AccumulatorEntry {
@@ -388,7 +493,8 @@ class Accumulator {
                   clean_accumulator.perspectives[perspective],
                   dirty_accumulator.change,
                   perspective,
-                  dirty_accumulator.kings[perspective]);
+                  dirty_accumulator.kings[perspective],
+                  dirty_accumulator.state);
             }
             // Mark the accumulator as having been updated
             stack_[++last_updated].updated[perspective] = true;
@@ -421,11 +527,6 @@ class Accumulator {
 
   void UndoMove() {
     --head_idx_;
-  }
-
-  [[nodiscard]] int GetOutputBucket(const BoardState& state) const {
-    return std::min((state.Occupied().PopCount() - 2) / kBucketDivisor,
-                    static_cast<int>(arch::kOutputBucketCount - 1));
   }
 
   [[nodiscard]] PerspectiveAccumulator& operator[](int perspective) {
