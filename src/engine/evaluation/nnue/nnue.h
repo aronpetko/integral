@@ -23,7 +23,7 @@ struct RawNetwork {
 };
 
 struct alignas(simd::kAlignment) ProcessedNetwork {
-  alignas(simd::kAlignment) MultiArray<float, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kOutputBucketCount> psqt_weights;
+  alignas(simd::kAlignment) MultiArray<I32, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kOutputBucketCount> psqt_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
   union {

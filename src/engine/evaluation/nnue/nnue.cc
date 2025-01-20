@@ -47,7 +47,21 @@ void LoadFromIncBin() {
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
-  network->psqt_weights = raw_network->psqt_weights;
+
+  for (int kb = 0; kb < arch::kInputBucketCount; ++kb) {
+    for (int perspective = 0; perspective <= 1; ++perspective) {
+      for (int piece = 0; piece <= kNumPieceTypes; ++piece) {
+        for (int square = 0; square < 64; ++square) {
+          for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+            network->psqt_weights[kb][perspective][piece][square][bucket] =
+                std::round(raw_network->psqt_weights[kb][perspective][piece]
+                                                    [square][bucket] *
+                           32767);
+          }
+        }
+      }
+    }
+  }
 
 #if BUILD_HAS_SIMD
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
@@ -307,11 +321,11 @@ Score Evaluate(Board &board) {
   const Color us = state.turn, them = FlipColor(us);
   const float material_eval =
       (accumulator[us].Material(bucket) - accumulator[them].Material(bucket)) /
-      2;
+      (2 * 32767.0f);
 
   // Scale output
-  return static_cast<Score>((material_eval + positional_eval) *
-                            arch::kEvalScale);
+  return static_cast<Score>((125 * material_eval + 131 * positional_eval) /
+                            128 * arch::kEvalScale);
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
   std::array<U8, arch::kL1Size> feature_output{};

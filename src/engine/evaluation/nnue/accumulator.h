@@ -59,7 +59,7 @@ struct AccumulatorChange {
       .as_array();
 }
 
-[[nodiscard]] static float& GetPSQTValue(Square square,
+[[nodiscard]] static I32& GetPSQTValue(Square square,
                                          Square king_square,
                                          PieceType piece,
                                          Color piece_color,
@@ -335,13 +335,13 @@ class PerspectiveAccumulator {
     return values_[idx];
   }
 
-  [[nodiscard]] const float &Material(int bucket) const {
+  [[nodiscard]] const I32 &Material(int bucket) const {
     return material_eval_[bucket];
   }
 
  private:
   alignas(64) std::array<I16, arch::kL1Size> values_;
-  alignas(64) std::array<float, arch::kOutputBucketCount> material_eval_;
+  alignas(64) std::array<I32, arch::kOutputBucketCount> material_eval_;
 };
 
 struct AccumulatorEntry {
