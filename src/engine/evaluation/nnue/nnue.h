@@ -11,7 +11,7 @@ namespace nnue {
 
 // clang-format off
 struct RawNetwork {
-  MultiArray<float, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount> psqt_weights;
+  MultiArray<float, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount,  arch::kOutputBucketCount> psqt_weights;
   MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   MultiArray<I16, arch::kL1Size> feature_biases;
   MultiArray<I8, arch::kOutputBucketCount, arch::kL2Size, arch::kL1Size> l1_weights;
@@ -23,7 +23,7 @@ struct RawNetwork {
 };
 
 struct alignas(simd::kAlignment) ProcessedNetwork {
-  alignas(simd::kAlignment) MultiArray<float, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount> psqt_weights;
+  alignas(simd::kAlignment) MultiArray<float, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kOutputBucketCount> psqt_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
   union {

@@ -364,30 +364,55 @@ Score Evaluate(Board &board) {
   // Compute piece-square (material) evaluation
   const Color us = state.turn, them = FlipColor(us);
 
-  const auto king_square = Square(state.King(us).GetLsb());
-  const auto king_bucket = Accumulator::GetKingBucket(king_square, us);
+  const auto our_king_square = Square(state.King(us).GetLsb());
+  const auto our_king_bucket = Accumulator::GetKingBucket(our_king_square, us);
 
-  float material_eval = 0;
+  const auto their_king_square = Square(state.King(them).GetLsb());
+  const auto their_king_bucket =
+      Accumulator::GetKingBucket(their_king_square, them);
+
+  float our_material_eval = 0, their_material_eval = 0;
   for (int piece = kPawn; piece <= kKing; ++piece) {
     const auto our_piece_bb = state.piece_bbs[piece] & state.side_bbs[us];
     for (Square square : our_piece_bb) {
       // Horizontally mirror if king is on the other half
-      square = square ^ ((king_square.File() >= kFileE) * 0b111);
-      square = square ^ (56 * us);
-      material_eval += network->psqt_weights[king_bucket][0][piece][square];
+      auto stm_square = square ^ ((our_king_square.File() >= kFileE) * 0b111);
+      stm_square = stm_square ^ (56 * us);
+      our_material_eval +=
+          network->psqt_weights[our_king_bucket][0][piece][stm_square][bucket];
+
+      // Horizontally mirror if king is on the other half
+      auto nstm_square =
+          square ^ ((their_king_square.File() >= kFileE) * 0b111);
+      nstm_square = nstm_square ^ (56 * them);
+      their_material_eval +=
+          network
+              ->psqt_weights[their_king_bucket][1][piece][nstm_square][bucket];
     }
 
     const auto their_piece_bb = state.piece_bbs[piece] & state.side_bbs[them];
     for (Square square : their_piece_bb) {
       // Horizontally mirror if king is on the other half
-      square = square ^ ((king_square.File() >= kFileE) * 0b111);
-      square = square ^ (56 * us);
-      material_eval += network->psqt_weights[king_bucket][1][piece][square];
+      auto stm_square = square ^ ((our_king_square.File() >= kFileE) * 0b111);
+      stm_square = stm_square ^ (56 * us);
+      our_material_eval +=
+          network->psqt_weights[our_king_bucket][1][piece][stm_square][bucket];
+
+      // Horizontally mirror if king is on the other half
+      auto nstm_square =
+          square ^ ((their_king_square.File() >= kFileE) * 0b111);
+      nstm_square = nstm_square ^ (56 * them);
+      their_material_eval +=
+          network
+              ->psqt_weights[their_king_bucket][0][piece][nstm_square][bucket];
     }
   }
 
+  const float material_eval = (our_material_eval - their_material_eval) / 2;
+
   // Scale output
-  return static_cast<Score>((material_eval + positional_eval) * arch::kEvalScale);
+  return static_cast<Score>((material_eval + positional_eval) *
+                            arch::kEvalScale);
 
 #endif
 }
