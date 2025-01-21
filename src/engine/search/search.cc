@@ -665,7 +665,7 @@ Score Search::PVSearch(Thread &thread,
   }
 
   if (!stack->in_check) {
-    improving = past_stack && stack->static_eval > past_stack->static_eval;
+    improving = !past_stack || stack->static_eval > past_stack->static_eval;
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
