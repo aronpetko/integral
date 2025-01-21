@@ -328,7 +328,9 @@ Score Search::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
-  const Score futility_score = best_score + kQsFutMargin;
+  const Score futility_score =
+      best_score + kQsFutMargin -
+      60 * board.GetOpponentWinningCaptures().MoreThanOne();
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
   Move best_move = Move::NullMove();
