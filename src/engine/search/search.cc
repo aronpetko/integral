@@ -668,9 +668,7 @@ Score Search::PVSearch(Thread &thread,
     improving = past_stack && stack->static_eval > past_stack->static_eval;
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
-
-  (stack + 1)->ClearKillerMoves();
-
+  
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 

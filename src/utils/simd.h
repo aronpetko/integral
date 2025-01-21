@@ -67,7 +67,6 @@
 #define BUILD_HAS_SSE41 1
 #define BUILD_HAS_NEON 0
 #else
-#error No architecture specified
 #endif
 
 #if BUILD_HAS_SIMD
