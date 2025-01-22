@@ -1092,7 +1092,7 @@ Score Search::PVSearch(Thread &thread,
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
           thread,
-          new_depth - ((!in_pv_node || moves_seen >= 1) && (reduction > 4)),
+          std::max(0, new_depth - (!did_lmr && (reduction > 4))),
           -alpha - 1,
           -alpha,
           stack + 1,
