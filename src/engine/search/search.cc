@@ -328,9 +328,7 @@ Score Search::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
-  const Score futility_score =
-      best_score + kQsFutMargin -
-      60 * board.GetOpponentWinningCaptures().MoreThanOne();
+  const Score futility_score = best_score + kQsFutMargin;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
   Move best_move = Move::NullMove();
@@ -1007,65 +1005,68 @@ Score Search::PVSearch(Thread &thread,
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
-    int reduction = 0;
     bool needs_full_search;
     Score score;
+
+    constexpr int kLmrScale = 1024;
+    int reduction =
+        tables::kLateMoveReduction[is_quiet][depth][moves_seen] * kLmrScale;
+
+    // Reduce more in non-PV nodes
+    if (!in_pv_node) {
+      reduction += kLmrNonPvNode;
+    }
+
+    // Reduce less if we have seen this node in the PV before
+    if (tt_was_in_pv) {
+      reduction -= kLmrWasPvNode;
+    }
+
+    // Reduce more if this node is expected to fail high
+    if (cut_node) {
+      reduction += kLmrCutNode;
+    }
+
+    // Reduce less if this move gives check
+    if (gives_check) {
+      reduction -= kLmrGivesCheck;
+    }
+
+    // Reduce based on the history score of this move
+    if (is_quiet) {
+      reduction -= stack->history_score / kLmrHistDiv * kLmrHistQuiet;
+    } else {
+      reduction -= stack->history_score / kLmrCaptHistDiv * kLmrHistCapture;
+    }
+
+    // Reduce more if our static evaluation is going down
+    if (!improving) {
+      reduction += kLmrNotImproving;
+    }
+
+    // Reduce less if the static evaluation has been corrected a lot
+    if (std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff) {
+      reduction -= kLmrComplexity;
+    }
+
+    // Reduce less if this move is a killer move
+    if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
+      reduction -= kLmrKillerMoves;
+    }
+
+    // Scale reduction back down to an integer
+    reduction = (reduction + kLmrRoundingCutoff) / 1024;
+    // Ensure the reduction doesn't give us a depth below 0
+    reduction =
+        std::clamp<int>(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+
+    bool did_lmr = false;
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
-      constexpr int kLmrScale = 1024;
-      reduction =
-          tables::kLateMoveReduction[is_quiet][depth][moves_seen] * kLmrScale;
-
-      // Reduce more in non-PV nodes
-      if (!in_pv_node) {
-        reduction += kLmrNonPvNode;
-      }
-
-      // Reduce less if we have seen this node in the PV before
-      if (tt_was_in_pv) {
-        reduction -= kLmrWasPvNode;
-      }
-
-      // Reduce more if this node is expected to fail high
-      if (cut_node) {
-        reduction += kLmrCutNode;
-      }
-
-      // Reduce less if this move gives check
-      if (gives_check) {
-        reduction -= kLmrGivesCheck;
-      }
-
-      // Reduce based on the history score of this move
-      if (is_quiet) {
-        reduction -= stack->history_score / kLmrHistDiv * kLmrHistQuiet;
-      } else {
-        reduction -= stack->history_score / kLmrCaptHistDiv * kLmrHistCapture;
-      }
-
-      // Reduce more if our static evaluation is going down
-      if (!improving) {
-        reduction += kLmrNotImproving;
-      }
-
-      // Reduce less if the static evaluation has been corrected a lot
-      if (std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff) {
-        reduction -= kLmrComplexity;
-      }
-
-      // Reduce less if this move is a killer move
-      if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
-        reduction -= kLmrKillerMoves;
-      }
-
-      // Scale reduction back down to an integer
-      reduction = (reduction + kLmrRoundingCutoff) / 1024;
-      // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(
-          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      did_lmr = true;
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
@@ -1090,9 +1091,14 @@ Score Search::PVSearch(Thread &thread,
     // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
       score = -PVSearch<NodeType::kNonPV>(
-          thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+          thread,
+          new_depth - ((!in_pv_node || moves_seen >= 1) && (reduction > 4)),
+          -alpha - 1,
+          -alpha,
+          stack + 1,
+          !cut_node);
 
-      if (reduction != 0 && is_quiet) {
+      if (did_lmr && reduction != 0 && is_quiet) {
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
                         : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
