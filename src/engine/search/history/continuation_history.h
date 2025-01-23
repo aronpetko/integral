@@ -18,14 +18,14 @@ class ContinuationHistory {
                    StackEntry *stack,
                    I16 depth,
                    MoveList &quiets) {
-    const int bonus = HistoryBonus(depth);
+    const int bonus = HistoryBonus(depth) + 25 * quiets.Size();
     UpdateMoveScore(state, stack->move, bonus, stack);
 
     // Lower the score of the quiet moves that failed to raise alpha
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      UpdateMoveScore(state, quiets[i], penalty - 25 * (i + 1), stack);
+      UpdateMoveScore(state, quiets[i], penalty, stack);
     }
   }
 
