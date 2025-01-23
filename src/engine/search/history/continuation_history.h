@@ -25,7 +25,7 @@ class ContinuationHistory {
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      UpdateMoveScore(state, quiets[i], penalty, stack);
+      UpdateMoveScore(state, quiets[i], penalty * (i + 1) / 2, stack);
     }
   }
 
