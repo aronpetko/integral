@@ -18,7 +18,7 @@ class ContinuationHistory {
                    StackEntry *stack,
                    I16 depth,
                    MoveList &quiets) {
-    const int bonus = HistoryBonus(depth) + 25 * quiets.Size();
+    const int bonus = HistoryBonus(depth) + 50 * quiets.Size();
     UpdateMoveScore(state, stack->move, bonus, stack);
 
     // Lower the score of the quiet moves that failed to raise alpha
