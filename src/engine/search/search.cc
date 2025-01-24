@@ -941,8 +941,9 @@ Score Search::PVSearch(Thread &thread,
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
     int extensions = 0;
-    if (!in_root && depth >= kSeDepth && move == tt_move &&
-        stack->ply < thread.root_depth * 2) {
+    if (!in_root && move == tt_move && stack->ply < thread.root_depth * 2 &&
+        depth >=
+            kSeDepth - (tt_entry->bits.was_pv && tt_entry->score >= alpha)) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 3 >= depth &&
           tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
