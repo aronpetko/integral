@@ -1152,7 +1152,7 @@ Score Search::PVSearch(Thread &thread,
         alpha = score;
         if (alpha >= beta) {
           const int history_depth =
-              depth + (alpha > beta + kHistoryBonusMargin);
+              depth + (alpha > beta + 25 * new_depth / 10);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
