@@ -347,10 +347,15 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    stack->history_score =
+        move.IsCapture(state)
+            ? history.GetCaptureMoveScore(state, move)
+            : history.GetQuietMoveScore(state, move, stack->threats, stack);
+
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
     if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1, state)) {
+        !eval::StaticExchange(move, 1, state) && stack->history_score > 0) {
       best_score = std::max(best_score, futility_score);
       continue;
     }
