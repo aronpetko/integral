@@ -44,7 +44,7 @@ void LoadFromIncBin() {
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
 
-#if BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
   constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
   std::array<__m128i, kNumRegs> regs;
@@ -83,7 +83,7 @@ void LoadFromIncBin() {
     }
   }
 
-#if BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   // Weight permutation for DpbusdEpi32
   {
     const auto tmp = std::make_shared<Network>(*network);
@@ -119,7 +119,7 @@ Score Evaluate(Board &board) {
 
   constexpr int kFtShift = 9;
 
-#if BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   constexpr int kI32ChunkSize = sizeof(simd::Vepi16) / sizeof(I32);
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
