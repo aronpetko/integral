@@ -47,9 +47,9 @@ class CorrectionHistory {
     }
 
     // Update continuation table scores
-    for (int ply_ago : {2, 3, 4}) {
+    for (int ply_ago : {2, 3, 4, 5}) {
       if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
-          (stack - ply_ago)->move) {
+          (stack - 1)->move) {
         auto &table = *(stack - ply_ago)->continuation_correction_entry;
         UpdateTableScore(table[FlipColor(state.turn)][(stack - 1)->moved_piece]
                               [(stack - 1)->move.GetTo()],
@@ -78,9 +78,9 @@ class CorrectionHistory {
     const I32 continuation_correction = [&]() -> I32 {
       Score total = 0;
 
-      for (int ply_ago : {2, 3, 4}) {
+      for (int ply_ago : {2, 3, 4, 5}) {
         if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
-            (stack - ply_ago)->move) {
+            (stack - 1)->move) {
           auto &table = *(stack - ply_ago)->continuation_correction_entry;
           total += table[FlipColor(state.turn)][(stack - 1)->moved_piece]
                         [(stack - 1)->move.GetTo()] *
