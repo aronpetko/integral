@@ -718,7 +718,7 @@ Score Search::PVSearch(Thread &thread,
         stack->continuation_entry = nullptr;
 
         const int eval_reduction =
-            std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
+            std::min<int>(4, (stack->eval - beta) / kNmpEvalDiv);
         int reduction =
             depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
         reduction = std::clamp(reduction, 0, depth);
