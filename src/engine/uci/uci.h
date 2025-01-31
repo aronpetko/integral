@@ -14,7 +14,7 @@ namespace uci {
 
 namespace constants {
 
-constexpr std::string_view kEngineName = "Integral v6.1.4-dev";
+constexpr std::string_view kEngineName = "Integral v6.1.5-dev";
 constexpr std::string_view kEngineAuthor = "Aron Petkovski";
 
 }  // namespace constants
