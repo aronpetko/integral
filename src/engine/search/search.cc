@@ -705,49 +705,45 @@ Score Search::PVSearch(Thread &thread,
     // still have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
-        !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
-      // Avoid null move pruning a position with high zugzwang potential
-      const BitBoard non_pawn_king_pieces =
-          state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
-      if (non_pawn_king_pieces) {
-        // Set the currently searched move in the stack for continuation
-        // history
-        stack->move = Move::NullMove();
-        stack->capture_move = false;
-        stack->moved_piece = kNone;
-        stack->continuation_entry = nullptr;
+        !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply &&
+        state.HasNonPawns(state.turn)) {
+      // Set the currently searched move in the stack for continuation
+      // history
+      stack->move = Move::NullMove();
+      stack->capture_move = false;
+      stack->moved_piece = kNone;
+      stack->continuation_entry = nullptr;
 
-        const int eval_reduction =
-            std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
-        int reduction =
-            depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
-        reduction = std::clamp(reduction, 0, depth);
+      const int eval_reduction =
+          std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
+      int reduction =
+          depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
+      reduction = std::clamp(reduction, 0, depth);
 
-        board.MakeNullMove();
-        const Score score = -PVSearch<NodeType::kNonPV>(
-            thread, depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
-        board.UndoNullMove();
+      board.MakeNullMove();
+      const Score score = -PVSearch<NodeType::kNonPV>(
+          thread, depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
+      board.UndoNullMove();
 
-        if (ShouldQuit(thread)) {
-          return 0;
+      if (ShouldQuit(thread)) {
+        return 0;
+      }
+
+      // Prune if the result from our null window search around beta
+      // indicates that the opponent still doesn't gain an advantage from
+      // the null move
+      if (score >= beta) {
+        if (thread.nmp_min_ply != 0 || depth <= 14) {
+          return score >= kTBWinInMaxPlyScore ? beta : score;
         }
 
-        // Prune if the result from our null window search around beta
-        // indicates that the opponent still doesn't gain an advantage from
-        // the null move
-        if (score >= beta) {
-          if (thread.nmp_min_ply != 0 || depth <= 14) {
-            return score >= kTBWinInMaxPlyScore ? beta : score;
-          }
+        thread.nmp_min_ply = stack->ply + 3 * (depth - reduction) / 4;
+        const Score verification_score = PVSearch<NodeType::kNonPV>(
+            thread, depth - reduction, beta - 1, beta, stack, false);
+        thread.nmp_min_ply = 0;
 
-          thread.nmp_min_ply = stack->ply + 3 * (depth - reduction) / 4;
-          const Score verification_score = PVSearch<NodeType::kNonPV>(
-              thread, depth - reduction, beta - 1, beta, stack, false);
-          thread.nmp_min_ply = 0;
-
-          if (verification_score >= beta) {
-            return verification_score;
-          }
+        if (verification_score >= beta) {
+          return verification_score;
         }
       }
 
@@ -866,7 +862,8 @@ Score Search::PVSearch(Thread &thread,
                                             state, move, stack->threats, stack);
 
     // Pruning guards
-    if (!in_root && best_score > -kTBWinInMaxPlyScore) {
+    if (!in_root && best_score > -kTBWinInMaxPlyScore &&
+        state.HasNonPawns(state.turn)) {
       constexpr int kLmrDepthScale = 1024;
       int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
                       kLmrDepthScale;

@@ -198,6 +198,10 @@ struct BoardState {
            ~piece_bbs[kKing];
   }
 
+  [[nodiscard]] constexpr bool HasNonPawns(Color side) const {
+    return (KinglessOccupied(side) & ~Pawns(side)) != 0;
+  }
+
   [[nodiscard]] constexpr BitBoard KinglessOccupied(Color side) const {
     return side_bbs[side] & ~King(side);
   }
