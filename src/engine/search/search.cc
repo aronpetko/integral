@@ -633,14 +633,14 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
+  // Update the history of the last move based on the difference in static
+  // evaluation it caused
   const auto &prev_stack = stack - 1;
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
-    const int bonus =
-        std::clamp<int>(-kEvalHistUpdateMult *
-                            (stack->static_eval + prev_stack->static_eval) / 10,
-                        -kEvalHistUpdateMin,
-                        kEvalHistUpdateMax);
+    const int their_loss = (stack->static_eval + prev_stack->static_eval);
+    const int bonus = std::clamp<int>(-10 * their_loss, -1500, 1500) + 500;
+
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
