@@ -637,7 +637,7 @@ Score Search::PVSearch(Thread &thread,
   // evaluation it caused
   const auto &prev_stack = stack - 1;
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
-      !prev_stack->in_check) {
+      !prev_stack->in_check && !stack->in_check) {
     const int their_loss = (stack->static_eval + prev_stack->static_eval);
     const int bonus = std::clamp<int>(-10 * their_loss, -1500, 1500) + 500;
 
