@@ -10,7 +10,7 @@ namespace search::history {
 TUNABLE_STEP(kPawnCorrectionWeight, 43, 0, 125, false, 8);
 TUNABLE_STEP(kNonPawnCorrectionWeight, 39, 0, 125, false, 8);
 TUNABLE_STEP(kMajorCorrectionWeight, 42, 0, 125, false, 8);
-TUNABLE_STEP(kContinuationCorrectionWeight, 51, 0, 125, false, 8);
+TUNABLE_STEP(kContinuationCorrectionWeight, 45, 0, 125, false, 8);
 
 class CorrectionHistory {
  public:
@@ -47,7 +47,7 @@ class CorrectionHistory {
     }
 
     // Update continuation table scores
-    for (int ply_ago : {2, 3, 4, 5}) {
+    for (int ply_ago : {2, 3}) {
       if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
           (stack - 1)->move) {
         auto &table = *(stack - ply_ago)->continuation_correction_entry;
@@ -78,7 +78,7 @@ class CorrectionHistory {
     const I32 continuation_correction = [&]() -> I32 {
       Score total = 0;
 
-      for (int ply_ago : {2, 3, 4, 5}) {
+      for (int ply_ago : {2, 3}) {
         if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
             (stack - 1)->move) {
           auto &table = *(stack - ply_ago)->continuation_correction_entry;

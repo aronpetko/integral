@@ -718,6 +718,7 @@ Score Search::PVSearch(Thread &thread,
         stack->capture_move = false;
         stack->moved_piece = kNone;
         stack->continuation_entry = nullptr;
+        stack->continuation_correction_entry = nullptr;
 
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
