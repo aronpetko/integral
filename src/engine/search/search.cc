@@ -928,7 +928,7 @@ Score Search::PVSearch(Thread &thread,
       // History Pruning: Prune moves with a low history score moves at
       // near-leaf nodes
       const int history_margin =
-          -300 * (stack->static_eval <= alpha) + is_quiet
+          300 * (stack->static_eval <= alpha) + is_quiet
               ? kHistThreshBase + kHistThreshMult * depth
               : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
