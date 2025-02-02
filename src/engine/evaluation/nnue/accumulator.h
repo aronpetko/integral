@@ -54,7 +54,8 @@ static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
   const int piece_idx = piece;
 
   return network
-      ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx];
+      ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx]
+      .as_array();
 }
 
 class PerspectiveAccumulator {

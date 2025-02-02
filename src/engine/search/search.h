@@ -28,9 +28,11 @@ enum class SearchType {
 struct RootMove {
   Move move;
   Score score;
+  Score average_score;
   PVLine pv;
 
-  RootMove(Move move, Score score) : move(move), score(score), pv({}) {}
+  RootMove(Move move, Score score)
+      : move(move), score(score), average_score(kScoreNone), pv({}) {}
   RootMove() = default;
 };
 

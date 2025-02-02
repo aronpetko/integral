@@ -19,10 +19,11 @@ Integral's neural network is a horizontally mirrored perspective network, contai
 `(768x12 (Factorized) -> 1280)x2 -> (16 -> 32 -> 1)1x8`
 
 ### Data Generation Process
-This neural network is trained on tens of millions of self-play games. Each self-play game has a unique opening of eight to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. The probability distribution is also slightly skews moves toward the center of the board, hopefully encouraging meaningful openings. Lastly, the 5-man Syzygy endgame tablebases are used in the search. 
+This neural network is trained on tens of millions of self-play games. Each self-play game has a unique opening of eight to nine random moves. These random moves are chosen across a probability distribution based on the piece moving, i.e. pawn, knight, and bishop moves are more likely to be played than king, queen, or rook moves. The probability distribution also slightly skews moves toward the center of the board, which hopefully encourages meaningful openings from which Integral can play from. Lastly, 5-man Syzygy endgame tablebases are used in the search. 
 
 ### Training Process
-The first iteration of Integral's neural network was trained on data from version 4, which had a powerful hand-crafted evaluation (HCE). Each iteration of Integral's neural network since then has been generated on a fresh dataset using the prior network.
+The first iteration of Integral's neural network was trained on data from version 4, which had a powerful hand-crafted evaluation (HCE). Each iteration of Integral's neural network since then has been trained on a fresh dataset using the prior network.
+All networks are trained using the <a href="https://github.com/jw1912/bullet">Bullet</a> trainer, which has made my life way easier. 
 
 ## Compiling Integral
 > [!NOTE]  

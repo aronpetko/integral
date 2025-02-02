@@ -7,10 +7,12 @@
 
 namespace search::history {
 
+TUNABLE(kPawnHistFill, -955, -3000, 0, false);
+
 class PawnHistory {
  public:
   PawnHistory() : table_({}) {
-    std::memset(table_.data(), -1000, sizeof(table_));
+    table_.fill(kPawnHistFill);
   }
 
   void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
