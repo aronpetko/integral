@@ -47,12 +47,14 @@ class CorrectionHistory {
     }
 
     // Update continuation table scores
-    if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
-      UpdateTableScore(continuation_table_[state.turn][(stack - 2)->moved_piece]
-                                          [(stack - 2)->move.GetTo()]
-                                          [(stack - 1)->moved_piece]
-                                          [(stack - 1)->move.GetTo()],
-                       bonus);
+    for (int ply_ago : {2, 3}) {
+      if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
+          (stack - 1)->move) {
+        auto &table = *(stack - ply_ago)->continuation_correction_entry;
+        UpdateTableScore(table[FlipColor(state.turn)][(stack - 1)->moved_piece]
+                              [(stack - 1)->move.GetTo()],
+                         bonus);
+      }
     }
   }
 
@@ -74,14 +76,19 @@ class CorrectionHistory {
         major_table_[state.turn][GetMajorTableIndex(state)] *
         kMajorCorrectionWeight;
     const I32 continuation_correction = [&]() -> I32 {
-      if (stack->ply >= 2 && (stack - 1)->move && (stack - 2)->move) {
-        return continuation_table_[state.turn][(stack - 2)->moved_piece]
-                                  [(stack - 2)->move.GetTo()]
-                                  [(stack - 1)->moved_piece]
-                                  [(stack - 1)->move.GetTo()] *
-               kContinuationCorrectionWeight;
+      Score total = 0;
+
+      for (int ply_ago : {2, 3}) {
+        if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
+            (stack - 1)->move) {
+          auto &table = *(stack - ply_ago)->continuation_correction_entry;
+          total += table[FlipColor(state.turn)][(stack - 1)->moved_piece]
+                        [(stack - 1)->move.GetTo()] *
+                   kContinuationCorrectionWeight;
+        }
       }
-      return 0;
+
+      return total;
     }();
     const I32 correction = pawn_correction + non_pawn_white_correction +
                            non_pawn_black_correction + major_correction +
@@ -90,6 +97,12 @@ class CorrectionHistory {
     // Ensure no static evaluations are mate scores
     return std::clamp(
         adjusted_score, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
+  }
+
+  [[nodiscard]] ContinuationCorrectionEntry *GetContEntry(
+      const BoardState &state, Move move) {
+    const auto from = move.GetFrom(), to = move.GetTo();
+    return &continuation_table_[state.turn][state.GetPieceType(from)][to];
   }
 
  private:
@@ -130,7 +143,7 @@ class CorrectionHistory {
   MultiArray<Score, kNumColors, 16384> pawn_table_;
   MultiArray<Score, kNumColors, 16384> major_table_;
   MultiArray<Score, kNumColors, kNumColors, 16384> non_pawn_table_;
-  MultiArray<Score, 2, kNumPieceTypes, 64, kNumPieceTypes, 64>
+  MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };
 

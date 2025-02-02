@@ -366,6 +366,8 @@ Score Search::QuiescentSearch(Thread &thread,
     stack->capture_move = move.IsCapture(state);
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
+    stack->continuation_correction_entry =
+        history.correction_history->GetContEntry(state, move);
     stack->history_score =
         move.IsCapture(state)
             ? history.GetCaptureMoveScore(state, move)
@@ -716,6 +718,7 @@ Score Search::PVSearch(Thread &thread,
         stack->capture_move = false;
         stack->moved_piece = kNone;
         stack->continuation_entry = nullptr;
+        stack->continuation_correction_entry = nullptr;
 
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
@@ -785,6 +788,8 @@ Score Search::PVSearch(Thread &thread,
           stack->capture_move = move.IsCapture(state);
           stack->continuation_entry =
               history.continuation_history->GetEntry(state, move);
+          stack->continuation_correction_entry =
+              history.correction_history->GetContEntry(state, move);
           stack->history_score = move.IsCapture(state)
                                    ? history.GetCaptureMoveScore(state, move)
                                    : history.GetQuietMoveScore(
@@ -996,6 +1001,8 @@ Score Search::PVSearch(Thread &thread,
     stack->capture_move = move.IsCapture(state);
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
+    stack->continuation_correction_entry =
+        history.correction_history->GetContEntry(state, move);
 
     board.MakeMove(move);
 
