@@ -1197,13 +1197,19 @@ Score Search::PVSearch(Thread &thread,
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
-  } else if (!prev_stack->capture_move &&
-             !(prev_stack->move.GetType() == MoveType::kPromotion) &&
-             !prev_stack->move.IsNull()) {
-    history.quiet_history->UpdateMoveScore(FlipColor(state.turn),
-                                           prev_stack->move,
-                                           prev_stack->threats,
-                                           history::HistoryBonus(depth));
+  }
+  // This node failed low, meaning the parent node will fail high. The previous
+  // move will already be given a history bonus by the parent node in the beta
+  // cutoff. However, we also give a history bonus in the event of a fail low to
+  // allow history tweaks to occur in PVS re-searches
+  else if (prev_stack->move && !prev_stack->capture_move &&
+           prev_stack->move.GetType() != MoveType::kPromotion) {
+    const auto history_bonus = history::HistoryBonus(depth);
+    const auto past_turn = FlipColor(state.turn);
+    history.quiet_history->UpdateMoveScore(
+        past_turn, prev_stack->move, prev_stack->threats, history_bonus);
+    history.pawn_history->UpdateMoveScore(
+        board.GetStateHistory().Back(), prev_stack->move, history_bonus / 2);
   }
 
   if (syzygy::enabled) {
