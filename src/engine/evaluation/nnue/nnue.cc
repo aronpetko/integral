@@ -24,7 +24,6 @@ namespace nnue {
 // We store the number and index of each set bit for every possible U8 number
 struct NNZEntry {
   std::array<U16, 8> indices;
-  int count;
 };
 
 std::array<NNZEntry, 256> nnz_table;
@@ -115,9 +114,6 @@ void LoadFromIncBin() {
 
 #if BUILD_HAS_SIMD
   for (I16 i = 0; i < 256; i++) {
-    // Count the number of set bits for this number
-    nnz_table[i].count = BitBoard(i).PopCount();
-
     // Save the index of every set bit
     int num_bits = 0;
     const BitBoard bits = i;
@@ -211,7 +207,7 @@ Score Evaluate(Board &board) {
         _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
                          _mm_add_epi16(nnz_base, indices));
         // Update to reflect the total number of non-zero features processed
-        nnz_count += nnz_table[slice].count;
+        nnz_count +=  BitBoard(slice).PopCount();
         // Increment to reflect the starting index of the next slice
         nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
       }
