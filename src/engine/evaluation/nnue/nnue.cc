@@ -207,7 +207,7 @@ Score Evaluate(Board &board) {
         _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
                          _mm_add_epi16(nnz_base, indices));
         // Update to reflect the total number of non-zero features processed
-        nnz_count +=  BitBoard(slice).PopCount();
+        nnz_count += BitBoard(slice).PopCount();
         // Increment to reflect the starting index of the next slice
         nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
       }
