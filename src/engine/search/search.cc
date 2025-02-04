@@ -1065,6 +1065,11 @@ Score Search::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      // Reduce less if the TT move's depth is greater than our current depth
+      if (tt_hit && tt_entry->depth >= depth) {
+        reduction -= kLmrTtDepth;
+      }
+
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / 1024;
       // Ensure the reduction doesn't give us a depth below 0
