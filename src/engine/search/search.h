@@ -29,6 +29,7 @@ struct RootMove {
   Move move;
   Score score;
   Score average_score;
+  List<Score, 100> depth_scores;
   PVLine pv;
 
   RootMove(Move move, Score score)

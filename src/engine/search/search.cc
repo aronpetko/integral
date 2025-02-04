@@ -86,13 +86,39 @@ void Search::IterativeDeepening(Thread &thread) {
       thread.sel_depth = 0, thread.root_depth = depth;
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
-      const auto average_score = cur_best_move.average_score;
+      const auto average_score = [&]() {
+        int sum = 0;
+        for (int sample_depth = 1; sample_depth <= depth; ++sample_depth) {
+          sum += cur_best_move.depth_scores[sample_depth];
+        }
+        return sum / depth;
+      }();
 
-      int window = kAspWindowDelta + average_score * average_score / 16384;
+      const int score_variance = [&]() {
+        if (depth <= 1) {
+          return 0;
+        }
 
-      Score alpha =
-          std::max<int>(-kInfiniteScore, cur_best_move.score - window);
-      Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
+        int variance = 0;
+        for (int sample_depth = 1; sample_depth <= depth; ++sample_depth) {
+          const int delta =
+              cur_best_move.depth_scores[sample_depth] - average_score;
+          variance += delta * delta;
+        }
+
+        return variance / (depth - 1);
+      }();
+
+      int window =
+          kAspWindowDelta + static_cast<int>(std::sqrt(score_variance)) / 3;
+
+      Score alpha = -kInfiniteScore;
+      Score beta = kInfiniteScore;
+
+      if (depth >= kAspWindowDepth) {
+        alpha = std::max<int>(-kInfiniteScore, cur_best_move.score - window);
+        beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
+      }
 
       int fail_high_count = 0;
 
@@ -1134,6 +1160,7 @@ Score Search::PVSearch(Thread &thread,
           root_move->average_score = root_move->average_score == kScoreNone
                                        ? score
                                        : (root_move->average_score + score) / 2;
+          root_move->depth_scores[thread.root_depth] = score;
           root_move->pv.Clear();
           root_move->pv.Push(move);
           root_move->pv.AppendPV((stack + 1)->pv);
