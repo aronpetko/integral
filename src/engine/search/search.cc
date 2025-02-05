@@ -347,7 +347,7 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    if (best_score > -kTBWinInMaxPlyScore &&
+    if (best_score > -kTBWinInMaxPlyScore && !stack->in_check &&
         (move.IsUnderPromotion() || move.GetType() != MoveType::kPromotion)) {
       if (moves_seen >= 2) {
         break;
@@ -355,8 +355,8 @@ Score Search::QuiescentSearch(Thread &thread,
 
       // QS Futility Pruning: Prune capture moves that don't win material if the
       // static eval is behind alpha by some margin
-      if (!stack->in_check && move.IsCapture(state) &&
-          futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
+      if (move.IsCapture(state) && futility_score <= alpha &&
+          !eval::StaticExchange(move, 1, state)) {
         best_score = std::max(best_score, futility_score);
         continue;
       }
