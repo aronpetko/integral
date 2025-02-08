@@ -638,7 +638,7 @@ Score Search::PVSearch(Thread &thread,
   const auto &prev_stack = stack - 1;
   if (!prev_stack->capture_move && !prev_stack->in_check && prev_stack->move &&
       !stack->in_check) {
-    const int their_loss = stack->static_eval + prev_stack->static_eval - 50;
+    const int their_loss = stack->static_eval + prev_stack->static_eval - 10;
     const int bonus = std::clamp<int>(-kEvalHistUpdateMult * their_loss / 10,
                                       -kEvalHistUpdateMin,
                                       kEvalHistUpdateMax);
@@ -986,9 +986,7 @@ Score Search::PVSearch(Thread &thread,
         }
         // Negative Extensions: Search less since the TT move was not
         // singular, and it might cause a beta cutoff again.
-        else if (tt_entry->score >= beta) {
-          extensions = -2;
-        } else if (cut_node) {
+        else if (tt_entry->score >= beta || cut_node) {
           extensions = -2;
         }
       }
