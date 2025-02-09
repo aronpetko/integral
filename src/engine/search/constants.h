@@ -16,7 +16,7 @@ TUNABLE_STEP(kAspWindowGrowth, 1.3944681232281486, 0.1, 2.0, false, 0.08);
 
 TUNABLE_STEP(kQsFutMargin, 134, 20, 300, false, 20);
 
-TUNABLE(kEvalHistUpdateMult, 61, 20, 100, false);
+TUNABLE(kEvalHistUpdateMult, 50, 20, 100, false);
 TUNABLE(kEvalHistUpdateMin, 300, 5, 150, false);
 TUNABLE(kEvalHistUpdateMax, 300, 40, 200, false);
 
