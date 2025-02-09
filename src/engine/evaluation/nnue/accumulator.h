@@ -367,8 +367,18 @@ class Accumulator {
       while (true) {
         --iter;
 
+        // If the accumulator needs a refresh, we skip applying updates and just
+        // refresh it
+        if (NeedRefresh(perspective,
+                        stack_[iter].kings[perspective],
+                        stack_[head_idx_].kings[perspective])) {
+          RefreshPerspective(stack_[head_idx_], stack_[head_idx_].state, perspective);
+          stack_[head_idx_].updated[perspective] = true;
+          break;
+        }
+
         // We've found the earliest updated accumulator
-        if (stack_[iter].updated[perspective]) {
+        else if (stack_[iter].updated[perspective]) {
           int last_updated = iter;
 
           // Apply all updates from the earliest updated accumulator to now
@@ -376,20 +386,12 @@ class Accumulator {
             auto& dirty_accumulator = stack_[last_updated + 1];
             const auto& clean_accumulator = stack_[last_updated];
 
-            // If the accumulator needs a refresh, we skip applying updates and
-            // just refresh it
-            if (NeedRefresh(perspective,
-                            clean_accumulator.kings[perspective],
-                            dirty_accumulator.kings[perspective])) {
-              RefreshPerspective(
-                  dirty_accumulator, dirty_accumulator.state, perspective);
-            } else {
-              dirty_accumulator.perspectives[perspective].ApplyChange(
-                  clean_accumulator.perspectives[perspective],
-                  dirty_accumulator.change,
-                  perspective,
-                  dirty_accumulator.kings[perspective]);
-            }
+            dirty_accumulator.perspectives[perspective].ApplyChange(
+                clean_accumulator.perspectives[perspective],
+                dirty_accumulator.change,
+                perspective,
+                dirty_accumulator.kings[perspective]);
+
             // Mark the accumulator as having been updated
             stack_[++last_updated].updated[perspective] = true;
           }
