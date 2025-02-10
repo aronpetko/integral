@@ -519,7 +519,8 @@ Score Search::PVSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node,
+       tt_move_noisy = false;
   Score tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
@@ -534,6 +535,7 @@ Score Search::PVSearch(Thread &thread,
     tt_was_in_pv |= tt_entry->GetWasPV();
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    tt_move_noisy = tt_move.IsNoisy(state);
   }
 
   if (in_root) {
@@ -1063,6 +1065,11 @@ Score Search::PVSearch(Thread &thread,
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
         reduction -= kLmrKillerMoves;
+      }
+
+      // Reduce more if the TT move was noisy
+      if (tt_move_noisy) {
+        reduction += kLmrTtMoveNoisy;
       }
 
       // Scale reduction back down to an integer
