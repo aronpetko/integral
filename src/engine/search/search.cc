@@ -1097,11 +1097,13 @@ Score Search::PVSearch(Thread &thread,
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
 
       if (reduction != 0 && is_quiet) {
+        const auto &prev_state = board.GetStateHistory().Back();
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
                         : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
         history.continuation_history->UpdateMoveScore(
-            board.GetStateHistory().Back(), move, bonus, stack);
+            prev_state, move, bonus, stack);
+        history.pawn_history->UpdateMoveScore(prev_state, move, bonus);
       }
     }
 
