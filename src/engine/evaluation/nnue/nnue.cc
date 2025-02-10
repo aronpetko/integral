@@ -1,23 +1,25 @@
 #include "nnue.h"
 
+#include "../../../third-party/incbin/incbin.h"
 #include "../../../utils/simd.h"
 #include "accumulator.h"
 #include "arch.h"
 
-#ifdef _MSC_VER
-#define SP_MSVC
-#pragma push_macro("_MSC_VER")
-#undef _MSC_VER
-#endif
-
-#include "../../../third-party/incbin/incbin.h"
-
-#ifdef SP_MSVC
-#pragma pop_macro("_MSC_VER")
-#undef SP_MSVC
-#endif
-
 INCBIN(EVAL, EVALFILE);
+
+#if BUILD_HAS_SIMD
+[[nodiscard]] inline simd::Vepi32 AsVepi32(void *pointer) {
+  return *reinterpret_cast<simd::Vepi32 *>(pointer);
+}
+
+[[nodiscard]] inline simd::Vepf32 AsVepf32(void *pointer) {
+  return AsVepf32(pointer);
+}
+
+[[nodiscard]] inline simd::Vepf32 AsVepi8(void *pointer) {
+  return *reinterpret_cast<simd::Vepi8 *>(pointer);
+}
+#endif
 
 namespace nnue {
 
@@ -180,8 +182,7 @@ Score Evaluate(Board &board) {
       // Pack the two I16 vectors into an I8 vector, which will clamp negative
       // values to 0 because of unsigned saturation. This is why we didn't clamp
       // the pair values to 0 earlier, effectively saving us an operation
-      auto &features = *reinterpret_cast<simd::Vepi8 *>(
-          &feature_output[i + them * arch::kL1Size / 2]);
+      auto &features = AsVepi8(&feature_output[i + them * arch::kL1Size / 2]);
       features = simd::PackusEpi16(first_product, second_product);
 
       // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
@@ -221,9 +222,9 @@ Score Evaluate(Board &board) {
     const auto feature_vector =
         simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[idx]));
     for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
-      const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
-          &network->l1_weights[bucket][idx + j / 4]);
-      auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
+      const auto weight_vector =
+          AsVepi8(&network->l1_weights[bucket][idx + j / 4]);
+      auto &features = AsVepi32(&l1_sums[j]);
       features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
     }
   }
@@ -239,13 +240,11 @@ Score Evaluate(Board &board) {
 
   alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL2Size; i += kF32ChunkSize) {
-    const auto bias_vector =
-        *reinterpret_cast<simd::Vepf32 *>(&network->l1_biases[bucket][i]);
-    const auto float_vector =
-        simd::ConvertEpi32ToPs(*reinterpret_cast<simd::Vepi32 *>(&l1_sums[i]));
+    const auto bias_vector = AsVepf32(&network->l1_biases[bucket][i]);
+    const auto float_vector = simd::ConvertEpi32ToPs(AsVepi32(&l1_sums[i]));
     const auto casted_sum =
         simd::MultiplyAddPs(float_vector, l1_multiplier_vector, bias_vector);
-    auto &features = *reinterpret_cast<simd::Vepf32 *>(&l1_output[i]);
+    auto &features = AsVepf32(&l1_output[i]);
     features = simd::MinPs(simd::MaxPs(casted_sum, zero_float_vector),
                            one_float_vector);
   }
@@ -258,17 +257,16 @@ Score Evaluate(Board &board) {
   for (int i = 0; i < arch::kL2Size; i++) {
     const auto l1_vector = simd::SetPs(l1_output[i]);
     for (int j = 0; j < arch::kL3Size; j += kF32ChunkSize) {
-      const auto weight_vector =
-          *reinterpret_cast<simd::Vepf32 *>(&network->l2_weights[bucket][i][j]);
-      auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[j]);
+      const auto weight_vector = AsVepf32(&network->l2_weights[bucket][i][j]);
+      auto &features = AsVepf32(&l2_sums[j]);
       features = simd::MultiplyAddPs(weight_vector, l1_vector, features);
     }
   }
 
   std::array<float, arch::kL3Size> l2_output{};
   for (int i = 0; i < arch::kL3Size; i += kF32ChunkSize) {
-    const auto &sum_vector = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[i]);
-    auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
+    const auto &sum_vector = AsVepf32(&l2_sums[i]);
+    auto &features = AsVepf32(&l2_output[i]);
     features = simd::MinPs(simd::MaxPs(sum_vector, zero_float_vector),
                            one_float_vector);
   }
@@ -282,10 +280,9 @@ Score Evaluate(Board &board) {
 
   for (int i = 0; i < arch::kL3Size / kF32ChunkSize; i += kResultChunks) {
     for (int chunk = 0; chunk < kResultChunks; chunk++) {
-      const auto weight_vector = *reinterpret_cast<simd::Vepf32 *>(
-          &network->l3_weights[bucket][(i + chunk) * kF32ChunkSize]);
-      const auto &l2_vector = *reinterpret_cast<simd::Vepf32 *>(
-          &l2_output[(i + chunk) * kF32ChunkSize]);
+      const auto weight_vector =
+          AsVepf32(&network->l3_weights[bucket][(i + chunk) * kF32ChunkSize]);
+      const auto &l2_vector = AsVepf32(&l2_output[(i + chunk) * kF32ChunkSize]);
       result_sums[chunk] =
           simd::MultiplyAddPs(l2_vector, weight_vector, result_sums[chunk]);
     }

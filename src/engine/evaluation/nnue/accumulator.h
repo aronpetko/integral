@@ -438,8 +438,7 @@ class Accumulator {
   }
 
  private:
-  [[nodiscard]] inline int GetKingBucket(Square king_square,
-                                         Color king_color) const {
+  [[nodiscard]] int GetKingBucket(Square king_square, Color king_color) const {
     return kKingBucketMap[king_square ^ (56 * king_color)];
   }
 
