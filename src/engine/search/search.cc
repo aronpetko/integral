@@ -336,6 +336,9 @@ Score Search::QuiescentSearch(Thread &thread,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
+    // Prefetch the TT entry for the next move as early as possible
+    transposition_table_.Prefetch(board.PredictKeyAfter(move));
+
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
     if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
@@ -354,9 +357,6 @@ Score Search::QuiescentSearch(Thread &thread,
       best_score = std::max(best_score, futility_score);
       continue;
     }
-
-    // Prefetch the TT entry for the next move as early as possible
-    transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
@@ -708,6 +708,9 @@ Score Search::PVSearch(Thread &thread,
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
         !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
+      // Prefetch the TT entry for the next move as early as possible
+      transposition_table_.Prefetch(board.PredictKeyAfter(Move::NullMove()));
+
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
@@ -770,6 +773,9 @@ Score Search::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
+          // Prefetch the TT entry for the next move as early as possible
+          transposition_table_.Prefetch(board.PredictKeyAfter(move));
+
           if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
               moves_seen > 0) {
             break;
@@ -852,16 +858,16 @@ Score Search::PVSearch(Thread &thread,
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
-    if (in_root && !thread.root_moves.MoveExists(move, thread.pv_move_idx)) {
-      continue;
-    }
+    // Prefetch the TT entry for the next move as early as possible
+    transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
       continue;
     }
 
-    // Prefetch the TT entry for the next move as early as possible
-    transposition_table_.Prefetch(board.PredictKeyAfter(move));
+    if (in_root && !thread.root_moves.MoveExists(move, thread.pv_move_idx)) {
+      continue;
+    }
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
