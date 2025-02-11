@@ -147,7 +147,7 @@ void MovePicker::SkipQuiets() {
 }
 
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
-                                const int &index) {
+                                int index) {
   int best_move_idx = index;
   int best_score = move_list[index].score;
   for (int next = index + 1; next < move_list.Size(); ++next) {
@@ -167,7 +167,7 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const auto &killers = stack_->killer_moves;
-  auto moves = move_gen::GenerateMoves(move_type, board_);
+  auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
     if (move != tt_move_ && killers[0] != move && killers[1] != move) {

@@ -73,17 +73,8 @@ elseif (BUILD_NATIVE)
 endif ()
 
 # Set common flags for release and debug builds
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -flto -fno-stack-protector -fno-math-errno -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
-
-# Check for Link-Time Optimization (LTO) support
-check_ipo_supported(RESULT LTO_SUPPORTED)
-
-if (LTO_SUPPORTED)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
-endif ()
 
 # Add Clang-specific flags
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")

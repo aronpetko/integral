@@ -49,7 +49,7 @@ class MovePicker {
   }
 
  private:
-  Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, const int &index);
+  Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 
   template <MoveGenType move_type>
   void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
