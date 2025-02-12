@@ -988,7 +988,7 @@ Score Search::PVSearch(Thread &thread,
         // Negative Extensions: Search less since the TT move was not
         // singular, and it might cause a beta cutoff again.
         else if (tt_entry->score >= beta) {
-          extensions = -2;
+          extensions = -3;
         } else if (cut_node) {
           extensions = -2;
         }
