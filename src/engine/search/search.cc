@@ -898,7 +898,7 @@ Score Search::PVSearch(Thread &thread,
           std::max(depth * kLmrDepthScale - reduction, 0);
 
       // Scale reduction back down to an integer
-      reduction = (reduction + kLmrDepthRoundingCutoff) / 1024;
+      reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
 
       const int lmr_depth = std::max(depth - reduction, 0);
 
@@ -1072,7 +1072,7 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Scale reduction back down to an integer
-      reduction = (reduction + kLmrRoundingCutoff) / 1024;
+      reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(
           reduction, -(!in_pv_node && !cut_node), new_depth - 1);
