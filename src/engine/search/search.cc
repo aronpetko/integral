@@ -894,8 +894,12 @@ Score Search::PVSearch(Thread &thread,
         reduction += kLmrDepthNotImproving;
       }
 
+      const int lmr_fractional_depth =
+          std::max(depth * kLmrDepthScale - reduction, 0);
+
       // Scale reduction back down to an integer
-      reduction = (reduction + kLmrDepthRoundingCutoff) / 1024;
+      reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
+
       const int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
@@ -909,8 +913,10 @@ Score Search::PVSearch(Thread &thread,
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin = kFutMarginBase + kFutMarginMult * lmr_depth +
-                                  stack->history_score / kFutMarginHistDiv;
+      const int futility_margin =
+          kFutMarginBase +
+          kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
+          stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
@@ -1066,7 +1072,7 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Scale reduction back down to an integer
-      reduction = (reduction + kLmrRoundingCutoff) / 1024;
+      reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
       reduction = std::clamp<int>(
           reduction, -(!in_pv_node && !cut_node), new_depth - 1);
