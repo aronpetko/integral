@@ -96,7 +96,7 @@ inline Vepi32 DpbusdEpi32x2(Vepi32 sum, Vepi8 u, Vepi8 i, Vepi8 u2, Vepi8 i2) {
 }
 #else
 inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
-  VecI32 sum32 = _mm512_madd_epi16(_mm512_maddubs_epi16(first, second),
+  Vepi32 sum32 = _mm512_madd_epi16(_mm512_maddubs_epi16(first, second),
                                    _mm512_set1_epi16(1));
   return _mm512_add_epi32(sum32, sum);
 }
