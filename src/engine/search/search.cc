@@ -902,6 +902,19 @@ Score Search::PVSearch(Thread &thread,
 
       const int lmr_depth = std::max(depth - reduction, 0);
 
+      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
+      // much material
+      const int see_threshold =
+          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
+          stack->history_score / kSeePruneHistDiv;
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          !eval::StaticExchange(
+              move,
+              is_quiet ? std::min(see_threshold, 0) : see_threshold,
+              state)) {
+        continue;
+      }
+
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
@@ -920,19 +933,6 @@ Score Search::PVSearch(Thread &thread,
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
-        continue;
-      }
-
-      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
-      // much material
-      const int see_threshold =
-          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
-          stack->history_score / kSeePruneHistDiv;
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-          !eval::StaticExchange(
-              move,
-              is_quiet ? std::min(see_threshold, 0) : see_threshold,
-              state)) {
         continue;
       }
 
