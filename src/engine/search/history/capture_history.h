@@ -53,7 +53,7 @@ class CaptureHistory {
 
  private:
   [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
-    return threats.IsSet(move.GetTo());
+    return threats.IsSet(move.GetFrom());
   }
 
  private:
