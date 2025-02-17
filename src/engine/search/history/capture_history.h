@@ -17,11 +17,15 @@ class CaptureHistory {
     const auto captured =
         stack->move.IsEnPassant(state) ? kPawn : state.GetPieceType(to);
     // Apply a linear dampening to the bonus as the depth increases
-    I16 &score = table_[state.turn][state.GetPieceType(from)][to][captured];
+    I16 &score = table_[state.turn][state.GetPieceType(from)][to][captured]
+                       [ThreatIndex(stack->move, stack->threats)];
     score += ScaleBonus(score, bonus);
   }
 
-  void Penalize(const BoardState &state, I16 depth, MoveList &captures) {
+  void Penalize(const BoardState &state,
+                I16 depth,
+                MoveList &captures,
+                BitBoard threats) {
     const I16 penalty = HistoryPenalty(depth);
     // Lower the score of the capture moves that failed to raise alpha
     for (I16 i = 0; i < captures.Size(); i++) {
@@ -31,20 +35,29 @@ class CaptureHistory {
           bad_capture.IsEnPassant(state) ? kPawn : state.GetPieceType(to);
       // Apply a linear dampening to the penalty as the depth increases
       I16 &bad_capture_score =
-          table_[state.turn][state.GetPieceType(from)][to][captured];
+          table_[state.turn][state.GetPieceType(from)][to][captured]
+                [ThreatIndex(bad_capture, threats)];
       bad_capture_score += ScaleBonus(bad_capture_score, penalty);
     }
   }
 
-  [[nodiscard]] I16 GetScore(const BoardState &state, Move move) const {
+  [[nodiscard]] I16 GetScore(const BoardState &state,
+                             Move move,
+                             BitBoard threats) const {
     const auto from = move.GetFrom(), to = move.GetTo();
     const auto captured =
         move.IsEnPassant(state) ? kPawn : state.GetPieceType(to);
-    return table_[state.turn][state.GetPieceType(from)][to][captured];
+    return table_[state.turn][state.GetPieceType(from)][to][captured]
+                 [ThreatIndex(move, threats)];
   }
 
  private:
-  MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount, kNumPieceTypes>
+  [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
+    return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());
+  }
+
+ private:
+  MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount, kNumPieceTypes, 4>
       table_;
 };
 

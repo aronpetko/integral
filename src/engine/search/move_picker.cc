@@ -69,7 +69,8 @@ Move MovePicker::Next() {
     while (moves_idx_ < noisys_.Size()) {
       const auto move = SelectionSort(noisys_, moves_idx_);
       const auto score = noisys_[moves_idx_].score;
-      const auto history_score = history_.GetCaptureMoveScore(state, move);
+      const auto history_score =
+          history_.GetCaptureMoveScore(state, move, stack_->threats);
 
       moves_idx_++;
 
@@ -200,7 +201,8 @@ int MovePicker::ScoreMove(Move &move) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
     const int victim_value = kPieceScores[victim] * 100;
-    return victim_value + history_.GetCaptureMoveScore(state, move);
+    return victim_value +
+           history_.GetCaptureMoveScore(state, move, stack_->threats);
   }
 
   const auto us = state.turn;

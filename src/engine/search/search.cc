@@ -370,7 +370,7 @@ Score Search::QuiescentSearch(Thread &thread,
         history.correction_history->GetContEntry(state, move);
     stack->history_score =
         move.IsCapture(state)
-            ? history.GetCaptureMoveScore(state, move)
+            ? history.GetCaptureMoveScore(state, move, stack->threats)
             : history.GetQuietMoveScore(state, move, stack->threats, stack);
 
     ++thread.nodes_searched;
@@ -419,7 +419,7 @@ Score Search::QuiescentSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, 1, captures);
+    history.capture_history->Penalize(state, 1, captures, stack->threats);
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -790,10 +790,11 @@ Score Search::PVSearch(Thread &thread,
               history.continuation_history->GetEntry(state, move);
           stack->continuation_correction_entry =
               history.correction_history->GetContEntry(state, move);
-          stack->history_score = move.IsCapture(state)
-                                   ? history.GetCaptureMoveScore(state, move)
-                                   : history.GetQuietMoveScore(
-                                         state, move, stack->threats, stack);
+          stack->history_score =
+              move.IsCapture(state)
+                  ? history.GetCaptureMoveScore(state, move, stack->threats)
+                  : history.GetQuietMoveScore(
+                        state, move, stack->threats, stack);
 
           const int probcut_depth = depth - 3;
           ++thread.nodes_searched;
@@ -866,9 +867,10 @@ Score Search::PVSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    stack->history_score = is_capture ? history.GetCaptureMoveScore(state, move)
-                                      : history.GetQuietMoveScore(
-                                            state, move, stack->threats, stack);
+    stack->history_score =
+        is_capture
+            ? history.GetCaptureMoveScore(state, move, stack->threats)
+            : history.GetQuietMoveScore(state, move, stack->threats, stack);
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -1202,7 +1204,7 @@ Score Search::PVSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, depth, captures);
+    history.capture_history->Penalize(state, depth, captures, stack->threats);
   }
   // This node failed low, meaning the parent node will fail high. The previous
   // move will already be given a history bonus by the parent node in the beta
