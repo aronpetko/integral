@@ -673,7 +673,7 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+  if (!in_pv_node && !stack->in_check) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -753,82 +753,6 @@ Score Search::PVSearch(Thread &thread,
           }
         }
       }
-
-      // ProbCut: When the current position's score is likely to cause a beta
-      // cutoff, we attempt a shallower quiescent-like search and prune early
-      // if possible
-      const Score pc_beta = beta + kProbcutBetaDelta;
-      if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
-          (!tt_hit || tt_entry->depth + 3 < depth ||
-           tt_entry->score >= pc_beta)) {
-        const int pc_see = pc_beta - raw_static_eval;
-        const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
-                                  ? tt_move
-                                  : Move::NullMove();
-
-        int moves_seen = 0;
-        MovePicker move_picker(
-            MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
-        while (const auto move = move_picker.Next()) {
-          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-              moves_seen > 0) {
-            break;
-          }
-
-          if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
-            continue;
-          }
-
-          ++moves_seen;
-
-          // Set the currently searched move in the stack for continuation
-          // history
-          stack->move = move;
-          stack->moved_piece = state.GetPieceType(move.GetFrom());
-          stack->capture_move = move.IsCapture(state);
-          stack->continuation_entry =
-              history.continuation_history->GetEntry(state, move);
-          stack->continuation_correction_entry =
-              history.correction_history->GetContEntry(state, move);
-          stack->history_score = move.IsCapture(state)
-                                   ? history.GetCaptureMoveScore(state, move)
-                                   : history.GetQuietMoveScore(
-                                         state, move, stack->threats, stack);
-
-          const int probcut_depth = depth - 3;
-          ++thread.nodes_searched;
-
-          board.MakeMove(move);
-
-          Score score = -QuiescentSearch<node_type>(
-              thread, -pc_beta, -pc_beta + 1, stack + 1);
-
-          if (score >= pc_beta) {
-            score = -PVSearch<node_type>(thread,
-                                         probcut_depth - 1,
-                                         -pc_beta,
-                                         -pc_beta + 1,
-                                         stack + 1,
-                                         !cut_node);
-          }
-
-          board.UndoMove();
-
-          if (score >= pc_beta) {
-            const TranspositionTableEntry new_tt_entry(
-                zobrist_key,
-                probcut_depth,
-                TranspositionTableEntry::kLowerBound,
-                score,
-                raw_static_eval,
-                Move::NullMove(),
-                tt_was_in_pv);
-            transposition_table_.Save(
-                tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
-            return score;
-          }
-        }
-      }
     }
   }
 
@@ -837,6 +761,82 @@ Score Search::PVSearch(Thread &thread,
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
       !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 4 < depth)) {
     depth--;
+  }
+
+  // ProbCut: When the current position's score is likely to cause a beta
+  // cutoff, we attempt a shallower quiescent-like search and prune early
+  // if possible
+  const Score pc_beta = beta + kProbcutBetaDelta;
+  if (!in_pv_node && !stack->in_check && depth >= kProbcutDepth &&
+      std::abs(beta) < kTBWinInMaxPlyScore &&
+      (!tt_hit || tt_entry->depth + 3 < depth || tt_entry->score >= pc_beta)) {
+    const int pc_see = pc_beta - raw_static_eval;
+    const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
+                              ? tt_move
+                              : Move::NullMove();
+
+    int moves_seen = 0;
+    MovePicker move_picker(
+        MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
+    while (const auto move = move_picker.Next()) {
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          moves_seen > 0) {
+        break;
+      }
+
+      if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
+        continue;
+      }
+
+      ++moves_seen;
+
+      // Set the currently searched move in the stack for continuation
+      // history
+      stack->move = move;
+      stack->moved_piece = state.GetPieceType(move.GetFrom());
+      stack->capture_move = move.IsCapture(state);
+      stack->continuation_entry =
+          history.continuation_history->GetEntry(state, move);
+      stack->continuation_correction_entry =
+          history.correction_history->GetContEntry(state, move);
+      stack->history_score =
+          move.IsCapture(state)
+              ? history.GetCaptureMoveScore(state, move)
+              : history.GetQuietMoveScore(state, move, stack->threats, stack);
+
+      const int probcut_depth = depth - 3;
+      ++thread.nodes_searched;
+
+      board.MakeMove(move);
+
+      Score score = -QuiescentSearch<node_type>(
+          thread, -pc_beta, -pc_beta + 1, stack + 1);
+
+      if (score >= pc_beta) {
+        score = -PVSearch<node_type>(thread,
+                                     probcut_depth - 1,
+                                     -pc_beta,
+                                     -pc_beta + 1,
+                                     stack + 1,
+                                     !cut_node);
+      }
+
+      board.UndoMove();
+
+      if (score >= pc_beta) {
+        const TranspositionTableEntry new_tt_entry(
+            zobrist_key,
+            probcut_depth,
+            TranspositionTableEntry::kLowerBound,
+            score,
+            raw_static_eval,
+            Move::NullMove(),
+            tt_was_in_pv);
+        transposition_table_.Save(
+            tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
+        return score;
+      }
+    }
   }
 
   // Keep track of the original alpha for bound determination when updating
