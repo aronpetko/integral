@@ -975,8 +975,8 @@ Score Search::PVSearch(Thread &thread,
         // move's search
         if (tt_move_excluded_score < new_beta) {
           // Extend more if the TT move is singular by a big margin
-          const int double_margin = kSeDoubleMargin + 250 * in_pv_node;
-          const int triple_margin = kSeTripleMargin + 300 * in_pv_node;
+          const int double_margin = kSeDoubleMargin + 80 * in_pv_node;
+          const int triple_margin = kSeTripleMargin + 200 * in_pv_node;
           if (tt_move_excluded_score < new_beta - double_margin) {
             extensions = 2 + (is_quiet && tt_move_excluded_score <
                                               new_beta - triple_margin);
