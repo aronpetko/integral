@@ -980,7 +980,7 @@ Score Search::PVSearch(Thread &thread,
           if (tt_move_excluded_score < new_beta - double_margin) {
             extensions = 2 + (is_quiet && tt_move_excluded_score <
                                               new_beta - triple_margin);
-            depth += depth < kSeDepthExtensionDepth;
+            depth += !in_pv_node * (depth < kSeDepthExtensionDepth);
           } else {
             extensions = 1;
           }
