@@ -951,7 +951,7 @@ Score Search::PVSearch(Thread &thread,
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
     int extensions = 0;
-    if (!in_root && depth >= kSeDepth && move == tt_move &&
+    if (!in_root && depth >= kSeDepth + tt_was_in_pv && move == tt_move &&
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 3 >= depth &&
