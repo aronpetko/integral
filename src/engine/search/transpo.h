@@ -73,10 +73,11 @@ struct TranspositionTableEntry {
   U8 depth;
   union {
     struct {
-      U8 age : 5{};
-      U8 was_in_pv : 1{};
-      U8 flag : 2{};
+      U8 age : 5;
+      U8 was_in_pv : 1;
+      U8 flag : 2;
     };
+    U8 extra_bits;
   };
 };
 
