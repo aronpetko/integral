@@ -266,7 +266,7 @@ Score Search::QuiescentSearch(Thread &thread,
   Score tt_static_eval = kScoreNone;
 
   if (tt_hit) {
-    tt_was_in_pv |= tt_entry->GetWasPV();
+    tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
   }
@@ -531,7 +531,7 @@ Score Search::PVSearch(Thread &thread,
   // Use the TT entry's evaluation if possible
   if (tt_hit) {
     can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-    tt_was_in_pv |= tt_entry->GetWasPV();
+    tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
   }
@@ -955,7 +955,7 @@ Score Search::PVSearch(Thread &thread,
         stack->ply < thread.root_depth * 2) {
       const bool is_accurate_tt_score =
           tt_entry->depth + 3 >= depth &&
-          tt_entry->GetFlag() != TranspositionTableEntry::kUpperBound &&
+          tt_entry->flag != TranspositionTableEntry::kUpperBound &&
           std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
 
       if (is_accurate_tt_score) {
@@ -987,7 +987,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta &&
+        else if (tt_move_excluded_score >= beta  &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }

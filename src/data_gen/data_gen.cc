@@ -279,7 +279,7 @@ void GameLoop(const Config &config,
         }
       }
 
-      thread->board.MakeMove<false>(best_move);
+      thread->board.MakeMove(best_move);
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root

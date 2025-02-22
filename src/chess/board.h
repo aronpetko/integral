@@ -292,17 +292,20 @@ class Board {
     return state_;
   }
 
+  inline const auto &GetState() const {
+    return state_;
+  }
+
   inline auto &GetStateHistory() {
     return history_;
   }
 
-  inline std::shared_ptr<nnue::Accumulator> &GetAccumulator() {
+  inline auto &GetAccumulator() {
     return accumulator_;
   }
 
   void SetFromFen(std::string_view fen_str);
 
-  template <bool update_stacks = true>
   void MakeMove(Move move);
 
   void MakeNullMove();
