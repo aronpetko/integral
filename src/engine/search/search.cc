@@ -925,9 +925,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
-      const int see_threshold =
-          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
-          stack->history_score / kSeePruneHistDiv;
+      const int see_threshold = (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) *
+                                lmr_fractional_depth / kLmrDepthScale;
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
               move,
@@ -987,7 +986,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta  &&
+        else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
