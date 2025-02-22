@@ -257,7 +257,6 @@ Score Search::QuiescentSearch(Thread &thread,
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
 
-  const int tt_depth = state.InCheck();
   const auto tt_entry = transposition_table_.Probe(zobrist_key);
   const bool tt_hit = tt_entry->CompareKey(zobrist_key);
 
@@ -271,12 +270,14 @@ Score Search::QuiescentSearch(Thread &thread,
     tt_static_eval = tt_entry->static_eval;
   }
 
+  constexpr int kQsTtDepth = 0;
+
   // Use the TT entry's evaluation if possible
   const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= tt_depth) {
+  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= kQsTtDepth) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
@@ -311,7 +312,7 @@ Score Search::QuiescentSearch(Thread &thread,
       if (!tt_hit) {
         const TranspositionTableEntry new_tt_entry(
             zobrist_key,
-            tt_depth,
+            kQsTtDepth,
             TranspositionTableEntry::kNone,
             kScoreNone,
             raw_static_eval,
@@ -431,10 +432,10 @@ Score Search::QuiescentSearch(Thread &thread,
     tt_flag = TranspositionTableEntry::kUpperBound;
   }
 
-  // Always updating the transposition table a depth 0 limits these TT entries
+  // Updating the transposition table with a depth of 0 limits these TT entries
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                             tt_depth,
+                                             kQsTtDepth,
                                              tt_flag,
                                              best_score,
                                              raw_static_eval,
