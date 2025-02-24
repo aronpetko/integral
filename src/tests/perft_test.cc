@@ -146,7 +146,7 @@ template <PerftType type>
 U64 PertInternal(Board &board, int depth, int start_depth) {
   U64 total_nodes = 0;
 
-  auto moves = move_gen::GenerateMoves(MoveGenType::kAll, board);
+  auto moves = move_gen::GenerateMoves<MoveGenType::kAll>(board);
   for (int i = 0; i < moves.Size(); i++) {
     const auto move = moves[i];
     if (!board.IsMoveLegal(move)) continue;
@@ -156,7 +156,7 @@ U64 PertInternal(Board &board, int depth, int start_depth) {
       // Bulk counting
       total_nodes += child_nodes = 1;
     } else {
-      board.MakeMove<false>(move);
+      board.MakeMove(move);
       total_nodes += child_nodes =
           PertInternal<PerftType::kNormal>(board, depth - 1, start_depth);
       board.UndoMove();

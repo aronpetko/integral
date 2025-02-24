@@ -201,10 +201,6 @@ bool Board::IsMoveLegal(Move move) const {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
-template void Board::MakeMove<true>(Move move);
-template void Board::MakeMove<false>(Move move);
-
-template <bool update_stacks>
 void Board::MakeMove(Move move) {
   history_.Push(state_);
 
@@ -584,8 +580,7 @@ BitBoard Board::GetOpponentWinningCaptures() const {
 }
 
 MoveList Board::GetLegalMoves() const {
-  auto move_list =
-      move_gen::GenerateMoves(MoveGenType::kAll, const_cast<Board &>(*this));
+  auto move_list = move_gen::GenerateMoves<MoveGenType::kAll>(*this);
   auto legal_move_list = MoveList{};
 
   for (int i = 0; i < move_list.Size(); i++) {

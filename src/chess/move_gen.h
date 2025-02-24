@@ -53,7 +53,8 @@ BitBoard RayBetween(Square first, Square second);
 // on
 BitBoard RayIntersecting(Square first, Square second);
 
-MoveList GenerateMoves(MoveGenType move_type, Board &board);
+template <MoveGenType move_type>
+MoveList GenerateMoves(const Board &board);
 
 }  // namespace move_gen
 

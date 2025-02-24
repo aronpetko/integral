@@ -74,10 +74,10 @@ class Option {
 
   template <typename T>
   [[nodiscard]] T GetValue() const {
-    if constexpr (std::is_integral<T>::value) {
-      return T(std::stoull(value_));
-    } else if constexpr (std::is_same<T, bool>::value) {
+    if constexpr (std::is_same<T, bool>::value) {
       return StringToBool(value_);
+    } else if constexpr (std::is_integral<T>::value) {
+      return T(std::stoull(value_));
     } else {
       return T(value_);
     }

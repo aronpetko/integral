@@ -28,16 +28,18 @@ enum class SearchType {
 struct RootMove {
   Move move;
   Score score;
+  Score average_score;
   PVLine pv;
 
-  RootMove(Move move, Score score) : move(move), score(score), pv({}) {}
+  RootMove(Move move, Score score)
+      : move(move), score(score), average_score(kScoreNone), pv({}) {}
   RootMove() = default;
 };
 
 class RootMoveList {
  public:
   explicit RootMoveList(Board &board) {
-    auto move_list = move_gen::GenerateMoves(MoveGenType::kAll, board);
+    auto move_list = move_gen::GenerateMoves<MoveGenType::kAll>(board);
     for (int i = 0; i < move_list.Size(); i++) {
       const auto move = move_list[i];
       if (board.IsMoveLegal(move)) {

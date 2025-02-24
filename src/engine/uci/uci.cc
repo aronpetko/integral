@@ -25,6 +25,7 @@ void Initialize(search::Search &search) {
   });
   listener.AddOption<OptionVisibility::kPublic>("MultiPV", 1, 1, 6);
   listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
+  listener.AddOption<OptionVisibility::kPublic>("Minimal", false);
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
     syzygy::SetPath(option.GetValue<std::string>());
   });
@@ -57,7 +58,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
       std::string move_str;
       while (stream >> move_str) {
         const auto move = Move::FromStr(move_str, board.GetState());
-        if (move) board.MakeMove<false>(move);
+        if (move) board.MakeMove(move);
         else fmt::println("Error: invalid move '{}'", move_str);
       }
     }
