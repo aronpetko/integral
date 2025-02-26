@@ -219,6 +219,10 @@ void Search::IterativeDeepening(Thread &thread) {
   static_eval = thread.history.correction_history->CorrectStaticEval(
       state, stack, static_eval);
 
+#if DATAGEN
+  return static_eval;
+#endif
+
   // Adjust based on proximity to a fifty-move-rule draw
   static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
 

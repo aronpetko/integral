@@ -33,7 +33,7 @@ if (NOT EVALFILE)
         file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
-                )
+        )
         list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
         if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
             message(FATAL_ERROR "Failed to download ${NETWORK_NAME}.nnue from ${NNUE_URL}")
@@ -42,9 +42,9 @@ if (NOT EVALFILE)
         message(STATUS "${NETWORK_NAME}.nnue already exists. Skipping download.")
     endif ()
     set(EVALFILE ${NNUE_PATH})
-else()
+else ()
     message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
-endif()
+endif ()
 
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
@@ -70,6 +70,11 @@ elseif (BUILD_SSE41_POPCNT)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_SSE41_POPCNT} -DBUILD_SSE41_POPCNT")
 elseif (BUILD_NATIVE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_NATIVE} -DBUILD_NATIVE")
+endif ()
+
+option(DATAGEN OFF)
+if (DATAGEN)
+    add_definitions(-DDATAGEN)
 endif ()
 
 # Set common flags for release and debug builds

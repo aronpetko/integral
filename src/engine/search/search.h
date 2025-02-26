@@ -22,7 +22,8 @@ enum class NodeType {
 
 enum class SearchType {
   kRegular,
-  kBench
+  kBench,
+  kDataGeneration,
 };
 
 struct RootMove {

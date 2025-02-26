@@ -24,6 +24,9 @@ EVALFILE ?=
 # Executable name (can be overridden from command line)
 EXE ?= integral
 
+# Whether or not datagen will be used
+DATAGEN ?= OFF
+
 # Standard targets
 .PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
 
@@ -40,7 +43,7 @@ else
 	@mkdir -p $(BUILD_DIR)
 endif
 	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE)...
-	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON ..
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) ..
 
 clean:
 ifeq ($(detected_OS),Windows)
