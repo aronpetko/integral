@@ -40,7 +40,7 @@ class History {
            continuation_history->GetScore(state, move, stack - 2) +
            continuation_history->GetScore(state, move, stack - 4) +
            pawn_history->GetScore(state, move) / 2 +
-           non_pawn_history->GetScore(state, move) / 2;
+           non_pawn_history->GetScore(state, move) / 4;
   }
 
   [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
