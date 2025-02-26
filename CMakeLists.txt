@@ -74,7 +74,7 @@ endif ()
 
 option(DATAGEN OFF)
 if (DATAGEN)
-    add_definitions(-DDATAGEN)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDATAGEN")
 endif ()
 
 # Set common flags for release and debug builds
