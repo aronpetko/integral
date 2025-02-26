@@ -5,6 +5,7 @@
 #include "capture_history.h"
 #include "continuation_history.h"
 #include "correction_history.h"
+#include "non_pawn_history.h"
 #include "pawn_history.h"
 #include "quiet_history.h"
 
@@ -20,6 +21,7 @@ class History {
     quiet_history = std::make_unique<QuietHistory>();
     continuation_history = std::make_unique<ContinuationHistory>();
     correction_history = std::make_unique<CorrectionHistory>();
+    non_pawn_history = std::make_unique<NonPawnHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
   }
@@ -37,7 +39,8 @@ class History {
            continuation_history->GetScore(state, move, stack - 1) +
            continuation_history->GetScore(state, move, stack - 2) +
            continuation_history->GetScore(state, move, stack - 4) +
-           pawn_history->GetScore(state, move) / 2;
+           pawn_history->GetScore(state, move) / 2 +
+           non_pawn_history->GetScore(state, move) / 2;
   }
 
   [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
@@ -49,6 +52,7 @@ class History {
   std::unique_ptr<QuietHistory> quiet_history;
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<PawnHistory> pawn_history;
+  std::unique_ptr<NonPawnHistory> non_pawn_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
 };
