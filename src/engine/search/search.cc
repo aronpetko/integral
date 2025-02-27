@@ -942,10 +942,14 @@ Score Search::PVSearch(Thread &thread,
 
       // History Pruning: Prune moves with a low history score moves at
       // near-leaf nodes
+      const int history_pruning_score =
+          is_quiet ? history.continuation_history->GetScore(state, move, stack)
+                   : stack->history_score;
       const int history_margin =
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
+      if (move.GetType() != MoveType::kPromotion && depth <= kHistPruneDepth &&
+          history_pruning_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
       }
@@ -991,7 +995,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta  &&
+        else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
