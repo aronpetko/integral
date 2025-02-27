@@ -948,7 +948,7 @@ Score Search::PVSearch(Thread &thread,
       const int history_margin =
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (move.GetType() != MoveType::kPromotion && depth <= kHistPruneDepth &&
+      if (depth <= kHistPruneDepth &&
           history_pruning_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
