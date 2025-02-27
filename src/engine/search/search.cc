@@ -927,27 +927,29 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
-      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
-      // much material
-      const int see_threshold =
-          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
-          stack->history_score / kSeePruneHistDiv;
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-          !eval::StaticExchange(
-              move,
-              is_quiet ? std::min(see_threshold, 0) : see_threshold,
-              state)) {
-        continue;
-      }
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys) {
+        // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
+        // much material
+        const int see_threshold =
+            (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
+            stack->history_score / kSeePruneHistDiv;
+        if (!eval::StaticExchange(
+                move,
+                is_quiet ? std::min(see_threshold, 0) : see_threshold,
+                state)) {
+          continue;
+        }
 
-      // History Pruning: Prune moves with a low history score moves at
-      // near-leaf nodes
-      const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth
-                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
-        continue;
+        // History Pruning: Prune moves with a low history score moves at
+        // near-leaf nodes
+        const int history_margin =
+            is_quiet ? kHistThreshBase + kHistThreshMult * depth
+                     : kCaptHistThreshBase + kCaptHistThreshMult * depth;
+        if (depth <= kHistPruneDepth &&
+            stack->history_score <= history_margin) {
+          move_picker.SkipQuiets();
+          continue;
+        }
       }
     }
 
@@ -991,7 +993,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta  &&
+        else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
