@@ -991,7 +991,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta  &&
+        else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
@@ -1066,9 +1066,8 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      if (std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff) {
-        reduction -= kLmrComplexity;
-      }
+      reduction -=
+          std::min(std::abs(stack->static_eval - raw_static_eval) * 10, 2048);
 
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
