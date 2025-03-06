@@ -3,6 +3,7 @@
 
 #include "../../chess/move_gen.h"
 #include "../../utils/types.h"
+#include "history/continuation_entries.h"
 
 namespace search {
 
@@ -53,22 +54,21 @@ struct PVLine {
 
 struct StackEntry {
   // Number of ply from root
-  U16 ply;
+  I32 ply;
   // Scores at this ply
   Score static_eval, eval, score;
   I64 history_score;
   // Best moves following down this ply
   PVLine pv;
-  // The move with the best score
-  Move best_move;
   // Currently searched move at this ply
   Move move;
   bool capture_move;
   PieceType moved_piece;
   // The excluded TT move when performing singular extensions
   Move excluded_tt_move;
-  // Continuation history entry for this move
-  void *continuation_entry;
+  // Continuation-based heuristics entries for this move
+  history::ContinuationEntry *continuation_entry;
+  history::ContinuationCorrectionEntry *continuation_correction_entry;
   // Moves that caused a beta cutoff at this ply
   std::array<Move, 2> killer_moves;
   // Was in check at this ply
@@ -93,7 +93,6 @@ struct StackEntry {
         static_eval(kScoreNone),
         eval(kScoreNone),
         history_score(0),
-        best_move(Move::NullMove()),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),

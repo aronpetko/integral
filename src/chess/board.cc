@@ -24,8 +24,7 @@ Board::Board() : history_({}) {}
 Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
 Board::Board(const Board &other)
-    : state_(other.state_),
-      history_(other.history_) {}
+    : state_(other.state_), history_(other.history_) {}
 
 Board &Board::operator=(const Board &other) {
   if (this == &other) {
@@ -49,7 +48,7 @@ void Board::SetFromFen(std::string_view fen_str) {
   CalculateThreats();
 }
 
-bool Board::IsMovePseudoLegal(Move move) {
+bool Board::IsMovePseudoLegal(Move move) const {
   const auto from = move.GetFrom(), to = move.GetTo();
   const Color us = state_.turn;
 
@@ -127,7 +126,7 @@ bool Board::IsMovePseudoLegal(Move move) {
   return possible_moves.IsSet(to);
 }
 
-bool Board::IsMoveLegal(Move move) {
+bool Board::IsMoveLegal(Move move) const {
   const Color us = state_.turn, them = FlipColor(us);
   const bool is_white = state_.turn == Color::kWhite;
 
@@ -202,10 +201,6 @@ bool Board::IsMoveLegal(Move move) {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
-template void Board::MakeMove<true>(Move move);
-template void Board::MakeMove<false>(Move move);
-
-template <bool update_stacks>
 void Board::MakeMove(Move move) {
   history_.Push(state_);
 
@@ -313,7 +308,9 @@ void Board::MakeNullMove() {
 
 U64 Board::PredictKeyAfter(Move move) {
   auto key = state_.zobrist_key ^ zobrist::turn;
-  if (move == Move::NullMove()) return key;
+  if (move == Move::NullMove()) {
+    return key ^ zobrist::fifty_move[state_.fifty_moves_clock + 1];
+  }
 
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
@@ -353,6 +350,11 @@ U64 Board::PredictKeyAfter(Move move) {
 
   const int colored_new_piece = new_piece * 2 + state_.turn;
   key ^= zobrist::pieces[colored_new_piece][to];
+
+  const int new_fifty_moves_clock =
+      (move.IsCapture(state_) || piece == kPawn ? 0
+                                                : state_.fifty_moves_clock + 1);
+  key ^= zobrist::fifty_move[new_fifty_moves_clock];
 
   return key;
 }
@@ -409,7 +411,8 @@ bool Board::HasUpcomingRepetition(U16 ply) {
 }
 
 bool Board::IsDraw(U16 ply) {
-  if (state_.fifty_moves_clock >= 100) {
+  if (state_.fifty_moves_clock >= 100 &&
+      (!state_.InCheck() || !GetLegalMoves().Empty())) {
     return true;
   }
 
@@ -574,6 +577,20 @@ BitBoard Board::GetOpponentWinningCaptures() const {
 
   return (queens & rook_threats) | (rooks & minor_threats) |
          (minors & pawn_threats);
+}
+
+MoveList Board::GetLegalMoves() const {
+  auto move_list = move_gen::GenerateMoves<MoveGenType::kAll>(*this);
+  auto legal_move_list = MoveList{};
+
+  for (int i = 0; i < move_list.Size(); i++) {
+    const auto move = move_list[i];
+    if (IsMoveLegal(move)) {
+      legal_move_list.Push(move);
+    }
+  }
+
+  return legal_move_list;
 }
 
 void Board::PrintPieces() {

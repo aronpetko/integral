@@ -15,7 +15,6 @@ namespace search {
       const auto entry = &cluster.entries[i];
       // If this entry is available, we can attempt to write to it
       if (entry->key == 0 || entry->CompareKey(key)) {
-        entry->SetAge(age_);
         return entry;
       }
       // Always prefer the lowest quality entry
@@ -34,29 +33,31 @@ namespace search {
 void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
-                              U16 ply,
+                              I32 ply,
                               bool in_pv) {
   if (new_entry.move || !old_entry->CompareKey(key)) {
     old_entry->move = new_entry.move;
   }
 
   if (!old_entry->CompareKey(key) ||
-      new_entry.GetFlag() == TranspositionTableEntry::kExact ||
+      new_entry.flag == TranspositionTableEntry::kExact ||
       new_entry.depth + 3 + 2 * in_pv >= old_entry->depth) {
-    new_entry.bits.age = age_;
+    new_entry.age = age_;
 
     old_entry->key = static_cast<U16>(key);
     old_entry->score =
         TranspositionTableEntry::CorrectScore(new_entry.score, -ply);
     old_entry->depth = new_entry.depth;
-    old_entry->bits = new_entry.bits;
+    old_entry->age = new_entry.age;
+    old_entry->flag = new_entry.flag;
+    old_entry->was_in_pv = new_entry.was_in_pv;
     old_entry->static_eval = new_entry.static_eval;
   }
 }
 
 U32 TranspositionTable::GetAgeDelta(
     const TranspositionTableEntry *entry) const {
-  return (kMaxTTAge + age_ - entry->GetAge()) % kMaxTTAge;
+  return (kMaxTTAge + age_ - entry->age) % kMaxTTAge;
 }
 
 void TranspositionTable::Age() {
@@ -68,7 +69,7 @@ int TranspositionTable::HashFull() const {
   for (int i = 0; i < 1000; i++) {
     count +=
         std::ranges::count_if(table_[i].entries, [this](const auto &entry) {
-          return entry.bits.age == age_ && entry.key != 0 &&
+          return entry.age == age_ && entry.key != 0 &&
                  entry.score != kScoreNone;
         });
   }

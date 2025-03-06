@@ -25,6 +25,81 @@ enum class SearchType {
   kBench
 };
 
+struct RootMove {
+  Move move;
+  Score score;
+  Score average_score;
+  PVLine pv;
+
+  RootMove(Move move, Score score)
+      : move(move), score(score), average_score(kScoreNone), pv({}) {}
+  RootMove() = default;
+};
+
+class RootMoveList {
+ public:
+  explicit RootMoveList(Board &board) {
+    auto move_list = move_gen::GenerateMoves<MoveGenType::kAll>(board);
+    for (int i = 0; i < move_list.Size(); i++) {
+      const auto move = move_list[i];
+      if (board.IsMoveLegal(move)) {
+        list_.Push({move, 0});
+      }
+    }
+  }
+
+  RootMoveList() = default;
+
+  void SortNextMove(int idx) {
+    for (int i = idx; i < Size(); ++i) {
+      int best_idx = i;
+
+      for (int j = i + 1; j < Size(); ++j) {
+        if (list_[j].score > list_[best_idx].score) {
+          best_idx = j;
+        }
+      }
+
+      if (best_idx != i) {
+        std::swap(list_[best_idx], list_[i]);
+      }
+    }
+  }
+
+  [[nodiscard]] bool MoveExists(Move move, int pv_move_idx) const {
+    for (int i = pv_move_idx; i < Size(); ++i) {
+      if (list_[i].move == move) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  [[nodiscard]] RootMove *FindRootMove(Move move) {
+    for (int i = 0; i < Size(); ++i) {
+      if (list_[i].move == move) {
+        return &list_[i];
+      }
+    }
+    return nullptr;
+  }
+
+  inline RootMove &operator[](int i) {
+    return list_[i];
+  }
+
+  [[nodiscard]] inline int Size() const {
+    return list_.Size();
+  }
+
+  [[nodiscard]] inline bool Empty() const {
+    return list_.Empty();
+  }
+
+ private:
+  List<RootMove, 256> list_;
+};
+
 struct Thread {
   explicit Thread(U32 id)
       : id(id),
@@ -32,7 +107,8 @@ struct Thread {
         previous_score(kScoreNone),
         nodes_searched(0),
         sel_depth(0),
-        tb_hits(0) {
+        tb_hits(0),
+        nmp_min_ply(0) {
     NewGame();
   }
 
@@ -55,6 +131,8 @@ struct Thread {
     stack.Reset();
     scores.fill(kScoreNone);
 
+    nmp_min_ply = 0;
+
     // Reset info data
     nodes_searched = 0;
     sel_depth = 0;
@@ -71,6 +149,9 @@ struct Thread {
   Score previous_score;
   U16 root_depth, sel_depth;
   U64 tb_hits;
+  int pv_move_idx;
+  RootMoveList root_moves;
+  U16 nmp_min_ply;
 };
 
 class Search {

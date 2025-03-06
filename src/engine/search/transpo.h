@@ -24,9 +24,9 @@ struct TranspositionTableEntry {
         score(kScoreNone),
         static_eval(0),
         move(Move::NullMove()),
-        bits({}) {
-    SetFlag(kNone);
-  }
+        age(0),
+        was_in_pv(false),
+        flag(kNone) {}
 
   explicit TranspositionTableEntry(U64 key,
                                    U8 depth,
@@ -40,10 +40,9 @@ struct TranspositionTableEntry {
         score(score),
         static_eval(static_eval),
         move(move),
-        bits({}) {
-    SetWasPV(was_in_pv);
-    SetFlag(flag);
-  }
+        age(0),
+        was_in_pv(was_in_pv),
+        flag(flag) {}
 
   // Keys are packed to maximize the number of entries the table can hold
   // Therefore, we must down-cast when checking for key equality
@@ -53,17 +52,16 @@ struct TranspositionTableEntry {
 
   // Check if the entry's score falls within the search window
   [[nodiscard]] bool CanUseScore(Score alpha, Score beta) const {
-    const auto flag = GetFlag();
     return score != kScoreNone &&
            ((flag == kUpperBound && score <= alpha) ||
             (flag == kLowerBound && score >= beta) || flag == kExact);
   }
 
   // Adjusts mate scores to correctly indicate the ply until mate
-  [[nodiscard]] static Score CorrectScore(Score score, U16 ply) {
-    if (score >= kMateInMaxPlyScore) {
+  [[nodiscard]] static Score CorrectScore(Score score, I32 ply) {
+    if (score >= kTBWinInMaxPlyScore) {
       score -= ply;
-    } else if (score <= -kMateInMaxPlyScore) {
+    } else if (score <= -kTBWinInMaxPlyScore) {
       score += ply;
     }
     return score;
@@ -76,34 +74,11 @@ struct TranspositionTableEntry {
   union {
     struct {
       U8 age : 5;
-      U8 was_pv : 1;
+      U8 was_in_pv : 1;
       U8 flag : 2;
-    } bits;
+    };
+    U8 extra_bits;
   };
-
-  [[nodiscard]] U32 GetAge() const {
-    return bits.age;
-  }
-
-  void SetAge(U32 age) {
-    bits.age = age;
-  }
-
-  [[nodiscard]] bool GetWasPV() const {
-    return bits.was_pv;
-  }
-
-  void SetWasPV(bool was_pv) {
-    bits.was_pv = was_pv;
-  }
-
-  [[nodiscard]] Flag GetFlag() const {
-    return static_cast<Flag>(bits.flag);
-  }
-
-  void SetFlag(Flag flag) {
-    bits.flag = static_cast<U8>(flag);
-  }
 };
 
 static_assert(sizeof(TranspositionTableEntry) == 10);
@@ -129,7 +104,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
   void Save(TranspositionTableEntry *old_entry,
             TranspositionTableEntry new_entry,
             const U64 &key,
-            U16 ply,
+            I32 ply,
             bool in_pv);
 
   void Age();

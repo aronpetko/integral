@@ -4,11 +4,9 @@
 #include "../../../utils/multi_array.h"
 #include "../stack.h"
 #include "bonus.h"
+#include "continuation_entries.h"
 
 namespace search::history {
-
-using ContinuationEntry =
-    MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount>;
 
 class ContinuationHistory {
  public:
@@ -63,8 +61,7 @@ class ContinuationHistory {
     const int piece = state.GetPieceType(move.GetFrom());
     const int to = move.GetTo();
 
-    auto &entry =
-        *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
+    auto &entry = *stack->continuation_entry;
     return entry[state.turn][piece][to];
   }
 
@@ -80,9 +77,7 @@ class ContinuationHistory {
     const int piece = state.GetPieceType(move.GetFrom());
     const int to = move.GetTo();
 
-    auto &entry =
-        *reinterpret_cast<ContinuationEntry *>(stack->continuation_entry);
-
+    auto &entry = *stack->continuation_entry;
     I16 &score = entry[state.turn][piece][to];
     score += ScaleBonus(score, bonus);
   }

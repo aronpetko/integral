@@ -14,7 +14,7 @@ namespace uci {
 
 namespace constants {
 
-constexpr std::string_view kEngineName = "Integral v5";
+constexpr std::string_view kEngineName = "Integral v7.0.0-dev";
 constexpr std::string_view kEngineAuthor = "Aron Petkovski";
 
 }  // namespace constants
@@ -81,7 +81,6 @@ class Listener {
   }
 
   [[maybe_unused]] Option &GetOption(std::string_view option) {
-    std::lock_guard lock(mtx_);
     return options_[option];
   }
 

@@ -6,11 +6,13 @@
 #include <utility>
 #include <vector>
 
-#include "../engine/evaluation/terms.h"
 #include "../engine/search/transpo.h"
 #include "../utils/zobrist.h"
 #include "bitboard.h"
 #include "fen.h"
+
+constexpr int kMaxMoves = 256;
+using MoveList = List<Move, kMaxMoves>;
 
 namespace nnue {
 
@@ -252,6 +254,12 @@ struct BoardState {
     return checkers != 0;
   }
 
+  [[nodiscard]] constexpr int MaterialCount() const {
+    return 1 * Pawns().PopCount() + 3 * Knights().PopCount() +
+           3 * Bishops().PopCount() + 5 * Rooks().PopCount() +
+           9 * Queens().PopCount();
+  }
+
   std::array<BitBoard, kNumPieceTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, kSquareCount> piece_on_square;
@@ -275,12 +283,16 @@ class Board {
   Board(const BoardState &state);
 
   // Copy constructor for deep copy of the accumulator
-  Board(const Board& other);
+  Board(const Board &other);
 
   // Copy assignment operator for deep copy of the accumulator
-  Board& operator=(const Board& other);
+  Board &operator=(const Board &other);
 
   inline auto &GetState() {
+    return state_;
+  }
+
+  inline const auto &GetState() const {
     return state_;
   }
 
@@ -288,13 +300,12 @@ class Board {
     return history_;
   }
 
-  inline std::shared_ptr<nnue::Accumulator> &GetAccumulator() {
+  inline auto &GetAccumulator() {
     return accumulator_;
   }
 
   void SetFromFen(std::string_view fen_str);
 
-  template <bool update_stacks = true>
   void MakeMove(Move move);
 
   void MakeNullMove();
@@ -305,9 +316,9 @@ class Board {
 
   void PrintPieces();
 
-  [[nodiscard]] bool IsMovePseudoLegal(Move move);
+  [[nodiscard]] bool IsMovePseudoLegal(Move move) const;
 
-  [[nodiscard]] bool IsMoveLegal(Move move);
+  [[nodiscard]] bool IsMoveLegal(Move move) const;
 
   [[nodiscard]] U64 PredictKeyAfter(Move move);
 
@@ -320,6 +331,8 @@ class Board {
   void CalculateThreats();
 
   [[nodiscard]] BitBoard GetOpponentWinningCaptures() const;
+
+  [[nodiscard]] MoveList GetLegalMoves() const;
 
  private:
   void HandleCastling(Move move);

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 [[maybe_unused]] static std::vector<std::string> SplitString(
@@ -40,8 +41,8 @@ inline std::string_view BoolToString(bool value) {
   return value ? "true" : "false";
 }
 
-inline bool StringToBool(std::string_view string) {
-  return ToLowercase(std::string(string)) == "true";
+inline bool StringToBool(std::string string) {
+  return ToLowercase(std::move(string)) == "true";
 }
 
 #endif  // INTEGRAL_STRING_H

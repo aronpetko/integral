@@ -9,6 +9,7 @@
 
 #include "list.h"
 
+using I8 = std::int8_t;
 using U8 = std::uint8_t;
 using U16 = std::uint16_t;
 using I16 = std::int16_t;

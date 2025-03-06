@@ -129,39 +129,6 @@ constexpr auto kPawnAttackMasks = GeneratePawnAttackMasks();
 const auto kRayBetweenMasks = GenerateRayBetweenMasks();
 const auto kRayIntersectingMasks = GenerateRayIntersectingMasks();
 
-bool IsSquareAttackedSlidingPieces(Square square,
-                                   Color attacker,
-                                   const BoardState &state) {
-  const BitBoard occupied = state.Occupied();
-  const BitBoard queens = state.Queens(attacker);
-
-  const BitBoard bishop_attacks = BishopMoves(square, occupied);
-  if ((queens | state.Bishops(attacker)) & bishop_attacks) {
-    return true;
-  }
-
-  const BitBoard rook_attacks = RookMoves(square, occupied);
-  if ((queens | state.Rooks(attacker)) & rook_attacks) {
-    return true;
-  }
-
-  return false;
-}
-
-bool IsSquareAttackedNonSlidingPieces(Square square,
-                                      Color attacker,
-                                      const BoardState &state) {
-  return (state.Knights(attacker) & KnightMoves(square)) != 0 ||
-         (state.Pawns(attacker) & PawnAttacks(square, FlipColor(attacker))) !=
-             0 ||
-         (state.King(attacker) & KingAttacks(square)) != 0;
-}
-
-bool IsSquareAttacked(Square square, Color attacker, const BoardState &state) {
-  return IsSquareAttackedNonSlidingPieces(square, attacker, state) ||
-         IsSquareAttackedSlidingPieces(square, attacker, state);
-}
-
 BitBoard PawnPushMoves(Square square, const BoardState &state) {
   BitBoard moves, bb_pos = BitBoard::FromSquare(square),
                   occupied = state.Occupied();
@@ -200,30 +167,6 @@ BitBoard PawnAttacks(BitBoard pawns, Color side) {
 
 BitBoard PawnAttacks(Square square, Color side) {
   return kPawnAttackMasks[side][square];
-}
-
-BitBoard AllLeftPawnAttacks(Color side, const BoardState &state) {
-  BitBoard moves, pawns = state.Pawns(side);
-
-  if (side == Color::kWhite) {
-    moves |= Shift<Direction::kNorthWest>(pawns);
-  } else {
-    moves |= Shift<Direction::kSouthEast>(pawns);
-  }
-
-  return moves;
-}
-
-BitBoard AllRightPawnAttacks(Color side, const BoardState &state) {
-  BitBoard moves, pawns = state.Pawns(side);
-
-  if (side == Color::kWhite) {
-    moves |= Shift<Direction::kNorthEast>(pawns);
-  } else {
-    moves |= Shift<Direction::kSouthWest>(pawns);
-  }
-
-  return moves;
 }
 
 BitBoard KnightMoves(Square square) {
@@ -289,38 +232,6 @@ BitBoard CastlingMoves(Color side, const BoardState &state) {
   return moves;
 }
 
-BitBoard GetAttackedSquares(const BoardState &state, Color attacker) {
-  BitBoard attacked, occupied = state.Occupied();
-
-  attacked |= AllLeftPawnAttacks(attacker, state) |
-              AllRightPawnAttacks(attacker, state);
-
-  BitBoard knights = state.Knights(attacker);
-  while (knights) {
-    attacked |= KnightMoves(knights.PopLsb());
-  }
-
-  BitBoard queens = state.Queens(attacker);
-
-  BitBoard bishops = state.Bishops(attacker) | queens;
-  while (bishops) {
-    attacked |= BishopMoves(bishops.PopLsb(), occupied);
-  }
-
-  BitBoard rooks = state.Rooks(attacker) | queens;
-  while (rooks) {
-    attacked |= RookMoves(rooks.PopLsb(), occupied);
-  }
-
-  BitBoard king = state.King(attacker);
-  if (king) {
-    // King is only in one position
-    attacked |= KingAttacks(king.PopLsb());
-  }
-
-  return attacked;
-}
-
 BitBoard GetAttackersTo(const BoardState &state,
                         Square square,
                         const BitBoard &occupied,
@@ -374,14 +285,6 @@ BitBoard RayIntersecting(Square first, Square second) {
   return kRayIntersectingMasks[first][second];
 }
 
-BitBoard PawnPushes(BitBoard pawns, Color side) {
-  if (side == Color::kWhite) {
-    return Shift<Direction::kNorth>(pawns);
-  } else {
-    return Shift<Direction::kSouth>(pawns);
-  }
-}
-
 void AddPromotions(Square from, Square to, MoveList &move_list) {
   move_list.Push(Move(from, to, PromotionType::kQueen));
   move_list.Push(Move(from, to, PromotionType::kKnight));
@@ -389,15 +292,16 @@ void AddPromotions(Square from, Square to, MoveList &move_list) {
   move_list.Push(Move(from, to, PromotionType::kBishop));
 }
 
-void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
+template <MoveGenType move_type>
+void AddPawnMoves(const Board &board, MoveList &move_list) {
   auto &state = board.GetState();
 
   const BitBoard occupied = state.Occupied();
   const BitBoard their_pieces = state.Occupied(FlipColor(state.turn));
 
   BitBoard targets = 0;
-  if (move_type & MoveGenType::kQuiet) targets = ~occupied;
-  if (move_type & MoveGenType::kNoisy)
+  if constexpr (move_type & MoveGenType::kQuiet) targets = ~occupied;
+  if constexpr (move_type & MoveGenType::kNoisy)
     targets |= kRankMasks[kRank8] | kRankMasks[kRank1];
 
   const BitBoard en_passant = state.en_passant != Squares::kNoSquare
@@ -539,16 +443,21 @@ void AddPawnMoves(Board &board, MoveGenType move_type, MoveList &move_list) {
   }
 }
 
-MoveList GenerateMoves(MoveGenType move_type, Board &board) {
+template MoveList GenerateMoves<MoveGenType::kAll>(const Board &board);
+template MoveList GenerateMoves<MoveGenType::kQuiet>(const Board &board);
+template MoveList GenerateMoves<MoveGenType::kNoisy>(const Board &board);
+
+template <MoveGenType move_type>
+MoveList GenerateMoves(const Board &board) {
   MoveList move_list;
-  auto &state = board.GetState();
+  const auto &state = board.GetState();
 
   const BitBoard occupied = state.Occupied();
   const BitBoard &their_pieces = state.Occupied(FlipColor(state.turn));
 
   BitBoard targets = 0;
-  if (move_type & MoveGenType::kQuiet) targets |= ~occupied;
-  if (move_type & MoveGenType::kNoisy) targets |= their_pieces;
+  if constexpr (move_type & MoveGenType::kQuiet) targets |= ~occupied;
+  if constexpr (move_type & MoveGenType::kNoisy) targets |= their_pieces;
 
   if (state.checkers.MoreThanOne()) {
     // Only king moves are legal if there's multiple pieces checking the king
@@ -561,7 +470,7 @@ MoveList GenerateMoves(MoveGenType move_type, Board &board) {
     return move_list;
   }
 
-  AddPawnMoves(board, move_type, move_list);
+  AddPawnMoves<move_type>(board, move_list);
 
   // Other piece moves
   for (Square from : state.Knights(state.turn) & ~state.pinned) {

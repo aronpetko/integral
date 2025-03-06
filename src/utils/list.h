@@ -15,6 +15,11 @@ class List {
     return container_[i];
   }
 
+  inline T operator[](int i) const {
+    assert(i >= 0 && i < count_);
+    return container_[i];
+  }
+
   inline void Push(const T &object) {
     assert(count_ < length);
     container_[count_++] = object;

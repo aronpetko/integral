@@ -30,7 +30,8 @@ class ReportInfo {
                      int hash_full,
                      bool syzygy_enabled,
                      int64_t tb_hits,
-                     const std::string& pv) const = 0;
+                     const std::string& pv,
+                     int pv_idx) const = 0;
 
  protected:
   virtual std::string FormatScore(bool is_mate, int score) const = 0;
@@ -55,8 +56,8 @@ class ReportInfo {
   }
 
   static fmt::rgb GetScoreColor(int score) {
-    constexpr fmt::rgb kLosingColor(242, 119, 119);  // Negative score color
-    constexpr fmt::rgb kWinningColor(124, 230, 147);   // Positive score color
+    constexpr fmt::rgb kLosingColor(242, 119, 119);   // Negative score color
+    constexpr fmt::rgb kWinningColor(124, 230, 147);  // Positive score color
     constexpr fmt::rgb kDrawColor(237, 228, 133);     // Draw score color
 
     // Return the appropriate color based on the score
@@ -121,12 +122,14 @@ class UCIReportInfo : public ReportInfo {
              int hash_full,
              bool syzygy_enabled,
              int64_t tb_hits,
-             const std::string& pv) const override {
+             const std::string& pv,
+             int pv_idx) const override {
     fmt::print(
-        "info depth {} seldepth {} score {} nodes {} time {} nps {} "
+        "info depth {} seldepth {} multipv {} score {} nodes {} time {} nps {} "
         "hashfull {}{}{} pv {}\n",
         depth,
         sel_depth,
+        pv_idx + 1,
         FormatScore(is_mate, score),
         nodes_searched,
         time_elapsed,
@@ -156,44 +159,39 @@ class PrettyReportInfo : public ReportInfo {
              int hash_full,
              bool syzygy_enabled,
              int64_t tb_hits,
-             const std::string& pv) const override {
-    // Define color constants
+             const std::string& pv,
+             int pv_idx) const override {
     const auto dark_gray = fmt::rgb(143, 143, 143);
     const auto light_gray = fmt::rgb(184, 184, 184);
     const auto grayish_white = fmt::rgb(220, 220, 220);
 
-    // Depth and Selective Depth
-    fmt::print(fg(dark_gray), "depth: ");
-    fmt::print(
-        fg(grayish_white), "{:>6}  ", fmt::format("{}/{}", depth, sel_depth));
+    if (pv_idx == 0) {
+      // Print full info for the main line
+      fmt::print(
+          fg(grayish_white), "{:>6}  ", fmt::format("{}/{}", depth, sel_depth));
 
-    // Time
-    fmt::print(fg(dark_gray), "time: ");
-    fmt::print(fg(grayish_white), "{:6d} ", time_elapsed);
-    fmt::print(fg(light_gray), "ms  ");
+      fmt::print(fg(dark_gray), "{:6d} ", time_elapsed);
+      fmt::print(fg(light_gray), "ms  ");
 
-    // Nodes
-    fmt::print(fg(dark_gray), "nodes: ");
-    fmt::print(fg(grayish_white), "{:>12s}", FormatNumber(nodes_searched));
-    fmt::print(fg(light_gray), "  ");
+      fmt::print(fg(dark_gray), "{:>12s}", FormatNumber(nodes_searched));
+      fmt::print(fg(light_gray), " nodes  ");
 
-    // NPS (Nodes Per Second)
-    fmt::print(fg(dark_gray), "nps: ");
-    fmt::print(
-        fg(grayish_white), "{:5.2f}", static_cast<double>(nps) / 1'000'000);
-    fmt::print(fg(light_gray), " mil  ");
+      fmt::print(
+          fg(dark_gray), "{:5.2f}m", static_cast<double>(nps) / 1'000'000);
+      fmt::print(fg(light_gray), " nps  ");
 
-    // Hash Fullness
-    fmt::print(fg(dark_gray), "hash: ");
-    fmt::print(fg(grayish_white), "{:3d}", hash_full / 10);
-    fmt::print(fg(light_gray), "%  ");
+      fmt::print(fg(dark_gray), "{:3d}%", hash_full / 10);
+      fmt::print(fg(light_gray), " hash  ");
+    } else {
+      // For alternative lines, just print the move number with proper padding
+      fmt::print(fg(light_gray), "{:>62}", fmt::format("#{}  ", pv_idx + 1));
+    }
 
-    // Score
+    // Score and PV are printed for all lines
     fmt::print(fg(GetScoreColor(score)) | fmt::emphasis::bold,
                "{}  ",
                FormatScore(is_mate, score));
 
-    // Principal Variation (PV)
     const auto moves = SplitString(pv, ' ');
     for (size_t i = 0; i < moves.size(); ++i) {
       fmt::print(fg(GetPVMoveColor(i, moves.size())), "{} ", moves[i]);
@@ -209,7 +207,7 @@ class PrettyReportInfo : public ReportInfo {
     } else {
       // Convert centipawns to pawns and format with sign and two decimal places
       return fmt::format("{}{:.2f}",
-                         score > 0 ? "+" : "",
+                         score >= 0 ? "+" : "",
                          static_cast<float>(score) / 100.0f);
     }
   }
