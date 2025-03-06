@@ -836,6 +836,11 @@ Score Search::PVSearch(Thread &thread,
     }
   }
 
+  // Update the TT move if it changed
+  if (tt_hit) {
+    tt_move = tt_entry->move;
+  }
+
   // Internal Iterative Reduction: Move ordering is expected to be worse with
   // no TT move, so we save time on searching this position now
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
