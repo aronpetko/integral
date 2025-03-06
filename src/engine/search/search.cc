@@ -927,6 +927,15 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
+      // Capture Futility Pruning: Skip (futile) capture moves at near-leaf
+      // nodes when there's a low chance to raise alpha
+      const int capt_futility_margin =
+          400 + 200 * lmr_fractional_depth / kLmrDepthScale;
+      if (lmr_depth <= 8 && !stack->in_check && is_capture &&
+          stack->eval + capt_futility_margin < alpha) {
+        continue;
+      }
+
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold =
@@ -991,7 +1000,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta  &&
+        else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
