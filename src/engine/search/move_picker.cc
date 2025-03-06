@@ -4,26 +4,6 @@ namespace search {
 
 TUNABLE(kSeeNoisyHistoryDiv, 109, 32, 250, false);
 
-TUNABLE(kPawnScore, 97, 50, 150, false);
-TUNABLE(kKnightScore, 305, 200, 400, false);
-TUNABLE(kBishopScore, 290, 200, 400, false);
-TUNABLE(kRookScore, 537, 400, 600, false);
-TUNABLE(kQueenScore, 906, 700, 1100, false);
-TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
-TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
-
-// clang-format off
-inline std::array<Tunable<int>, kNumPieceTypes + 1> kPieceScores = {
-  kPawnScore,
-  kKnightScore,
-  kBishopScore,
-  kRookScore,
-  kQueenScore,
-  kKingScore,
-  kNoneScore
-};
-// clang-format on
-
 TUNABLE(kQueenRookThreatScorePos, 20004, 10000, 30000, false);
 TUNABLE(kQueenRookThreatScoreNeg, 18629, 10000, 30000, false);
 TUNABLE(kRookMinorThreatScorePos, 12809, 5000, 20000, false);
@@ -199,7 +179,7 @@ int MovePicker::ScoreMove(Move &move) {
   if (move.IsCapture(state)) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
-    const int victim_value = kPieceScores[victim] * 100;
+    const int victim_value = *kPieceScores[victim] * 100;
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 

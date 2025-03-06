@@ -929,11 +929,17 @@ Score Search::PVSearch(Thread &thread,
 
       // Capture Futility Pruning: Skip (futile) capture moves at near-leaf
       // nodes when there's a low chance to raise alpha
-      const int capt_futility_margin =
-          400 + 200 * lmr_fractional_depth / kLmrDepthScale;
-      if (lmr_depth <= 8 && !stack->in_check && is_capture &&
-          stack->eval + capt_futility_margin < alpha) {
-        continue;
+      if (is_capture) {
+        const int piece_value =
+            move.IsEnPassant(state)
+                ? kPawnScore
+                : *kPieceScores[state.GetPieceType(move.GetTo())];
+        const int capt_futility_margin =
+            300 + 300 * lmr_fractional_depth / kLmrDepthScale + piece_value;
+        if (lmr_depth <= 6 && !stack->in_check &&
+            stack->static_eval + capt_futility_margin < alpha) {
+          continue;
+        }
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too

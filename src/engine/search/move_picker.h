@@ -9,6 +9,26 @@
 
 namespace search {
 
+TUNABLE(kPawnScore, 97, 50, 150, false);
+TUNABLE(kKnightScore, 305, 200, 400, false);
+TUNABLE(kBishopScore, 290, 200, 400, false);
+TUNABLE(kRookScore, 537, 400, 600, false);
+TUNABLE(kQueenScore, 906, 700, 1100, false);
+TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
+TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
+
+// clang-format off
+inline std::array kPieceScores = {
+  &kPawnScore,
+  &kKnightScore,
+  &kBishopScore,
+  &kRookScore,
+  &kQueenScore,
+  &kKingScore,
+  &kNoneScore
+};
+
+// clang-format on
 struct ScoredMove {
   Move move;
   int score;

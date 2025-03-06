@@ -15,10 +15,10 @@ Score Evaluate(Board &board) {
 
   const auto &state = board.GetState();
   const auto material_phase =
-      kSeePieceScores[kKnight] * state.Knights().PopCount() +
-      kSeePieceScores[kBishop] * state.Bishops().PopCount() +
-      kSeePieceScores[kRook] * state.Rooks().PopCount() +
-      kSeePieceScores[kQueen] * state.Queens().PopCount();
+      *kSeePieceScores[kKnight] * state.Knights().PopCount() +
+      *kSeePieceScores[kBishop] * state.Bishops().PopCount() +
+      *kSeePieceScores[kRook] * state.Rooks().PopCount() +
+      *kSeePieceScores[kQueen] * state.Queens().PopCount();
 
   return network_eval * (kMaterialScaleBase + material_phase) / 32768;
 }
@@ -36,13 +36,13 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   // Score represents the maximum number of points the opponent can gain with
   // the next capture
-  Score score = kSeePieceScores[state.GetPieceType(to)] - threshold;
+  Score score = *kSeePieceScores[state.GetPieceType(to)] - threshold;
   // If the captured piece is worth less than what we can give up, we lose
   if (score < 0) {
     return false;
   }
 
-  score = kSeePieceScores[from_piece] - score;
+  score = *kSeePieceScores[from_piece] - score;
   // If we captured a piece with equal/greater value than our capturing piece,
   // we win
   if (score <= 0) {
@@ -105,31 +105,31 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
     int attacker_value;
 
     if ((next_attacker = our_attackers & pawns)) {
-      attacker_value = kSeePieceScores[kPawn];
+      attacker_value = *kSeePieceScores[kPawn];
       occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were diagonal xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & knights)) {
-      attacker_value = kSeePieceScores[kKnight];
+      attacker_value = *kSeePieceScores[kKnight];
       occupied.ClearBit(next_attacker.GetLsb());
     } else if ((next_attacker = our_attackers & bishops)) {
-      attacker_value = kSeePieceScores[kBishop];
+      attacker_value = *kSeePieceScores[kBishop];
       occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       bishop_attacks = move_gen::BishopMoves(to, occupied);
       all_attackers |= bishop_attacks & (bishops | queens);
     } else if ((next_attacker = our_attackers & rooks)) {
-      attacker_value = kSeePieceScores[kRook];
+      attacker_value = *kSeePieceScores[kRook];
       occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
       rook_attacks = move_gen::RookMoves(to, occupied);
       all_attackers |= rook_attacks & (rooks | queens);
     } else if ((next_attacker = our_attackers & queens)) {
-      attacker_value = kSeePieceScores[kQueen];
+      attacker_value = *kSeePieceScores[kQueen];
       occupied.ClearBit(next_attacker.GetLsb());
 
       // Add pieces that were xray attacking the captured piece
