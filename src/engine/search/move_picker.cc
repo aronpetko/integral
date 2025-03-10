@@ -243,6 +243,7 @@ int MovePicker::ScoreMove(Move &move) {
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
   return threat_score +
+         board_.MoveGivesCheck(move) * 16384 +
          history_.GetQuietMoveScore(state, move, state.threats, stack_);
 }
 
