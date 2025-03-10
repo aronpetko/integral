@@ -11,7 +11,8 @@ include(CheckCXXSourceRuns)
 include(CheckIPOSupported)
 
 # Build options for different architectures
-option(BUILD_NATIVE "Build with native optimizations" OFF)
+set(BUILD_NATIVE ON)
+option(BUILD_NATIVE "Build with native optimizations" ON)
 option(BUILD_VNNI512 "Build with AVX512 VNNI support" OFF)
 option(BUILD_AVX512 "Build with AVX512 optimizations" OFF)
 option(BUILD_AVX2_BMI2 "Build with AVX2 + BMI2 optimizations" OFF)

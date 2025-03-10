@@ -320,6 +320,8 @@ class Board {
 
   [[nodiscard]] bool IsMoveLegal(Move move) const;
 
+  [[nodiscard]] bool MoveGivesCheck(Move move) const;
+
   [[nodiscard]] U64 PredictKeyAfter(Move move);
 
   [[nodiscard]] bool HasUpcomingRepetition(U16 ply);

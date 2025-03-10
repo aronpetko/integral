@@ -201,6 +201,54 @@ bool Board::IsMoveLegal(Move move) const {
   return move_gen::RayBetween(king_square, checking_piece).IsSet(to);
 }
 
+[[nodiscard]] bool Board::MoveGivesCheck(Move move) const {
+  const auto their_king_square = state_.King(FlipColor(state_.turn)).PopLsb();
+
+  const auto from = move.GetFrom(), to = move.GetTo();
+  const auto piece = state_.GetPieceType(from);
+
+  auto our_occupancy = state_.Occupied();
+  our_occupancy.ClearBit(from);
+  our_occupancy.SetBit(to);
+
+  BitBoard possible_moves;
+  switch (piece) {
+    case PieceType::kPawn:
+      possible_moves = move_gen::PawnAttacks(to, state_.turn);
+      break;
+    case PieceType::kKnight:
+      possible_moves = move_gen::KnightMoves(to);
+      break;
+    case PieceType::kBishop:
+      possible_moves = move_gen::BishopMoves(to, our_occupancy);
+      break;
+    case PieceType::kRook:
+      possible_moves = move_gen::RookMoves(to, our_occupancy);
+      break;
+    case PieceType::kQueen:
+      possible_moves = move_gen::QueenMoves(to, our_occupancy);
+      break;
+    case PieceType::kKing:
+      possible_moves = move_gen::KingAttacks(to);
+      break;
+    default:
+      return false;
+  }
+
+  // Direct check
+  if (possible_moves.IsSet(their_king_square)) {
+    return true;
+  }
+
+  // Discovered check
+  if (move_gen::GetSlidingAttackersTo(
+          state_, their_king_square, our_occupancy, state_.turn)) {
+    return true;
+  }
+
+  return false;
+}
+
 void Board::MakeMove(Move move) {
   history_.Push(state_);
 
