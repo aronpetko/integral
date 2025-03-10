@@ -888,9 +888,11 @@ Score Search::PVSearch(Thread &thread,
       // Reduce based on the history score of this move
       if (is_quiet) {
         reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
-      } else {
-        reduction -=
-            stack->history_score / kLmrCaptHistDiv * kLmrDepthHistCapture;
+
+        // Reduce less if the move gives check
+        if (board.MoveGivesCheck(move)) {
+          reduction -= 1024;
+        }
       }
 
       // Reduce more if our static evaluation is going down

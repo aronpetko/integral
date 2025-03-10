@@ -202,10 +202,6 @@ bool Board::IsMoveLegal(Move move) const {
 }
 
 [[nodiscard]] bool Board::MoveGivesCheck(Move move) const {
-  if (move.GetType() == MoveType::kCastle) {
-    return false;
-  }
-
   const auto their_king_square = state_.King(FlipColor(state_.turn)).PopLsb();
 
   const auto from = move.GetFrom(), to = move.GetTo();
@@ -233,7 +229,7 @@ bool Board::IsMoveLegal(Move move) const {
       possible_moves = move_gen::QueenMoves(to, our_occupancy);
       break;
     case PieceType::kKing:
-      possible_moves = move_gen::KingAttacks(to);
+      possible_moves = 0;
       break;
     default:
       return false;
@@ -244,6 +240,15 @@ bool Board::IsMoveLegal(Move move) const {
     return true;
   }
 
+  if (move.GetType() == MoveType::kCastle) {
+    const auto new_rook_square = Square(to > from ? Squares::kF1 : Squares::kD1)
+                                     .RelativeTo(FlipColor(state_.turn));
+    const int old_rook_square = Square(to > from ? Squares::kH1 : Squares::kA1)
+                                    .RelativeTo(FlipColor(state_.turn));
+    return move_gen::RookMoves(new_rook_square, our_occupancy ^ old_rook_square)
+        .IsSet(their_king_square);
+  }
+
   // Discovered check
   const BitBoard from_bb = BitBoard::FromSquare(from);
   const BitBoard queens = state_.Queens() & ~from_bb;
@@ -251,8 +256,10 @@ bool Board::IsMoveLegal(Move move) const {
   const BitBoard rooks = state_.Rooks() & ~from_bb;
 
   BitBoard attackers;
-  attackers |= move_gen::BishopMoves(their_king_square, our_occupancy) & (bishops | queens);
-  attackers |= move_gen::RookMoves(their_king_square, our_occupancy) & (rooks | queens);
+  attackers |= move_gen::BishopMoves(their_king_square, our_occupancy) &
+               (bishops | queens);
+  attackers |=
+      move_gen::RookMoves(their_king_square, our_occupancy) & (rooks | queens);
 
   return (attackers & (state_.Occupied(state_.turn) & ~from_bb)) != 0;
 }
