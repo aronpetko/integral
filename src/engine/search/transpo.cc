@@ -42,7 +42,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
   if (!old_entry->CompareKey(key) ||
       new_entry.flag == TranspositionTableEntry::kExact ||
       new_entry.depth + 3 + 2 * in_pv >= old_entry->depth ||
-      new_entry.age != age_) {
+      old_entry->age != age_) {
     new_entry.age = age_;
 
     old_entry->key = static_cast<U16>(key);
