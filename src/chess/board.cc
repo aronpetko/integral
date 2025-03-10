@@ -245,12 +245,16 @@ bool Board::IsMoveLegal(Move move) const {
   }
 
   // Discovered check
-  if (move_gen::GetSlidingAttackersTo(
-          state_, their_king_square, our_occupancy, state_.turn)) {
-    return true;
-  }
+  const BitBoard from_bb = BitBoard::FromSquare(from);
+  const BitBoard queens = state_.Queens() & ~from_bb;
+  const BitBoard bishops = state_.Bishops() & ~from_bb;
+  const BitBoard rooks = state_.Rooks() & ~from_bb;
 
-  return false;
+  BitBoard attackers;
+  attackers |= move_gen::BishopMoves(their_king_square, our_occupancy) & (bishops | queens);
+  attackers |= move_gen::RookMoves(their_king_square, our_occupancy) & (rooks | queens);
+
+  return (attackers & (state_.Occupied(state_.turn) & ~from_bb)) != 0;
 }
 
 void Board::MakeMove(Move move) {
