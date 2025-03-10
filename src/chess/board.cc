@@ -202,6 +202,10 @@ bool Board::IsMoveLegal(Move move) const {
 }
 
 [[nodiscard]] bool Board::MoveGivesCheck(Move move) const {
+  if (move.GetType() == MoveType::kCastle) {
+    return false;
+  }
+
   const auto their_king_square = state_.King(FlipColor(state_.turn)).PopLsb();
 
   const auto from = move.GetFrom(), to = move.GetTo();
