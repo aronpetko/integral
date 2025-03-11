@@ -888,11 +888,6 @@ Score Search::PVSearch(Thread &thread,
       // Reduce based on the history score of this move
       if (is_quiet) {
         reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
-
-        // Reduce less if the move gives check
-        if (board.MoveGivesCheck(move)) {
-          reduction -= 1024;
-        }
       }
 
       // Reduce more if our static evaluation is going down
@@ -924,7 +919,8 @@ Score Search::PVSearch(Thread &thread,
           kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
           stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
-          stack->static_eval + futility_margin < alpha) {
+          stack->static_eval + futility_margin < alpha &&
+          !board.MoveGivesCheck(move)) {
         move_picker.SkipQuiets();
         continue;
       }
