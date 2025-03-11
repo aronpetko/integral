@@ -877,33 +877,6 @@ Score Search::PVSearch(Thread &thread,
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
-      constexpr int kLmrDepthScale = 1024;
-      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
-                      kLmrDepthScale;
-
-      // Reduce more in non-PV nodes
-      if (!in_pv_node) {
-        reduction += kLmrDepthNonPvNode;
-      }
-
-      // Reduce based on the history score of this move
-      if (is_quiet) {
-        reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
-      }
-
-      // Reduce more if our static evaluation is going down
-      if (!improving) {
-        reduction += kLmrDepthNotImproving;
-      }
-
-      const int lmr_fractional_depth =
-          std::max(depth * kLmrDepthScale - reduction, 0);
-
-      // Scale reduction back down to an integer
-      reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
-
-      const int lmr_depth = std::max(depth - reduction, 0);
-
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
@@ -913,7 +886,7 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
-      if (is_capture || gives_check) {
+      if (!is_quiet || gives_check) {
         // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
         // much material
         const int see_threshold =
@@ -927,9 +900,37 @@ Score Search::PVSearch(Thread &thread,
         // much material
         const int see_threshold =
             kSeeQuietThresh * depth - stack->history_score / kSeePruneHistDiv;
-        if (!eval::StaticExchange(move, std::max(see_threshold, 0), state)) {
+        if (!eval::StaticExchange(move, std::min(see_threshold, 0), state)) {
           continue;
         }
+
+        constexpr int kLmrDepthScale = 1024;
+        int reduction =
+            tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
+            kLmrDepthScale;
+
+        // Reduce more in non-PV nodes
+        if (!in_pv_node) {
+          reduction += kLmrDepthNonPvNode;
+        }
+
+        // Reduce based on the history score of this move
+        if (is_quiet) {
+          reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
+        }
+
+        // Reduce more if our static evaluation is going down
+        if (!improving) {
+          reduction += kLmrDepthNotImproving;
+        }
+
+        const int lmr_fractional_depth =
+            std::max(depth * kLmrDepthScale - reduction, 0);
+
+        // Scale reduction back down to an integer
+        reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
+
+        const int lmr_depth = std::max(depth - reduction, 0);
 
         // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
         // there's a low chance to raise alpha
