@@ -927,8 +927,8 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold =
-          (is_quiet && board.MoveGivesCheck(move) ? kSeeQuietThresh
-                                                  : kSeeNoisyThresh) *
+          (is_quiet && !board.MoveGivesCheck(move) ? kSeeQuietThresh
+                                                   : kSeeNoisyThresh) *
               depth -
           stack->history_score / kSeePruneHistDiv;
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
