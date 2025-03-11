@@ -353,8 +353,8 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
-    if (!stack->in_check && futility_score <= alpha && move.IsNoisy(state) &&
-        !board.MoveGivesCheck(move) && !eval::StaticExchange(move, 1, state)) {
+    if (!stack->in_check && futility_score <= alpha && move.IsCapture(state) &&
+        !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
     }
@@ -927,7 +927,9 @@ Score Search::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold =
-          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
+          (is_quiet && board.MoveGivesCheck(move) ? kSeeQuietThresh
+                                                  : kSeeNoisyThresh) *
+              depth -
           stack->history_score / kSeePruneHistDiv;
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
