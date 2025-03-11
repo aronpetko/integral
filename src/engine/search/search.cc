@@ -877,6 +877,36 @@ Score Search::PVSearch(Thread &thread,
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
+      constexpr int kLmrDepthScale = 1024;
+      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
+                      kLmrDepthScale;
+
+      // Reduce more in non-PV nodes
+      if (!in_pv_node) {
+        reduction += kLmrDepthNonPvNode;
+      }
+
+      // Reduce based on the history score of this move
+      if (is_quiet) {
+        reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
+      } else {
+        reduction -=
+            stack->history_score / kLmrCaptHistDiv * kLmrDepthHistCapture;
+      }
+
+      // Reduce more if our static evaluation is going down
+      if (!improving) {
+        reduction += kLmrDepthNotImproving;
+      }
+
+      const int lmr_fractional_depth =
+          std::max(depth * kLmrDepthScale - reduction, 0);
+
+      // Scale reduction back down to an integer
+      reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
+
+      const int lmr_depth = std::max(depth - reduction, 0);
+
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
@@ -886,62 +916,29 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
-      if (!is_quiet || gives_check) {
-        // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
-        // much material
-        const int see_threshold =
-            kSeeNoisyThresh * depth - stack->history_score / kSeePruneHistDiv;
-        if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-            !eval::StaticExchange(move, see_threshold, state)) {
-          continue;
-        }
-      } else {
-        constexpr int kLmrDepthScale = 1024;
-        int reduction =
-            tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
-            kLmrDepthScale;
+      // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
+      // there's a low chance to raise alpha
+      const int futility_margin =
+          kFutMarginBase +
+          kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
+          stack->history_score / kFutMarginHistDiv;
+      if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+          stack->static_eval + futility_margin < alpha) {
+        move_picker.SkipQuiets();
+        continue;
+      }
 
-        // Reduce more in non-PV nodes
-        if (!in_pv_node) {
-          reduction += kLmrDepthNonPvNode;
-        }
-
-        // Reduce based on the history score of this move
-        if (is_quiet) {
-          reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
-        }
-
-        // Reduce more if our static evaluation is going down
-        if (!improving) {
-          reduction += kLmrDepthNotImproving;
-        }
-
-        const int lmr_fractional_depth =
-            std::max(depth * kLmrDepthScale - reduction, 0);
-
-        // Scale reduction back down to an integer
-        reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
-
-        const int lmr_depth = std::max(depth - reduction, 0);
-
-        // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
-        // there's a low chance to raise alpha
-        const int futility_margin =
-            kFutMarginBase +
-            kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
-            stack->history_score / kFutMarginHistDiv;
-        if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
-            !gives_check && stack->static_eval + futility_margin < alpha) {
-          continue;
-        }
-
-        // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
-        // much material
-        const int see_threshold =
-            kSeeQuietThresh * depth - stack->history_score / kSeePruneHistDiv;
-        if (!eval::StaticExchange(move, std::min(see_threshold, 0), state)) {
-          continue;
-        }
+      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
+      // much material
+      const int see_threshold =
+          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
+          stack->history_score / kSeePruneHistDiv;
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          !eval::StaticExchange(
+              move,
+              is_quiet ? std::min(see_threshold, 0) : see_threshold,
+              state)) {
+        continue;
       }
 
       // History Pruning: Prune moves with a low history score moves at

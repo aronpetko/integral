@@ -209,6 +209,8 @@ int MovePicker::ScoreMove(Move &move) {
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
+  int quiet_move_score = history_.GetQuietMoveScore(state, move, state.threats, stack_);
+
   const auto us = state.turn;
 
   const BitBoard queens = state.Queens(us);
@@ -239,11 +241,11 @@ int MovePicker::ScoreMove(Move &move) {
       break;
   }
 
-  // Order moves that caused a beta cutoff by their own history score
-  // The higher the depth this move caused a cutoff the more likely it move will
-  // be ordered first
-  return threat_score +
-         history_.GetQuietMoveScore(state, move, state.threats, stack_);
+  quiet_move_score += threat_score;
+  quiet_move_score += board_.MoveGivesCheck(move) * 8192;
+
+  return quiet_move_score;
+
 }
 
 }  // namespace search
