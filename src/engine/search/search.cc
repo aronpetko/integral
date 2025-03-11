@@ -353,8 +353,8 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // QS Futility Pruning: Prune capture moves that don't win material if the
     // static eval is behind alpha by some margin
-    if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1, state)) {
+    if (!stack->in_check && futility_score <= alpha && move.IsNoisy(state) &&
+        !board.MoveGivesCheck(move) && !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
     }

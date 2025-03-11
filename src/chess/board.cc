@@ -207,9 +207,9 @@ bool Board::IsMoveLegal(Move move) const {
   const auto from = move.GetFrom(), to = move.GetTo();
   const auto piece = state_.GetPieceType(from);
 
-  auto our_occupancy = state_.Occupied();
-  our_occupancy.ClearBit(from);
-  our_occupancy.SetBit(to);
+  auto occupied = state_.Occupied();
+  occupied.ClearBit(from);
+  occupied.SetBit(to);
 
   BitBoard possible_moves;
   switch (piece) {
@@ -220,13 +220,13 @@ bool Board::IsMoveLegal(Move move) const {
       possible_moves = move_gen::KnightMoves(to);
       break;
     case PieceType::kBishop:
-      possible_moves = move_gen::BishopMoves(to, our_occupancy);
+      possible_moves = move_gen::BishopMoves(to, occupied);
       break;
     case PieceType::kRook:
-      possible_moves = move_gen::RookMoves(to, our_occupancy);
+      possible_moves = move_gen::RookMoves(to, occupied);
       break;
     case PieceType::kQueen:
-      possible_moves = move_gen::QueenMoves(to, our_occupancy);
+      possible_moves = move_gen::QueenMoves(to, occupied);
       break;
     case PieceType::kKing:
       possible_moves = 0;
@@ -240,28 +240,61 @@ bool Board::IsMoveLegal(Move move) const {
     return true;
   }
 
-  if (move.GetType() == MoveType::kCastle) {
+  const auto move_type = move.GetType();
+
+  if (move_type == MoveType::kCastle) {
     const auto new_rook_square = Square(to > from ? Squares::kF1 : Squares::kD1)
                                      .RelativeTo(FlipColor(state_.turn));
     const int old_rook_square = Square(to > from ? Squares::kH1 : Squares::kA1)
                                     .RelativeTo(FlipColor(state_.turn));
-    return move_gen::RookMoves(new_rook_square, our_occupancy ^ old_rook_square)
+    return move_gen::RookMoves(new_rook_square, occupied ^ old_rook_square)
         .IsSet(their_king_square);
   }
 
-  // Discovered check
   const BitBoard from_bb = BitBoard::FromSquare(from);
   const BitBoard queens = state_.Queens() & ~from_bb;
   const BitBoard bishops = state_.Bishops() & ~from_bb;
   const BitBoard rooks = state_.Rooks() & ~from_bb;
 
-  BitBoard attackers;
-  attackers |= move_gen::BishopMoves(their_king_square, our_occupancy) &
-               (bishops | queens);
-  attackers |=
-      move_gen::RookMoves(their_king_square, our_occupancy) & (rooks | queens);
+  auto sliding_attackers =
+      move_gen::BishopMoves(their_king_square, occupied) & (bishops | queens) |
+      move_gen::RookMoves(their_king_square, occupied) & (rooks | queens);
 
-  return (attackers & (state_.Occupied(state_.turn) & ~from_bb)) != 0;
+  // Discovered check
+  if ((sliding_attackers & (state_.Occupied(state_.turn) & ~from_bb)) != 0) {
+    return true;
+  }
+
+  if (move_type == MoveType::kPromotion) {
+    switch (move.GetPromotionType()) {
+      case PromotionType::kKnight:
+        possible_moves = move_gen::KnightMoves(to);
+        break;
+      case PromotionType::kBishop:
+        possible_moves = move_gen::BishopMoves(to, occupied);
+        break;
+      case PromotionType::kRook:
+        possible_moves = move_gen::RookMoves(to, occupied);
+        break;
+      case PromotionType::kQueen:
+        possible_moves = move_gen::QueenMoves(to, occupied);
+        break;
+    }
+
+    return possible_moves.IsSet(their_king_square);
+  } else if (move_type == MoveType::kEnPassant) {
+    const auto captured_square = Square::FromRankFile(from.Rank(), to.File());
+    occupied.ClearBit(captured_square);
+
+    sliding_attackers =
+        move_gen::BishopMoves(their_king_square, occupied) &
+            (bishops | queens) |
+        move_gen::RookMoves(their_king_square, occupied) & (rooks | queens);
+
+    return (sliding_attackers & state_.Occupied(state_.turn)) != 0;
+  }
+
+  return false;
 }
 
 void Board::MakeMove(Move move) {
