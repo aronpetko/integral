@@ -211,7 +211,7 @@ bool Board::IsMoveLegal(Move move) const {
   occupied.ClearBit(from);
   occupied.SetBit(to);
 
-  BitBoard possible_moves;
+  BitBoard possible_moves = 0;
   switch (piece) {
     case PieceType::kPawn:
       possible_moves = move_gen::PawnAttacks(to, state_.turn);
@@ -228,11 +228,8 @@ bool Board::IsMoveLegal(Move move) const {
     case PieceType::kQueen:
       possible_moves = move_gen::QueenMoves(to, occupied);
       break;
-    case PieceType::kKing:
-      possible_moves = 0;
-      break;
     default:
-      return false;
+      break;
   }
 
   // Direct check
@@ -265,7 +262,9 @@ bool Board::IsMoveLegal(Move move) const {
     return true;
   }
 
-  if (move_type == MoveType::kPromotion) {
+  if (move_type == MoveType::kNormal) {
+    return false;
+  } else if (move_type == MoveType::kPromotion) {
     switch (move.GetPromotionType()) {
       case PromotionType::kKnight:
         possible_moves = move_gen::KnightMoves(to);

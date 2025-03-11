@@ -151,12 +151,20 @@ U64 PertInternal(Board &board, int depth, int start_depth) {
     const auto move = moves[i];
     if (!board.IsMoveLegal(move)) continue;
 
+    const auto gives_check = board.MoveGivesCheck(move);
+
     U64 child_nodes;
     if (depth == 1) {
       // Bulk counting
       total_nodes += child_nodes = 1;
     } else {
       board.MakeMove(move);
+
+      if (board.GetState().InCheck() != gives_check) {
+        fmt::println(
+            "{} {}", fen::BoardToString(board.GetState()), move.ToString());
+      }
+
       total_nodes += child_nodes =
           PertInternal<PerftType::kNormal>(board, depth - 1, start_depth);
       board.UndoMove();
