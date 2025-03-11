@@ -325,7 +325,8 @@ Score Search::QuiescentSearch(Thread &thread,
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
       }
 
-      return static_cast<Score>(std::lerp(best_score, beta, kQsCutoffLerpFactor));
+      return static_cast<Score>(
+          std::lerp(best_score, beta, kQsCutoffLerpFactor));
     }
 
     // Alpha can be updated if no cutoff occurred
