@@ -678,7 +678,7 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+  if (!in_pv_node && !stack->in_check) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -886,43 +886,52 @@ Score Search::PVSearch(Thread &thread,
         reduction += kLmrDepthNonPvNode;
       }
 
-      // Reduce based on the history score of this move
-      if (is_quiet) {
-        reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
-      } else {
-        reduction -=
-            stack->history_score / kLmrCaptHistDiv * kLmrDepthHistCapture;
-      }
-
       // Reduce more if our static evaluation is going down
       if (!improving) {
         reduction += kLmrDepthNotImproving;
       }
 
-      const int lmr_fractional_depth =
-          std::max(depth * kLmrDepthScale - reduction, 0);
-
-      // Scale reduction back down to an integer
-      reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
-
-      const int lmr_depth = std::max(depth - reduction, 0);
+      const int hp_lmr_depth = std::max(
+          depth - (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
+      const int lmp_threshold = (kLmpBase + depth * depth) / (3 - improving);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
       }
 
+      // History Pruning: Prune moves with a low history score moves at
+      // near-leaf nodes
+      const int history_margin =
+          is_quiet ? kHistThreshBase + kHistThreshMult * depth
+                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
+      if (hp_lmr_depth <= kHistPruneDepth &&
+          stack->history_score <= history_margin) {
+        move_picker.SkipQuiets();
+        continue;
+      }
+
+      // Reduce based on the history score of this move
+      if (is_quiet) {
+        reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
+      }
+
+      // Scale reduction back down to an integer
+      reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
+
+      const int fp_fractional_depth =
+          std::max(depth * kLmrDepthScale - reduction, 0);
+      const int fp_lmr_depth = std::max(depth - reduction, 0);
+
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin =
           kFutMarginBase +
-          kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
+          kFutMarginMult * fp_fractional_depth / kLmrDepthScale +
           stack->history_score / kFutMarginHistDiv;
-      if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+      if (fp_lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
@@ -938,16 +947,6 @@ Score Search::PVSearch(Thread &thread,
               move,
               is_quiet ? std::min(see_threshold, 0) : see_threshold,
               state)) {
-        continue;
-      }
-
-      // History Pruning: Prune moves with a low history score moves at
-      // near-leaf nodes
-      const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth
-                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
         continue;
       }
     }
