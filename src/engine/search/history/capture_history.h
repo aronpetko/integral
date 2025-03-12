@@ -1,5 +1,5 @@
-#ifndef I16EGRAL_CAPTURE_HISTORY_H
-#define I16EGRAL_CAPTURE_HISTORY_H
+#ifndef INTEGRAL_CAPTURE_HISTORY_H
+#define INTEGRAL_CAPTURE_HISTORY_H
 
 #include "../../../utils/multi_array.h"
 #include "../stack.h"
@@ -50,4 +50,4 @@ class CaptureHistory {
 
 }  // namespace search::history
 
-#endif  // I16EGRAL_CAPTURE_HISTORY_H
+#endif  // INTEGRAL_CAPTURE_HISTORY_H
