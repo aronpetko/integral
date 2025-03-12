@@ -325,7 +325,8 @@ Score Search::QuiescentSearch(Thread &thread,
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
       }
 
-      return best_score;
+      return static_cast<Score>(
+          std::lerp(best_score, beta, kQsCutoffLerpFactor));
     }
 
     // Alpha can be updated if no cutoff occurred
@@ -991,7 +992,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta  &&
+        else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
