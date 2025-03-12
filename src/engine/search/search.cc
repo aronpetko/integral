@@ -1061,7 +1061,7 @@ Score Search::PVSearch(Thread &thread,
       }
 
       // Reduce more if our static evaluation is going down
-      if (!improving) {
+      if (!improving && is_quiet) {
         reduction += kLmrNotImproving;
       }
 
