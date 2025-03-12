@@ -991,7 +991,7 @@ Score Search::PVSearch(Thread &thread,
         // Multi-cut: The singular search had a beta cutoff, indicating that
         // the TT move was not singular. Therefore, we prune if the same score
         // would cause a cutoff based on our current search window
-        else if (tt_move_excluded_score >= beta  &&
+        else if (tt_move_excluded_score >= beta &&
                  std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
           return tt_move_excluded_score;
         }
@@ -1180,6 +1180,10 @@ Score Search::PVSearch(Thread &thread,
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, history_depth);
           }
+          // Since "good" captures are expected to be the best moves, we apply a
+          // penalty to all captures even in the case where the best move was
+          // quiet
+          history.capture_history->Penalize(state, history_depth, captures);
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
@@ -1203,17 +1207,12 @@ Score Search::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_move) {
-    // Since "good" captures are expected to be the best moves, we apply a
-    // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, depth, captures);
-  }
   // This node failed low, meaning the parent node will fail high. The previous
   // move will already be given a history bonus by the parent node in the beta
   // cutoff. However, we also give a history bonus in the event of a fail low to
   // allow history tweaks to occur in PVS re-searches
-  else if (prev_stack->move && !prev_stack->capture_move &&
-           prev_stack->move.GetType() != MoveType::kPromotion) {
+  if (!best_move && prev_stack->move && !prev_stack->capture_move &&
+      prev_stack->move.GetType() != MoveType::kPromotion) {
     const auto history_bonus = history::HistoryBonus(depth);
     const auto past_turn = FlipColor(state.turn);
     history.quiet_history->UpdateMoveScore(
