@@ -1215,7 +1215,8 @@ Score Search::PVSearch(Thread &thread,
   // allow history tweaks to occur in PVS re-searches
   else if (prev_stack->move && !prev_stack->capture_move &&
            prev_stack->move.GetType() != MoveType::kPromotion) {
-    const auto history_bonus = history::HistoryBonus(depth);
+    const auto history_bonus = history::HistoryBonus(
+        depth + (best_score + kHistoryBonusMargin <= alpha));
     const auto past_turn = FlipColor(state.turn);
     history.quiet_history->UpdateMoveScore(
         past_turn, prev_stack->move, prev_stack->threats, history_bonus);
