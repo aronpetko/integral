@@ -119,4 +119,5 @@ add_executable(integral ${SOURCES}
         third-party/fathom/tbprobe.c
         src/data_gen/data_gen.h
         src/data_gen/format/binpack.h
-        src/engine/search/cuckoo.cc)
+        src/engine/search/cuckoo.cc
+        src/engine/search/history/ply_history.h)
