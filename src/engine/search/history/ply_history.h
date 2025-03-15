@@ -48,8 +48,8 @@ class PlyHistory {
 
     const int kMinPly = 0;
     const int kMaxPly = kPlyWindow - 1;
-    const int kMinBonus = 128;
-    const int kMaxBonus = 256;
+    const int kMinBonus = 0;
+    const int kMaxBonus = 1024;
 
     // Midpoint where bonus is at its lowest
     const int mid_ply = (kMinPly + kMaxPly) / 2;
