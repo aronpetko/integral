@@ -648,8 +648,11 @@ Score Search::PVSearch(Thread &thread,
                             (stack->static_eval + prev_stack->static_eval) / 10,
                         -kEvalHistUpdateMin,
                         kEvalHistUpdateMax);
-    history.quiet_history->UpdateMoveScore(
-        FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
+    history.quiet_history->UpdateMoveScore(FlipColor(state.turn),
+                                           prev_stack->move,
+                                           prev_stack->threats,
+                                           bonus,
+                                           stack->ply);
     history.pawn_history->UpdateMoveScore(
         board.GetStateHistory().Back(), prev_stack->move, bonus);
   }
@@ -1217,8 +1220,11 @@ Score Search::PVSearch(Thread &thread,
            prev_stack->move.GetType() != MoveType::kPromotion) {
     const auto history_bonus = history::HistoryBonus(depth);
     const auto past_turn = FlipColor(state.turn);
-    history.quiet_history->UpdateMoveScore(
-        past_turn, prev_stack->move, prev_stack->threats, history_bonus);
+    history.quiet_history->UpdateMoveScore(past_turn,
+                                           prev_stack->move,
+                                           prev_stack->threats,
+                                           history_bonus,
+                                           stack->ply);
     history.pawn_history->UpdateMoveScore(
         board.GetStateHistory().Back(), prev_stack->move, history_bonus / 2);
   }

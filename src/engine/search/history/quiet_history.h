@@ -11,10 +11,11 @@ class QuietHistory {
  public:
   QuietHistory() : table_({}) {}
 
-  void UpdateMoveScore(Color turn, Move move, BitBoard threats, I16 bonus) {
+  void UpdateMoveScore(
+      Color turn, Move move, BitBoard threats, I16 bonus, int ply) {
     // Apply a linear dampening to the bonus as the depth increases
-    I16 &score =
-        table_[turn][move.GetFrom()][move.GetTo()][ThreatIndex(move, threats)];
+    I16 &score = table_[ply / 8][turn][move.GetFrom()][move.GetTo()]
+                       [ThreatIndex(move, threats)];
     score += ScaleBonus(score, bonus);
   }
 
@@ -26,19 +27,20 @@ class QuietHistory {
     const I16 bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
-    UpdateMoveScore(state.turn, stack->move, threats, bonus);
+    UpdateMoveScore(state.turn, stack->move, threats, bonus, stack->ply);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
-      UpdateMoveScore(state.turn, quiets[i], threats, penalty);
+      UpdateMoveScore(state.turn, quiets[i], threats, penalty, stack->ply);
     }
   }
 
   [[nodiscard]] int GetScore(const BoardState &state,
                              Move move,
-                             BitBoard threats) const {
-    return table_[state.turn][move.GetFrom()][move.GetTo()]
+                             BitBoard threats,
+                             int ply) const {
+    return table_[ply / 8][state.turn][move.GetFrom()][move.GetTo()]
                  [ThreatIndex(move, threats)];
   }
 
@@ -48,7 +50,7 @@ class QuietHistory {
   }
 
  private:
-  MultiArray<I16, kNumColors, kSquareCount, kSquareCount, 4> table_;
+  MultiArray<I16, 32, kNumColors, kSquareCount, kSquareCount, 4> table_;
 };
 
 }  // namespace search::history
