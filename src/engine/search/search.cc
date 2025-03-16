@@ -80,6 +80,8 @@ void Search::IterativeDeepening(Thread &thread) {
     report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
   }
 
+  thread.history.ply_history->Clear();
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     for (thread.pv_move_idx = 0; thread.pv_move_idx < multi_pv;
          ++thread.pv_move_idx) {
