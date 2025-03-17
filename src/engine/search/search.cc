@@ -1190,13 +1190,10 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    // Penalize the history score of moves that failed to raise alpha
-    if (move != best_move) {
-      if (is_quiet)
-        quiets.Push(move);
-      else if (is_capture)
-        captures.Push(move);
-    }
+    if (is_quiet)
+      quiets.Push(move);
+    else if (is_capture)
+      captures.Push(move);
   }
 
   // Terminal state if no legal moves were found
