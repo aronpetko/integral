@@ -928,10 +928,12 @@ Score Search::PVSearch(Thread &thread,
         continue;
       }
 
+      lmr_depth = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold =
-          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
+          (is_quiet ? kSeeQuietThresh * lmr_depth : kSeeNoisyThresh * depth) -
           stack->history_score / kSeePruneHistDiv;
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
@@ -943,8 +945,6 @@ Score Search::PVSearch(Thread &thread,
 
       // History Pruning: Prune moves with a low history score moves at
       // near-leaf nodes
-      lmr_depth = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
-
       const int history_margin =
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
