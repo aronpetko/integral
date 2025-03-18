@@ -685,14 +685,12 @@ Score Search::PVSearch(Thread &thread,
     // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
-      const int improving_margin =
-          (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
+      const int improving_margin = (improving && !opponent_easy_capture) * 60;
       const int futility_margin =
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
-          beta) {
+      if (stack->eval - std::max(futility_margin, kRevFutMinMargin) >= beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
