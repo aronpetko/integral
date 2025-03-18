@@ -644,10 +644,10 @@ Score Search::PVSearch(Thread &thread,
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
     const int bonus =
-        2 * std::clamp(-kEvalHistUpdateMult *
-                           (stack->static_eval + prev_stack->static_eval) / 10,
-                       -kEvalHistUpdateMin,
-                       kEvalHistUpdateMax);
+        std::clamp(-kEvalHistUpdateMult *
+                            (stack->static_eval + prev_stack->static_eval) / 10,
+                        -kEvalHistUpdateMin,
+                        kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
