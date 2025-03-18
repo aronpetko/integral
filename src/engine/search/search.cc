@@ -905,7 +905,7 @@ Score Search::PVSearch(Thread &thread,
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
 
-      const int lmr_depth = std::max(depth - reduction, 0);
+      int lmr_depth = std::max(depth - reduction, 0);
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
@@ -943,10 +943,13 @@ Score Search::PVSearch(Thread &thread,
 
       // History Pruning: Prune moves with a low history score moves at
       // near-leaf nodes
+      lmr_depth = tables::kLateMoveReduction[is_quiet][depth][moves_seen];
+
       const int history_margin =
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
+      if (lmr_depth <= kHistPruneDepth &&
+          stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
       }
