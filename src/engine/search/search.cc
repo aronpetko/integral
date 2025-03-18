@@ -642,8 +642,8 @@ Score Search::PVSearch(Thread &thread,
 
   const auto &prev_stack = stack - 1;
   if (prev_stack->move &&
-      (!prev_stack->capture_move ||
-       prev_stack->move.GetType() == MoveType::kPromotion) &&
+      (!prev_stack->capture_move &&
+       prev_stack->move.GetType() != MoveType::kPromotion) &&
       !prev_stack->in_check && !stack->in_check) {
     const auto their_loss = stack->static_eval + prev_stack->static_eval;
     const int bonus = std::clamp(-kEvalHistUpdateMult * their_loss / 10,
