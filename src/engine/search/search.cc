@@ -26,7 +26,7 @@ int CalculateLMR(int depth, int moves, double base, double divisor) {
 }
 
 LateMoveReductionTable GenerateLateMoveReductionTable() {
-  LateMoveReductionTable table;
+  LateMoveReductionTable table{};
 
   // Initialize the depth reduction table for Late Move Reduction
   for (int depth = 1; depth <= kMaxSearchDepth; depth++) {
@@ -1088,7 +1088,7 @@ Score Search::PVSearch(Thread &thread,
       score = -PVSearch<NodeType::kNonPV>(
           thread, lmr_search_depth, -alpha - 1, -alpha, stack + 1, true);
 
-      if ((needs_full_search = score > alpha && reduction != 0)) {
+      if ((needs_full_search = score > alpha && lmr_search_depth < new_depth)) {
         // Search deeper or shallower depending on if the result of the
         // reduced-depth search indicates a promising score
         const bool do_deeper_search =
@@ -1108,7 +1108,8 @@ Score Search::PVSearch(Thread &thread,
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a PV move, therefore we search it with a null window
     if (needs_full_search) {
-      const int full_search_depth = new_depth - (!did_lmr && (reduction > 4096));
+      const int full_search_depth =
+          std::max(0, new_depth - (!did_lmr && (reduction > 4096)));
       score = -PVSearch<NodeType::kNonPV>(
           thread, full_search_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
 
