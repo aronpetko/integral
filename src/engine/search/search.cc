@@ -678,13 +678,12 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+  if (!in_pv_node && !stack->in_check) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
-    if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
-        stack->eval >= beta) {
+    if (depth <= kRevFutDepth && stack->eval >= beta) {
       const int improving_margin =
           (improving && !opponent_easy_capture) * 1.5 * kRevFutMargin;
       const int futility_margin =
@@ -699,7 +698,7 @@ Score Search::PVSearch(Thread &thread,
 
     // Razoring: At low depths, if this node seems like it might fail low, we
     // do a quiescent search to determine if we should prune
-    if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
+    if (depth <= kRazoringDepth && alpha < 2000 &&
         stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
@@ -840,7 +839,7 @@ Score Search::PVSearch(Thread &thread,
   // Internal Iterative Reduction: Move ordering is expected to be worse with
   // no TT move, so we save time on searching this position now
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
-      !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 4 < depth)) {
+      (!tt_move || tt_entry->depth + 4 < depth)) {
     depth--;
   }
 
