@@ -284,22 +284,22 @@ Score Search::QuiescentSearch(Thread &thread,
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
-  // Keep track of the original alpha for bound determination when updating
-  // the transposition table
-  const int original_alpha = alpha;
-
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Score raw_static_eval = kScoreNone;
 
   if (!stack->in_check) {
-    if (tt_static_eval != kScoreNone) {
-      raw_static_eval = tt_static_eval;
-    } else {
-      raw_static_eval = eval::Evaluate(board);
-    }
+    // Avoid re-computation if we dropped into quiescent search from late move
+    // reduction
+    if (!stack->reduction) {
+      if (tt_static_eval != kScoreNone) {
+        raw_static_eval = tt_static_eval;
+      } else {
+        raw_static_eval = eval::Evaluate(board);
+      }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+      stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    }
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -377,6 +377,7 @@ Score Search::QuiescentSearch(Thread &thread,
         move.IsCapture(state)
             ? history.GetCaptureMoveScore(state, move)
             : history.GetQuietMoveScore(state, move, stack->threats, stack);
+    stack->reduction = 0;
 
     ++thread.nodes_searched;
 
@@ -1026,9 +1027,11 @@ Score Search::PVSearch(Thread &thread,
     bool needs_full_search;
     Score score;
 
+    stack->reduction = 0;
+
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+    if (depth >= 2 && moves_seen >= 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
       constexpr int kLmrScale = 1024;
       reduction =
@@ -1079,12 +1082,13 @@ Score Search::PVSearch(Thread &thread,
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(
-          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth);
 
+      stack->reduction = reduction;
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+      stack->reduction = 0;
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
@@ -1093,6 +1097,7 @@ Score Search::PVSearch(Thread &thread,
             score > (best_score + kDoDeeperBase + 2 * new_depth);
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
         new_depth += do_deeper_search - do_shallower_search;
+        stack->reduction += do_shallower_search;
       }
     } else {
       // If we didn't perform late move reduction, then we search this move at
