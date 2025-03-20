@@ -644,10 +644,10 @@ Score Search::PVSearch(Thread &thread,
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
     const int bonus =
-        std::clamp<int>(-kEvalHistUpdateMult *
-                            (stack->static_eval + prev_stack->static_eval) / 10,
-                        -kEvalHistUpdateMin,
-                        kEvalHistUpdateMax);
+        std::clamp(-kEvalHistUpdateMult *
+                       (stack->static_eval + prev_stack->static_eval) / 10,
+                   -kEvalHistUpdateMin,
+                   kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
@@ -678,7 +678,7 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+  if (!in_pv_node && !stack->in_check) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -999,7 +999,7 @@ Score Search::PVSearch(Thread &thread,
         // Negative Extensions: Search less since the TT move was not
         // singular, and it might cause a beta cutoff again.
         else if (tt_entry->score >= beta) {
-          extensions = -2;
+          extensions = -2 - ((stack - 1)->reduction > 3000);
         } else if (cut_node) {
           extensions = -2;
         }
@@ -1076,6 +1076,8 @@ Score Search::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      stack->reduction = reduction;
+
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
@@ -1085,6 +1087,8 @@ Score Search::PVSearch(Thread &thread,
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+
+      stack->reduction = 0;
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
