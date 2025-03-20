@@ -678,7 +678,7 @@ Score Search::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+  if (!in_pv_node && !stack->in_check) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -691,8 +691,7 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
-          beta) {
+      if (stack->eval - std::max(futility_margin, kRevFutMinMargin) >= beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
@@ -726,7 +725,7 @@ Score Search::PVSearch(Thread &thread,
         stack->continuation_correction_entry = nullptr;
 
         const int eval_reduction =
-            std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
+            std::min(2, (stack->eval - beta) / kNmpEvalDiv);
         int reduction =
             depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
         reduction = std::clamp(reduction, 0, depth);
@@ -909,8 +908,7 @@ Score Search::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold =
-          static_cast<int>((kLmpBase + depth * depth) / (3 - improving));
+      const int lmp_threshold = (kLmpBase + depth * depth) / (3 - improving);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -1079,8 +1077,8 @@ Score Search::PVSearch(Thread &thread,
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp<int>(
-          reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction =
+          std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move has potential
       score = -PVSearch<NodeType::kNonPV>(
@@ -1172,12 +1170,15 @@ Score Search::PVSearch(Thread &thread,
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
-            history.pawn_history->UpdateScore(
-                state, stack, history_depth, quiets);
-            history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+
+            if (quiets.Size() > 1 || depth > 3) {
+              history.quiet_history->UpdateScore(
+                  state, stack, history_depth, stack->threats, quiets);
+              history.pawn_history->UpdateScore(
+                  state, stack, history_depth, quiets);
+              history.continuation_history->UpdateScore(
+                  state, stack, history_depth, quiets);
+            }
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, stack, history_depth);
           }
@@ -1190,13 +1191,10 @@ Score Search::PVSearch(Thread &thread,
       }
     }
 
-    // Penalize the history score of moves that failed to raise alpha
-    if (move != best_move) {
-      if (is_quiet)
-        quiets.Push(move);
-      else if (is_capture)
-        captures.Push(move);
-    }
+    if (is_quiet)
+      quiets.Push(move);
+    else if (is_capture)
+      captures.Push(move);
   }
 
   // Terminal state if no legal moves were found
