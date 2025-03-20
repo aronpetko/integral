@@ -72,6 +72,7 @@ TUNABLE_STEP(kDoShallowerBase, 4, 0, 30, false, 2);
 
 TUNABLE(kSeDepth, 5, 6, 12, true);
 TUNABLE_STEP(kSeDepthReduction, 7, 0, 30, false, 1);
+TUNABLE_STEP(kSeBetaMargin, 16, 0, 32, false, 1);
 TUNABLE_STEP(kSeDoubleMargin, 8, 0, 50, false, 2);
 TUNABLE_STEP(kSeTripleMargin, 67, 20, 250, false, 10);
 TUNABLE_STEP(kSeDepthExtensionDepth, 10, 0, 20, false, 1);
