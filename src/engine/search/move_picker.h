@@ -26,6 +26,8 @@ class MovePicker {
     kTTMove,
     kGenerateNoisys,
     kGoodNoisys,
+    kQsGenerateQuietChecks,
+    kQsQuietChecks,
     kFirstKiller,
     kSecondKiller,
     kGenerateQuiets,

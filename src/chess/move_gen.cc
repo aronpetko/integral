@@ -296,13 +296,16 @@ template <MoveGenType move_type>
 void AddPawnMoves(const Board &board, MoveList &move_list) {
   auto &state = board.GetState();
 
+  const auto them = FlipColor(state.turn);
   const BitBoard occupied = state.Occupied();
-  const BitBoard their_pieces = state.Occupied(FlipColor(state.turn));
+  const BitBoard their_pieces = state.Occupied(them);
 
   BitBoard targets = 0;
   if constexpr (move_type & MoveGenType::kQuiet) targets = ~occupied;
   if constexpr (move_type & MoveGenType::kNoisy)
     targets |= kRankMasks[kRank8] | kRankMasks[kRank1];
+  if constexpr (move_type == MoveGenType::kQuietChecks)
+    targets = ~occupied & PawnAttacks(state.King(them).GetLsb(), them);
 
   const BitBoard en_passant = state.en_passant != Squares::kNoSquare
                                 ? BitBoard::FromSquare(state.en_passant)
@@ -317,7 +320,7 @@ void AddPawnMoves(const Board &board, MoveList &move_list) {
     if (move_type & MoveGenType::kQuiet) {
       // Single pushes
       const BitBoard pushed_pawns =
-          Shift<Direction::kNorth>(non_promoting_pawns) & ~occupied;
+          Shift<Direction::kNorth>(non_promoting_pawns) & targets;
       for (Square to : pushed_pawns) {
         const Square from = to - 8;
         move_list.Push(Move(from, to));
@@ -325,7 +328,7 @@ void AddPawnMoves(const Board &board, MoveList &move_list) {
       // Double pushes
       for (Square to :
            Shift<Direction::kNorth>(pushed_pawns & kRankMasks[kRank3]) &
-               ~occupied) {
+               targets) {
         const Square from = to - 16;
         move_list.Push(Move(from, to));
       }
@@ -382,7 +385,7 @@ void AddPawnMoves(const Board &board, MoveList &move_list) {
     if (move_type & MoveGenType::kQuiet) {
       // Single pushes
       const BitBoard pushed_pawns =
-          Shift<Direction::kSouth>(non_promoting_pawns) & ~occupied;
+          Shift<Direction::kSouth>(non_promoting_pawns) & targets;
       for (Square to : pushed_pawns) {
         const Square from = to + 8;
         move_list.Push(Move(from, to));
@@ -390,7 +393,7 @@ void AddPawnMoves(const Board &board, MoveList &move_list) {
       // Double pushes
       for (Square to :
            Shift<Direction::kSouth>(pushed_pawns & kRankMasks[kRank6]) &
-               ~occupied) {
+               targets) {
         const Square from = to + 16;
         move_list.Push(Move(from, to));
       }
@@ -445,6 +448,7 @@ void AddPawnMoves(const Board &board, MoveList &move_list) {
 
 template MoveList GenerateMoves<MoveGenType::kAll>(const Board &board);
 template MoveList GenerateMoves<MoveGenType::kQuiet>(const Board &board);
+template MoveList GenerateMoves<MoveGenType::kQuietChecks>(const Board &board);
 template MoveList GenerateMoves<MoveGenType::kNoisy>(const Board &board);
 
 template <MoveGenType move_type>
@@ -452,11 +456,13 @@ MoveList GenerateMoves(const Board &board) {
   MoveList move_list;
   const auto &state = board.GetState();
 
+  const auto them = FlipColor(state.turn);
   const BitBoard occupied = state.Occupied();
-  const BitBoard &their_pieces = state.Occupied(FlipColor(state.turn));
+  const BitBoard &their_pieces = state.Occupied(them);
 
   BitBoard targets = 0;
-  if constexpr (move_type & MoveGenType::kQuiet) targets |= ~occupied;
+  if constexpr (move_type & MoveGenType::kQuiet) targets = ~occupied;
+  if constexpr (move_type & MoveGenType::kQuietChecks) targets = ~occupied;
   if constexpr (move_type & MoveGenType::kNoisy) targets |= their_pieces;
 
   if (state.checkers.MoreThanOne()) {
@@ -472,27 +478,40 @@ MoveList GenerateMoves(const Board &board) {
 
   AddPawnMoves<move_type>(board, move_list);
 
+  const auto their_king_square = state.King(them).GetLsb();
+
   // Other piece moves
+  const auto knight_targets = move_type == MoveGenType::kQuietChecks
+                                ? targets & KnightMoves(their_king_square)
+                                : targets;
   for (Square from : state.Knights(state.turn) & ~state.pinned) {
-    for (Square to : KnightMoves(from) & targets) {
+    for (Square to : KnightMoves(from) & knight_targets) {
       move_list.Push(Move(from, to));
     }
   }
 
+  const auto bishop_targets =
+      move_type == MoveGenType::kQuietChecks
+          ? targets & BishopMoves(their_king_square, occupied)
+          : targets;
   for (Square from : state.Bishops(state.turn)) {
-    for (Square to : BishopMoves(from, occupied) & targets) {
+    for (Square to : BishopMoves(from, occupied) & bishop_targets) {
       move_list.Push(Move(from, to));
     }
   }
 
+  const auto rook_targets = move_type == MoveGenType::kQuietChecks
+                              ? targets & RookMoves(their_king_square, occupied)
+                              : targets;
   for (Square from : state.Rooks(state.turn)) {
-    for (Square to : RookMoves(from, occupied) & targets) {
+    for (Square to : RookMoves(from, occupied) & rook_targets) {
       move_list.Push(Move(from, to));
     }
   }
 
   for (Square from : state.Queens(state.turn)) {
-    for (Square to : QueenMoves(from, occupied) & targets) {
+    for (Square to :
+         QueenMoves(from, occupied) & (rook_targets | bishop_targets)) {
       move_list.Push(Move(from, to));
     }
   }

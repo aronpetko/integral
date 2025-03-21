@@ -40,9 +40,10 @@ enum class PromotionType : U8 {
   kQueen,
 };
 
-enum MoveGenType : U8 {
-  kQuiet = 0b01,
-  kNoisy = 0b10,
+enum MoveGenType : U16 {
+  kQuiet = 0b001,
+  kNoisy = 0b010,
+  kQuietChecks = 0b100 | kQuiet,  // Special case of quiet moves
   kAll = kQuiet | kNoisy,
 };
 
