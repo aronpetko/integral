@@ -13,14 +13,14 @@ TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
 
 // clang-format off
-inline std::array<Tunable<int>, kNumPieceTypes + 1> kPieceScores = {
-  kPawnScore,
-  kKnightScore,
-  kBishopScore,
-  kRookScore,
-  kQueenScore,
-  kKingScore,
-  kNoneScore
+inline std::array kPieceScores = {
+  &kPawnScore,
+  &kKnightScore,
+  &kBishopScore,
+  &kRookScore,
+  &kQueenScore,
+  &kKingScore,
+  &kNoneScore
 };
 // clang-format on
 
@@ -205,15 +205,11 @@ int MovePicker::ScoreMove(Move &move) {
   if (move.IsCapture(state)) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
-    const int victim_value = kPieceScores[victim] * 100;
+    const int victim_value = *kPieceScores[victim] * 100;
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
   const auto us = state.turn;
-
-  const BitBoard queens = state.Queens(us);
-  const BitBoard rooks = queens | state.Rooks(us);
-  const BitBoard minors = rooks | state.Knights(us) | state.Bishops(us);
 
   const BitBoard pawn_threats = state.threatened_by[kPawn];
   const BitBoard minor_threats = pawn_threats | state.threatened_by[kKnight] |

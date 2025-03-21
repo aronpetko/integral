@@ -14,7 +14,7 @@ TUNABLE(kAspWindowDepth, 4, 2, 8, true);
 TUNABLE(kAspWindowDelta, 7, 1, 50, false);
 TUNABLE_STEP(kAspWindowGrowth, 1.3944681232281486, 0.1, 2.0, false, 0.08);
 
-TUNABLE_STEP(kQsCutoffLerpFactor, 0.5, 0.0, 1.0, false, 0.05);
+TUNABLE_STEP(kQsCutoffLerpFactor, 0.5, 0.0, 1.0, false, 0.1);
 TUNABLE_STEP(kQsFutMargin, 134, 20, 300, false, 20);
 
 TUNABLE(kEvalHistUpdateMult, 61, 20, 100, false);
@@ -23,9 +23,10 @@ TUNABLE(kEvalHistUpdateMax, 102, 40, 200, false);
 
 TUNABLE(kRevFutDepth, 9, 4, 10, true);
 TUNABLE(kRevFutMargin, 58, 50, 150, false);
+TUNABLE(kRevFutImprovingMargin, 87, 20, 150, false);
 TUNABLE(kRevFutOppWorseningMargin, 18, 5, 70, false);
 TUNABLE(kRevFutMinMargin, 18, 5, 100, false);
-TUNABLE_STEP(kRevFutLerpFactor, 0.4682519438648439, 0.0, 1.0, false, 0.05);
+TUNABLE_STEP(kRevFutLerpFactor, 0.4682519438648439, 0.0, 1.0, false, 0.1);
 TUNABLE(kRevFutHistoryDiv, 564, 200, 800, false);
 
 TUNABLE(kRazoringDepth, 4, 1, 8, true);
@@ -39,20 +40,19 @@ TUNABLE(kNmpEvalDiv, 171, 100, 300, false);
 
 TUNABLE(kIirDepth, 4, 2, 8, true);
 
-TUNABLE_STEP(kLmrDepthNonPvNode, 1049, 512, 2048, false, 150);
-TUNABLE_STEP(kLmrDepthHistQuiet, 1091, 512, 2048, false, 150);
-TUNABLE_STEP(kLmrDepthHistCapture, 1011, 512, 2048, false, 150);
-TUNABLE_STEP(kLmrDepthNotImproving, 1097, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrDepthNonPvNode, 1049, 512, 2048, false, 300);
+TUNABLE_STEP(kLmrDepthHistQuiet, 1091, 512, 2048, false, 300);
+TUNABLE_STEP(kLmrDepthHistCapture, 1011, 512, 2048, true, 300);
+TUNABLE_STEP(kLmrDepthNotImproving, 1097, 512, 2048, false, 300);
 TUNABLE_STEP(kLmrDepthRoundingCutoff, 616, 512, 2048, false, 150);
 
 TUNABLE(kLmpBase, 5.0, 1.5, 5.0, true);
 
 TUNABLE(kFutPruneDepth, 8, 6, 12, true);
-TUNABLE_STEP(kFutMarginBase, 198, 100, 250, false, 15);
-TUNABLE_STEP(kFutMarginMult, 83, 50, 200, false, 5);
+TUNABLE_STEP(kFutMarginBase, 198, 100, 250, false, 30);
+TUNABLE_STEP(kFutMarginMult, 83, 50, 200, false, 10);
 TUNABLE(kFutMarginHistDiv, 137, 32, 256, false);
 
-TUNABLE(kSeePruneDepth, 8, 6, 12, true);
 TUNABLE(kSeeQuietThresh, -57, -150, -5, false);
 TUNABLE(kSeeNoisyThresh, -114, -150, -5, false);
 TUNABLE(kSeePruneHistDiv, 124, 50, 300, false);
@@ -72,6 +72,7 @@ TUNABLE_STEP(kDoShallowerBase, 4, 0, 30, false, 2);
 
 TUNABLE(kSeDepth, 5, 6, 12, true);
 TUNABLE_STEP(kSeDepthReduction, 7, 0, 30, false, 1);
+TUNABLE_STEP(kSeBetaMargin, 16, 0, 32, false, 1);
 TUNABLE_STEP(kSeDoubleMargin, 8, 0, 50, false, 2);
 TUNABLE_STEP(kSeTripleMargin, 67, 20, 250, false, 10);
 TUNABLE_STEP(kSeDepthExtensionDepth, 10, 0, 20, false, 1);
@@ -90,7 +91,7 @@ TUNABLE_STEP(kLmrRoundingCutoff, 627, 512, 2048, false, 120);
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 235, 50, 300, false);
 
-TUNABLE_STEP(kHistoryBonusMargin, 49, 5, 120, false, 5);
+TUNABLE_STEP(kHistoryBonusMargin, 49, 5, 120, false, 10);
 
 }  // namespace search
 
