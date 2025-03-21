@@ -347,7 +347,7 @@ Score Search::QuiescentSearch(
     if (best_score > -kTBWinInMaxPlyScore) {
       // Stop searching since all the good noisy moves have been searched,
       // unless we need to find a quiet evasion
-      if (move_picker.GetStage() > MovePicker::Stage::kQsQuietChecks &&
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           moves_seen > 0) {
         break;
       }
@@ -357,11 +357,6 @@ Score Search::QuiescentSearch(
       if (!stack->in_check && move.IsCapture(state) &&
           futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
         best_score = std::max(best_score, futility_score);
-        continue;
-      }
-
-      if (move_picker.GetStage() == MovePicker::Stage::kQsQuietChecks &&
-          !eval::StaticExchange(move, -stack->history_score / 32, state)) {
         continue;
       }
     }
