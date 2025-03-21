@@ -516,11 +516,13 @@ MoveList GenerateMoves(const Board &board) {
     }
   }
 
-  const Square king_square = state.King(state.turn).GetLsb();
-  for (Square to : KingMoves(king_square, state) & targets) {
-    const bool is_castle = std::abs(to.File() - king_square.File()) == 2;
-    move_list.Push(Move(
-        king_square, to, is_castle ? MoveType::kCastle : MoveType::kNormal));
+  if constexpr (move_type != MoveGenType::kQuietChecks) {
+    const Square king_square = state.King(state.turn).GetLsb();
+    for (Square to : KingMoves(king_square, state) & targets) {
+      const bool is_castle = std::abs(to.File() - king_square.File()) == 2;
+      move_list.Push(Move(
+          king_square, to, is_castle ? MoveType::kCastle : MoveType::kNormal));
+    }
   }
 
   return move_list;
