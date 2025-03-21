@@ -266,11 +266,12 @@ struct BucketCacheEntry {
 
 class Accumulator {
  public:
-  Accumulator() : head_idx_(0) {}
+  Accumulator() : head_idx_(0) {
+    stack_.resize(2048);
+  }
 
   void SetFromState(const BoardState& state) {
     head_idx_ = 0;
-    stack_.resize(2048);
 
     for (const Color color : {Color::kBlack, Color::kWhite}) {
       auto& accumulator = stack_[head_idx_];

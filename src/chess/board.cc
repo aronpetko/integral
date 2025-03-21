@@ -19,13 +19,9 @@ constexpr std::array<U8, 64> kCastlingRights = {
 };
 // clang-format on
 
-Board::Board()
-    : history_({}), accumulator_(std::make_shared<nnue::Accumulator>()) {}
+Board::Board() : history_({}) {}
 
-Board::Board(const BoardState &state)
-    : history_({}),
-      state_(state),
-      accumulator_(std::make_shared<nnue::Accumulator>()) {}
+Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
 Board::Board(const Board &other)
     : state_(other.state_), history_(other.history_) {}
@@ -42,8 +38,13 @@ Board &Board::operator=(const Board &other) {
 }
 
 void Board::SetFromFen(std::string_view fen_str) {
-  accumulator_->SetFromState(state_ = fen::StringToBoard(fen_str));
+  state_ = fen::StringToBoard(fen_str);
+
+  accumulator_ = std::make_shared<nnue::Accumulator>();
+  accumulator_->SetFromState(state_);
+
   history_.Clear();
+
   CalculateThreats();
 }
 

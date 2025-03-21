@@ -84,10 +84,14 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    stage_ = (type_ == MovePickerType::kQuiescence && !state.InCheck() &&
-              depth_ >= -1)
-               ? Stage::kQsGenerateQuietChecks
-               : Stage::kFirstKiller;
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
+      if (depth_ >= -1)
+        stage_ = Stage::kQsGenerateQuietChecks;
+      else
+        return Move::NullMove();
+    }
+
+    stage_ = Stage::kFirstKiller;
   }
 
   if (stage_ == Stage::kQsGenerateQuietChecks) {
