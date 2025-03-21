@@ -335,23 +335,29 @@ Score Search::QuiescentSearch(
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, depth, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
-    // Stop searching since all the good noisy moves have been searched,
-    // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kQsQuietChecks &&
-        moves_seen > 0) {
-      break;
-    }
-
     if (!board.IsMoveLegal(move)) {
       continue;
     }
 
-    // QS Futility Pruning: Prune capture moves that don't win material if the
-    // static eval is behind alpha by some margin
-    if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1, state)) {
-      best_score = std::max(best_score, futility_score);
-      continue;
+    if (best_score > -kTBWinInMaxPlyScore) {
+      // Stop searching since all the good noisy moves have been searched,
+      // unless we need to find a quiet evasion
+      if (move_picker.GetStage() > MovePicker::Stage::kQsQuietChecks &&
+          moves_seen > 0) {
+        break;
+      }
+
+      // QS Futility Pruning: Prune capture moves that don't win material if the
+      // static eval is behind alpha by some margin
+      if (!stack->in_check && move.IsCapture(state) &&
+          futility_score <= alpha && !eval::StaticExchange(move, 1, state)) {
+        best_score = std::max(best_score, futility_score);
+        continue;
+      }
+
+      if (!eval::StaticExchange(move, 0, state)) {
+        continue;
+      }
     }
 
     // Prefetch the TT entry for the next move as early as possible
@@ -492,9 +498,8 @@ Score Search::PVSearch(Thread &thread,
   }
 
   // Enter quiescent search when we've reached the depth limit
-  assert(depth >= 0);
-  if (depth == 0) {
-    return QuiescentSearch<node_type>(thread, depth, alpha, beta, stack);
+  if (depth <= 0) {
+    return QuiescentSearch<node_type>(thread, 0, alpha, beta, stack);
   }
 
   stack->in_check = state.InCheck();
@@ -695,8 +700,8 @@ Score Search::PVSearch(Thread &thread,
     // do a quiescent search to determine if we should prune
     if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
         stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
-      const Score razoring_score = QuiescentSearch<NodeType::kNonPV>(
-          thread, depth, alpha, alpha + 1, stack);
+      const Score razoring_score =
+          QuiescentSearch<NodeType::kNonPV>(thread, 0, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
         return razoring_score;
       }
@@ -723,7 +728,6 @@ Score Search::PVSearch(Thread &thread,
             std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
         int reduction =
             depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
-        reduction = std::clamp(reduction, 0, depth);
 
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
@@ -805,7 +809,7 @@ Score Search::PVSearch(Thread &thread,
           board.MakeMove(move);
 
           Score score = -QuiescentSearch<node_type>(
-              thread, depth - 1, -pc_beta, -pc_beta + 1, stack + 1);
+              thread, 0, -pc_beta, -pc_beta + 1, stack + 1);
 
           if (score >= pc_beta) {
             score = -PVSearch<node_type>(thread,
