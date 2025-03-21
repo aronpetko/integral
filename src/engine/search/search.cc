@@ -230,10 +230,8 @@ void Search::IterativeDeepening(Thread &thread) {
 }
 
 template <NodeType node_type>
-Score Search::QuiescentSearch(Thread &thread,
-                              Score alpha,
-                              Score beta,
-                              StackEntry *stack) {
+Score Search::QuiescentSearch(
+    Thread &thread, int depth, Score alpha, Score beta, StackEntry *stack) {
   auto &board = thread.board;
   auto &history = thread.history;
   const auto &state = board.GetState();
@@ -261,7 +259,7 @@ Score Search::QuiescentSearch(Thread &thread,
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
 
-  const int tt_depth = state.InCheck();
+  const int tt_save_depth = state.InCheck();  // The depth we save to the TT
   const auto tt_entry = transposition_table_.Probe(zobrist_key);
   const bool tt_hit = tt_entry->CompareKey(zobrist_key);
 
@@ -280,13 +278,9 @@ Score Search::QuiescentSearch(Thread &thread,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= tt_depth) {
+  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= tt_save_depth) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
-
-  // Keep track of the original alpha for bound determination when updating
-  // the transposition table
-  const int original_alpha = alpha;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -315,7 +309,7 @@ Score Search::QuiescentSearch(Thread &thread,
       if (!tt_hit) {
         const TranspositionTableEntry new_tt_entry(
             zobrist_key,
-            tt_depth,
+            tt_save_depth,
             TranspositionTableEntry::kNone,
             kScoreNone,
             raw_static_eval,
@@ -339,11 +333,11 @@ Score Search::QuiescentSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack);
+      MovePickerType::kQuiescence, board, depth, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+    if (move_picker.GetStage() > MovePicker::Stage::kQsQuietChecks &&
         moves_seen > 0) {
       break;
     }
@@ -381,8 +375,8 @@ Score Search::QuiescentSearch(Thread &thread,
     ++thread.nodes_searched;
 
     board.MakeMove(move);
-    const Score score =
-        -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
+    const Score score = -QuiescentSearch<node_type>(
+        thread, depth - 1, -beta, -alpha, stack + 1);
     board.UndoMove();
 
     moves_seen++;
@@ -439,7 +433,7 @@ Score Search::QuiescentSearch(Thread &thread,
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
   const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                             tt_depth,
+                                             tt_save_depth,
                                              tt_flag,
                                              best_score,
                                              raw_static_eval,
@@ -500,7 +494,7 @@ Score Search::PVSearch(Thread &thread,
   // Enter quiescent search when we've reached the depth limit
   assert(depth >= 0);
   if (depth == 0) {
-    return QuiescentSearch<node_type>(thread, alpha, beta, stack);
+    return QuiescentSearch<node_type>(thread, depth, alpha, beta, stack);
   }
 
   stack->in_check = state.InCheck();
@@ -701,8 +695,8 @@ Score Search::PVSearch(Thread &thread,
     // do a quiescent search to determine if we should prune
     if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
         stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
-      const Score razoring_score =
-          QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
+      const Score razoring_score = QuiescentSearch<NodeType::kNonPV>(
+          thread, depth, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
         return razoring_score;
       }
@@ -772,8 +766,13 @@ Score Search::PVSearch(Thread &thread,
                                   : Move::NullMove();
 
         int moves_seen = 0;
-        MovePicker move_picker(
-            MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
+        MovePicker move_picker(MovePickerType::kNoisy,
+                               board,
+                               depth,
+                               pc_tt_move,
+                               history,
+                               stack,
+                               pc_see);
         while (const auto move = move_picker.Next()) {
           if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
               moves_seen > 0) {
@@ -806,7 +805,7 @@ Score Search::PVSearch(Thread &thread,
           board.MakeMove(move);
 
           Score score = -QuiescentSearch<node_type>(
-              thread, -pc_beta, -pc_beta + 1, stack + 1);
+              thread, depth - 1, -pc_beta, -pc_beta + 1, stack + 1);
 
           if (score >= pc_beta) {
             score = -PVSearch<node_type>(thread,
@@ -855,7 +854,7 @@ Score Search::PVSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kSearch, board, tt_move, history, stack);
+      MovePickerType::kSearch, board, depth, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
     if (in_root && !thread.root_moves.MoveExists(move, thread.pv_move_idx)) {
       continue;

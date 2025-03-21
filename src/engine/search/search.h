@@ -190,10 +190,8 @@ class Search {
   void IterativeDeepening(Thread &thread);
 
   template <NodeType node_type>
-  Score QuiescentSearch(Thread &thread,
-                        Score alpha,
-                        Score beta,
-                        StackEntry *stack);
+  Score QuiescentSearch(
+      Thread &thread, int depth, Score alpha, Score beta, StackEntry *stack);
 
   template <NodeType node_type>
   Score PVSearch(Thread &thread,

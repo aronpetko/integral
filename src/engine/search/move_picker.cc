@@ -33,6 +33,7 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8293, 3000, 12000, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
+                       int depth,
                        Move tt_move,
                        history::History &history,
                        StackEntry *stack,
@@ -44,7 +45,8 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      see_threshold_(see_threshold) {}
+      see_threshold_(see_threshold),
+      depth_(depth) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
@@ -82,7 +84,8 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    stage_ = (type_ == MovePickerType::kQuiescence && !state.InCheck())
+    stage_ = (type_ == MovePickerType::kQuiescence && !state.InCheck() &&
+              depth_ >= -1)
                ? Stage::kQsGenerateQuietChecks
                : Stage::kFirstKiller;
   }

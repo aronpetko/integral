@@ -37,6 +37,7 @@ class MovePicker {
 
   MovePicker(MovePickerType type,
              Board &board,
+             int depth,
              Move tt_move,
              history::History &history,
              StackEntry *stack,
@@ -69,6 +70,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
   int see_threshold_;
+  int depth_;
 };
 
 }  // namespace search
