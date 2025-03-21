@@ -150,6 +150,10 @@ void MovePicker::SkipQuiets() {
 
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
                                 int index) {
+  for (int i = index; i < move_list.Size(); i++) {
+    move_list[i].score = ScoreMove(move_list[i].move);
+  }
+
   int best_move_idx = index;
   int best_score = move_list[index].score;
   for (int next = index + 1; next < move_list.Size(); ++next) {
