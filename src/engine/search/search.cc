@@ -339,6 +339,11 @@ Score Search::QuiescentSearch(
       continue;
     }
 
+    stack->history_score =
+        move.IsCapture(state)
+            ? history.GetCaptureMoveScore(state, move)
+            : history.GetQuietMoveScore(state, move, stack->threats, stack);
+
     if (best_score > -kTBWinInMaxPlyScore) {
       // Stop searching since all the good noisy moves have been searched,
       // unless we need to find a quiet evasion
@@ -355,7 +360,8 @@ Score Search::QuiescentSearch(
         continue;
       }
 
-      if (!eval::StaticExchange(move, 0, state)) {
+      if (move_picker.GetStage() == MovePicker::Stage::kQsQuietChecks &&
+          !eval::StaticExchange(move, -stack->history_score / 32, state)) {
         continue;
       }
     }
@@ -373,10 +379,6 @@ Score Search::QuiescentSearch(
         history.continuation_history->GetEntry(state, move);
     stack->continuation_correction_entry =
         history.correction_history->GetContEntry(state, move);
-    stack->history_score =
-        move.IsCapture(state)
-            ? history.GetCaptureMoveScore(state, move)
-            : history.GetQuietMoveScore(state, move, stack->threats, stack);
 
     ++thread.nodes_searched;
 
