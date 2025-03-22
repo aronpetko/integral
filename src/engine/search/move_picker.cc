@@ -203,8 +203,11 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && (killers[0] != move || killers[0].IsNoisy(state)) &&
-        (killers[1] != move || killers[1].IsNoisy(state))) {
+    if (move != tt_move_ &&
+        (type_ == MovePickerType::kQuiescence ||  // We don't stage killers when
+                                                  // searching quiet moves in QS
+         (killers[0] != move || killers[0].IsNoisy(state)) &&
+             (killers[1] != move || killers[1].IsNoisy(state)))) {
       list.Push({move, ScoreMove(move)});
     }
   }
