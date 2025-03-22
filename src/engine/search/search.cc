@@ -249,6 +249,22 @@ Score Search::QuiescentSearch(Thread &thread,
   }
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
+  
+  // Probe the transposition table to see if we have already evaluated this
+  // position
+  const U64 zobrist_key =
+      state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
+
+  const auto tt_entry = transposition_table_.Probe(zobrist_key);
+  const bool tt_hit = tt_entry->CompareKey(zobrist_key);
+
+  const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
+
+  // Saved scores from non-PV nodes must fall within the current alpha/beta
+  // window to allow early cutoff
+  if (can_use_tt_eval) {
+    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+  }
 
   stack->in_check = state.InCheck();
 
