@@ -249,7 +249,11 @@ Score Search::QuiescentSearch(Thread &thread,
   }
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
-  
+
+  // A principal variation (PV) node falls inside the [alpha, beta] window and
+  // is one which has most of its child moves searched
+  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+
   // Probe the transposition table to see if we have already evaluated this
   // position
   const U64 zobrist_key =
@@ -262,7 +266,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (can_use_tt_eval) {
+  if (!in_pv_node && can_use_tt_eval) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
