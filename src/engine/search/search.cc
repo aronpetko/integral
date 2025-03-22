@@ -234,6 +234,8 @@ Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
                               StackEntry *stack) {
+  stack->pv.Clear();
+
   if (ShouldQuit(thread)) {
     return 0;
   }
@@ -248,48 +250,12 @@ Score Search::QuiescentSearch(Thread &thread,
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
-  // A principal variation (PV) node falls inside the [alpha, beta] window and
-  // is one which has most of its child moves searched
-  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
-
   stack->in_check = state.InCheck();
 
-  // Probe the transposition table to see if we have already evaluated this
-  // position
-  auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
-  Score tt_static_eval = kScoreNone;
-
-  const U64 zobrist_key =
-      state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
-
-  const auto &tt_entry = transposition_table_.Probe(zobrist_key);
-  tt_hit = tt_entry->CompareKey(zobrist_key);
-
-  // Use the TT entry's evaluation if possible
-  if (tt_hit) {
-    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-    tt_was_in_pv |= tt_entry->was_in_pv;
-    tt_move = tt_entry->move;
-    tt_static_eval = tt_entry->static_eval;
-  }
-
-  // Saved scores from non-PV nodes must fall within the current alpha/beta
-  // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval) {
-    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
-  }
-
-  auto raw_static_eval = stack->static_eval = kScoreNone;
+  auto raw_static_eval = eval::Evaluate(board);
   auto best_score = stack->static_eval;
 
   if (!stack->in_check) {
-    if (tt_static_eval != kScoreNone) {
-      raw_static_eval = tt_static_eval;
-    } else {
-      raw_static_eval = eval::Evaluate(board);
-    }
-
     stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
 
     // Perform an early beta cutoff since making a move is not necessary
@@ -298,17 +264,23 @@ Score Search::QuiescentSearch(Thread &thread,
       return best_score;
     }
 
+    // Alpha can be updated if no cutoff occurred
     alpha = std::max(alpha, best_score);
+  } else {
+    stack->static_eval = kScoreNone;
   }
 
   int moves_seen = 0;
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack);
+      MovePickerType::kQuiescence, board, Move::NullMove(), history, stack);
   while (const auto move = move_picker.Next()) {
     if (!board.IsMoveLegal(move)) {
       continue;
     }
+
+    // Prefetch the TT entry for the next move as early as possible
+    transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
     ++thread.nodes_searched;
 
