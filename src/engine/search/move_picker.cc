@@ -54,7 +54,7 @@ Move MovePicker::Next() {
     stage_ = in_qs ? Stage::kQsGenerateNoisies : Stage::kGenerateNoisies;
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
-      if (!in_qs || tt_move_.IsNoisy(state)) {
+      if (!in_qs || state.InCheck() || tt_move_.IsNoisy(state)) {
         return tt_move_;
       }
     }

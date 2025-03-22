@@ -256,13 +256,18 @@ Score Search::QuiescentSearch(Thread &thread,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
+  auto tt_move = Move::NullMove();
+  bool tt_hit = false, can_use_tt_eval = false;
+
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
-
   const auto tt_entry = transposition_table_.Probe(zobrist_key);
-  const bool tt_hit = tt_entry->CompareKey(zobrist_key);
 
-  const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
+  tt_hit = tt_entry->CompareKey(zobrist_key);
+  if (tt_hit) {
+    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+    tt_move = tt_entry->move;
+  }
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
@@ -292,7 +297,7 @@ Score Search::QuiescentSearch(Thread &thread,
   int moves_seen = 0;
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board, Move::NullMove(), history, stack);
+      MovePickerType::kQuiescence, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
     // Search at most one non-losing quiet move
     if (best_score > -kTBWinInMaxPlyScore &&
@@ -420,11 +425,9 @@ Score Search::PVSearch(Thread &thread,
 
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
-
   const auto &tt_entry = transposition_table_.Probe(zobrist_key);
-  tt_hit = tt_entry->CompareKey(zobrist_key);
 
-  // Use the TT entry's evaluation if possible
+  tt_hit = tt_entry->CompareKey(zobrist_key);
   if (tt_hit) {
     can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
     tt_was_in_pv |= tt_entry->was_in_pv;
