@@ -33,7 +33,9 @@ class MovePicker {
     kBadNoisies,
     // Quiescent Search Stages
     kQsGenerateNoisies,
-    kQsNoisies
+    kQsNoisies,
+    kQsGenerateQuiets,
+    kQsQuiets
   };
 
   MovePicker(MovePickerType type,

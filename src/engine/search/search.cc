@@ -252,11 +252,10 @@ Score Search::QuiescentSearch(Thread &thread,
 
   stack->in_check = state.InCheck();
 
-  auto raw_static_eval = eval::Evaluate(board);
-  auto best_score = stack->static_eval;
+  auto best_score = kScoreNone;
 
   if (!stack->in_check) {
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->static_eval = AdjustStaticEval(eval::Evaluate(board), thread, stack);
 
     // Perform an early beta cutoff since making a move is not necessary
     best_score = stack->static_eval;
@@ -275,6 +274,12 @@ Score Search::QuiescentSearch(Thread &thread,
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, Move::NullMove(), history, stack);
   while (const auto move = move_picker.Next()) {
+    // Search at most one non-losing quiet move
+    if (best_score > -kTBWinInMaxPlyScore &&
+        move_picker.GetStage() == MovePicker::Stage::kQsQuiets) {
+      break;
+    }
+
     if (!board.IsMoveLegal(move)) {
       continue;
     }
@@ -289,7 +294,7 @@ Score Search::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
 
-    moves_seen++;
+    ++moves_seen;
 
     if (score > best_score) {
       best_score = score;
@@ -306,6 +311,12 @@ Score Search::QuiescentSearch(Thread &thread,
         }
       }
     }
+  }
+
+  // Terminal state if no legal moves were found
+  // (No stalemate score because we only search all moves while in check)
+  if (stack->in_check && moves_seen == 0) {
+    return -kMateScore + stack->ply;
   }
 
   return best_score;

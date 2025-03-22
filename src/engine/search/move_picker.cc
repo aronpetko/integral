@@ -149,6 +149,22 @@ Move MovePicker::Next() {
     if (moves_idx_ < noisies_.Size()) {
       return SelectionSort(noisies_, moves_idx_++);
     }
+
+    if (state.InCheck()) {
+      stage_ = Stage::kQsGenerateQuiets;
+    }
+  }
+
+  if (stage_ == Stage::kQsGenerateQuiets) {
+    stage_ = Stage::kQsQuiets;
+    moves_idx_ = 0;
+    GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
+  }
+
+  if (stage_ == Stage::kQsQuiets) {
+    if (moves_idx_ < quiets_.Size()) {
+      return SelectionSort(quiets_, moves_idx_++);
+    }
   }
 
   return Move::NullMove();
