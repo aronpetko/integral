@@ -234,7 +234,109 @@ Score Search::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
                               StackEntry *stack) {
-  return eval::Evaluate(thread.board);
+  if (ShouldQuit(thread)) {
+    return 0;
+  }
+
+  auto &board = thread.board;
+  auto &history = thread.history;
+  const auto &state = board.GetState();
+
+  if (stack->ply >= kMaxPlyFromRoot) {
+    return eval::Evaluate(board);
+  }
+
+  thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
+
+  // A principal variation (PV) node falls inside the [alpha, beta] window and
+  // is one which has most of its child moves searched
+  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+
+  stack->in_check = state.InCheck();
+
+  // Probe the transposition table to see if we have already evaluated this
+  // position
+  auto tt_move = Move::NullMove();
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  Score tt_static_eval = kScoreNone;
+
+  const U64 zobrist_key =
+      state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
+
+  const auto &tt_entry = transposition_table_.Probe(zobrist_key);
+  tt_hit = tt_entry->CompareKey(zobrist_key);
+
+  // Use the TT entry's evaluation if possible
+  if (tt_hit) {
+    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+    tt_was_in_pv |= tt_entry->was_in_pv;
+    tt_move = tt_entry->move;
+    tt_static_eval = tt_entry->static_eval;
+  }
+
+  // Saved scores from non-PV nodes must fall within the current alpha/beta
+  // window to allow early cutoff
+  if (!in_pv_node && can_use_tt_eval) {
+    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+  }
+
+  auto raw_static_eval = stack->static_eval = kScoreNone;
+  auto best_score = stack->static_eval;
+
+  if (!stack->in_check) {
+    if (tt_static_eval != kScoreNone) {
+      raw_static_eval = tt_static_eval;
+    } else {
+      raw_static_eval = eval::Evaluate(board);
+    }
+
+    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+
+    // Perform an early beta cutoff since making a move is not necessary
+    best_score = stack->static_eval;
+    if (best_score >= beta) {
+      return best_score;
+    }
+
+    alpha = std::max(alpha, best_score);
+  }
+
+  int moves_seen = 0;
+
+  MovePicker move_picker(
+      MovePickerType::kQuiescence, board, tt_move, history, stack);
+  while (const auto move = move_picker.Next()) {
+    if (!board.IsMoveLegal(move)) {
+      continue;
+    }
+
+    ++thread.nodes_searched;
+
+    board.MakeMove(move);
+    const Score score =
+        -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
+    board.UndoMove();
+
+    moves_seen++;
+
+    if (score > best_score) {
+      best_score = score;
+
+      if (score > alpha) {
+        stack->pv.Clear();
+        stack->pv.Push(move);
+        stack->pv.AppendPV((stack + 1)->pv);
+
+        alpha = score;
+        if (alpha >= beta) {
+          // Beta cutoff: The opponent had a better move earlier in the tree
+          break;
+        }
+      }
+    }
+  }
+
+  return best_score;
 }
 
 template <NodeType node_type>
@@ -244,10 +346,6 @@ Score Search::PVSearch(Thread &thread,
                        Score beta,
                        StackEntry *stack,
                        bool cut_node) {
-  auto &board = thread.board;
-  auto &history = thread.history;
-  const auto &state = board.GetState();
-
   stack->pv.Clear();
 
   static thread_local int counter = 0;
@@ -261,6 +359,10 @@ Score Search::PVSearch(Thread &thread,
   if (ShouldQuit(thread)) {
     return 0;
   }
+
+  auto &board = thread.board;
+  auto &history = thread.history;
+  const auto &state = board.GetState();
 
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
@@ -561,7 +663,7 @@ Score Search::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
-          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
               moves_seen > 0) {
             break;
           }
@@ -719,7 +821,7 @@ Score Search::PVSearch(Thread &thread,
       const int see_threshold =
           (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
           stack->history_score / kSeePruneHistDiv;
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
           !eval::StaticExchange(
               move,
               is_quiet ? std::min(see_threshold, 0) : see_threshold,
