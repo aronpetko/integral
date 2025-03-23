@@ -326,6 +326,7 @@ Score Search::QuiescentSearch(Thread &thread,
       // at moves that win material
       if (!stack->in_check && futility_score <= alpha &&
           !eval::StaticExchange(move, 1, state)) {
+        best_score = std::max(best_score, futility_score);
         continue;
       }
 
