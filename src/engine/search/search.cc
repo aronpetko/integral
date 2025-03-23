@@ -330,6 +330,20 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    // Set the currently searched move in the stack for continuation
+    // history
+    stack->move = move;
+    stack->moved_piece = state.GetPieceType(move.GetFrom());
+    stack->capture_move = move.IsCapture(state);
+    stack->continuation_entry =
+        history.continuation_history->GetEntry(state, move);
+    stack->continuation_correction_entry =
+        history.correction_history->GetContEntry(state, move);
+    stack->history_score =
+        move.IsCapture(state)
+            ? history.GetCaptureMoveScore(state, move)
+            : history.GetQuietMoveScore(state, move, stack->threats, stack);
+
     if (best_score > -kTBWinInMaxPlyScore) {
       // QS Futility Pruning: If our best score is far below alpha we only look
       // at moves that win material
@@ -340,7 +354,8 @@ Score Search::QuiescentSearch(Thread &thread,
       }
 
       // Static Exchange Evaluation Pruning: Prune moves that lose material
-      if (!eval::StaticExchange(move, -20, state)) {
+      if (!eval::StaticExchange(
+              move, stack->history_score / kSeePruneHistDiv, state)) {
         continue;
       }
     }
