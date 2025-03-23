@@ -280,6 +280,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
   auto raw_static_eval = stack->static_eval = kScoreNone;
   auto best_score = kScoreNone;
+  auto futility_score = kScoreNone;
 
   if (!stack->in_check) {
     stack->static_eval = AdjustStaticEval(
@@ -298,6 +299,8 @@ Score Search::QuiescentSearch(Thread &thread,
     if (best_score >= beta) {
       return best_score;
     }
+
+    futility_score = best_score + kQsFutMargin;
 
     // Alpha can be updated if no cutoff occurred
     alpha = std::max(alpha, best_score);
@@ -319,6 +322,13 @@ Score Search::QuiescentSearch(Thread &thread,
     }
 
     if (best_score > -kTBWinInMaxPlyScore) {
+      // QS Futility Pruning: If our best score is far below alpha we only look
+      // at moves that win material
+      if (!stack->in_check && futility_score <= alpha &&
+          !eval::StaticExchange(move, 1, state)) {
+        continue;
+      }
+
       // Static Exchange Evaluation Pruning: Prune moves that lose material
       if (!eval::StaticExchange(move, -20, state)) {
         continue;
