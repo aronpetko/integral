@@ -257,7 +257,8 @@ Score Search::QuiescentSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  ;
 
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
@@ -267,6 +268,7 @@ Score Search::QuiescentSearch(Thread &thread,
   if (tt_hit) {
     can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
     tt_move = tt_entry->move;
+    tt_was_in_pv |= tt_entry->was_in_pv;
   }
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
@@ -277,10 +279,12 @@ Score Search::QuiescentSearch(Thread &thread,
 
   stack->in_check = state.InCheck();
 
+  auto raw_static_eval = kScoreNone;
   auto best_score = kScoreNone;
 
   if (!stack->in_check) {
-    stack->static_eval = AdjustStaticEval(eval::Evaluate(board), thread, stack);
+    raw_static_eval = eval::Evaluate(board);
+    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
 
     // Perform an early beta cutoff since making a move is not necessary
     best_score = stack->static_eval;
@@ -343,6 +347,20 @@ Score Search::QuiescentSearch(Thread &thread,
   if (stack->in_check && moves_seen == 0) {
     return -kMateScore + stack->ply;
   }
+
+  // Attempt to update the transposition table with the evaluation of this
+  // position
+  const auto tt_flag = alpha >= beta ? TranspositionTableEntry::kLowerBound
+                                     : TranspositionTableEntry::kUpperBound;
+  const TranspositionTableEntry new_tt_entry(zobrist_key,
+                                             0,
+                                             tt_flag,
+                                             best_score,
+                                             raw_static_eval,
+                                             Move::NullMove(),
+                                             tt_was_in_pv);
+  transposition_table_.Save(
+      tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
 
   return best_score;
 }
