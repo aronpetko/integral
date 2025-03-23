@@ -355,7 +355,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
       // Static Exchange Evaluation Pruning: Prune moves that lose material
       if (!eval::StaticExchange(
-              move, stack->history_score / kSeePruneHistDiv, state)) {
+              move, -stack->history_score / kSeePruneHistDiv, state)) {
         continue;
       }
     }
