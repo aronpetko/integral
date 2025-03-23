@@ -318,6 +318,13 @@ Score Search::QuiescentSearch(Thread &thread,
       continue;
     }
 
+    if (best_score > -kTBWinInMaxPlyScore) {
+      // Static Exchange Evaluation Pruning: Prune moves that lose material
+      if (!eval::StaticExchange(move, -20, state)) {
+        continue;
+      }
+    }
+
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
 
