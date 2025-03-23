@@ -244,6 +244,10 @@ Score Search::QuiescentSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
+  if (board.IsDraw(stack->ply)) {
+    return kDrawScore;
+  }
+
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
   }
