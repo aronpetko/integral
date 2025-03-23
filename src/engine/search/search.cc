@@ -285,8 +285,16 @@ Score Search::QuiescentSearch(Thread &thread,
     stack->static_eval = AdjustStaticEval(
         raw_static_eval = eval::Evaluate(board), thread, stack);
 
+    // Adjust the best score if we can use the score stored in the TT
+    if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
+        tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
+      best_score =
+          TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+    } else {
+      best_score = stack->static_eval;
+    }
+
     // Perform an early beta cutoff since making a move is not necessary
-    best_score = stack->static_eval;
     if (best_score >= beta) {
       return best_score;
     }
