@@ -258,7 +258,6 @@ Score Search::QuiescentSearch(Thread &thread,
   // position
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
-  ;
 
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
@@ -279,12 +278,12 @@ Score Search::QuiescentSearch(Thread &thread,
 
   stack->in_check = state.InCheck();
 
-  auto raw_static_eval = kScoreNone;
+  auto raw_static_eval = stack->static_eval = kScoreNone;
   auto best_score = kScoreNone;
 
   if (!stack->in_check) {
-    raw_static_eval = eval::Evaluate(board);
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->static_eval = AdjustStaticEval(
+        raw_static_eval = eval::Evaluate(board), thread, stack);
 
     // Perform an early beta cutoff since making a move is not necessary
     best_score = stack->static_eval;
@@ -294,8 +293,6 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // Alpha can be updated if no cutoff occurred
     alpha = std::max(alpha, best_score);
-  } else {
-    stack->static_eval = kScoreNone;
   }
 
   int moves_seen = 0;
