@@ -257,7 +257,8 @@ Score Search::QuiescentSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  auto tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  auto tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
@@ -268,6 +269,7 @@ Score Search::QuiescentSearch(Thread &thread,
     can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
     tt_move = tt_entry->move;
     tt_was_in_pv |= tt_entry->was_in_pv;
+    tt_static_eval = tt_entry->static_eval;
   }
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
@@ -283,8 +285,11 @@ Score Search::QuiescentSearch(Thread &thread,
   auto futility_score = kScoreNone;
 
   if (!stack->in_check) {
-    stack->static_eval = AdjustStaticEval(
-        raw_static_eval = eval::Evaluate(board), thread, stack);
+    // Grab the static eval from the TT if it exists
+    raw_static_eval =
+        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
+
+    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
 
     // Adjust the best score if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
