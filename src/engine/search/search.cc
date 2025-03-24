@@ -237,7 +237,7 @@ Score Search::QuiescentSearch(
   if (ShouldQuit(thread)) {
     return 0;
   }
-  
+
   auto &board = thread.board;
   auto &history = thread.history;
   const auto &state = board.GetState();
