@@ -217,7 +217,9 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     if (move != tt_move_ &&
         (in_qs || ((killers[0] != move || killers[0].IsNoisy(state)) &&
                    (killers[1] != move || killers[1].IsNoisy(state))))) {
-      list.Push({move, ScoreMove(move)});
+      list.Push(
+          {move,
+           stage_ == Stage::kQsGenerateQuietChecks ? 0 : ScoreMove(move)});
     }
   }
 }

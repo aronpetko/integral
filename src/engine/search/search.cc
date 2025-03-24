@@ -323,9 +323,9 @@ Score Search::QuiescentSearch(
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack, depth);
   while (const auto move = move_picker.Next()) {
-    // Search at most one non-losing quiet move
+    // Search at most one non-losing evading quiet move
     if (best_score > -kTBWinInMaxPlyScore &&
-        move_picker.GetStage() >= MovePicker::Stage::kQsQuietChecks) {
+        move_picker.GetStage() == MovePicker::Stage::kQsQuiets) {
       break;
     }
 

@@ -476,11 +476,35 @@ MoveList GenerateMoves(const Board &board) {
     return move_list;
   }
 
-  AddPawnMoves<move_type>(board, move_list);
-
   const auto their_king_square = state.King(them).GetLsb();
 
-  // Other piece moves
+  const auto rook_targets = move_type == MoveGenType::kQuietChecks
+                              ? targets & RookMoves(their_king_square, occupied)
+                              : targets;
+  const auto bishop_targets =
+      move_type == MoveGenType::kQuietChecks
+          ? targets & BishopMoves(their_king_square, occupied)
+          : targets;
+
+  for (Square from : state.Queens(state.turn)) {
+    for (Square to :
+         QueenMoves(from, occupied) & (rook_targets | bishop_targets)) {
+      move_list.Push(Move(from, to));
+    }
+  }
+
+  for (Square from : state.Rooks(state.turn)) {
+    for (Square to : RookMoves(from, occupied) & rook_targets) {
+      move_list.Push(Move(from, to));
+    }
+  }
+
+  for (Square from : state.Bishops(state.turn)) {
+    for (Square to : BishopMoves(from, occupied) & bishop_targets) {
+      move_list.Push(Move(from, to));
+    }
+  }
+
   const auto knight_targets = move_type == MoveGenType::kQuietChecks
                                 ? targets & KnightMoves(their_king_square)
                                 : targets;
@@ -490,31 +514,7 @@ MoveList GenerateMoves(const Board &board) {
     }
   }
 
-  const auto bishop_targets =
-      move_type == MoveGenType::kQuietChecks
-          ? targets & BishopMoves(their_king_square, occupied)
-          : targets;
-  for (Square from : state.Bishops(state.turn)) {
-    for (Square to : BishopMoves(from, occupied) & bishop_targets) {
-      move_list.Push(Move(from, to));
-    }
-  }
-
-  const auto rook_targets = move_type == MoveGenType::kQuietChecks
-                              ? targets & RookMoves(their_king_square, occupied)
-                              : targets;
-  for (Square from : state.Rooks(state.turn)) {
-    for (Square to : RookMoves(from, occupied) & rook_targets) {
-      move_list.Push(Move(from, to));
-    }
-  }
-
-  for (Square from : state.Queens(state.turn)) {
-    for (Square to :
-         QueenMoves(from, occupied) & (rook_targets | bishop_targets)) {
-      move_list.Push(Move(from, to));
-    }
-  }
+  AddPawnMoves<move_type>(board, move_list);
 
   if constexpr (move_type != MoveGenType::kQuietChecks) {
     const Square king_square = state.King(state.turn).GetLsb();
