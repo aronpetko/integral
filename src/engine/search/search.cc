@@ -349,7 +349,10 @@ Score Search::QuiescentSearch(Thread &thread,
             ? history.GetCaptureMoveScore(state, move)
             : history.GetQuietMoveScore(state, move, stack->threats, stack);
 
-    if (best_score > -kTBWinInMaxPlyScore) {
+    const bool is_recapture = (stack - 1)->capture_move &&
+                              (move.GetTo() == (stack - 1)->move.GetTo());
+
+    if (best_score > -kTBWinInMaxPlyScore && !is_recapture) {
       // QS Futility Pruning: If our best score is far below alpha we only look
       // at moves that win material
       if (!stack->in_check && futility_score <= alpha &&
