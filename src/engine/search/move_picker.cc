@@ -36,6 +36,7 @@ MovePicker::MovePicker(MovePickerType type,
                        Move tt_move,
                        history::History &history,
                        StackEntry *stack,
+                       int depth,
                        int see_threshold)
     : board_(board),
       tt_move_(tt_move),
@@ -44,6 +45,7 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
+      depth_(depth),
       see_threshold_(see_threshold) {}
 
 Move MovePicker::Next() {
@@ -152,7 +154,15 @@ Move MovePicker::Next() {
 
     if (state.InCheck()) {
       stage_ = Stage::kQsGenerateQuiets;
+    } else if (depth_ >= -1) {
+      stage_ = Stage::kQsGenerateQuietChecks;
     }
+  }
+
+  if (stage_ == Stage::kQsGenerateQuietChecks) {
+    stage_ = Stage::kQsQuietChecks;
+    moves_idx_ = 0;
+    GenerateAndScoreMoves<MoveGenType::kQuietChecks>(quiets_);
   }
 
   if (stage_ == Stage::kQsGenerateQuiets) {
@@ -161,7 +171,7 @@ Move MovePicker::Next() {
     GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
   }
 
-  if (stage_ == Stage::kQsQuiets) {
+  if (stage_ == Stage::kQsQuiets || stage_ == Stage::kQsQuietChecks) {
     if (moves_idx_ < quiets_.Size()) {
       return SelectionSort(quiets_, moves_idx_++);
     }

@@ -1,5 +1,5 @@
-#ifndef INTEGRAL_MOVE_GEN_H_
-#define INTEGRAL_MOVE_GEN_H_
+#ifndef INTEGRAL_MOVE_GEN_H
+#define INTEGRAL_MOVE_GEN_H
 
 #include "../utils/types.h"
 #include "bitboard.h"
@@ -58,4 +58,4 @@ MoveList GenerateMoves(const Board &board);
 
 }  // namespace move_gen
 
-#endif  // INTEGRAL_MOVE_GEN_H_
+#endif  // INTEGRAL_MOVE_GEN_H

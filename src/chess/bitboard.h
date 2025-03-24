@@ -53,7 +53,7 @@ class BitBoard {
       return *this;
     }
 
-    U8 operator*() const {
+    Square operator*() const {
       return lsb_;
     }
 
@@ -63,7 +63,7 @@ class BitBoard {
 
    private:
     U64 bitboard_;
-    U8 lsb_;
+    Square lsb_;
   };
 
   [[nodiscard]] Iterator begin() const {
@@ -78,7 +78,7 @@ class BitBoard {
     return bitboard_;
   }
 
-  static constexpr BitBoard FromSquare(U8 square) {
+  static constexpr BitBoard FromSquare(Square square) {
     return {1ULL << square};
   }
 
@@ -86,27 +86,27 @@ class BitBoard {
     return bitboard_;
   }
 
-  constexpr void SetBit(U8 square) {
+  constexpr void SetBit(Square square) {
     bitboard_ |= (1ULL << square);
   }
 
-  constexpr void ClearBit(U8 square) {
+  constexpr void ClearBit(Square square) {
     bitboard_ &= ~(1ULL << square);
   }
 
-  constexpr void MoveBit(U8 from, U8 to) {
+  constexpr void MoveBit(Square from, Square to) {
     bitboard_ ^= (1ULL << from) | (1ULL << to);
   }
 
-  [[nodiscard]] constexpr bool IsSet(U8 square) const {
+  [[nodiscard]] constexpr bool IsSet(Square square) const {
     return (bitboard_ >> square) & 1;
   }
 
-  [[nodiscard]] constexpr U8 GetLsb() const {
+  [[nodiscard]] constexpr Square GetLsb() const {
     return std::countr_zero(bitboard_);
   }
 
-  constexpr U8 PopLsb() {
+  constexpr Square PopLsb() {
     const U8 lsb_pos = GetLsb();
     bitboard_ &= bitboard_ - 1;
     return lsb_pos;
@@ -118,14 +118,6 @@ class BitBoard {
 
   [[nodiscard]] constexpr bool MoreThanOne() const {
     return (bitboard_ & (bitboard_ - 1)) != 0;
-  }
-
-  template <class Function>
-  void PopEnumerate(const Function &fn) {
-    while (bitboard_ != 0) {
-      Square bit_location = PopLsb();
-      fn(bit_location);
-    }
   }
 
   constexpr BitBoard &operator=(const U64 &bitboard) {

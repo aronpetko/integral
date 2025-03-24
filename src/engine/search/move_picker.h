@@ -23,7 +23,9 @@ enum class MovePickerType {
 class MovePicker {
  public:
   enum class Stage {
+    // Shared Stages
     kTTMove,
+    // PV Search Stages
     kGenerateNoisies,
     kGoodNoisies,
     kFirstKiller,
@@ -34,6 +36,9 @@ class MovePicker {
     // Quiescent Search Stages
     kQsGenerateNoisies,
     kQsNoisies,
+    kQsGenerateQuietChecks,
+    kQsQuietChecks,
+    // Quiescent Search Evasion Stages
     kQsGenerateQuiets,
     kQsQuiets
   };
@@ -43,6 +48,7 @@ class MovePicker {
              Move tt_move,
              history::History &history,
              StackEntry *stack,
+             int depth,
              int see_threshold = 0);
 
   Move Next();
@@ -71,6 +77,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> noisies_, bad_noisies_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
+  int depth_;
   int see_threshold_;
 };
 

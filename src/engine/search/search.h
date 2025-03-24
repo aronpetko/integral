@@ -191,6 +191,7 @@ class Search {
 
   template <NodeType node_type>
   Score QuiescentSearch(Thread &thread,
+                        int depth,
                         Score alpha,
                         Score beta,
                         StackEntry *stack);
