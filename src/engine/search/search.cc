@@ -325,7 +325,7 @@ Score Search::QuiescentSearch(
   while (const auto move = move_picker.Next()) {
     // Search at most one non-losing quiet move
     if (best_score > -kTBWinInMaxPlyScore &&
-        move_picker.GetStage() == MovePicker::Stage::kQsQuiets) {
+        move_picker.GetStage() >= MovePicker::Stage::kQsQuietChecks) {
       break;
     }
 

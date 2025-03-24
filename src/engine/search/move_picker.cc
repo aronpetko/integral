@@ -154,7 +154,7 @@ Move MovePicker::Next() {
 
     if (state.InCheck()) {
       stage_ = Stage::kQsGenerateQuiets;
-    } else if (depth_ == 0) {
+    } else if (depth_ >= -1) {
       stage_ = Stage::kQsGenerateQuietChecks;
     }
   }
