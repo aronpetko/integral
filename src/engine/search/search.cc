@@ -237,7 +237,7 @@ Score Search::QuiescentSearch(
   if (ShouldQuit(thread)) {
     return 0;
   }
-
+  
   auto &board = thread.board;
   auto &history = thread.history;
   const auto &state = board.GetState();
@@ -351,6 +351,7 @@ Score Search::QuiescentSearch(
       // QS Futility Pruning: If our best score is far below alpha we only look
       // at moves that win material
       if (!stack->in_check && futility_score <= alpha &&
+          move_picker.GetStage() != MovePicker::Stage::kQsQuietChecks &&
           !eval::StaticExchange(move, 1, state)) {
         best_score = std::max(best_score, futility_score);
         continue;
