@@ -6,8 +6,8 @@
 #include "types.h"
 
 enum FusedOperation {
-  Add,
-  Sub
+  kAdd,
+  kSub
 };
 
 template <FusedOperation... ops,
@@ -25,10 +25,10 @@ template <FusedOperation update_op,
           std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
 T Fused(const T& in, const T& operand, const Ts&... operands) {
   switch (update_op) {
-    case Add:
-      return Fused<ops...>(in + operand, operands...);
-    case Sub:
-      return Fused<ops...>(in - operand, operands...);
+    case kAdd:
+      return Fused<ops...>(static_cast<T>(in + operand), operands...);
+    case kSub:
+      return Fused<ops...>(static_cast<T>(in - operand), operands...);
   }
 }
 
