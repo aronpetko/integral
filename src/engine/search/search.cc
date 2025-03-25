@@ -400,7 +400,7 @@ Score Search::QuiescentSearch(Thread &thread,
     return -kMateScore + stack->ply;
   }
 
-  if (best_score >= beta && abs(best_score) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore)
     best_score = (best_score + beta) / 2;
 
   // Attempt to update the transposition table with the evaluation of this
