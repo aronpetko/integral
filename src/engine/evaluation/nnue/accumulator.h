@@ -78,11 +78,11 @@ class PerspectiveAccumulator {
     const Square king_square = state.King(perspective).GetLsb();
     for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
       for (Square square : state.piece_bbs[piece]) {
-        ApplyChange<Add>(perspective,
-                         king_square,
-                         FeatureData{square,
-                                     static_cast<PieceType>(piece),
-                                     state.GetPieceColor(square)});
+        ApplyChange<kAdd>(perspective,
+                          king_square,
+                          FeatureData{square,
+                                      static_cast<PieceType>(piece),
+                                      state.GetPieceColor(square)});
       }
     }
   }
@@ -126,25 +126,25 @@ class PerspectiveAccumulator {
                    Square king_square) {
     switch (change.type) {
       case AccumulatorChange::kNormal:
-        ApplyChange<Add, Sub>(
+        ApplyChange<kAdd, kSub>(
             previous, perspective, king_square, change.add_0, change.sub_0);
         break;
       case AccumulatorChange::kCapture:
-        ApplyChange<Add, Sub, Sub>(previous,
-                                   perspective,
-                                   king_square,
-                                   change.add_0,
-                                   change.sub_0,
-                                   change.sub_1);
+        ApplyChange<kAdd, kSub, kSub>(previous,
+                                      perspective,
+                                      king_square,
+                                      change.add_0,
+                                      change.sub_0,
+                                      change.sub_1);
         break;
       case AccumulatorChange::kCastle:
-        ApplyChange<Add, Add, Sub, Sub>(previous,
-                                        perspective,
-                                        king_square,
-                                        change.add_0,
-                                        change.add_1,
-                                        change.sub_0,
-                                        change.sub_1);
+        ApplyChange<kAdd, kAdd, kSub, kSub>(previous,
+                                            perspective,
+                                            king_square,
+                                            change.add_0,
+                                            change.add_1,
+                                            change.sub_0,
+                                            change.sub_1);
         break;
     }
   }
@@ -230,7 +230,7 @@ class Accumulator {
         const BitBoard to_remove = ~new_pieces & old_pieces;
         for (Square square : to_remove) {
           cached.accumulator.perspectives[perspective]
-              .template ApplyChange<Sub>(
+              .template ApplyChange<kSub>(
                   perspective,
                   king_square,
                   FeatureData{square, static_cast<PieceType>(piece), color});
@@ -240,7 +240,7 @@ class Accumulator {
         const BitBoard to_add = new_pieces & ~old_pieces;
         for (Square square : to_add) {
           cached.accumulator.perspectives[perspective]
-              .template ApplyChange<Add>(
+              .template ApplyChange<kAdd>(
                   perspective,
                   king_square,
                   FeatureData{square, static_cast<PieceType>(piece), color});
