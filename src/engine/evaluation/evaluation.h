@@ -6,23 +6,23 @@
 
 namespace eval {
 
-TUNABLE(kSeePawnScore, 104, 50, 150, false);
-TUNABLE(kSeeKnightScore, 301, 200, 400, false);
-TUNABLE(kSeeBishopScore, 311, 200, 400, false);
-TUNABLE(kSeeRookScore, 540, 400, 600, false);
-TUNABLE(kSeeQueenScore, 910, 700, 1100, false);
+TUNABLE(kSeePawnScore, 109, 50, 150, false);
+TUNABLE(kSeeKnightScore, 303, 200, 400, false);
+TUNABLE(kSeeBishopScore, 303, 200, 400, false);
+TUNABLE(kSeeRookScore, 547, 400, 600, false);
+TUNABLE(kSeeQueenScore, 909, 700, 1100, false);
 TUNABLE(kSeeKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kSeeNoneScore, 0, 0, 0, true);  // Always 0
 
 // clang-format off
-inline std::array<Tunable<int>, kNumPieceTypes + 1> kSeePieceScores = {
-    kSeePawnScore,
-    kSeeKnightScore,
-    kSeeBishopScore,
-    kSeeRookScore,
-    kSeeQueenScore,
-    kSeeKingScore,
-    kSeeNoneScore
+inline std::array kSeePieceScores = {
+    &kSeePawnScore,
+    &kSeeKnightScore,
+    &kSeeBishopScore,
+    &kSeeRookScore,
+    &kSeeQueenScore,
+    &kSeeKingScore,
+    &kSeeNoneScore
 };
 // clang-format on
 
