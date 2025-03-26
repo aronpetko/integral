@@ -402,7 +402,7 @@ Score Search::QuiescentSearch(Thread &thread,
     }
 
     // Penalize the history score of moves that failed to raise alpha
-    if (move != best_move) {
+    if (move != best_move && stack->capture_move) {
       captures.Push(move);
     }
   }
