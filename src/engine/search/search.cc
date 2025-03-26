@@ -343,7 +343,7 @@ Score Search::QuiescentSearch(Thread &thread,
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
         moves_seen > 0) {
       break;
     }
@@ -691,7 +691,8 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >= beta) {
+      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
+          beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
@@ -774,7 +775,7 @@ Score Search::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
-          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
               moves_seen > 0) {
             break;
           }
@@ -906,9 +907,9 @@ Score Search::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold = (kLmpBase + depth * depth) / (3 - improving);
-      if (is_quiet && moves_seen >= lmp_threshold) {
+      if (moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
-        continue;
+        if (is_quiet) continue;
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
@@ -917,10 +918,10 @@ Score Search::PVSearch(Thread &thread,
           kFutMarginBase +
           kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
           stack->history_score / kFutMarginHistDiv;
-      if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+      if (lmr_depth <= kFutPruneDepth && !stack->in_check &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
-        continue;
+        if (is_quiet) continue;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
@@ -928,7 +929,7 @@ Score Search::PVSearch(Thread &thread,
       const int see_threshold =
           (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
           stack->history_score / kSeePruneHistDiv;
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
           !eval::StaticExchange(
               move,
               is_quiet ? std::min(see_threshold, 0) : see_threshold,
@@ -942,7 +943,7 @@ Score Search::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
+        if (is_quiet) move_picker.SkipQuiets();
         continue;
       }
     }
