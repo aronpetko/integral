@@ -321,6 +321,9 @@ Score Search::QuiescentSearch(Thread &thread,
   }
 
   int moves_seen = 0;
+  Move best_move = Move::NullMove();
+  // Keep track of capture moves that failed to cause a beta cutoff
+  MoveList captures;
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
@@ -379,6 +382,7 @@ Score Search::QuiescentSearch(Thread &thread,
 
     if (score > best_score) {
       best_score = score;
+      best_move = move;
 
       if (score > alpha) {
         stack->pv.Clear();
@@ -387,10 +391,18 @@ Score Search::QuiescentSearch(Thread &thread,
 
         alpha = score;
         if (alpha >= beta) {
+          if (stack->capture_move) {
+            history.capture_history->UpdateScore(state, stack, 1);
+          }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         }
       }
+    }
+
+    // Penalize the history score of moves that failed to raise alpha
+    if (move != best_move) {
+      captures.Push(move);
     }
   }
 
@@ -398,6 +410,12 @@ Score Search::QuiescentSearch(Thread &thread,
   // (No stalemate score because we only search all moves while in check)
   if (stack->in_check && moves_seen == 0) {
     return -kMateScore + stack->ply;
+  }
+  
+  if (best_move) {
+    // Since "good" captures are expected to be the best moves, we apply a
+    // penalty to all captures even in the case where the best move was quiet
+    history.capture_history->Penalize(state, 1, captures);
   }
 
   if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore)
@@ -658,7 +676,8 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >= beta) {
+      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
+          beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
