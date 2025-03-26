@@ -382,9 +382,10 @@ Score Search::QuiescentSearch(Thread &thread,
 
     if (score > best_score) {
       best_score = score;
-      best_move = move;
 
       if (score > alpha) {
+        best_move = move;
+        
         stack->pv.Clear();
         stack->pv.Push(move);
         stack->pv.AppendPV((stack + 1)->pv);
@@ -411,7 +412,7 @@ Score Search::QuiescentSearch(Thread &thread,
   if (stack->in_check && moves_seen == 0) {
     return -kMateScore + stack->ply;
   }
-  
+
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
