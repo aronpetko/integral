@@ -681,7 +681,7 @@ Score Search::PVSearch(Thread &thread,
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     // Correct this node's depth if the previous move was assumed to be bad but
     // their position is holding
-    if ((stack - 1)->reduction >= 3000 && !opponent_worsening) {
+    if ((stack - 1)->reduction >= 3 && !opponent_worsening) {
       ++depth;
     }
 
@@ -1072,13 +1072,13 @@ Score Search::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      stack->reduction = reduction;
-
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
       reduction =
           std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+
+      stack->reduction = reduction;
 
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
