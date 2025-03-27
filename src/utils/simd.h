@@ -86,15 +86,6 @@ using Vepf32 = __m512;
 constexpr int kPackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
 constexpr int kAlignment = 64;
 
-#if BUILD_HAS_AVX512VNNI
-inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
-  return _mm512_dpbusd_epi32(sum, first, second);
-}
-
-inline Vepi32 DpbusdEpi32x2(Vepi32 sum, Vepi8 u, Vepi8 i, Vepi8 u2, Vepi8 i2) {
-  return _mm512_dpbusd_epi32(_mm512_dpbusd_epi32(sum, u, i), u2, i2);
-}
-#else
 inline Vepi32 DpbusdEpi32(Vepi32 sum, Vepi8 first, Vepi8 second) {
   Vepi32 sum32 = _mm512_madd_epi16(_mm512_maddubs_epi16(first, second),
                                    _mm512_set1_epi16(1));
@@ -108,7 +99,6 @@ inline Vepi32 DpbusdEpi32x2(Vepi32 sum, Vepi8 u, Vepi8 i, Vepi8 u2, Vepi8 i2) {
       _mm512_madd_epi16(_mm512_add_epi16(mul1, mul2), _mm512_set1_epi16(1));
   return _mm512_add_epi32(sum32, sum);
 }
-#endif
 
 inline Vepi16 ZeroEpi16() {
   return _mm512_setzero_si512();
@@ -406,6 +396,15 @@ inline U8 GetNnzMask(Vepi32 x) {
 }
 
 #else
+
+inline float ReduceAddPs(float* sums, int length) {
+  if (length == 2) return sums[0] + sums[1];
+  length /= 2;
+  for (int i = 0; i < length; ++i)
+    sums[i] += sums[i + length];
+  return ReduceAddPs(sums, length);
+}
+
 constexpr int kAlignment = 64;
 #endif
 
