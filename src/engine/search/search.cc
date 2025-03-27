@@ -691,8 +691,7 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
-          beta) {
+      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >= beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
@@ -907,8 +906,9 @@ Score Search::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold = (kLmpBase + depth * depth) / (3 - improving);
-      if (moves_seen >= lmp_threshold) {
+      if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
+        continue;
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
@@ -917,9 +917,10 @@ Score Search::PVSearch(Thread &thread,
           kFutMarginBase +
           kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
           stack->history_score / kFutMarginHistDiv;
-      if (lmr_depth <= kFutPruneDepth && !stack->in_check &&
+      if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
+        continue;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
@@ -941,7 +942,7 @@ Score Search::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        if (is_quiet) move_picker.SkipQuiets();
+        move_picker.SkipQuiets();
         continue;
       }
     }
