@@ -350,6 +350,11 @@ Score Search::QuiescentSearch(Thread &thread,
             : history.GetQuietMoveScore(state, move, stack->threats, stack);
 
     if (best_score > -kTBWinInMaxPlyScore) {
+      // Late Move Pruning
+      if (moves_seen > 2) {
+        break;
+      }
+
       // QS Futility Pruning: If our best score is far below alpha we only look
       // at moves that win material
       if (!stack->in_check && futility_score <= alpha &&
