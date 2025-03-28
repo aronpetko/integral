@@ -301,7 +301,7 @@ Score Evaluate(Board &board) {
   constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
   const auto zero_ps = simd::SetPs(0.0f);
 
-  std::array<simd::Vepf32, kResultChunks> result_sums;
+  std::array<simd::Vepf32, kResultChunks> result_sums{};
   result_sums.fill(zero_ps);
 
   for (int i = 0; i < arch::kL3Size / kF32ChunkSize; i += kResultChunks) {

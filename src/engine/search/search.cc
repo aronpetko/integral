@@ -691,7 +691,8 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >= beta) {
+      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
+          beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
@@ -1159,7 +1160,7 @@ Score Search::PVSearch(Thread &thread,
         if (alpha >= beta) {
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
-          if (is_quiet) {
+          if (is_quiet && (quiets.Size() > 1 || depth > 3)) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
@@ -1198,10 +1199,10 @@ Score Search::PVSearch(Thread &thread,
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
   }
-  // This node failed low, meaning the parent node will fail high. The previous
-  // move will already be given a history bonus by the parent node in the beta
-  // cutoff. However, we also give a history bonus in the event of a fail low to
-  // allow history tweaks to occur in PVS re-searches
+  // This node failed low, meaning the parent node will fail high. The
+  // previous move will already be given a history bonus by the parent node in
+  // the beta cutoff. However, we also give a history bonus in the event of a
+  // fail low to allow history tweaks to occur in PVS re-searches
   else if (prev_stack->move && !prev_stack->capture_move &&
            prev_stack->move.GetType() != MoveType::kPromotion) {
     const auto history_bonus = history::HistoryBonus(depth);
