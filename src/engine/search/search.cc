@@ -302,15 +302,18 @@ Score Search::QuiescentSearch(Thread &thread,
 
     // Perform an early beta cutoff since making a move is not necessary
     if (best_score >= beta) {
-      const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                                 0,
-                                                 TranspositionTableEntry::kNone,
-                                                 kScoreNone,
-                                                 raw_static_eval,
-                                                 Move::NullMove(),
-                                                 tt_was_in_pv);
-      transposition_table_.Save(
-          tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
+      if (!tt_hit) {
+        const TranspositionTableEntry new_tt_entry(
+            zobrist_key,
+            0,
+            TranspositionTableEntry::kNone,
+            kScoreNone,
+            raw_static_eval,
+            Move::NullMove(),
+            tt_was_in_pv);
+        transposition_table_.Save(
+            tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
+      }
       return best_score;
     }
 
