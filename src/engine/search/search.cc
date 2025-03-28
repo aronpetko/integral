@@ -120,7 +120,7 @@ void Search::IterativeDeepening(Thread &thread) {
           beta = std::min(kInfiniteScore, beta + window);
 
           // Spend less time searching as we expand the search window
-          if (std::abs(alpha) < -kTBWinInMaxPlyScore) {
+          if (std::abs(alpha) < kTBWinInMaxPlyScore) {
             ++fail_high_count;
           }
         } else {
