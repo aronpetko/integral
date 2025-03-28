@@ -90,15 +90,15 @@ void Search::IterativeDeepening(Thread &thread) {
 
       int window = kAspWindowDelta + average_score * average_score / 16384;
 
-      Score alpha =
-          std::max<int>(-kInfiniteScore, cur_best_move.score - window);
-      Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
+      Score alpha = std::max(-kInfiniteScore, cur_best_move.score - window);
+      Score beta = std::min(kInfiniteScore, cur_best_move.score + window);
 
       int fail_high_count = 0;
 
       while (true) {
+        const int search_depth = std::max(1, depth - fail_high_count);
         const Score score = PVSearch<NodeType::kPV>(
-            thread, depth - fail_high_count, alpha, beta, root_stack, false);
+            thread, search_depth, alpha, beta, root_stack, false);
 
         thread.root_moves.SortNextMove(thread.pv_move_idx);
 
@@ -112,16 +112,15 @@ void Search::IterativeDeepening(Thread &thread) {
 
           // We failed low which means we don't have a move to play, so we widen
           // alpha
-          alpha = std::max<int>(-kInfiniteScore, alpha - window);
+          alpha = std::max(-kInfiniteScore, alpha - window);
           fail_high_count = 0;
         } else if (score >= beta) {
           // We failed high on a PV node, which is abnormal and requires further
           // verification
-          beta = std::min<int>(kInfiniteScore, beta + window);
+          beta = std::min(kInfiniteScore, beta + window);
 
-          // Spend less time searching as we expand the search window, unless
-          // we're absolutely winning
-          if (alpha < 2000 && fail_high_count < 2) {
+          // Spend less time searching as we expand the search window
+          if (std::abs(alpha) < -kTBWinInMaxPlyScore) {
             ++fail_high_count;
           }
         } else {

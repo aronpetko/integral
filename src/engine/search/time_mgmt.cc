@@ -123,7 +123,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
 
   const Score best_score = thread.scores[depth];
   Score search_score_diff = thread.scores[depth - 3] - best_score;
-  Score previous_score_diff = thread.previous_score - thread.scores[depth];
+  Score previous_score_diff = thread.previous_score - best_score;
 
   // If this was the first search of the game, we just use the search score
   // difference
