@@ -1,7 +1,7 @@
 #include "engine/evaluation/nnue/nnue.h"
 #include "engine/search/cuckoo.h"
 #include "engine/uci/uci.h"
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
@@ -9,7 +9,7 @@ int main(int arg_count, char **args) {
   // Change output buffer size
   setvbuf(stdout, nullptr, _IONBF, 0);
 
-#ifdef WIN32
+#ifdef _WIN32
   // Enable ANSI escape codes
   const auto stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
