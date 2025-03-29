@@ -153,11 +153,13 @@ void Search::IterativeDeepening(Thread &thread) {
         auto &pv_move = thread.root_moves[i];
 
         const bool is_mate = eval::IsMateScore(pv_move.score);
+        const auto printable_score =
+            std::abs(pv_move.score) <= 2 ? 0 : pv_move.score;
         const auto nodes_searched = GetNodesSearched();
         report_info->Print(depth,
                            thread.sel_depth,
                            is_mate,
-                           pv_move.score,
+                           printable_score,
                            nodes_searched,
                            time_mgmt_.TimeElapsed(),
                            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
@@ -227,6 +229,10 @@ void Search::IterativeDeepening(Thread &thread) {
   static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
 
   return static_eval;
+}
+
+[[nodiscard]] Score RandomDrawScore(Thread &thread) {
+  return static_cast<Score>(2 - (thread.nodes_searched & 3));
 }
 
 template <NodeType node_type>
@@ -492,7 +498,7 @@ Score Search::PVSearch(Thread &thread,
   // then we can cut off early since we can secure a draw
   if (!in_root && alpha < kDrawScore &&
       board.HasUpcomingRepetition(stack->ply)) {
-    if ((alpha = kDrawScore) >= beta) {
+    if ((alpha = RandomDrawScore(thread)) >= beta) {
       return alpha;
     }
   }
@@ -507,7 +513,7 @@ Score Search::PVSearch(Thread &thread,
 
   if (!in_root) {
     if (board.IsDraw(stack->ply)) {
-      return kDrawScore;
+      return RandomDrawScore(thread);
     }
 
     // Mate Distance Pruning: Reduce the search space if we've already found a
@@ -691,7 +697,8 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >= beta) {
+      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
+          beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
