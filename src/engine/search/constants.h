@@ -86,6 +86,7 @@ TUNABLE_STEP(kLmrHistCapture, 1193, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrNotImproving, 1037, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrComplexity, 877, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrKillerMoves, 978, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrPositionHolding, 1024, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrRoundingCutoff, 612, 512, 2048, false, 120);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, true);

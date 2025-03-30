@@ -691,7 +691,8 @@ Score Search::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >= beta) {
+      if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
+          beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
@@ -1065,15 +1066,25 @@ Score Search::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      // Reduce less if the prior move was reduced heavily but the opponents
+      // position still holds well
+      if ((stack - 1)->reduction >= 3 && !opponent_worsening) {
+        reduction -= kLmrPositionHolding;
+      }
+
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
       reduction =
           std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
+      stack->reduction = reduction;
+
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+
+      stack->reduction = 0;
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
