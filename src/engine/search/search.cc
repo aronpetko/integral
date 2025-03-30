@@ -992,6 +992,8 @@ Score Search::PVSearch(Thread &thread,
       // singular, and it might cause a beta cutoff again.
       else if (tt_entry->score >= beta || cut_node) {
         extensions = -2;
+      } else if (tt_entry->score <= alpha) {
+        extensions = -1;
       }
     }
 
