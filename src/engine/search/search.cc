@@ -1068,7 +1068,8 @@ Score Search::PVSearch(Thread &thread,
 
       // Reduce less if the prior move was reduced heavily but the opponents
       // position still holds well
-      if ((stack - 1)->reduction >= 3 && !opponent_worsening && !in_pv_node) {
+      if ((stack - 1)->reduction >= 3 && !opponent_worsening &&
+          !stack->in_check) {
         reduction -= kLmrPositionHolding;
       }
 
