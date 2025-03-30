@@ -27,7 +27,7 @@ namespace nnue {
 }
 
 [[nodiscard]] float CReLU(float value) {
-  return std::clamp<float>(value, 0.0f, 1.0f);
+  return std::clamp(value, 0.0f, 1.0f);
 }
 
 void LoadFromIncBin() {
@@ -127,7 +127,7 @@ Score Evaluate(Board &board) {
 
   const auto quantise_vector = simd::SetEpi16(arch::kFtQuantization);
 
-  std::array<U16, arch::kL1Size / 4> nnz_indices;
+  std::array<U16, arch::kL1Size / 4> nnz_indices{};
   int nnz_count = 0;
   auto nnz_base = _mm_setzero_si128();
   const auto lookup_increment = _mm_set1_epi16(8);
@@ -206,15 +206,39 @@ Score Evaluate(Board &board) {
 
   // Forward the feature layer neurons to the 2nd layer
   alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
-  for (int i = 0; i < nnz_count; i++) {
-    const int idx = nnz_indices[i] * 4;
-    const auto feature_vector =
-        simd::SetEpi32(*std::bit_cast<I32 *>(&feature_output[idx]));
-    for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
-      const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
-          &network->l1_weights[bucket][idx + j / 4]);
-      auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
-      features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
+  {
+    int i = 0;
+    for (; i < nnz_count - 1; i += 2) {
+      const int idx = nnz_indices[i] * 4, idx_two = nnz_indices[i + 1] * 4;
+      const auto feature_vector =
+          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx]));
+      const auto feature_vector_two =
+          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx_two]));
+      for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
+        const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
+            &network->l1_weights[bucket][idx + j / 4]);
+        const auto weight_vector_two = *reinterpret_cast<simd::Vepi8 *>(
+            &network->l1_weights[bucket][idx_two + j / 4]);
+        auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
+        features = simd::DpbusdEpi32x2(features,
+                                       feature_vector,
+                                       weight_vector,
+                                       feature_vector_two,
+                                       weight_vector_two);
+      }
+    }
+
+    // Handle the remaining features
+    for (; i < nnz_count; i++) {
+      const int idx = nnz_indices[i] * 4;
+      const auto feature_vector =
+          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx]));
+      for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
+        const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
+            &network->l1_weights[bucket][idx + j / 4]);
+        auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
+        features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
+      }
     }
   }
 
@@ -312,6 +336,8 @@ Score Evaluate(Board &board) {
   // Forward the feature layer neurons to the 2nd layer
   std::array<I32, arch::kL2Size> l1_sums{};
   for (int i = 0; i < arch::kL1Size; i++) {
+    if (!feature_output[i]) continue;
+
     for (int j = 0; j < arch::kL2Size; j++) {
       l1_sums[j] += feature_output[i] * network->l1_weights[bucket][i][j];
     }
@@ -320,9 +346,8 @@ Score Evaluate(Board &board) {
   // Activate 2nd layer neurons
   std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL2Size; i++) {
-    l1_output[i] = CReLU(std::fma(static_cast<float>(l1_sums[i]),
-                                  kL1Normalization,
-                                  network->l1_biases[bucket][i]));
+    l1_output[i] = CReLU(static_cast<float>(l1_sums[i]) * kL1Normalization +
+                         network->l1_biases[bucket][i]);
   }
 
   // Forward the 2nd layer neurons to the 3rd layer
@@ -331,21 +356,27 @@ Score Evaluate(Board &board) {
       l2_output.data(), network->l2_biases[bucket].data(), sizeof(l2_output));
   for (int i = 0; i < arch::kL2Size; i++) {
     for (int j = 0; j < arch::kL3Size; j++) {
-      l2_output[j] += l1_output[i] * network->l2_weights[bucket][i][j];
+      l2_output[j] = std::fma(
+          l1_output[i], network->l2_weights[bucket][i][j], l2_output[j]);
     }
   }
 
-  // Activate 3rd layer neurons
-  for (int i = 0; i < arch::kL3Size; i++) {
-    l2_output[i] = CReLU(l2_output[i]);
+  // Forward 3rd layer neurons to output layer
+  constexpr int kResultChunks = 64 / sizeof(float);
+  std::array<float, kResultChunks> result_sums{};
+
+  for (int i = 0; i < arch::kL3Size; i += kResultChunks) {
+    for (int chunk = 0; chunk < kResultChunks; chunk++) {
+      const float activated = CReLU(l2_output[i + chunk]);
+      result_sums[chunk] = std::fma(activated,
+                                    network->l3_weights[bucket][i + chunk],
+                                    result_sums[chunk]);
+    }
   }
 
-  // Forward 3rd layer neurons to output layer
-  float l3_output = network->l3_biases[bucket];
-  for (int i = 0; i < arch::kL3Size; i++) {
-    l3_output =
-        std::fma(l2_output[i], network->l3_weights[bucket][i], l3_output);
-  }
+  const float l3_output =
+      network->l3_biases[bucket] +
+      simd::ReduceAddPsRecursive(result_sums.data(), kResultChunks);
 
   // Scale output
   return static_cast<Score>(l3_output * arch::kEvalScale);
