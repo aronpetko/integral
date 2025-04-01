@@ -333,6 +333,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
+  stack->threats = state.threats;
+
   const Score futility_score = best_score + kQsFutMargin;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
