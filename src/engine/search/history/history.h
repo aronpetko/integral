@@ -29,18 +29,24 @@ class History {
     Initialize();
   }
 
-  [[nodiscard]] int GetQuietMoveScore(const BoardState &state,
+  [[nodiscard]] I32 GetMoveScore(const BoardState &state,
+                                 Move move,
+                                 StackEntry *stack) {
+    return move.IsCapture(state) ? GetCaptureMoveScore(state, move)
+                                 : GetQuietMoveScore(state, move, stack);
+  }
+
+  [[nodiscard]] I32 GetQuietMoveScore(const BoardState &state,
                                       Move move,
-                                      BitBoard threats,
                                       StackEntry *stack) const {
-    return quiet_history->GetScore(state, move, threats) +
+    return quiet_history->GetScore(state, move, stack->threats) +
            continuation_history->GetScore(state, move, stack - 1) +
            continuation_history->GetScore(state, move, stack - 2) +
            continuation_history->GetScore(state, move, stack - 4) +
            pawn_history->GetScore(state, move) / 2;
   }
 
-  [[nodiscard]] int GetCaptureMoveScore(const BoardState &state,
+  [[nodiscard]] I32 GetCaptureMoveScore(const BoardState &state,
                                         Move move) const {
     return capture_history->GetScore(state, move);
   }

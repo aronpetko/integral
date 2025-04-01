@@ -11,11 +11,11 @@ class CaptureHistory {
  public:
   CaptureHistory() : table_({}) {}
 
-  void UpdateScore(const BoardState &state, StackEntry *stack, I16 depth) {
+  void UpdateScore(const BoardState &state, Move move, I16 depth) {
     const I16 bonus = HistoryBonus(depth);
-    const auto from = stack->move.GetFrom(), to = stack->move.GetTo();
+    const auto from = move.GetFrom(), to = move.GetTo();
     const auto captured =
-        stack->move.IsEnPassant(state) ? kPawn : state.GetPieceType(to);
+        move.IsEnPassant(state) ? kPawn : state.GetPieceType(to);
     // Apply a linear dampening to the bonus as the depth increases
     I16 &score = table_[state.turn][state.GetPieceType(from)][to][captured];
     score += ScaleBonus(score, bonus);
