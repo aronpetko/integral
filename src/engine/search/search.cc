@@ -400,7 +400,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
           if (is_capture) {
-            history.capture_history->UpdateScore(state, move, 1);
+            history.capture_history->UpdateScore(state, move, 1, stack);
           }
           break;
         }
@@ -423,7 +423,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, 1, captures);
+    history.capture_history->Penalize(state, 1, captures, stack);
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -1163,7 +1163,8 @@ Score Searcher::PVSearch(Thread &thread,
             history.continuation_history->UpdateScore(
                 state, stack, history_depth, quiets);
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, move, history_depth);
+            history.capture_history->UpdateScore(
+                state, move, history_depth, stack);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
@@ -1191,7 +1192,7 @@ Score Searcher::PVSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, depth, captures);
+    history.capture_history->Penalize(state, depth, captures, stack);
   }
   // This node failed low, meaning the parent node will fail high. The previous
   // move will already be given a history bonus by the parent node in the beta
