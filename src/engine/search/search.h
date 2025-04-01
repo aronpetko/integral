@@ -154,11 +154,11 @@ struct Thread {
   U16 nmp_min_ply;
 };
 
-class Search {
+class Searcher {
  public:
-  explicit Search(Board &board);
+  explicit Searcher(Board &board);
 
-  ~Search();
+  ~Searcher();
 
   void Start(TimeConfig time_config);
 

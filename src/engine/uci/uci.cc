@@ -16,13 +16,13 @@ namespace uci {
 
 namespace options {
 
-void Initialize(search::Search &search) {
+void Initialize(search::Searcher &searcher) {
   // clang-format off
-  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&search](const Option &option) {
-    search.ResizeHash(option.GetValue<int>());
+  listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&searcher](const Option &option) {
+    searcher.ResizeHash(option.GetValue<int>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&search](const Option &option) {
-    search.SetThreadCount(option.GetValue<U16>());
+  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&searcher](const Option &option) {
+    searcher.SetThreadCount(option.GetValue<U16>());
   });
   listener.AddOption<OptionVisibility::kPublic>("MultiPV", 1, 1, 6);
   listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
@@ -40,7 +40,7 @@ void Initialize(search::Search &search) {
 
 namespace commands {
 
-void Initialize(Board &board, search::Search &search) {  // clang-format off
+void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   listener.RegisterCommand("position", CommandType::kOrdered, {
     CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
     CreateArgument("startpos", ArgumentType::kOptional, NoInputProcessor()),
@@ -76,7 +76,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("binc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
-  }, [&board, &search](Command *cmd) {
+  }, [&board, &searcher](Command *cmd) {
     const auto perft_depth = cmd->ParseArgument<int>("perft");
     if (perft_depth) {
       tests::Perft(board, *perft_depth);
@@ -119,7 +119,7 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
     if (cmd->ArgumentExists("infinite") || !time_config.HasBeenModified())
       time_config.infinite = true;
 
-    search.Start(time_config);
+    searcher.Start(time_config);
   });
 
   listener.RegisterCommand("datagen", CommandType::kUnordered, {
@@ -148,15 +148,15 @@ void Initialize(Board &board, search::Search &search) {  // clang-format off
 
   listener.RegisterCommand("stop", CommandType::kUnordered, {
     CreateArgument("datagen", ArgumentType::kOptional, NoInputProcessor()),
-  }, [&search](Command *cmd) {
-    search.Stop();
+  }, [&searcher](Command *cmd) {
+    searcher.Stop();
     if (cmd->ArgumentExists("datagen")) {
       data_gen::stop = true;
     }
   });
 
-  listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&search](Command *cmd) {
-    search.NewGame();
+  listener.RegisterCommand("ucinewgame", CommandType::kUnordered, {}, [&searcher](Command *cmd) {
+    searcher.NewGame();
   });
 
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
@@ -232,10 +232,10 @@ void AcceptCommands(int arg_count, char **args) {
   Board board;
   board.SetFromFen(fen::kStartFen);
 
-  search::Search search(board);
+  search::Searcher searcher(board);
 
-  options::Initialize(search);
-  commands::Initialize(board, search);
+  options::Initialize(searcher);
+  commands::Initialize(board, searcher);
 
   // OpenBench requires the bench command to be parsed from the command line
   if (args[1] && std::string(args[1]) == "bench") {
