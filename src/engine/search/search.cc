@@ -973,7 +973,8 @@ Score Searcher::PVSearch(Thread &thread,
                                             new_beta - kSeTripleMargin);
           depth += depth < kSeDepthExtensionDepth;
         } else {
-          extensions = 1;
+          extensions =
+              1 + (tt_move_excluded_score < new_beta - kSePvDoubleMargin);
         }
       }
       // Multi-cut: The singular search had a beta cutoff, indicating that

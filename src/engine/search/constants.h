@@ -74,6 +74,7 @@ TUNABLE(kSeDepth, 5, 6, 12, true);
 TUNABLE_STEP(kSeDepthReduction, 7, 0, 30, false, 1);
 TUNABLE_STEP(kSeBetaMargin, 17, 0, 32, false, 1);
 TUNABLE_STEP(kSeDoubleMargin, 8, 0, 50, false, 1);
+TUNABLE_STEP(kSePvDoubleMargin, 120, 0, 50, false, 1);
 TUNABLE_STEP(kSeTripleMargin, 65, 20, 250, false, 10);
 TUNABLE_STEP(kSeDepthExtensionDepth, 11, 0, 20, false, 1);
 
