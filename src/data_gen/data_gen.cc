@@ -214,7 +214,7 @@ void GameLoop(const Config &config,
   constexpr int kWinPliesThreshold = 5;
   constexpr int kDrawThreshold = 2;
   constexpr int kDrawPliesThreshold = 8;
-  constexpr int kInitialScoreThreshold = 300;
+  constexpr int kInitialScoreThreshold = 1000;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};

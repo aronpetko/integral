@@ -64,14 +64,14 @@ template <SearchType type>
 void Searcher::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
+  const auto root_stack = &thread.stack.Front();
+
   thread.root_moves = RootMoveList(thread.board);
 
   const int multi_pv =
       std::min(uci::listener.GetOption("MultiPV").GetValue<int>(),
                thread.root_moves.Size());
   const bool minimal = uci::listener.GetOption("Minimal").GetValue<bool>();
-
-  const auto root_stack = &thread.stack.Front();
 
   std::unique_ptr<uci::reporter::ReportInfo> report_info;
   if (uci::reporter::using_uci) {
@@ -203,7 +203,8 @@ void Searcher::IterativeDeepening(Thread &thread) {
     transposition_table_.Age();
 
     if (print_info) {
-      fmt::println("bestmove {}", best_move.move.ToString());
+      fmt::println("bestmove {}",
+                   !thread.root_moves.Empty() ? best_move.move.ToString() : "0000");
     }
   } else {
     SendStoppedSignal();
