@@ -67,6 +67,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
   int see_threshold_;
+  bool skip_quiets_;
 };
 
 }  // namespace search
