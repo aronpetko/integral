@@ -203,8 +203,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
     transposition_table_.Age();
 
     if (print_info) {
-      fmt::println("bestmove {}",
-                   !thread.root_moves.Empty() ? best_move.move.ToString() : "0000");
+      fmt::println(
+          "bestmove {}",
+          !thread.root_moves.Empty() ? best_move.move.ToString() : "0000");
     }
   } else {
     SendStoppedSignal();
@@ -986,7 +987,9 @@ Score Searcher::PVSearch(Thread &thread,
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.
-      else if (tt_entry->score >= beta || cut_node) {
+      else if (tt_entry->score >= beta) {
+        extensions = -3;
+      } else if (cut_node) {
         extensions = -2;
       }
     }
