@@ -838,7 +838,8 @@ Score Searcher::PVSearch(Thread &thread,
   // Internal Iterative Reduction: Move ordering is expected to be worse with
   // no TT move, so we save time on searching this position now
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
-      !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 4 < depth)) {
+      !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 4 < depth) &&
+      !((stack - 1)->reduction >= 3 && !opponent_worsening)) {
     depth--;
   }
 
@@ -1070,9 +1071,13 @@ Score Searcher::PVSearch(Thread &thread,
       reduction =
           std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
+      stack->reduction = reduction;
+
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+
+      stack->reduction = 0;
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
