@@ -5,6 +5,7 @@
 #include "capture_history.h"
 #include "continuation_history.h"
 #include "correction_history.h"
+#include "pawn_capture_history.h"
 #include "pawn_history.h"
 #include "quiet_history.h"
 
@@ -22,6 +23,7 @@ class History {
     correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
+    pawn_capture_history = std::make_unique<PawnCaptureHistory>();
   }
 
   // Reinitialize the history objects for quicker clearing
@@ -48,13 +50,15 @@ class History {
 
   [[nodiscard]] I32 GetCaptureMoveScore(const BoardState &state,
                                         Move move) const {
-    return capture_history->GetScore(state, move);
+    return capture_history->GetScore(state, move) +
+           pawn_capture_history->GetScore(state, move) / 2;
   }
 
  public:
   std::unique_ptr<QuietHistory> quiet_history;
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<PawnHistory> pawn_history;
+  std::unique_ptr<PawnCaptureHistory> pawn_capture_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
 };
