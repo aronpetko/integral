@@ -105,7 +105,7 @@ void LoadFromIncBin() {
 
   // Transpose l2_weights from [b][l3][l2] to [b][l2][l3]
   for (int b = 0; b < arch::kOutputBucketCount; b++) {
-    for (int l2 = 0; l2 < arch::kL2Size; l2++) {
+    for (int l2 = 0; l2 < arch::kL2Size * 2; l2++) {
       for (int l3 = 0; l3 < arch::kL3Size; l3++) {
         network->l2_weights[b][l2][l3] = raw_network->l2_weights[b][l3][l2];
       }
@@ -261,7 +261,7 @@ Score Evaluate(Board &board) {
   const auto zero_float_vector = simd::ZeroPs(),
              one_float_vector = simd::SetPs(1.0f);
 
-  alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output{};
+  alignas(simd::kAlignment) std::array<float, arch::kL2Size * 2> l1_output{};
   for (int i = 0; i < arch::kL2Size; i += kF32ChunkSize) {
     const auto bias_vector =
         *reinterpret_cast<simd::Vepf32 *>(&network->l1_biases[bucket][i]);
@@ -269,9 +269,15 @@ Score Evaluate(Board &board) {
         simd::ConvertEpi32ToPs(*reinterpret_cast<simd::Vepi32 *>(&l1_sums[i]));
     const auto casted_sum =
         simd::MultiplyAddPs(float_vector, l1_multiplier_vector, bias_vector);
-    auto &features = *reinterpret_cast<simd::Vepf32 *>(&l1_output[i]);
-    features = simd::MinPs(simd::MaxPs(casted_sum, zero_float_vector),
-                           one_float_vector);
+
+    auto &crelu_feature = *reinterpret_cast<simd::Vepf32 *>(&l1_output[i]);
+    crelu_feature = simd::MinPs(simd::MaxPs(casted_sum, zero_float_vector),
+                                one_float_vector);
+
+    auto &screlu_feature =
+        *reinterpret_cast<simd::Vepf32 *>(&l1_output[i + arch::kL2Size]);
+    screlu_feature =
+        simd::MinPs(simd::MultiplyPs(casted_sum, casted_sum), one_float_vector);
   }
 
   // Forward the feature layer neurons to the 2nd layer
@@ -279,7 +285,7 @@ Score Evaluate(Board &board) {
   std::memcpy(
       l2_sums.data(), network->l2_biases[bucket].data(), sizeof(l2_sums));
 
-  for (int i = 0; i < arch::kL2Size; i++) {
+  for (int i = 0; i < arch::kL2Size * 2; i++) {
     const auto l1_vector = simd::SetPs(l1_output[i]);
     for (int j = 0; j < arch::kL3Size; j += kF32ChunkSize) {
       const auto weight_vector =
