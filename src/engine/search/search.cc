@@ -1027,8 +1027,9 @@ Score Searcher::PVSearch(Thread &thread,
         reduction += kLmrNonPvNode;
       }
 
-      // Reduce less if we have seen this node in the PV before
-      if (tt_was_in_pv) {
+      // Reduce less if we have seen this node in the PV before and it looks
+      // promising
+      if (tt_was_in_pv && tt_entry->score > alpha) {
         reduction -= kLmrWasPvNode;
       }
 
