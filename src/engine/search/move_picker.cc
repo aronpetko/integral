@@ -69,13 +69,15 @@ Move MovePicker::Next() {
     while (moves_idx_ < noisys_.Size()) {
       const auto move = SelectionSort(noisys_, moves_idx_);
       const auto score = noisys_[moves_idx_].score;
-      const auto history_score = history_.GetCaptureMoveScore(state, move);
+      const auto is_capture = move.IsCapture(state);
+      const auto history_score =
+          is_capture ? history_.GetCaptureMoveScore(state, move) : 0;
 
       moves_idx_++;
 
       const bool loses_material = !eval::StaticExchange(
           move, see_threshold_ - history_score / kSeeNoisyHistoryDiv, state);
-      if (!loses_material && !move.IsUnderPromotion()) {
+      if (!loses_material && (!move.IsUnderPromotion() || is_capture)) {
         return move;
       }
 
@@ -185,27 +187,37 @@ int MovePicker::ScoreMove(Move &move) {
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
 
+  auto &state = board_.GetState();
+  const auto is_capture = move.IsCapture(state);
+  const auto capture_move_score = [&]() {
+    // Winning/neutral captures are searched next
+    // Losing captures are searched last
+    if (is_capture) {
+      const auto victim =
+          move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
+      const int victim_value = *kPieceScores[victim] * 100;
+      return victim_value + history_.GetCaptureMoveScore(state, move);
+    }
+    return 0;
+  }();
+
   // Queen and knight promotions get priority
   if (move.GetType() == MoveType::kPromotion) {
+    constexpr int kPromotionBaseScore = 1e9;
+    // Order capture promotions with their history score
+    int promotion_score = capture_move_score;
     switch (move.GetPromotionType()) {
       case PromotionType::kQueen:
-        return 1e9 - 1;
+        return promotion_score + kPromotionBaseScore;
       case PromotionType::kKnight:
-        return 1e9 - 2;
+        return promotion_score + kPromotionBaseScore - 1;
       default:
-        return -1e9;
+        return is_capture ? promotion_score : -kPromotionBaseScore;
     }
   }
 
-  auto &state = board_.GetState();
-
-  // Winning/neutral captures are searched next
-  // Losing captures are searched last
-  if (move.IsCapture(state)) {
-    const auto victim =
-        move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
-    const int victim_value = *kPieceScores[victim] * 100;
-    return victim_value + history_.GetCaptureMoveScore(state, move);
+  if (is_capture) {
+    return capture_move_score;
   }
 
   const BitBoard pawn_threats = state.threatened_by[kPawn];
