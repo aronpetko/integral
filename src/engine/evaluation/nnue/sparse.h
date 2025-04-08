@@ -8,29 +8,23 @@
 #include "arch.h"
 #include "nnue.h"
 
-#define SPARSE_PERMUTE
+// #define SPARSE_PERMUTE
 
 // #if BUILD_HAS_SIMD
 namespace nnue::sparse {
 
 // We store the number and index of each set bit for every possible U8 number
-struct NnzEntry {
-  std::array<U16, 8> indices;
-  int count;
-};
+using NnzTable = MultiArray<U16, 256, 8>;
 
-[[nodiscard]] constexpr std::array<NnzEntry, 256> GenerateNnzTable() {
-  std::array<NnzEntry, 256> table{};
+[[nodiscard]] constexpr NnzTable GenerateNnzTable() {
+  NnzTable table{};
   for (I16 i = 0; i < 256; i++) {
-    // Count the number of set bits for this number
-    table[i].count = BitBoard(i).PopCount();
-
     // Save the index of every set bit
     int num_bits = 0;
     BitBoard bits = i;
     while (bits) {
       const int set_bit = bits.PopLsb();
-      table[i].indices[num_bits++] = set_bit;
+      table[i][num_bits++] = set_bit;
     }
   }
   return table;

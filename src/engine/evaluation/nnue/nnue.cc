@@ -189,15 +189,15 @@ Score Evaluate(Board &board) {
         // Lookup the relative indices for each set bit in the mask, essentially
         // retrieving the indices for each positive element as an 8-element
         // vector of I16s
-        const auto indices = _mm_loadu_si128(reinterpret_cast<const __m128i *>(
-            &sparse::nnz_table[slice].indices));
+        const auto indices = _mm_loadu_si128(
+            reinterpret_cast<const __m128i *>(&sparse::nnz_table[slice]));
         // Store these absolute indices into our table. We account for the fact
         // that they are relative indices (to this slice) by adding `nnz_base`,
         // which will reflect the position each element is in the entire table
         _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
                          _mm_add_epi16(nnz_base, indices));
         // Update to reflect the total number of non-zero features processed
-        nnz_count += sparse::nnz_table[slice].count;
+        nnz_count += BitBoard(slice).PopCount();
         // Increment to reflect the starting index of the next slice
         nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
       }
