@@ -30,6 +30,10 @@ namespace nnue {
   return std::clamp(value, 0.0f, 1.0f);
 }
 
+[[nodiscard]] float SCReLU(float value) {
+  return std::clamp(value * value, 0.0f, 1.0f);
+}
+
 void LoadFromIncBin() {
   network = std::make_unique<Network>();
   std::memcpy(network.get(), gEVALData, sizeof(Network));
@@ -350,17 +354,20 @@ Score Evaluate(Board &board) {
   }
 
   // Activate 2nd layer neurons
-  std::array<float, arch::kL2Size> l1_output{};
+  std::array<float, arch::kL2Size * 2> l1_output{};
   for (int i = 0; i < arch::kL2Size; i++) {
     l1_output[i] = CReLU(static_cast<float>(l1_sums[i]) * kL1Normalization +
                          network->l1_biases[bucket][i]);
+    l1_output[i + arch::kL2Size] =
+        SCReLU(static_cast<float>(l1_sums[i]) * kL1Normalization +
+               network->l1_biases[bucket][i]);
   }
 
   // Forward the 2nd layer neurons to the 3rd layer
   std::array<float, arch::kL3Size> l2_output{};
   std::memcpy(
       l2_output.data(), network->l2_biases[bucket].data(), sizeof(l2_output));
-  for (int i = 0; i < arch::kL2Size; i++) {
+  for (int i = 0; i < arch::kL2Size * 2; i++) {
     for (int j = 0; j < arch::kL3Size; j++) {
       l2_output[j] = std::fma(
           l1_output[i], network->l2_weights[bucket][i][j], l2_output[j]);
