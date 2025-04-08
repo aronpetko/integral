@@ -214,7 +214,7 @@ void GameLoop(const Config &config,
   constexpr int kWinPliesThreshold = 5;
   constexpr int kDrawThreshold = 2;
   constexpr int kDrawPliesThreshold = 8;
-  constexpr int kInitialScoreThreshold = 300;
+  constexpr int kInitialScoreThreshold = 1000;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};
@@ -222,8 +222,8 @@ void GameLoop(const Config &config,
 
   auto thread = std::make_unique<search::Thread>(0);
 
-  search::Search search(thread->board);
-  search.ResizeHash(16);
+  search::Searcher searcher(thread->board);
+  searcher.ResizeHash(16);
 
   const int workload = config.num_games / config.num_threads;
   for (int i = 0; i < workload && !stop; i++) {
@@ -233,10 +233,10 @@ void GameLoop(const Config &config,
     const auto &state = thread->board.GetState();
     formatter.SetPosition(state);
 
-    search.NewGame();
+    searcher.NewGame();
     thread->NewGame();
 
-    const auto [initial_score, _] = search.DataGenStart(
+    const auto [initial_score, _] = searcher.DataGenStart(
         thread, search::TimeConfig{.depth = 10, .nodes = 1'000'000});
 
     if (std::abs(initial_score) >= kInitialScoreThreshold) {
@@ -249,7 +249,7 @@ void GameLoop(const Config &config,
     std::optional<double> wdl_outcome;
     while (!stop) {
       // Score returned as white-relative
-      const auto [score, best_move] = search.DataGenStart(thread, time_config);
+      const auto [score, best_move] = searcher.DataGenStart(thread, time_config);
 
       // The game has ended
       if (!best_move) {

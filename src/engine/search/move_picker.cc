@@ -174,8 +174,7 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ &&
-        (killers[0] != move || killers[0].IsNoisy(state)) &&
+    if (move != tt_move_ && (killers[0] != move || killers[0].IsNoisy(state)) &&
         (killers[1] != move || killers[1].IsNoisy(state))) {
       list.Push({move, ScoreMove(move)});
     }
@@ -209,8 +208,6 @@ int MovePicker::ScoreMove(Move &move) {
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
-  const auto us = state.turn;
-
   const BitBoard pawn_threats = state.threatened_by[kPawn];
   const BitBoard minor_threats = pawn_threats | state.threatened_by[kKnight] |
                                  state.threatened_by[kBishop];
@@ -238,8 +235,7 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score +
-         history_.GetQuietMoveScore(state, move, state.threats, stack_);
+  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
 }
 
 }  // namespace search
