@@ -11,6 +11,7 @@
 #endif
 
 #include "../../../third-party/incbin/incbin.h"
+#include "sparse.h"
 
 #ifdef SP_MSVC
 #pragma pop_macro("_MSC_VER")
@@ -21,13 +22,6 @@ INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
-// We store the number and index of each set bit for every possible U8 number
-struct NNZEntry {
-  std::array<U16, 8> indices;
-};
-
-std::array<NNZEntry, 256> nnz_table;
-
 [[nodiscard]] I32 CReLU(I16 value) {
   return std::clamp<I32>(value, 0, arch::kFtQuantization);
 }
@@ -37,17 +31,20 @@ std::array<NNZEntry, 256> nnz_table;
 }
 
 void LoadFromIncBin() {
+  network = std::make_unique<Network>();
+  std::memcpy(network.get(), gEVALData, sizeof(Network));
+
   // Load raw network from binary data
-  auto raw_network = std::make_unique<RawNetwork>();
+  raw_network = std::make_unique<RawNetwork>();
   std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
 
-  network = std::make_unique<ProcessedNetwork>();
+  network = std::make_unique<Network>();
 
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
 
-#if BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
   constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
   std::array<__m128i, kNumRegs> regs;
@@ -86,10 +83,10 @@ void LoadFromIncBin() {
     }
   }
 
-#if BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   // Weight permutation for DpbusdEpi32
   {
-    const auto tmp = std::make_shared<ProcessedNetwork>(*network);
+    const auto tmp = std::make_shared<Network>(*network);
     for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
       for (int i = 0; i < arch::kL1Size; i += 4) {
         for (int j = 0; j < arch::kL2Size; ++j) {
@@ -111,17 +108,6 @@ void LoadFromIncBin() {
       }
     }
   }
-
-#if BUILD_HAS_SIMD
-  for (I16 i = 0; i < 256; i++) {
-    // Save the index of every set bit
-    int num_bits = 0;
-    const BitBoard bits = i;
-    for (int set_bit : bits) {
-      nnz_table[i].indices[num_bits++] = set_bit;
-    }
-  }
-#endif
 }
 
 Score Evaluate(Board &board) {
@@ -133,7 +119,7 @@ Score Evaluate(Board &board) {
 
   constexpr int kFtShift = 9;
 
-#if BUILD_HAS_SIMD
+#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   constexpr int kI32ChunkSize = sizeof(simd::Vepi16) / sizeof(I32);
   constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
   constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
@@ -199,20 +185,24 @@ Score Evaluate(Board &board) {
         // Lookup the relative indices for each set bit in the mask, essentially
         // retrieving the indices for each positive element as an 8-element
         // vector of I16s
-        const auto indices = _mm_loadu_si128(
-            reinterpret_cast<__m128i *>(&nnz_table[slice].indices));
+        const auto indices = _mm_loadu_si128(reinterpret_cast<const __m128i *>(
+            &sparse::nnz_table[slice].indices));
         // Store these absolute indices into our table. We account for the fact
         // that they are relative indices (to this slice) by adding `nnz_base`,
         // which will reflect the position each element is in the entire table
         _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
                          _mm_add_epi16(nnz_base, indices));
         // Update to reflect the total number of non-zero features processed
-        nnz_count += BitBoard(slice).PopCount();
+        nnz_count += sparse::nnz_table[slice].count;
         // Increment to reflect the starting index of the next slice
         nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
       }
     }
   }
+
+#ifdef SPARSE_PERMUTE
+  sparse::CountActivations(feature_output);
+#endif
 
   // Forward the feature layer neurons to the 2nd layer
   alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
@@ -334,6 +324,10 @@ Score Evaluate(Board &board) {
     }
   }
 
+#ifdef SPARSE_PERMUTE
+  sparse::CountActivations(feature_output);
+#endif
+
   const float kL1Normalization =
       static_cast<float>(1 << kFtShift) /
       static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
@@ -380,8 +374,9 @@ Score Evaluate(Board &board) {
     }
   }
 
-  const float l3_output = network->l3_biases[bucket] +
-                          simd::ReduceAddPs(result_sums.data(), kResultChunks);
+  const float l3_output =
+      network->l3_biases[bucket] +
+      simd::ReduceAddPsRecursive(result_sums.data(), kResultChunks);
 
   // Scale output
   return static_cast<Score>(l3_output * arch::kEvalScale);

@@ -21,7 +21,7 @@ struct RawNetwork {
   MultiArray<float, arch::kOutputBucketCount> l3_biases;
 };
 
-struct alignas(simd::kAlignment) ProcessedNetwork {
+struct alignas(simd::kAlignment) Network {
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
   union {
@@ -36,7 +36,8 @@ struct alignas(simd::kAlignment) ProcessedNetwork {
 };
 // clang-format on
 
-inline std::shared_ptr<ProcessedNetwork> network = nullptr;
+inline std::shared_ptr<RawNetwork> raw_network = nullptr;
+inline std::shared_ptr<Network> network = nullptr;
 
 class Accumulator;
 
