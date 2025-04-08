@@ -396,17 +396,15 @@ inline U8 GetNnzMask(Vepi32 x) {
 }
 
 #else
-
-inline float ReduceAddPs(float* sums, int length) {
-  if (length == 2) return sums[0] + sums[1];
-  length /= 2;
-  for (int i = 0; i < length; ++i)
-    sums[i] += sums[i + length];
-  return ReduceAddPs(sums, length);
-}
-
 constexpr int kAlignment = 64;
 #endif
+
+inline float ReduceAddPsRecursive(float* sums, int length) {
+  if (length == 2) return sums[0] + sums[1];
+  length /= 2;
+  for (int i = 0; i < length; ++i) sums[i] += sums[i + length];
+  return ReduceAddPsRecursive(sums, length);
+}
 
 }  // namespace simd
 
