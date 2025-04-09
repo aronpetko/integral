@@ -77,7 +77,7 @@ TUNABLE_STEP(kSeDoubleMargin, 8, 0, 50, false, 1);
 TUNABLE_STEP(kSeTripleMargin, 65, 20, 250, false, 10);
 TUNABLE_STEP(kSeDepthExtensionDepth, 11, 0, 20, false, 1);
 
-TUNABLE_STEP(kLmrNonPvNode, 919, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrPvNode, 919, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrWasPvNode, 1155, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrCutNode, 2164, 1024, 4096, false, 300);
 TUNABLE_STEP(kLmrGivesCheck, 978, 512, 2048, false, 150);

@@ -1022,9 +1022,9 @@ Score Searcher::PVSearch(Thread &thread,
       reduction =
           tables::kLateMoveReduction[is_quiet][depth][moves_seen] * kLmrScale;
 
-      // Reduce more in non-PV nodes
-      if (!in_pv_node) {
-        reduction += kLmrNonPvNode;
+      // Reduce less in PV nodes
+      if (in_pv_node) {
+        reduction -= kLmrPvNode;
       }
 
       // Reduce less if we have seen this node in the PV before
