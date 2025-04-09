@@ -926,6 +926,7 @@ Score Searcher::PVSearch(Thread &thread,
           (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
           stack->history_score / kSeePruneHistDiv;
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          !stack->threats.IsSet(move.GetTo()) &&
           !eval::StaticExchange(
               move,
               is_quiet ? std::min(see_threshold, 0) : see_threshold,
