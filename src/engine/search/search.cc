@@ -678,10 +678,9 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
-
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
@@ -890,6 +889,10 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce more if our static evaluation is going down
       if (!improving) {
         reduction += kLmrDepthNotImproving;
+      }
+
+      if (tt_was_in_pv) {
+        reduction -= 1024;
       }
 
       const int lmr_fractional_depth =
