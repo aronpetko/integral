@@ -888,8 +888,9 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more if our static evaluation is going down
-      if (!improving) {
-        reduction += kLmrDepthNotImproving;
+      if (!improving && past_stack) {
+        reduction += std::clamp(
+            (past_stack->static_eval - stack->static_eval) * 8, -1500, 1500);
       }
 
       const int lmr_fractional_depth =
