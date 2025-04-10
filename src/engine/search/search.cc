@@ -1032,6 +1032,11 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrWasPvNode;
       }
 
+      // Reduce more if this node was seen in the PV before and it failed low
+      if (tt_hit && tt_was_in_pv && tt_entry->score <= alpha) {
+        reduction += kLmrWasPvNodeFailLow;
+      }
+
       // Reduce more if this node is expected to fail high
       if (cut_node) {
         reduction += kLmrCutNode;
