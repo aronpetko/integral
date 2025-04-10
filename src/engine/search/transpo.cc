@@ -1,5 +1,7 @@
 #include "transpo.h"
 
+#include <thread>
+
 #include "../evaluation/evaluation.h"
 
 namespace search {
@@ -77,8 +79,24 @@ int TranspositionTable::HashFull() const {
   return count / kTTClusterSize;
 }
 
-void TranspositionTable::Clear() {
-  AlignedHashTable::Clear();
+void TranspositionTable::Clear(int num_threads) {
+  const std::size_t chunks = (table_size_ + num_threads - 1) / num_threads;
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < num_threads; ++i) {
+    threads.emplace_back([i, chunks, this]() {
+      const std::size_t clear_index = chunks * i;
+      const std::size_t clear_size =
+          std::min(chunks, table_size_ - clear_index) *
+          sizeof(TranspositionTableCluster);
+      std::memset(table_ + clear_index, 0, clear_size);
+    });
+  }
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
   age_ = 0;
 }
 
