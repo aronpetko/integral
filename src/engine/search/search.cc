@@ -46,7 +46,7 @@ inline LateMoveReductionTable kLateMoveReduction =
 
 }  // namespace tables
 
-Search::Search(Board &board)
+Searcher::Search(Board &board)
     : board_(board),
       stop_barrier_(2),
       start_barrier_(2),
@@ -54,14 +54,14 @@ Search::Search(Board &board)
       next_thread_id_(0),
       searching_threads_(0) {}
 
-Search::~Search() {
+Searcher::~Search() {
   if (!quit_.load(std::memory_order_acquire)) {
     QuitThreads();
   }
 }
 
 template <SearchType type>
-void Search::IterativeDeepening(Thread &thread) {
+void Searcher::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
   thread.root_moves = RootMoveList(thread.board);
@@ -230,7 +230,7 @@ void Search::IterativeDeepening(Thread &thread) {
 }
 
 template <NodeType node_type>
-Score Search::QuiescentSearch(Thread &thread,
+Score Searcher::QuiescentSearch(Thread &thread,
                               Score alpha,
                               Score beta,
                               StackEntry *stack) {
@@ -437,7 +437,7 @@ Score Search::QuiescentSearch(Thread &thread,
 }
 
 template <NodeType node_type>
-Score Search::PVSearch(Thread &thread,
+Score Searcher::PVSearch(Thread &thread,
                        int depth,
                        Score alpha,
                        Score beta,
@@ -1233,7 +1233,7 @@ Score Search::PVSearch(Thread &thread,
   return stack->score = best_score;
 }
 
-void Search::Run(Thread &thread) {
+void Searcher::Run(Thread &thread) {
   while (true) {
     // Indicate that we have stopped searching
     stop_barrier_.ArriveAndWait();
@@ -1248,7 +1248,7 @@ void Search::Run(Thread &thread) {
   }
 }
 
-void Search::WaitForThreads() {
+void Searcher::WaitForThreads() {
   if (searching_threads_.load() > 0) {
     std::unique_lock lock(thread_stopped_mutex_);
     thread_stopped_signal_.wait(lock, [this] {
@@ -1257,7 +1257,7 @@ void Search::WaitForThreads() {
   }
 }
 
-void Search::QuitThreads() {
+void Searcher::QuitThreads() {
   if (threads_.empty()) {
     return;
   }
@@ -1273,11 +1273,11 @@ void Search::QuitThreads() {
   }
 }
 
-bool Search::ShouldQuit(Thread &thread) {
+bool Searcher::ShouldQuit(Thread &thread) {
   return stop_.load(std::memory_order_relaxed);
 }
 
-void Search::SetThreadCount(U16 count) {
+void Searcher::SetThreadCount(U16 count) {
   if (threads_.size() == count) {
     return;
   } else if (!threads_.empty()) {
@@ -1303,7 +1303,7 @@ void Search::SetThreadCount(U16 count) {
   }
 }
 
-void Search::Start(TimeConfig time_config) {
+void Searcher::Start(TimeConfig time_config) {
   if (searching_threads_.load() > 0) {
     return;
   }
@@ -1326,7 +1326,7 @@ void Search::Start(TimeConfig time_config) {
   start_barrier_.ArriveAndWait();
 }
 
-std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
+std::pair<Score, Move> Searcher::DataGenStart(std::unique_ptr<Thread> &thread,
                                             TimeConfig time_config) {
   stop_.store(false, std::memory_order_relaxed);
 
@@ -1346,7 +1346,7 @@ std::pair<Score, Move> Search::DataGenStart(std::unique_ptr<Thread> &thread,
           best_move.move};
 }
 
-U64 Search::Bench(int depth) {
+U64 Searcher::Bench(int depth) {
   TimeConfig config{.depth = depth};
   time_mgmt_.SetConfig(config);
   time_mgmt_.Start();
@@ -1361,12 +1361,12 @@ U64 Search::Bench(int depth) {
   return thread->nodes_searched;
 }
 
-void Search::Stop() {
+void Searcher::Stop() {
   stop_.store(true, std::memory_order_relaxed);
   WaitForThreads();
 }
 
-void Search::NewGame(bool clear_tables) {
+void Searcher::NewGame(bool clear_tables) {
   if (clear_tables) {
     transposition_table_.Clear();
     tables::kLateMoveReduction = tables::GenerateLateMoveReductionTable();
@@ -1377,18 +1377,18 @@ void Search::NewGame(bool clear_tables) {
   }
 }
 
-const TimeManagement &Search::GetTimeManagement() const {
+const TimeManagement &Searcher::GetTimeManagement() const {
   return time_mgmt_;
 }
 
-U64 Search::GetNodesSearched() const {
+U64 Searcher::GetNodesSearched() const {
   return std::accumulate(
       threads_.begin(), threads_.end(), 0ULL, [](auto sum, const auto &thread) {
         return sum + thread->nodes_searched;
       });
 }
 
-void Search::ResizeHash(U64 size) {
+void Searcher::ResizeHash(U64 size) {
   transposition_table_.Resize(size);
 }
 
