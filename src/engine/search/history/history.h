@@ -5,6 +5,7 @@
 #include "capture_history.h"
 #include "continuation_history.h"
 #include "correction_history.h"
+#include "counter_moves.h"
 #include "pawn_history.h"
 #include "quiet_history.h"
 
@@ -22,6 +23,7 @@ class History {
     correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
+    counter_moves = std::make_unique<CounterMoves>();
   }
 
   // Reinitialize the history objects for quicker clearing
@@ -57,6 +59,7 @@ class History {
   std::unique_ptr<PawnHistory> pawn_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
   std::unique_ptr<CorrectionHistory> correction_history;
+  std::unique_ptr<CounterMoves> counter_moves;
 };
 
 }  // namespace search::history

@@ -1160,6 +1160,7 @@ Score Searcher::PVSearch(Thread &thread,
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
+            history.counter_moves->UpdateCounterMove(stack - 1, state.turn);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
             history.pawn_history->UpdateScore(
