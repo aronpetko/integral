@@ -52,12 +52,8 @@ pgo:
 endif
 
 all: $(BUILD_DIR)
-ifeq ($(PGO),ON)
-	@$(MAKE) pgo_build
-else
 	@$(MAKE) -C $(BUILD_DIR)
 	@$(MAKE) copy_executable
-endif
 
 $(BUILD_DIR):
 ifeq ($(detected_OS),Windows)
@@ -82,7 +78,8 @@ else
 	@rm -f $(EXE)*$(EXE_EXT)
 endif
 
-pgo_build:
+pgo:
+	@$(MAKE) clean
 	@echo "=== PGO: Instrumented Build ==="
 	@$(MAKE) build_pgo_gen
 	@echo "=== PGO: Running Training ==="
@@ -92,10 +89,24 @@ pgo_build:
 	@$(MAKE) copy_executable
 
 build_pgo_gen: $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake -DCMAKE_CXX_FLAGS="-fprofile-generate" .. && $(MAKE) -j
+	@cd $(BUILD_DIR) && cmake \
+		-DCMAKE_C_COMPILER=$(CC) \
+		-DCMAKE_CXX_COMPILER=$(CXX) \
+		-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) \
+		-DCMAKE_CXX_FLAGS="-fprofile-generate -march=native" \
+		-D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) -DEVALFILE=$(EVALFILE) .. \
+		&& $(MAKE) -j
 
 build_pgo_use: $(BUILD_DIR)
-	@cd $(BUILD_DIR) && cmake -DCMAKE_CXX_FLAGS="-fprofile-use -fprofile-correction" .. && $(MAKE) -j
+	@cd $(BUILD_DIR) && cmake \
+		-DCMAKE_C_COMPILER=$(CC) \
+		-DCMAKE_CXX_COMPILER=$(CXX) \
+		-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) \
+		-DCMAKE_CXX_FLAGS="-fprofile-use -fprofile-correction -march=native" \
+		-D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) -DEVALFILE=$(EVALFILE) .. \
+		&& $(MAKE) -j
+
+
 
 copy_executable:
 ifeq ($(BUILD_TYPE),BUILD_DEBUG)
