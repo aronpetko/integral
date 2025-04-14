@@ -51,13 +51,10 @@ pgo:
 	@echo "PGO disabled. Skipping."
 endif
 
-
 all: $(BUILD_DIR)
 ifeq ($(PGO),ON)
-	@echo "Building with Profile-Guided Optimization enabled..."
-	@$(MAKE) pgo
+	@$(MAKE) pgo_build
 else
-	@echo "Building without PGO..."
 	@$(MAKE) -C $(BUILD_DIR)
 	@$(MAKE) copy_executable
 endif
@@ -84,6 +81,21 @@ else
 	@rm -rf $(BUILD_DIR)
 	@rm -f $(EXE)*$(EXE_EXT)
 endif
+
+pgo_build:
+	@echo "=== PGO: Instrumented Build ==="
+	@$(MAKE) build_pgo_gen
+	@echo "=== PGO: Running Training ==="
+	@./$(BUILD_DIR)/integral bench 16
+	@echo "=== PGO: Optimized Build ==="
+	@$(MAKE) build_pgo_use
+	@$(MAKE) copy_executable
+
+build_pgo_gen: $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake -DCMAKE_CXX_FLAGS="-fprofile-generate" .. && $(MAKE) -j
+
+build_pgo_use: $(BUILD_DIR)
+	@cd $(BUILD_DIR) && cmake -DCMAKE_CXX_FLAGS="-fprofile-use -fprofile-correction" .. && $(MAKE) -j
 
 copy_executable:
 ifeq ($(BUILD_TYPE),BUILD_DEBUG)
