@@ -27,14 +27,40 @@ EXE ?= integral
 # Whether or not datagen will be used
 DATAGEN ?= OFF
 
+
 # Standard targets
 .PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
 
+# Use profile-guided optimizations
+PGO ?= ON
+
+ifeq ($(PGO),ON)
+PGO_FLAGS_GEN=-fprofile-generate
+PGO_FLAGS_USE=-fprofile-use -fprofile-correction
+PGO_DIR=$(BUILD_DIR)/pgo-data
+
+pgo: clean
+	@echo "=== PGO: Instrumented Build ==="
+	@$(MAKE) all CXXFLAGS="$(PGO_FLAGS_GEN)" PGO_STAGE=GEN
+	@echo "=== PGO: Running Training ==="
+	@./$(EXE) bench 16
+	@echo "=== PGO: Optimized Build ==="
+	@$(MAKE) all CXXFLAGS="$(PGO_FLAGS_USE)" PGO_STAGE=USE
+else
+pgo:
+	@echo "PGO disabled. Skipping."
+endif
+
+
 all: $(BUILD_DIR)
-	@echo Building $(EXE) with $(BUILD_TYPE)...
+ifeq ($(PGO),ON)
+	@echo "Building with Profile-Guided Optimization enabled..."
+	@$(MAKE) pgo
+else
+	@echo "Building without PGO..."
 	@$(MAKE) -C $(BUILD_DIR)
-	@echo Copying executable...
 	@$(MAKE) copy_executable
+endif
 
 $(BUILD_DIR):
 ifeq ($(detected_OS),Windows)
@@ -43,7 +69,12 @@ else
 	@mkdir -p $(BUILD_DIR)
 endif
 	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE)...
-	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) ..
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" \
+		-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) \
+		-DCMAKE_C_COMPILER=$(CC) \
+		-DCMAKE_CXX_COMPILER=$(CXX) \
+		-DCMAKE_CXX_FLAGS="$(CXXFLAGS)" \
+		-DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) ..
 
 clean:
 ifeq ($(detected_OS),Windows)
