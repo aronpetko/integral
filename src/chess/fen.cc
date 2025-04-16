@@ -77,6 +77,12 @@ BoardState StringToBoard(std::string_view fen_str) {
   }
 
   stream >> state.fifty_moves_clock;
+
+  int full_move_count = 0;
+  stream >> full_move_count;
+
+  state.half_moves = (full_move_count - 1) * 2 + state.turn;
+
   return state;
 }
 
