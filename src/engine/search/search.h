@@ -100,7 +100,7 @@ class RootMoveList {
   List<RootMove, 256> list_;
 };
 
-struct Thread {
+struct alignas(64) Thread {
   explicit Thread(U32 id)
       : id(id),
         stack({}),
