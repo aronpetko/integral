@@ -95,7 +95,7 @@ struct BoardState {
         major_key(0ULL),
         non_pawn_keys({}),
         checkers(0ULL),
-        pinned(0ULL),
+        pinned({}),
         half_moves(0) {
     piece_on_square.fill(PieceType::kNone);
   }
@@ -273,7 +273,7 @@ struct BoardState {
   BitBoard checkers;
   BitBoard threats;
   std::array<BitBoard, kNumPieceTypes> threatened_by;
-  BitBoard pinned;
+  std::array<BitBoard, kNumColors> pinned;
 };
 
 class Board {

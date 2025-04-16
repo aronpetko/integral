@@ -473,7 +473,7 @@ MoveList GenerateMoves(const Board &board) {
   AddPawnMoves<move_type>(board, move_list);
 
   // Other piece moves
-  for (Square from : state.Knights(state.turn) & ~state.pinned) {
+  for (Square from : state.Knights(state.turn) & ~state.pinned[state.turn]) {
     for (Square to : KnightMoves(from) & targets) {
       move_list.Push(Move(from, to));
     }

@@ -185,7 +185,7 @@ bool Board::IsMoveLegal(Move move) const {
 
   // If the piece being moved is pinned, verify that it's moving on the same
   // diagonal
-  if (state_.pinned.IsSet(from) &&
+  if (state_.pinned[us].IsSet(from) &&
       !(move_gen::RayIntersecting(from, to) & king_mask)) {
     return false;
   }
@@ -541,7 +541,7 @@ void Board::CalculateKingThreats() {
   state_.checkers &= their_pieces;
 
   // Calculate our potentially pinned pieces
-  state_.pinned = 0;
+  state_.pinned[us] = 0;
 
   // Calculate all the opponent's pieces that could reach our king
   BitBoard x_raying_pieces =
@@ -558,7 +558,7 @@ void Board::CalculateKingThreats() {
     } else if (num_blockers == 1) {
       // A piece is pinned if it's the only piece within a xray of an opponents
       // piece to our king
-      state_.pinned |= pinned;
+      state_.pinned[us] |= pinned;
     }
   }
 }

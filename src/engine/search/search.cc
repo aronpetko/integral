@@ -1383,7 +1383,7 @@ void Searcher::Stop() {
 
 void Searcher::NewGame(bool clear_tables) {
   if (clear_tables) {
-    transposition_table_.Clear();
+    transposition_table_.Clear(std::max<int>(1, threads_.size()));
     tables::kLateMoveReduction = tables::GenerateLateMoveReductionTable();
   }
 
