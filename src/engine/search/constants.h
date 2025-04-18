@@ -18,8 +18,8 @@ TUNABLE_STEP(kQsCutoffLerpFactor, 0.46762757125234183, 0.0, 1.0, false, 0.1);
 TUNABLE_STEP(kQsFutMargin, 156, 20, 300, false, 20);
 
 TUNABLE(kEvalHistUpdateMult, 63, 20, 100, false);
-TUNABLE(kEvalHistUpdateMin, 52, 5, 150, false);
-TUNABLE(kEvalHistUpdateMax, 104, 40, 200, false);
+TUNABLE(kEvalHistUpdateMin, 300, 5, 150, false);
+TUNABLE(kEvalHistUpdateMax, 300, 40, 200, false);
 
 TUNABLE(kRevFutDepth, 9, 4, 10, true);
 TUNABLE_STEP(kRevFutMargin, 55, 50, 150, false, 5);
