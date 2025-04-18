@@ -31,9 +31,6 @@ namespace nnue {
 }
 
 void LoadFromIncBin() {
-  network = std::make_unique<Network>();
-  std::memcpy(network.get(), gEVALData, sizeof(Network));
-
   // Load raw network from binary data
   raw_network = std::make_unique<RawNetwork>();
   std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
@@ -193,7 +190,7 @@ Score Evaluate(Board &board) {
         _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
                          _mm_add_epi16(nnz_base, indices));
         // Update to reflect the total number of non-zero features processed
-        nnz_count += sparse::nnz_table[slice].count;
+        nnz_count += BitBoard(slice).PopCount();
         // Increment to reflect the starting index of the next slice
         nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
       }
@@ -265,7 +262,7 @@ Score Evaluate(Board &board) {
   }
 
   // Forward the feature layer neurons to the 2nd layer
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_sums{};
+  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_sums;
   std::memcpy(
       l2_sums.data(), network->l2_biases[bucket].data(), sizeof(l2_sums));
 

@@ -16,15 +16,11 @@ namespace nnue::sparse {
 // We store the number and index of each set bit for every possible U8 number
 struct NnzEntry {
   std::array<U16, 8> indices;
-  int count;
 };
 
 [[nodiscard]] constexpr std::array<NnzEntry, 256> GenerateNnzTable() {
   std::array<NnzEntry, 256> table{};
   for (I16 i = 0; i < 256; i++) {
-    // Count the number of set bits for this number
-    table[i].count = BitBoard(i).PopCount();
-
     // Save the index of every set bit
     int num_bits = 0;
     BitBoard bits = i;
