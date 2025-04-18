@@ -29,7 +29,7 @@ class QuietHistory {
     UpdateMoveScore(state.turn, stack->move, threats, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
-    const I16 penalty = HistoryPenalty(depth) - 2 * quiets.Size();
+    const I16 penalty = HistoryPenalty(depth) - 32 * quiets.Size();
     for (int i = 0; i < quiets.Size(); i++) {
       UpdateMoveScore(state.turn, quiets[i], threats, penalty);
     }
