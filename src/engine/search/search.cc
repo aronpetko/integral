@@ -217,6 +217,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
                                      StackEntry *stack) {
   const auto &state = thread.board.GetState();
 
+  // Adjust based on proximity to a fifty-move-rule draw
+  static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
+
   // Adjust based on prior search scores in similar positions
   static_eval = thread.history.correction_history->CorrectStaticEval(
       state, stack, static_eval);
@@ -224,9 +227,6 @@ void Searcher::IterativeDeepening(Thread &thread) {
 #if DATAGEN
   return static_eval;
 #endif
-
-  // Adjust based on proximity to a fifty-move-rule draw
-  static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
 
   return static_eval;
 }

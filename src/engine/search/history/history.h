@@ -31,7 +31,7 @@ class History {
 
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,
                                  Move move,
-                                 StackEntry *stack) {
+                                 StackEntry *stack) const {
     return move.IsCapture(state) ? GetCaptureMoveScore(state, move)
                                  : GetQuietMoveScore(state, move, stack);
   }
