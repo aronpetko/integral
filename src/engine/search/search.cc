@@ -1133,7 +1133,7 @@ Score Searcher::PVSearch(Thread &thread,
           root_move->average_score =
               root_move->average_score == kScoreNone
                   ? score
-                  : 2 * (root_move->average_score + score) / 3;
+                  : (root_move->average_score + 2 * score) / 3;
           root_move->pv.Clear();
           root_move->pv.Push(move);
           root_move->pv.AppendPV((stack + 1)->pv);
