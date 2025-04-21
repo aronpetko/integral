@@ -68,8 +68,6 @@ class AlignedHashTable {
 
     table_ = new_table;
     table_size_ = num_elements;
-
-    Clear();
   }
 
   void Clear() {

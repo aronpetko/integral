@@ -1405,6 +1405,7 @@ U64 Searcher::GetNodesSearched() const {
 
 void Searcher::ResizeHash(U64 size) {
   transposition_table_.Resize(size);
+  transposition_table_.Clear(std::max<int>(1, threads_.size()));
 }
 
 }  // namespace search
