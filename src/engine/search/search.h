@@ -144,11 +144,11 @@ struct alignas(64) Thread {
   Board board;
   history::History history;
   Stack stack;
-  U64 nodes_searched;
+  std::atomic<U64> nodes_searched;
   std::array<Score, kMaxSearchDepth + 1> scores;
   Score previous_score;
   U16 root_depth, sel_depth;
-  U64 tb_hits;
+  std::atomic<U64> tb_hits;
   int pv_move_idx;
   RootMoveList root_moves;
   U16 nmp_min_ply;
@@ -178,6 +178,8 @@ class Searcher {
   const TimeManagement &GetTimeManagement() const;
 
   [[nodiscard]] U64 GetNodesSearched() const;
+
+  [[nodiscard]] U64 GetTbHits() const;
 
   void ResizeHash(U64 size);
 

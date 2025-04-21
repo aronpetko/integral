@@ -163,7 +163,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
                            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
                            transposition_table_.HashFull(),
                            syzygy::enabled,
-                           thread.tb_hits,
+                           GetTbHits(),
                            pv_move.pv.UCIFormat(),
                            i);
       }
@@ -379,7 +379,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
         history.correction_history->GetContEntry(state, move);
     stack->history_score = history.GetMoveScore(state, move, stack);
 
-    ++thread.nodes_searched;
+    thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
     board.MakeMove(move);
     const Score score =
@@ -577,7 +577,7 @@ Score Searcher::PVSearch(Thread &thread,
         tt_flag = TranspositionTableEntry::kExact;
       }
 
-      ++thread.tb_hits;
+      thread.tb_hits.fetch_add(1, std::memory_order_relaxed);
 
       if (tt_flag == TranspositionTableEntry::kExact ||
           tt_flag == TranspositionTableEntry::kUpperBound && score <= alpha ||
@@ -799,7 +799,7 @@ Score Searcher::PVSearch(Thread &thread,
           stack->history_score = history.GetMoveScore(state, move, stack);
 
           const int probcut_depth = depth - 3;
-          ++thread.nodes_searched;
+          thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
           board.MakeMove(move);
 
@@ -1006,7 +1006,8 @@ Score Searcher::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched = thread.nodes_searched++;
+    const U32 prev_nodes_searched =
+        thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -1399,7 +1400,14 @@ const TimeManagement &Searcher::GetTimeManagement() const {
 U64 Searcher::GetNodesSearched() const {
   return std::accumulate(
       threads_.begin(), threads_.end(), 0ULL, [](auto sum, const auto &thread) {
-        return sum + thread->nodes_searched;
+        return sum + thread->nodes_searched.load(std::memory_order_relaxed);
+      });
+}
+
+U64 Searcher::GetTbHits() const {
+  return std::accumulate(
+      threads_.begin(), threads_.end(), 0ULL, [](auto sum, const auto &thread) {
+        return sum + thread->tb_hits.load(std::memory_order_relaxed);
       });
 }
 
