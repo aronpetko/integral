@@ -67,7 +67,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
   const auto root_stack = &thread.stack.Front();
   std::memmove(&thread.stack[-Stack::kPadding],
                &thread.stack[-Stack::kPadding + 1],
-               sizeof(StackEntry) * (Stack::kPadding - 1));
+               sizeof(StackEntry) * Stack::kPadding);
 
   thread.root_moves = RootMoveList(thread.board);
 
