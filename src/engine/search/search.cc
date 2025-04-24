@@ -65,7 +65,6 @@ void Searcher::IterativeDeepening(Thread &thread) {
   constexpr bool print_info = type == SearchType::kRegular;
 
   const auto root_stack = &thread.stack.Front();
-  if ((root_stack - 1)->continuation_entry) fmt::println("yup");
   thread.root_moves = RootMoveList(thread.board);
 
   const int multi_pv =

@@ -49,7 +49,7 @@ class ContinuationHistory {
     if (!stack->continuation_entry) {
       return 0;
     }
-    
+
     const int piece = state.GetPieceType(move.GetFrom());
     const int to = move.GetTo();
 
