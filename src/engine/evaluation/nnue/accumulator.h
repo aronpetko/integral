@@ -1,9 +1,9 @@
 #ifndef INTEGRAL_ACCUMULATOR_H
 #define INTEGRAL_ACCUMULATOR_H
 
+#include "../../../../shared/nnue/definitions.h"
+#include "../../../../shared/simd.h"
 #include "../../../chess/board.h"
-#include "../../../utils/simd.h"
-#include "arch.h"
 #include "nnue.h"
 
 namespace nnue {

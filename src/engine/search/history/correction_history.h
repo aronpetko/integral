@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_CORRECTION_HISTORY_H
 #define INTEGRAL_CORRECTION_HISTORY_H
 
+#include "../../../../shared/multi_array.h"
 #include "../../../tuner/spsa.h"
-#include "../../../utils/multi_array.h"
 #include "../stack.h"
 
 namespace search::history {

@@ -47,6 +47,41 @@ else ()
     message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
 endif ()
 
+# Option for preparing the network to sparse permute neurons (requires turning off AVX)
+option(SPARSE_PERMUTE OFF)
+if (SPARSE_PERMUTE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPARSE_PERMUTE")
+endif ()
+
+# Define output path for preprocessed file
+set(PREPROCESSED_FILE "${CMAKE_CURRENT_BINARY_DIR}/processed.nnue")
+set(PREPROCESS_BUILD_NATIVE ${BUILD_NATIVE} CACHE INTERNAL "")
+set(PREPROCESS_BUILD_VNNI512 ${BUILD_VNNI512} CACHE INTERNAL "")
+set(PREPROCESS_BUILD_AVX512 ${BUILD_AVX512} CACHE INTERNAL "")
+set(PREPROCESS_BUILD_AVX2_BMI2 ${BUILD_AVX2_BMI2} CACHE INTERNAL "")
+set(PREPROCESS_BUILD_AVX2 ${BUILD_AVX2} CACHE INTERNAL "")
+set(PREPROCESS_BUILD_SSE41_POPCNT ${BUILD_SSE41_POPCNT} CACHE INTERNAL "")
+set(PREPROCESS_BUILD_DEBUG ${BUILD_DEBUG} CACHE INTERNAL "")
+set(PREPROCESS_SPARSE_PERMUTE ${SPARSE_PERMUTE} CACHE INTERNAL "")
+
+# Add subdirectory containing the preprocess project
+add_subdirectory(preprocess)
+
+# Custom command to run preprocessing
+add_custom_command(
+        OUTPUT ${PREPROCESSED_FILE}
+        COMMAND preprocess ${EVALFILE} ${PREPROCESSED_FILE}
+        DEPENDS preprocess ${EVALFILE}
+        COMMENT "Running net preprocessing"
+        VERBATIM
+)
+
+# Custom target that depends on the output file
+add_custom_target(run_preprocess ALL DEPENDS ${PREPROCESSED_FILE})
+
+# Define preprocessed file as a macro so it’s accessible from C++
+add_definitions(-DEVALFILE="${PREPROCESSED_FILE}")
+
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
 set(CXXFLAGS_VNNI512 "-march=znver4 -mtune=znver4 -DBUILD_VNNI512 -DBUILD_FAST_PEXT")
@@ -107,7 +142,7 @@ endif ()
 # Include third-party directories
 include_directories(third-party/fathom)
 include_directories(third-party/fmt/include)
-add_definitions(-DFMT_HEADER_ONLY -DEVALFILE="${EVALFILE}")
+add_definitions(-DFMT_HEADER_ONLY)
 
 # Collect all source files
 file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
@@ -121,3 +156,6 @@ add_executable(integral ${SOURCES}
         src/data_gen/data_gen.h
         src/data_gen/format/binpack.h
         src/engine/search/cuckoo.cc)
+
+# Make sure main build depends on this
+add_dependencies(integral run_preprocess)

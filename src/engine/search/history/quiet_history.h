@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_QUIET_HISTORY_H
 #define INTEGRAL_QUIET_HISTORY_H
 
-#include "../../../utils/multi_array.h"
+#include "../../../../shared/multi_array.h"
 #include "../stack.h"
 #include "bonus.h"
 

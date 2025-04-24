@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_SIMD_H_
 #define INTEGRAL_SIMD_H_
 
-#include "types.h"
+#include "../src/utils/types.h"
 
 #if defined(BUILD_NATIVE)
 #if __BMI2__ && defined(BUILD_FAST_PEXT)

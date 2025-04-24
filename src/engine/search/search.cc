@@ -74,10 +74,12 @@ void Searcher::IterativeDeepening(Thread &thread) {
   const bool minimal = uci::listener.GetOption("Minimal").GetValue<bool>();
 
   std::unique_ptr<uci::reporter::ReportInfo> report_info;
-  if (uci::reporter::using_uci) {
-    report_info = std::make_unique<uci::reporter::UCIReportInfo>();
-  } else {
-    report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+  if (thread.IsMainThread()) {
+    if (uci::reporter::using_uci) {
+      report_info = std::make_unique<uci::reporter::UCIReportInfo>();
+    } else {
+      report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
+    }
   }
 
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
@@ -102,7 +104,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
         thread.root_moves.SortNextMove(thread.pv_move_idx);
 
-        if (ShouldQuit(thread)) {
+        if (ShouldQuit()) {
           break;
         }
 
@@ -144,8 +146,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
     const bool soft_timeout =
         thread.IsMainThread() &&
         time_mgmt_.ShouldStop(best_move.move, depth, thread);
-    const bool hard_timeout =
-        stop_.load(std::memory_order_relaxed) || ShouldQuit(thread);
+    const bool hard_timeout = ShouldQuit();
 
     if (print_info && (!minimal || soft_timeout) && thread.IsMainThread() &&
         !hard_timeout) {
@@ -473,7 +474,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
   }
 
-  if (ShouldQuit(thread)) {
+  if (ShouldQuit()) {
     return 0;
   }
 
@@ -737,7 +738,7 @@ Score Searcher::PVSearch(Thread &thread,
             thread, depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
         board.UndoNullMove();
 
-        if (ShouldQuit(thread)) {
+        if (ShouldQuit()) {
           return 0;
         }
 
@@ -961,7 +962,7 @@ Score Searcher::PVSearch(Thread &thread,
           thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
       stack->excluded_tt_move = Move::NullMove();
 
-      if (ShouldQuit(thread)) {
+      if (ShouldQuit()) {
         return 0;
       }
 
@@ -1113,7 +1114,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     board.UndoMove();
 
-    if (ShouldQuit(thread)) {
+    if (ShouldQuit()) {
       return 0;
     }
 
@@ -1289,7 +1290,7 @@ void Searcher::QuitThreads() {
   }
 }
 
-bool Searcher::ShouldQuit(Thread &thread) {
+bool Searcher::ShouldQuit() {
   return stop_.load(std::memory_order_relaxed);
 }
 

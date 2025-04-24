@@ -205,7 +205,7 @@ class Searcher {
                  StackEntry *stack,
                  bool cut_node);
 
-  [[nodiscard]] bool ShouldQuit(Thread &thread);
+  [[nodiscard]] bool ShouldQuit();
 
  private:
   Board &board_;

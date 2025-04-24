@@ -15,24 +15,36 @@
 #include <sys/mman.h>
 #endif
 
-inline void* alligned_alloc(size_t alignment, size_t bytes) {
-  void* ptr;
-#if defined(__MINGW32__)
-  int offset = alignment - 1;
-  void* p = reinterpret_cast<void*>(malloc(bytes + offset));
-  ptr = reinterpret_cast<void*>((reinterpret_cast<std::size_t>(p) + offset) &
-                                ~(alignment - 1));
-#elif defined(__GNUC__)
-  ptr = std::aligned_alloc(alignment, bytes);
+inline void* aligned_alloc_wrapper(size_t alignment, size_t size) {
+  void* ptr = nullptr;
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+  ptr = _aligned_malloc(size, alignment);
+  if (!ptr) throw std::bad_alloc();
+#elif defined(__APPLE__)
+  // macOS doesn't have std::aligned_alloc until C++17
+  if (posix_memalign(&ptr, alignment, size)) throw std::bad_alloc();
 #else
-  ptr = std::malloc(bytes);
+  if (size % alignment != 0) {
+    size += alignment - (size % alignment);  // pad to alignment
+  }
+  ptr = std::aligned_alloc(alignment, size);
+  if (!ptr) throw std::bad_alloc();
 #endif
 
 #if defined(__linux__)
-  madvise(ptr, bytes, MADV_HUGEPAGE);
+  madvise(ptr, size, MADV_HUGEPAGE);  // optional perf boost
 #endif
 
   return ptr;
+}
+
+inline void aligned_free(void* ptr) {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+  _aligned_free(ptr);
+#else
+  std::free(ptr);
+#endif
 }
 
 template <typename T>
@@ -46,7 +58,7 @@ class AlignedHashTable {
 
   ~AlignedHashTable() {
     if (table_) {
-      std::free(table_);
+      aligned_free(table_);
     }
   }
 
@@ -59,11 +71,11 @@ class AlignedHashTable {
     std::size_t num_elements = mb_size / sizeof(T);
     std::size_t alignment = sizeof(T);
 
-    const auto new_table =
-        static_cast<T*>(alligned_alloc(alignment, num_elements * sizeof(T)));
+    const auto new_table = static_cast<T*>(
+        aligned_alloc_wrapper(alignment, num_elements * sizeof(T)));
 
     if (table_) {
-      std::free(table_);
+      aligned_free(table_);
     }
 
     table_ = new_table;

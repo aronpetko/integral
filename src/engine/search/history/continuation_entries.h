@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_CONTINUATION_ENTRIES_H
 #define INTEGRAL_CONTINUATION_ENTRIES_H
 
-#include "../../../utils/multi_array.h"
+#include "../../../../shared/multi_array.h"
 #include "../../../utils/types.h"
 
 namespace search::history {

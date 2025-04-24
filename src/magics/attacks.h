@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_MAGICS_ATTACKS_H_
 #define INTEGRAL_MAGICS_ATTACKS_H_
 
+#include "../../shared/multi_array.h"
 #include "../chess/bitboard.h"
-#include "../utils/multi_array.h"
 
 namespace magics::attacks {
 
