@@ -125,6 +125,10 @@ class Stack {
     return stack_[idx + kPadding];
   }
 
+  [[nodiscard]] auto& Internal() {
+    return stack_;
+  }
+
  private:
   std::array<StackEntry, kMaxPlyFromRoot + kPadding> stack_;
 };
