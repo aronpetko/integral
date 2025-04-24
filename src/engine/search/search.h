@@ -114,7 +114,7 @@ struct alignas(64) Thread {
 
   void NewGame() {
     history.Clear();
-    stack.Reset();
+    stack.Reset(true);
     previous_score = kScoreNone;
   }
 

@@ -88,7 +88,7 @@ struct StackEntry {
     killer_moves.fill(Move::NullMove());
   }
 
-  explicit StackEntry(U16 ply)
+  explicit StackEntry(I32 ply)
       : ply(ply),
         static_eval(kScoreNone),
         eval(kScoreNone),
@@ -108,11 +108,24 @@ class Stack {
   static constexpr int kPadding = 4;
 
   Stack() {
-    Reset();
+    for (int i = 0; i < stack_.size(); i++) {
+      stack_[i] = StackEntry(i - kPadding);
+    }
   }
 
-  void Reset() {
-    for (int i = 0; i < stack_.size(); i++) {
+  void Reset(bool new_game = false) {
+    if (!new_game) {
+      // Shift the stack back by 1 ply, such that we maintain the last kPadding
+      // worth of information
+      std::memmove(
+          &stack_[0], &stack_[1], sizeof(StackEntry) * Stack::kPadding);
+
+      for (int i = 0; i < kPadding; i++) {
+        stack_[i].ply = i - kPadding;
+      }
+    }
+
+    for (int i = kPadding; i < stack_.size(); i++) {
       stack_[i] = StackEntry(i - kPadding);
     }
   }
@@ -125,7 +138,7 @@ class Stack {
     return stack_[idx + kPadding];
   }
 
-  [[nodiscard]] auto& Internal() {
+  [[nodiscard]] auto &Internal() {
     return stack_;
   }
 
