@@ -249,8 +249,8 @@ Score Evaluate(Board &board) {
   }
 
 #ifdef SPARSE_PERMUTE
-  // sparse::CountActivations(feature_output);
-  sparse::CountSparsity(feature_output);
+  sparse::CountActivations(feature_output);
+  // sparse::CountSparsity(feature_output);
 #endif
 
   const float kL1Normalization =
