@@ -5,8 +5,7 @@
 
 namespace tests {
 
-// clang-format off
-constexpr std::array kBenchFens = {
+const std::vector<std::string> kBenchFens = {
     "r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
     "4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
     "r3qbrk/6p1/2b2pPp/p3pP1Q/PpPpP2P/3P1B2/2PB3K/R5R1 w - - 16 42",
@@ -58,15 +57,118 @@ constexpr std::array kBenchFens = {
     "3br1k1/p1pn3p/1p3n2/5pNq/2P1p3/1PN3PP/P2Q1PB1/4R1K1 w - - 0 23",
     "2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"
 };
-// clang-format on
 
-void BenchSuite(int depth) {
+const std::vector<std::string> kSparsityFens = {
+    "3kr3/3b2Q1/1qn1pr2/p1bp2N1/2n2P2/P1P3PB/3B3P/RN2K2R b - - 0 1 [0.0]",
+    "8/b7/8/1P1K1k1p/2P5/5P1P/7B/8 b - - 0 1 [1.0]",
+    "r2qrnk1/pp2bp1p/2n3pB/2p1p3/3pP3/P2P1NNP/1PP1QPP1/R4RK1 b - - 0 1 [0.5]",
+    "1r1n3b/3r1k1p/q2Pppp1/p1P5/PpN2B2/1P4P1/5P1P/3RR1K1 w - - 0 1 [0.0]",
+    "4r2k/1p3pp1/p1r3b1/4p2p/4P3/P1P2P1P/1P4PN/1R4K1 w - - 0 1 [0.0]",
+    "8/7P/5p2/8/5k2/6r1/3R4/5K2 b - - 0 1 [0.5]",
+    "rn1q1r2/1b2ppk1/2p2np1/pp2P2p/7P/2NB1N2/PPPQ1PP1/2KR3R b - - 0 1 [1.0]",
+    "rn2qrk1/pbpp1p1p/1p2p1pb/3nP3/3P4/2P2NPP/PPQN1PB1/R3R1K1 w - - 0 1 [1.0]",
+    "r1bq1rk1/1pp2ppp/n2b1n2/p2P4/2PB4/P1N4P/1P1Q1PP1/RB3RK1 b - - 0 2 [0.0]",
+    "4q1k1/1Q3ppb/4r2p/3pB3/1P2nP2/r3P1P1/6BP/2RR2K1 w - - 0 2 [1.0]",
+    "r1br2k1/p7/2pp3B/2p2p2/8/2PB1P2/P1K4P/R3R3 b - - 0 5 [1.0]",
+    "8/B5p1/nNp4b/5k1p/P3p2P/2P3P1/8/3K4 w - - 0 1 [0.5]",
+    "1r3rk1/2q2pp1/3b3p/p2N1Bn1/2pP2K1/PPP2P1P/5P2/R1BQ1R2 b - - 0 1 [1.0]",
+    "4r3/1p4pk/2pN1p2/R1P1n2p/P3p2P/1P2P1P1/5PK1/8 b - - 0 1 [1.0]",
+    "4r3/k5P1/6K1/6P1/8/8/8/8 w - - 0 1 [1.0]",
+    "5k2/p4pp1/1p5p/2r5/P4P2/6PP/8/2R4K w - - 0 3 [0.0]",
+    "r5k1/p4ppp/4bn2/8/1P6/4B3/5PPP/2R1R1K1 b - - 0 1 [1.0]",
+    "5rk1/5pp1/p6p/2qn1P2/8/1R2p1P1/P6P/1K6 w - - 0 1 [0.0]",
+    "8/8/4pp1k/8/5pP1/Pr3P1K/8/8 w - - 0 1 [0.0]",
+    "1r4kr/8/p2p1p2/P1pP4/2Pb2B1/1P3RPp/2K4P/4R3 w - - 0 1 [1.0]",
+    "8/5kp1/7p/2p2K1P/nr3P2/3Q2P1/8/8 w - - 0 1 [1.0]",
+    "4k2r/3r1p2/p1Q1p1p1/3qP3/P7/6pP/2Pb2P1/3R1R1K w - - 0 1 [0.0]",
+    "3r3k/7p/5p1P/1p2p1p1/p3N1P1/R1P2r2/8/K1R1Q3 b - - 0 1 [1.0]",
+    "3r2k1/5pp1/2p2n1p/1p2pP2/rP2P1P1/2PBR2P/5K2/1R6 b - - 0 1 [0.5]",
+    "2r2rk1/1p1b1npp/p3p3/3p1p2/P2P4/1P2qPNP/Q1B3PK/R2R4 w - - 0 1 [0.0]",
+    "2r3k1/1p3p1p/p3p1pP/3b4/PP6/8/5PP1/3R2K1 b - - 0 1 [0.0]",
+    "2r3k1/1p1N1p2/p3pP2/P3P3/1K2P3/2B4p/5b2/8 w - - 0 1 [0.0]",
+    "5rk1/pp1b1pq1/3b2n1/4p1NQ/2rpP3/7P/PP3PP1/RB3RK1 b - - 0 1 [0.0]",
+    "5r1k/6pp/3B1p2/4p1q1/P2P4/4N2P/1r3PP1/4RRK1 b - - 0 2 [0.5]",
+    "8/2p2p1p/5Pp1/4k1P1/1K5P/p7/8/5R2 b - - 0 2 [1.0]",
+    "6k1/p4pp1/3R4/p7/4K3/1r1N2Pb/8/8 w - - 0 1 [0.5]",
+    "r3r1k1/ppn1qppp/5n2/3p4/2pP2PP/P1N1PPB1/1P1QN3/2KR3R b - - 0 1 [1.0]",
+    "r2qr1k1/p1pn1ppp/1p1ppb2/8/2PP4/1P2PN2/PBQ2PPP/R4RK1 w - - 0 1 [0.5]",
+    "3r2k1/ppp4p/4p1p1/5q2/3b4/5N2/PP3PPP/4R1K1 w - - 0 1 [0.0]",
+    "r1bqk2r/pppp1pp1/3b3p/1B1n4/Q2P4/5N2/PP3PPP/R1B2RK1 w kq - 0 1 [0.5]",
+    "2r3k1/5R2/pp4p1/2n4p/P2q2n1/1PN5/1BP4P/5Q1K b - - 0 1 [0.5]",
+    "4r1k1/1p1b1p2/3p2p1/P1pP2q1/1pPb4/1Q6/1P3PN1/R2B2K1 w - - 0 1 [0.0]",
+    "8/p2rp2p/1p6/2p3P1/5Bk1/P1P1Rb2/1P3P2/4K3 w - - 0 1 [0.0]",
+    "8/p2k4/1p4KP/1P6/2Pp1B1r/3P4/8/8 w - - 0 1 [1.0]",
+    "6k1/pp3p2/2p1b3/4P3/3r4/8/PP4KP/8 w - - 0 3 [0.0]",
+    "r1b2rk1/q3bpp1/p1P2n1p/2p5/PpN5/1B3N2/1P2QPPP/R1BR2K1 b - - 0 1 [1.0]",
+    "r3k1nr/ppp3pp/2nb4/1q4N1/7P/4P3/PPPP1Q2/R1BK4 b kq - 0 1 [0.0]",
+    "2k4r/pp4pp/6b1/2b2pq1/8/2PpP2P/PP1N1Q2/2K1R2R w - - 0 2 [0.5]",
+    "3kr3/1p6/p4R2/P1qP2n1/2P1p1P1/7p/1P5P/5B1K b - - 0 1 [0.0]",
+    "2b5/4qk2/pBp5/P1P1p3/4Ppp1/2Q2P2/6P1/7K w - - 0 1 [0.0]",
+    "3r2k1/5p2/1pq3pp/2b1R3/p2p1P2/P2Q2P1/1P1B1P1P/6K1 w - - 0 1 [0.5]",
+    "r2q1rk1/pbpnbppp/1p6/3p4/3P1B2/2RBPN2/PP3PPP/3Q1RK1 b - - 0 1 [0.0]",
+    "8/8/4k1p1/5p1p/2r2P1P/5PK1/8/8 w - - 0 1 [0.0]",
+    "5bk1/5rp1/pn4Np/2p5/4RB2/2P4P/r4PP1/3R2K1 w - - 0 1 [1.0]",
+    "3qkb1r/p2p1p2/b4n2/2p1nN1p/1p1p2p1/6P1/PPPBNPBP/R2Q1RK1 b - - 0 1 [1.0]",
+    "7B/1k1n1r2/p1pnr1RR/6P1/1P5K/4pB2/5P2/8 b - - 0 1 [0.0]",
+    "r3k2r/pp3pp1/4p1n1/4n2p/4R2P/2P5/PP3PP1/RN4K1 b kq - 0 2 [0.0]",
+    "rnbqr1k1/1p5n/p2p2pp/3P1p2/P1NpP3/2NB1P2/1P4PP/R2QK2R w KQ - 0 1 [1.0]",
+    "8/8/5kp1/6p1/2B3P1/p6P/1b3P2/5K2 w - - 0 1 [0.5]",
+    "4k3/8/2n2p2/1P6/8/2N4B/5P1P/6K1 b - - 0 1 [1.0]",
+    "8/2PR2bk/2r3p1/1p2p2p/7P/6P1/5BK1/8 b - - 0 1 [0.5]",
+    "8/7p/3p2p1/1p1Pp1k1/8/7Q/5qPP/4r1RK w - - 0 1 [0.0]",
+    "5k2/1P6/p7/8/1r6/3R1PbP/8/5BK1 w - - 0 3 [0.5]",
+    "2r2rk1/1b1n1pb1/pq4pp/1p2P3/2pP1P2/6N1/PP1N1RPP/5QK1 w - - 0 1 [0.0]",
+    "r3r1k1/ppp2p1p/3p1Q2/4p3/2P1P3/7P/PbP2PP1/R3K2R w KQ - 0 4 [1.0]",
+    "1R6/6pk/8/3p1p2/5P2/8/2r2P1K/8 w - - 0 1 [0.5]",
+    "8/4k3/5p2/pP2pBbK/7p/1P1P4/8/8 w - - 0 1 [0.5]",
+    "8/7B/8/3N2p1/2k5/2p4r/4K3/8 w - - 0 1 [0.0]",
+    "3r1rk1/1p4pp/2n5/p7/1p1p4/1Pn2qP1/P1R2P1P/2R1QBK1 w - - 0 1 [0.0]",
+    "5rrk/1pN1b3/p6p/2P1n1q1/1P2P3/5pPP/5P2/R3R1K1 w - - 0 1 [0.0]",
+    "6kr/2pb3q/1p1p1p1r/pP1Pp1p1/2P1PnP1/P3NBB1/3R3P/4Q1K1 b - - 0 1 [0.0]",
+    "r1bq1rk1/2p2ppn/p2p3p/1p1P4/4PBP1/2N4P/PPP1B3/1K1RQ3 b - - 0 2 [0.0]",
+    "7k/ppp3b1/3p3p/3P1rpQ/2P1p3/1P5P/P3N1P1/R5K1 w - - 0 2 [1.0]",
+    "8/2r2pk1/4p2p/p7/8/K7/1R3P2/8 w - - 0 1 [0.0]",
+    "r1br2k1/ppp1qpbp/4p1p1/8/P1P1QB2/2Pn3P/1P3PP1/RN3RK1 w - - 0 1 [0.0]",
+    "4b3/4Q3/1k1p4/2pP1K2/1pP5/3B2P1/8/2q5 b - - 0 1 [1.0]",
+    "2k3r1/3pnp1r/pp1bpB2/2p5/2B1N3/3P3P/PPP2K2/4RR2 b - - 0 1 [1.0]",
+    "7R/1p3pp1/4p1b1/8/2P1kb2/8/1PP2PK1/8 w - - 0 3 [0.0]",
+    "3r4/1b2k3/p3ppB1/2Pp2p1/1P4P1/8/P4P1r/1R1R1K2 w - - 0 1 [0.5]",
+    "6k1/p1Bn1p2/2b4p/6p1/4P3/5PP1/P1R4P/5BK1 b - - 0 1 [1.0]",
+    "2r2rk1/1p3ppp/p4q2/8/2bnP2P/2NB4/PPP5/1K1R3R w - - 0 1 [0.0]",
+    "B5k1/4p2p/3pp1p1/1P6/1R1b4/3P2PP/3QPP2/6K1 b - - 0 1 [1.0]",
+    "r4rk1/5ppp/p7/8/2B5/5q2/PP3P1P/2RR2K1 w - - 0 3 [0.0]",
+    "5k2/8/6p1/r5Pp/8/4pP2/8/2R4K w - - 0 2 [1.0]",
+    "4R3/1pr2ppk/p7/P2P4/1q5p/7P/5P2/Q4K2 w - - 0 1 [0.5]",
+    "8/5p1k/5P1p/5R2/p3P1P1/2P4P/PP2B3/4R1K1 b - - 0 1 [1.0]",
+    "2rr3k/pp3p1p/2q5/8/5P2/2nPp1PP/PQ2P3/2R2RK1 w - - 0 1 [0.0]",
+    "5n2/2k3b1/p2p3p/1ppBp1p1/4P1N1/P3B1PP/1PP5/6K1 b - - 0 5 [1.0]",
+    "r2qr1k1/1bpp1p2/1pn3p1/p7/2P1P1p1/P1N3P1/1PQB2PP/2R2RK1 b - - 0 1 [1.0]",
+    "3n1Q2/7k/6b1/8/3B4/P3K2P/8/8 b - - 0 1 [1.0]",
+    "4k3/1R6/3P1np1/8/2N1pp1p/7P/5KP1/8 b - - 0 1 [1.0]",
+    "8/5p2/p5kr/2pPpp2/P1P5/1r6/1P2R1KP/6R1 w - - 0 3 [0.0]",
+    "1qb1rbk1/7p/p4p2/1p1P1Pp1/2pB4/6P1/P4PBP/1Q1R2K1 b - - 0 1 [0.5]",
+    "2r5/kp5Q/p1r2p2/4p3/3pP1P1/P2P3P/1Pq2P2/3RK1R1 w - - 0 1 [0.0]",
+    "r3r3/1pq2pk1/p1pb1pBp/1P1p4/3P2b1/2N1PN2/P1Q2PPP/1R3RK1 w - - 0 1 [1.0]",
+    "8/1R4p1/p7/8/5P2/2k3Kp/8/7r b - - 0 1 [0.0]",
+    "5r2/5k1p/p3p3/6P1/1P5P/P2PK1P1/2R5/8 b - - 0 1 [1.0]",
+    "8/6k1/7p/8/8/7P/2q5/K7 b - - 0 1 [0.0]",
+    "r1b1k2r/p1pp1p1p/1p2p3/3n4/1b1P1P2/1P5q/P1P1KR1P/RNB5 b kq - 0 1 [0.0]",
+    "8/2Q5/4p3/3k2P1/8/7p/8/3K2br w - - 0 1 [1.0]",
+    "r1b2rk1/1pQ2p1p/p5p1/3PN1qn/8/2N4P/PPPR2P1/2K4R b - - 0 1 [1.0]",
+    "r1b2rk1/ppp2pp1/3p3p/6q1/2PNP1n1/2PB4/P2Q1PPP/2KR3R b - - 0 2 [0.0]",
+    "8/4k1pr/1r1p1n2/4p1R1/p3P3/P1PPP3/1P6/2K1R3 w - - 0 1 [0.0]",
+    "2n3k1/5pp1/1qp1p1p1/pN2P3/1r3PP1/1P1Q3P/7K/3R4 w - - 0 2 [0.5]",
+    "8/2K5/8/2R5/4k3/Pp6/3r4/8 w - - 0 1 [0.5]",
+    "5k2/2q2ppp/p3p1b1/bp1pP3/2rN1P2/2P5/P2Q2PP/3R1R1K w - - 0 2 [1.0]"};
+
+void BenchSuite(int depth, bool sparsity_fens) {
   Board board;
   search::Searcher searcher(board);
   searcher.ResizeHash(64);
 
   U64 nodes = 0, elapsed = 0;
-  for (const auto &position : kBenchFens) {
+  const auto fens = sparsity_fens ? kSparsityFens : kBenchFens;
+  for (const auto &position : fens) {
     board.SetFromFen(position);
     searcher.NewGame();
 

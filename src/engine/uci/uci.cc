@@ -201,7 +201,7 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   listener.RegisterCommand("permute", CommandType::kUnordered, {
     CreateArgument("out", ArgumentType::kRequired, LimitedInputProcessor<1>()),
   }, [](Command *cmd) {
-    tests::BenchSuite(13);
+    tests::BenchSuite(tests::kDefaultBenchDepth, true);
     nnue::sparse::SavePermutedNetwork(*cmd->ParseArgument<std::string>("out"));
   });
 

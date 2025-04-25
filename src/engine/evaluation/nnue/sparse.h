@@ -43,10 +43,9 @@ inline MultiArray<int, kHalfL1, kHalfL1> activations{};
 static void CountActivations(
     const std::array<U8, arch::kL1Size>& feature_output) {
   for (int i = 0; i < arch::kL1Size; ++i) {
+    if (!feature_output[i]) continue;
     for (int j = 0; j < arch::kL1Size; ++j) {
-      if (feature_output[i] > 0 && feature_output[j] > 0) {
-        activations[i % kHalfL1][j % kHalfL1]++;
-      }
+      activations[i % kHalfL1][j % kHalfL1] += feature_output[j] > 0;
     }
   }
 }

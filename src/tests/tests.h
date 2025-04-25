@@ -17,7 +17,7 @@ namespace tests {
 
 constexpr int kDefaultBenchDepth = 12;
 
-void BenchSuite(int depth);
+void BenchSuite(int depth, bool sparsity_fens = false);
 
 void SEESuite();
 

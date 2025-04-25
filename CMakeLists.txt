@@ -21,7 +21,7 @@ option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
-set(NETWORK_NAME zekrom)
+set(NETWORK_NAME zekrom-sparser)
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/releases/download/${NETWORK_NAME}/${NETWORK_NAME}.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/${NETWORK_NAME}.nnue")
@@ -49,7 +49,7 @@ endif ()
 
 # Option for preparing the network to sparse permute neurons (requires turning off AVX)
 option(SPARSE_PERMUTE OFF)
-set(SPARSE_PERMUTE ON)
+set(SPARSE_PERMUTE OFF)
 if (SPARSE_PERMUTE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPARSE_PERMUTE")
 endif ()

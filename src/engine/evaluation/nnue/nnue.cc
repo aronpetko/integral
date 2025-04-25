@@ -204,7 +204,7 @@ Score Evaluate(Board &board) {
     }
   }
 
-  std::array<float, arch::kL3Size> l2_output{};
+  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output{};
   for (int i = 0; i < arch::kL3Size; i += kF32ChunkSize) {
     const auto &sum_vector = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[i]);
     auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
@@ -216,7 +216,7 @@ Score Evaluate(Board &board) {
   constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
   const auto zero_ps = simd::SetPs(0.0f);
 
-  std::array<simd::Vepf32, kResultChunks> result_sums;
+  alignas(simd::kAlignment) std::array<simd::Vepf32, kResultChunks> result_sums;
   result_sums.fill(zero_ps);
 
   for (int i = 0; i < arch::kL3Size / kF32ChunkSize; i += kResultChunks) {
@@ -249,8 +249,8 @@ Score Evaluate(Board &board) {
   }
 
 #ifdef SPARSE_PERMUTE
-  sparse::CountActivations(feature_output);
-  // sparse::CountSparsity(feature_output);
+  //sparse::CountActivations(feature_output);
+  sparse::CountSparsity(feature_output);
 #endif
 
   const float kL1Normalization =
