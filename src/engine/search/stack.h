@@ -125,7 +125,7 @@ class Stack {
       }
     }
 
-    for (int i = kPadding; i < stack_.size(); i++) {
+    for (int i = new_game ? 0 : kPadding; i < stack_.size(); i++) {
       stack_[i] = StackEntry(i - kPadding);
     }
   }
