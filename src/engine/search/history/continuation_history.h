@@ -20,7 +20,7 @@ class ContinuationHistory {
     UpdateMoveScore(state, stack->move, bonus, stack);
 
     // Lower the score of the quiet moves that failed to raise alpha
-    const I16 penalty = HistoryPenalty(depth);
+    const I16 penalty = HistoryPenalty(depth) - 32 * quiets.Size();
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
       UpdateMoveScore(state, quiets[i], penalty, stack);

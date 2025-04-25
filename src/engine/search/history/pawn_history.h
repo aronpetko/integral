@@ -32,7 +32,7 @@ class PawnHistory {
     UpdateMoveScore(state, stack->move, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
-    const I16 penalty = HistoryPenalty(depth);
+    const I16 penalty = HistoryPenalty(depth) - 32 * quiets.Size();
     for (int i = 0; i < quiets.Size(); i++) {
       UpdateMoveScore(state, quiets[i], penalty);
     }
