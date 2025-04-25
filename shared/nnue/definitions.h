@@ -35,7 +35,7 @@ struct RawNetwork {
   MultiArray<float, arch::kOutputBucketCount> l3_biases;
 };
 
-struct alignas(simd::kAlignment) Network {
+struct Network {
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
   union {

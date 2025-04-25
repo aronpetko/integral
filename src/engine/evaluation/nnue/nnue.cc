@@ -234,7 +234,6 @@ Score Evaluate(Board &board) {
       simd::ReduceAddPs(result_sums.data()) + network->l3_biases[bucket];
 
   return static_cast<Score>(l3_output * arch::kEvalScale);
-
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
   std::array<U8, arch::kL1Size> feature_output{};
@@ -250,7 +249,8 @@ Score Evaluate(Board &board) {
   }
 
 #ifdef SPARSE_PERMUTE
-  sparse::CountActivations(feature_output);
+  // sparse::CountActivations(feature_output);
+  sparse::CountSparsity(feature_output);
 #endif
 
   const float kL1Normalization =
