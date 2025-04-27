@@ -885,7 +885,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce based on the history score of this move
       if (is_quiet) {
-        reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
+        reduction -= stack->history_score * kLmrDepthHistQuiet / kLmrHistDiv;
       }
 
       // Reduce more if our static evaluation is going down
