@@ -681,6 +681,12 @@ Score Searcher::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+    const auto opponent_gain = -(stack->static_eval + prev_stack->static_eval);
+    if ((stack - 1)->reduction >= 2048 && !prev_stack->in_check &&
+        opponent_gain >= 10) {
+      depth++;
+    }
+
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -1066,6 +1072,8 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      stack->reduction = reduction;
+
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
@@ -1075,6 +1083,8 @@ Score Searcher::PVSearch(Thread &thread,
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+
+      stack->reduction = 0;
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
