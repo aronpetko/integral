@@ -83,6 +83,14 @@ class PerspectiveAccumulator {
     }
   }
 
+  I16 const* GetFeaturePointer(Color perspective,
+                  Square king_square,
+                  Square square,
+                  PieceType piece,
+                  Color piece_color) {
+    return GetFeatureTable(square, king_square, piece, piece_color, perspective).data();
+  }
+
   void AddFeature(Color perspective,
                   Square king_square,
                   Square square,
@@ -280,8 +288,8 @@ class Accumulator {
     }
   }
 
-  void RefreshPerspective(AccumulatorEntry& accumulator,
-                          const BoardState& state,
+  void RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
+                          const BoardState& __restrict__ state,
                           Color perspective,
                           bool reset = false) {
     const auto king_square = Square(state.King(perspective).GetLsb());
@@ -297,6 +305,11 @@ class Accumulator {
     // Instead of refreshing this perspective's accumulator from zero pieces, we
     // reset from the pieces of the last accumulator update in this bucket. This
     // is an optimization trick known as "Finny Tables".
+    I16 const* adds[32];
+    int num_adds = 0;
+    I16 const* subs[32];
+    int num_subs = 0;
+    auto &acc =  cached.accumulator.perspectives[perspective];
     for (const Color color : {Color::kBlack, Color::kWhite}) {
       for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
         const BitBoard old_pieces = cached.piece_bbs[perspective][piece] &
@@ -307,24 +320,58 @@ class Accumulator {
         // Calculate difference of features to remove
         const BitBoard to_remove = ~new_pieces & old_pieces;
         for (Square square : to_remove) {
-          cached.accumulator.perspectives[perspective].SubFeature(
-              perspective,
-              king_square,
-              square,
-              static_cast<PieceType>(piece),
-              color);
+          subs[num_subs++] = acc.GetFeaturePointer(
+            perspective,
+            king_square,
+            square,
+            static_cast<PieceType>(piece),
+            color
+          );
         }
 
         // Calculate difference of features to add
         const BitBoard to_add = new_pieces & ~old_pieces;
         for (Square square : to_add) {
-          cached.accumulator.perspectives[perspective].AddFeature(
-              perspective,
-              king_square,
-              square,
-              static_cast<PieceType>(piece),
-              color);
+          adds[num_adds++] = acc.GetFeaturePointer(
+            perspective,
+            king_square,
+            square,
+            static_cast<PieceType>(piece),
+            color
+          );
         }
+      }
+    }
+    for (; num_adds >= 4; num_adds -= 4) {
+      for (int i = 0; i < arch::kL1Size; ++i) {
+        acc[i] += 
+          adds[num_adds - 4][i] +
+          adds[num_adds - 3][i] +
+          adds[num_adds - 2][i] +
+          adds[num_adds - 1][i];
+      }
+    } 
+    for (; num_adds >= 1; num_adds -= 1) {
+      for (int i = 0; i < arch::kL1Size; ++i) {
+        acc[i] += 
+          adds[num_adds - 1][i];
+      }
+    }
+
+
+    for (; num_subs >= 4; num_subs -= 4) {
+      for (int i = 0; i < arch::kL1Size; ++i) {
+        acc[i] -= 
+          subs[num_subs - 4][i] +
+          subs[num_subs - 3][i] +
+          subs[num_subs - 2][i] +
+          subs[num_subs - 1][i];
+      }
+    } 
+    for (; num_subs >= 1; num_subs -= 1) {
+      for (int i = 0; i < arch::kL1Size; ++i) {
+        acc[i] -= 
+          subs[num_subs - 1][i];
       }
     }
 
