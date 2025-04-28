@@ -682,8 +682,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const auto opponent_gain = -(stack->static_eval + prev_stack->static_eval);
-    if ((stack - 1)->reduction >= 2048 && !prev_stack->in_check &&
-        opponent_gain >= 10) {
+    if (prev_stack->reduction >= 3000 && opponent_gain >= 10) {
       depth++;
     }
 
