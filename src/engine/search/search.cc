@@ -241,7 +241,13 @@ Score Searcher::QuiescentSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
-  stack->pv.Clear();
+  // A principal variation (PV) node falls inside the [alpha, beta] window and
+  // is one which has most of its child moves searched
+  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+
+  if (in_pv_node) {
+    stack->pv.Clear();
+  }
 
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
@@ -254,10 +260,6 @@ Score Searcher::QuiescentSearch(Thread &thread,
   }
 
   stack->in_check = state.InCheck();
-
-  // A principal variation (PV) node falls inside the [alpha, beta] window and
-  // is one which has most of its child moves searched
-  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
 
   // Probe the transposition table to see if we have already evaluated this
   // position
@@ -464,8 +466,6 @@ Score Searcher::PVSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
-  stack->pv.Clear();
-
   static thread_local int counter = 0;
   if (thread.IsMainThread() && (++counter & 4095) == 0) {
     counter = 0;
@@ -478,17 +478,21 @@ Score Searcher::PVSearch(Thread &thread,
     return 0;
   }
 
-  if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
-  }
-
-  thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
-
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
   // The root node is also a PV node by default
   const bool in_root = stack->ply == 0;
+
+  if (in_pv_node) {
+    stack->pv.Clear();
+  }
+
+  if (stack->ply >= kMaxPlyFromRoot) {
+    return eval::Evaluate(board);
+  }
+
+  thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
   // If the position has a move that causes a repetition, and we are losing,
   // then we can cut off early since we can secure a draw
