@@ -30,7 +30,7 @@ struct NnzEntry {
   return table;
 }
 
-constexpr auto nnz_table = GenerateNnzTable();
+alignas(simd::kAlignment) constexpr auto nnz_table = GenerateNnzTable();
 
 #ifdef SPARSE_PERMUTE
 //  This is the array where we keep track of the number of pair-wise activated
