@@ -62,10 +62,9 @@ Searcher::~Searcher() {
 
 template <SearchType type>
 void Searcher::IterativeDeepening(Thread &thread) {
-  constexpr bool print_info = type == SearchType::kRegular;
+  constexpr bool regular_search = type == SearchType::kRegular;
 
   const auto root_stack = &thread.stack.Front();
-
   thread.root_moves = RootMoveList(thread.board);
 
   const int multi_pv =
@@ -75,7 +74,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
   std::unique_ptr<uci::reporter::ReportInfo> report_info;
   if (thread.IsMainThread()) {
-    if (uci::reporter::using_uci) {
+    if (uci::reporter::using_uci || !regular_search) {
       report_info = std::make_unique<uci::reporter::UCIReportInfo>();
     } else {
       report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
@@ -148,13 +147,14 @@ void Searcher::IterativeDeepening(Thread &thread) {
         time_mgmt_.ShouldStop(best_move.move, depth, thread);
     const bool hard_timeout = ShouldQuit();
 
-    if (print_info && (!minimal || soft_timeout) && thread.IsMainThread() &&
-        !hard_timeout) {
+    if ((regular_search || depth == time_mgmt_.GetSearchDepth()) &&
+        (!minimal || soft_timeout) && thread.IsMainThread() && !hard_timeout) {
       for (int i = 0; i < multi_pv; ++i) {
         auto &pv_move = thread.root_moves[i];
 
         const bool is_mate = eval::IsMateScore(pv_move.score);
-        const auto nodes_searched = GetNodesSearched();
+        const auto nodes_searched =
+            regular_search ? GetNodesSearched() : thread.nodes_searched.load();
         report_info->Print(depth,
                            thread.sel_depth,
                            is_mate,
@@ -203,7 +203,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
     // Age the transposition table to recognize TT entries from past searches
     transposition_table_.Age();
 
-    if (print_info) {
+    if (regular_search) {
       fmt::println(
           "bestmove {}",
           !thread.root_moves.Empty() ? best_move.move.ToString() : "0000");
@@ -1347,12 +1347,12 @@ std::pair<Score, Move> Searcher::DataGenStart(std::unique_ptr<Thread> &thread,
                                               TimeConfig time_config) {
   stop_.store(false, std::memory_order_relaxed);
 
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
   // The thread's board gets directly modified, so we don't need to call
   // SetBoard
   thread->Reset();
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
 
   IterativeDeepening<SearchType::kBench>(*thread);
 
@@ -1363,16 +1363,15 @@ std::pair<Score, Move> Searcher::DataGenStart(std::unique_ptr<Thread> &thread,
           best_move.move};
 }
 
-U64 Searcher::Bench(int depth) {
+U64 Searcher::Bench(std::unique_ptr<Thread> &thread, int depth) {
+  stop_.store(false, std::memory_order_seq_cst);
+
+  thread->Reset();
+  thread->SetBoard(board_);
+
   TimeConfig config{.depth = depth};
   time_mgmt_.SetConfig(config);
   time_mgmt_.Start();
-
-  stop_.store(false, std::memory_order_seq_cst);
-
-  auto thread = std::make_unique<Thread>(0);
-  thread->Reset();
-  thread->SetBoard(board_);
 
   IterativeDeepening<SearchType::kBench>(*thread);
   return thread->nodes_searched;
