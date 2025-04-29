@@ -305,11 +305,11 @@ class Accumulator {
     // Instead of refreshing this perspective's accumulator from zero pieces, we
     // reset from the pieces of the last accumulator update in this bucket. This
     // is an optimization trick known as "Finny Tables".
-    I16 const* adds[32];
+    std::array<I16 const*, 32> adds;
     int num_adds = 0;
-    I16 const* subs[32];
+    std::array<I16 const*, 32> subs;
     int num_subs = 0;
-    auto &acc =  cached.accumulator.perspectives[perspective];
+    auto &perspective_accumulator = cached.accumulator.perspectives[perspective];
     for (const Color color : {Color::kBlack, Color::kWhite}) {
       for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
         const BitBoard old_pieces = cached.piece_bbs[perspective][piece] &
@@ -320,7 +320,7 @@ class Accumulator {
         // Calculate difference of features to remove
         const BitBoard to_remove = ~new_pieces & old_pieces;
         for (Square square : to_remove) {
-          subs[num_subs++] = acc.GetFeaturePointer(
+          subs[num_subs++] = perspective_accumulator.GetFeaturePointer(
             perspective,
             king_square,
             square,
@@ -332,7 +332,7 @@ class Accumulator {
         // Calculate difference of features to add
         const BitBoard to_add = new_pieces & ~old_pieces;
         for (Square square : to_add) {
-          adds[num_adds++] = acc.GetFeaturePointer(
+          adds[num_adds++] = perspective_accumulator.GetFeaturePointer(
             perspective,
             king_square,
             square,
@@ -344,7 +344,7 @@ class Accumulator {
     }
     for (; num_adds >= 4; num_adds -= 4) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        acc[i] += 
+        perspective_accumulator[i] += 
           adds[num_adds - 4][i] +
           adds[num_adds - 3][i] +
           adds[num_adds - 2][i] +
@@ -353,7 +353,7 @@ class Accumulator {
     } 
     for (; num_adds >= 1; num_adds -= 1) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        acc[i] += 
+        perspective_accumulator[i] += 
           adds[num_adds - 1][i];
       }
     }
@@ -361,7 +361,7 @@ class Accumulator {
 
     for (; num_subs >= 4; num_subs -= 4) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        acc[i] -= 
+        perspective_accumulator[i] -= 
           subs[num_subs - 4][i] +
           subs[num_subs - 3][i] +
           subs[num_subs - 2][i] +
@@ -370,7 +370,7 @@ class Accumulator {
     } 
     for (; num_subs >= 1; num_subs -= 1) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        acc[i] -= 
+        perspective_accumulator[i] -= 
           subs[num_subs - 1][i];
       }
     }
