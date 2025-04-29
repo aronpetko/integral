@@ -154,8 +154,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
         auto &pv_move = thread.root_moves[i];
 
         const bool is_mate = eval::IsMateScore(pv_move.score);
-        const auto nodes_searched =
-            regular_search ? GetNodesSearched() : thread.nodes_searched.load();
+        const auto nodes_searched = GetNodesSearched();
         report_info->Print(depth,
                            thread.sel_depth,
                            is_mate,
