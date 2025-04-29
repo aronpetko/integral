@@ -4,6 +4,7 @@
 #include <numeric>
 #include <thread>
 
+#include "../../data_gen/data_gen.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -147,8 +148,8 @@ void Searcher::IterativeDeepening(Thread &thread) {
         time_mgmt_.ShouldStop(best_move.move, depth, thread);
     const bool hard_timeout = ShouldQuit();
 
-    if ((regular_search || depth == time_mgmt_.GetSearchDepth()) &&
-        (!minimal || soft_timeout) && thread.IsMainThread() && !hard_timeout) {
+    if (regular_search && (!minimal || soft_timeout) && thread.IsMainThread() &&
+        !hard_timeout) {
       for (int i = 0; i < multi_pv; ++i) {
         auto &pv_move = thread.root_moves[i];
 
