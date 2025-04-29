@@ -165,7 +165,7 @@ class Searcher {
   std::pair<Score, Move> DataGenStart(std::unique_ptr<Thread> &thread,
                                       TimeConfig time_config);
 
-  U64 Bench(int depth);
+  U64 Bench(std::unique_ptr<Thread> &thread, int depth);
 
   void Stop();
 

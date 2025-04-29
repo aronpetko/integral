@@ -10,7 +10,7 @@ using ContinuationEntry =
     MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount>;
 
 using ContinuationCorrectionEntry =
-    MultiArray<Score, kNumColors, kNumPieceTypes, kSquareCount>;
+    MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount>;
 
 }
 

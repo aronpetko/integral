@@ -45,7 +45,9 @@ static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
                                                        PieceType piece,
                                                        Color piece_color,
                                                        Color perspective) {
-  square = square ^ ((king_square.File() >= kFileE) * 0b111);
+  if (king_square.File() >= kFileE) {
+    square = square ^ 0b111;
+  }
 
   const int relative_king_square = king_square ^ (56 * perspective);
   const int king_bucket_idx = kKingBucketMap[relative_king_square];
@@ -84,11 +86,12 @@ class PerspectiveAccumulator {
   }
 
   I16 const* GetFeaturePointer(Color perspective,
-                  Square king_square,
-                  Square square,
-                  PieceType piece,
-                  Color piece_color) {
-    return GetFeatureTable(square, king_square, piece, piece_color, perspective).data();
+                               Square king_square,
+                               Square square,
+                               PieceType piece,
+                               Color piece_color) {
+    return GetFeatureTable(square, king_square, piece, piece_color, perspective)
+        .data();
   }
 
   void AddFeature(Color perspective,
@@ -244,11 +247,11 @@ class PerspectiveAccumulator {
   }
 
  private:
-  alignas(64) std::array<I16, arch::kL1Size> values_;
+  alignas(simd::kAlignment) std::array<I16, arch::kL1Size> values_;
 };
 
 struct AccumulatorEntry {
-  alignas(64) std::array<PerspectiveAccumulator, 2> perspectives;
+  alignas(simd::kAlignment) std::array<PerspectiveAccumulator, 2> perspectives;
   AccumulatorChange change;
   std::array<Square, 2> kings;
   std::array<bool, 2> updated;
@@ -256,9 +259,9 @@ struct AccumulatorEntry {
 };
 
 struct BucketCacheEntry {
+  AccumulatorEntry accumulator;
   MultiArray<BitBoard, 2, kNumPieceTypes> piece_bbs{};
   MultiArray<BitBoard, 2, kNumColors> side_bbs{};
-  AccumulatorEntry accumulator;
 
   BucketCacheEntry() {
     Reset();
@@ -275,7 +278,7 @@ struct BucketCacheEntry {
 class Accumulator {
  public:
   Accumulator() : head_idx_(0) {
-    stack_.resize(2048);
+    stack_.resize(512);
   }
 
   void SetFromState(const BoardState& state) {
@@ -309,7 +312,8 @@ class Accumulator {
     int num_adds = 0;
     std::array<I16 const*, 32> subs;
     int num_subs = 0;
-    auto &perspective_accumulator = cached.accumulator.perspectives[perspective];
+    auto& perspective_accumulator =
+        cached.accumulator.perspectives[perspective];
     for (const Color color : {Color::kBlack, Color::kWhite}) {
       for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
         const BitBoard old_pieces = cached.piece_bbs[perspective][piece] &
@@ -321,57 +325,51 @@ class Accumulator {
         const BitBoard to_remove = ~new_pieces & old_pieces;
         for (Square square : to_remove) {
           subs[num_subs++] = perspective_accumulator.GetFeaturePointer(
-            perspective,
-            king_square,
-            square,
-            static_cast<PieceType>(piece),
-            color
-          );
+              perspective,
+              king_square,
+              square,
+              static_cast<PieceType>(piece),
+              color);
         }
 
         // Calculate difference of features to add
         const BitBoard to_add = new_pieces & ~old_pieces;
         for (Square square : to_add) {
           adds[num_adds++] = perspective_accumulator.GetFeaturePointer(
-            perspective,
-            king_square,
-            square,
-            static_cast<PieceType>(piece),
-            color
-          );
+              perspective,
+              king_square,
+              square,
+              static_cast<PieceType>(piece),
+              color);
         }
       }
     }
+
+    // Perform all add operations
     for (; num_adds >= 4; num_adds -= 4) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        perspective_accumulator[i] += 
-          adds[num_adds - 4][i] +
-          adds[num_adds - 3][i] +
-          adds[num_adds - 2][i] +
-          adds[num_adds - 1][i];
+        perspective_accumulator[i] +=
+            adds[num_adds - 4][i] + adds[num_adds - 3][i] +
+            adds[num_adds - 2][i] + adds[num_adds - 1][i];
       }
-    } 
+    }
     for (; num_adds >= 1; num_adds -= 1) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        perspective_accumulator[i] += 
-          adds[num_adds - 1][i];
+        perspective_accumulator[i] += adds[num_adds - 1][i];
       }
     }
 
-
+    // Perform all sub operations
     for (; num_subs >= 4; num_subs -= 4) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        perspective_accumulator[i] -= 
-          subs[num_subs - 4][i] +
-          subs[num_subs - 3][i] +
-          subs[num_subs - 2][i] +
-          subs[num_subs - 1][i];
+        perspective_accumulator[i] -=
+            subs[num_subs - 4][i] + subs[num_subs - 3][i] +
+            subs[num_subs - 2][i] + subs[num_subs - 1][i];
       }
-    } 
+    }
     for (; num_subs >= 1; num_subs -= 1) {
       for (int i = 0; i < arch::kL1Size; ++i) {
-        perspective_accumulator[i] -= 
-          subs[num_subs - 1][i];
+        perspective_accumulator[i] -= subs[num_subs - 1][i];
       }
     }
 
