@@ -11,7 +11,7 @@ class CaptureHistory {
  public:
   CaptureHistory() : table_({}) {}
 
-  void UpdateScore(const BoardState &state, Move move, I16 depth) {
+  void UpdateMoveScore(const BoardState &state, Move move, I16 depth) {
     const I16 bonus = HistoryBonus(depth);
     const auto from = move.GetFrom(), to = move.GetTo();
     const auto captured =
