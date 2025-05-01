@@ -927,7 +927,8 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Bad Noisy Futility Pruning: Skip bad noisy moves at near-leaf nodes
       // when there's a low chance to raise alpha
-      const int noisy_futility_margin = kBadNoisyFutMargin * lmr_depth;
+      const int noisy_futility_margin =
+          kBadNoisyFutMargin * lmr_fractional_depth / kLmrDepthScale;
       const auto move_picker_stage = move_picker.GetStage();
       if (move_picker_stage == MovePicker::Stage::kBadNoisies &&
           lmr_depth <= kBadNoisyFutPruneDepth && !stack->in_check &&
