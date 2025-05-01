@@ -24,13 +24,13 @@ class MovePicker {
  public:
   enum class Stage {
     kTTMove,
-    kGenerateNoisys,
-    kGoodNoisys,
+    kGenerateNoisies,
+    kGoodNoisies,
     kFirstKiller,
     kSecondKiller,
     kGenerateQuiets,
     kQuiets,
-    kBadNoisys,
+    kBadNoisies,
   };
 
   MovePicker(MovePickerType type,
@@ -63,7 +63,7 @@ class MovePicker {
   history::History &history_;
   StackEntry *stack_;
   Stage stage_;
-  List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
+  List<ScoredMove, kMaxMoves> noisies_, bad_noisies_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
   int see_threshold_;

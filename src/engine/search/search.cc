@@ -350,7 +350,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
         moves_seen > 0) {
       break;
     }
@@ -781,7 +781,7 @@ Score Searcher::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
-          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
               moves_seen > 0) {
             break;
           }
@@ -925,12 +925,23 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
+      // Bad Noisy Futility Pruning: Skip bad noisy moves at near-leaf nodes
+      // when there's a low chance to raise alpha
+      const int noisy_futility_margin =
+          kBadNoisyFutMargin * lmr_fractional_depth / kLmrDepthScale;
+      const auto move_picker_stage = move_picker.GetStage();
+      if (move_picker_stage == MovePicker::Stage::kBadNoisies &&
+          lmr_depth <= kBadNoisyFutPruneDepth && !stack->in_check &&
+          stack->static_eval + noisy_futility_margin < alpha) {
+        break;
+      }
+
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold =
           (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
           stack->history_score / kSeePruneHistDiv;
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+      if (move_picker_stage > MovePicker::Stage::kGoodNoisies &&
           !eval::StaticExchange(
               move,
               is_quiet ? std::min(see_threshold, 0) : see_threshold,
