@@ -53,7 +53,7 @@ TUNABLE_STEP(kFutMarginBase, 188, 100, 250, false, 20);
 TUNABLE_STEP(kFutMarginMult, 85, 50, 200, false, 5);
 TUNABLE(kFutMarginHistDiv, 142, 32, 256, false);
 
-TUNABLE(kBadNoisyFutPruneDepth, 8, 6, 12, true);
+TUNABLE(kBadNoisyFutPruneDepth, 4, 6, 12, true);
 TUNABLE_STEP(kBadNoisyFutMargin, 150, 100, 250, false, 20);
 
 TUNABLE(kSeeQuietThresh, -58, -150, -5, false);
