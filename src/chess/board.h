@@ -140,6 +140,7 @@ struct BoardState {
 
       if (piece_type == PieceType::kPawn) {
         pawn_key ^= zobrist::pieces[colored_piece][square];
+        king_pawn_key ^= zobrist::pieces[colored_piece][square];
       } else {
         non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
 
