@@ -108,7 +108,7 @@ struct StackEntry {
 
 class Stack {
  public:
-  static constexpr int kPadding = 4;
+  static constexpr int kPadding = 6;
 
   Stack() {
     Reset();
