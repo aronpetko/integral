@@ -1075,11 +1075,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      reduction += kLmrRoundingCutoff;
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
-      reduction /= kLmrScale;
+      reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
       reduction =
           std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
