@@ -91,7 +91,7 @@ struct BoardState {
         en_passant(Squares::kNoSquare),
         zobrist_key(0ULL),
         pawn_key(0ULL),
-        minor_key(0ULL),
+        king_pawn_key(0ULL),
         major_key(0ULL),
         non_pawn_keys({}),
         checkers(0ULL),
@@ -114,15 +114,13 @@ struct BoardState {
 
       if (piece_type == PieceType::kPawn) {
         pawn_key ^= zobrist::pieces[colored_piece][square];
+        king_pawn_key ^= zobrist::pieces[colored_piece][square];
       } else {
         non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
 
         if (piece_type == PieceType::kKing) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
+          king_pawn_key ^= zobrist::pieces[colored_piece][square];
           major_key ^= zobrist::pieces[colored_piece][square];
-        } else if (piece_type == PieceType::kKnight ||
-                   piece_type == PieceType::kBishop) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
         } else if (piece_type == PieceType::kRook ||
                    piece_type == PieceType::kQueen) {
           major_key ^= zobrist::pieces[colored_piece][square];
@@ -146,12 +144,8 @@ struct BoardState {
         non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
 
         if (piece_type == PieceType::kKing) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
+          king_pawn_key ^= zobrist::pieces[colored_piece][square];
           major_key ^= zobrist::pieces[colored_piece][square];
-        }
-        if (piece_type == PieceType::kKnight ||
-            piece_type == PieceType::kBishop) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
         } else if (piece_type == PieceType::kRook ||
                    piece_type == PieceType::kQueen) {
           major_key ^= zobrist::pieces[colored_piece][square];
@@ -268,7 +262,7 @@ struct BoardState {
   U16 half_moves;
   Square en_passant;
   CastleRights castle_rights;
-  U64 zobrist_key, pawn_key, minor_key, major_key;
+  U64 zobrist_key, pawn_key, king_pawn_key, major_key;
   std::array<U64, 2> non_pawn_keys;
   BitBoard checkers;
   BitBoard threats;

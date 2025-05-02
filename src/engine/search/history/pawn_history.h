@@ -45,7 +45,7 @@ class PawnHistory {
 
  private:
   [[nodiscard]] int GetIndex(const BoardState &state) const {
-    return state.pawn_key & 16383;
+    return state.king_pawn_key & 16383;
   }
 
  private:
