@@ -238,7 +238,10 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
+  const auto history_score =
+      history_.GetQuietMoveScore(state, move, stack_) +
+      history_.continuation_history->GetScore(state, move, stack_ - 6) / 2;
+  return threat_score + history_score;
 }
 
 }  // namespace search
