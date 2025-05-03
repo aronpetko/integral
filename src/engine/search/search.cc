@@ -685,9 +685,12 @@ Score Searcher::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
-        !opponent_worsening) {
-      ++depth;
+    // Reduce this node's depth if this it was heavily reduced by its parent
+    // node and the static eval dropped by a large amount
+    if (depth >= 2 && !stack->excluded_tt_move &&
+        stack->static_eval + prev_stack->static_eval >= 100 &&
+        prev_stack->reduction >= 2048) {
+      --depth;
     }
 
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
