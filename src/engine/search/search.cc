@@ -665,7 +665,7 @@ Score Searcher::PVSearch(Thread &thread,
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
-  bool improving = false;
+  stack->improving = false;
   // Similar idea follows, but we check if the opponent's evaluation has been
   // falling
   bool opponent_worsening = false;
@@ -678,15 +678,17 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   if (!stack->in_check) {
-    improving = past_stack && stack->static_eval > past_stack->static_eval;
+    stack->improving =
+        past_stack && stack->static_eval > past_stack->static_eval;
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
-        !opponent_worsening) {
+    if (!stack->excluded_tt_move && !thread.nmp_min_ply &&
+        stack->static_eval < -prev_stack->static_eval &&
+        prev_stack->reduction >= 4096 && !prev_stack->improving) {
       ++depth;
     }
 
@@ -697,7 +699,7 @@ Score Searcher::PVSearch(Thread &thread,
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
       const int improving_margin =
-          (improving && !opponent_easy_capture) * kRevFutImprovingMargin;
+          (stack->improving && !opponent_easy_capture) * kRevFutImprovingMargin;
       const int futility_margin =
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
@@ -710,8 +712,10 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Razoring: At low depths, if this node seems like it might fail low, we
     // do a quiescent search to determine if we should prune
+    const auto razoring_margin =
+        stack->static_eval + kRazoringMult * (depth - !stack->improving);
     if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
-        stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
+        razoring_margin < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
@@ -738,8 +742,8 @@ Score Searcher::PVSearch(Thread &thread,
 
         const int eval_reduction =
             std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
-        int reduction =
-            depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
+        int reduction = depth / kNmpRedDiv + kNmpRedBase + eval_reduction +
+                        stack->improving;
         reduction = std::clamp(reduction, 0, depth);
 
         board.MakeNullMove();
@@ -898,7 +902,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more if our static evaluation is going down
-      if (!improving) {
+      if (!stack->improving) {
         reduction += kLmrDepthNotImproving;
       }
 
@@ -912,7 +916,8 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
-      const int lmp_threshold = (kLmpBase + depth * depth) / (3 - improving);
+      const int lmp_threshold =
+          (kLmpBase + depth * depth) / (3 - stack->improving);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -1061,7 +1066,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more if our static evaluation is going down
-      if (!improving) {
+      if (!stack->improving) {
         reduction += kLmrNotImproving;
       }
 

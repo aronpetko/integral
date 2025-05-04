@@ -77,6 +77,8 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
+  // If our static eval was improving at this ply
+  bool improving;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -99,7 +101,8 @@ struct StackEntry {
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr),
-        reduction(0) {
+        reduction(0),
+        improving(false) {
     ClearKillerMoves();
   }
 
