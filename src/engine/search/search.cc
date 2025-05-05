@@ -108,6 +108,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
           break;
         }
 
+        bool failed_high_often = false;
         if (score <= alpha) {
           // Narrow beta to save resources when expanding alpha
           beta = (alpha + beta) / 2;
@@ -123,9 +124,13 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
           // Spend less time searching as we expand the search window, unless
           // we're absolutely winning
-          if (alpha < 2000 && fail_high_count < 2) {
+          if (alpha < 2000 && !failed_high_often) {
             ++fail_high_count;
-          } else {
+            failed_high_often = fail_high_count > 2;
+          }
+
+          if (failed_high_often) {
+            fail_high_count = 0;
             // Narrow alpha to save resources when expanding beta
             alpha = alpha + (beta - alpha) / 3;
           }
