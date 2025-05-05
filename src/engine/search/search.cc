@@ -109,7 +109,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
         }
 
         if (score <= alpha) {
-          // Narrow beta to increase the chance of a fail high
+          // Narrow beta to save resources when expanding alpha
           beta = (alpha + beta) / 2;
 
           // We failed low which means we don't have a move to play, so we widen
@@ -117,6 +117,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
           alpha = std::max<int>(-kInfiniteScore, alpha - window);
           fail_high_count = 0;
         } else if (score >= beta) {
+          // Narrow alpha to save resources when expanding beta
+          alpha = (alpha + beta) / 2;
+
           // We failed high on a PV node, which is abnormal and requires further
           // verification
           beta = std::min<int>(kInfiniteScore, beta + window);
