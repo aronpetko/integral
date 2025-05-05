@@ -1017,7 +1017,6 @@ Score Searcher::PVSearch(Thread &thread,
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
     int reduction = 0;
-    bool needs_full_search;
     Score score;
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
@@ -1077,37 +1076,38 @@ Score Searcher::PVSearch(Thread &thread,
           std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move had potential
+      const auto reduced_depth = new_depth - reduction;
       score = -PVSearch<NodeType::kNonPV>(
-          thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+          thread, reduced_depth, -alpha - 1, -alpha, stack + 1, true);
 
-      if ((needs_full_search = score > alpha && reduction != 0)) {
+      if (score > alpha && reduction != 0) {
         // Search deeper or shallower depending on if the result of the
         // reduced-depth search indicates a promising score
         const bool do_deeper_search =
             score > (best_score + kDoDeeperBase + 2 * new_depth);
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
         new_depth += do_deeper_search - do_shallower_search;
-      }
-    } else {
-      // If we didn't perform late move reduction, then we search this move at
-      // full depth with a null window search if we don't expect it to be a PV
-      // move
-      needs_full_search = !in_pv_node || moves_seen >= 1;
-    }
 
+        if (new_depth > reduced_depth) {
+          score = -PVSearch<NodeType::kNonPV>(
+              thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+
+          if (is_quiet) {
+            const auto bonus = score <= alpha
+                                 ? history::HistoryPenalty(new_depth)
+                             : score >= beta ? history::HistoryBonus(depth)
+                                             : 0;
+            history.continuation_history->UpdateMoveScore(
+                board.GetStateHistory().Back(), move, bonus, stack);
+          }
+        }
+      }
+    }
     // Either the move has potential from a reduced depth search or it's not
     // expected to be a PV move, therefore we search it with a null window
-    if (needs_full_search) {
+    else if (!in_pv_node || moves_seen >= 1) {
       score = -PVSearch<NodeType::kNonPV>(
           thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
-
-      if (reduction != 0 && is_quiet) {
-        const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
-                        : score >= beta  ? history::HistoryBonus(depth)
-                                         : 0;
-        history.continuation_history->UpdateMoveScore(
-            board.GetStateHistory().Back(), move, bonus, stack);
-      }
     }
 
     // Perform a full window search on this move if it's known to be good
