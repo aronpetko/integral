@@ -1077,8 +1077,9 @@ Score Searcher::PVSearch(Thread &thread,
           std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move had potential
+      const int reduced_depth = new_depth - reduction;
       score = -PVSearch<NodeType::kNonPV>(
-          thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+          thread, reduced_depth, -alpha - 1, -alpha, stack + 1, true);
 
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
@@ -1087,6 +1088,10 @@ Score Searcher::PVSearch(Thread &thread,
             score > (best_score + kDoDeeperBase + 2 * new_depth);
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
         new_depth += do_deeper_search - do_shallower_search;
+
+        // Prevent re-searching if the new depth results in a search that is
+        // equivalent to the reduced depth search
+        if (new_depth == reduced_depth) needs_full_search = false;
       }
     } else {
       // If we didn't perform late move reduction, then we search this move at
