@@ -117,9 +117,6 @@ void Searcher::IterativeDeepening(Thread &thread) {
           alpha = std::max<int>(-kInfiniteScore, alpha - window);
           fail_high_count = 0;
         } else if (score >= beta) {
-          // Narrow alpha to save resources when expanding beta
-          alpha = (alpha + beta) / 2;
-
           // We failed high on a PV node, which is abnormal and requires further
           // verification
           beta = std::min<int>(kInfiniteScore, beta + window);
@@ -128,6 +125,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
           // we're absolutely winning
           if (alpha < 2000 && fail_high_count < 2) {
             ++fail_high_count;
+          } else {
+            // Narrow alpha to save resources when expanding beta
+            alpha = alpha + (beta - alpha) / 3;
           }
         } else {
           // Quit now, since the score fell within the bounds of the aspiration
