@@ -683,6 +683,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  (stack + 2)->cutoff_count = 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
@@ -1070,6 +1071,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      if ((stack + 1)->cutoff_count > 3) {
+        reduction += 1024;
+      }
+
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
@@ -1176,6 +1181,7 @@ Score Searcher::PVSearch(Thread &thread,
             history.capture_history->UpdateScore(state, move, history_depth);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
+          ++stack->cutoff_count;
           break;
         } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
                    alpha > -kTBWinInMaxPlyScore) {
