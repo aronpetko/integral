@@ -481,6 +481,8 @@ Score Searcher::PVSearch(Thread &thread,
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+  // An all node is a node that is expected to fail low
+  const bool in_all_node = !in_pv_node && !cut_node;
   // The root node is also a PV node by default
   const bool in_root = stack->ply == 0;
 
@@ -769,7 +771,8 @@ Score Searcher::PVSearch(Thread &thread,
       // cutoff, we attempt a shallower quiescent-like search and prune early
       // if possible
       const Score pc_beta = beta + kProbcutBetaDelta;
-      if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
+      if (!in_all_node && depth >= kProbcutDepth &&
+          std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - stack->eval;
@@ -1073,8 +1076,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
-      reduction =
-          std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp(reduction, -in_all_node, new_depth - 1);
 
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
