@@ -683,7 +683,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
-  (stack + 2)->cutoff_count = 0;
+  (stack + 1)->cutoff_count = 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
