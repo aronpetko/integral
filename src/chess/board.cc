@@ -369,10 +369,16 @@ bool Board::HasUpcomingRepetition(U16 ply) {
     return history_[history_.Size() - dist].zobrist_key;
   };
 
+  auto other_key = state_.zobrist_key ^ keys_back(1) ^ zobrist::turn;
   const auto occupied = state_.Occupied();
 
   for (int dist = 3; dist <= max_dist; dist += 2) {
     const auto move_key = keys_back(dist);
+    other_key ^= move_key ^ keys_back(dist - 1) ^ zobrist::turn;
+    if (other_key != 0) {
+      continue;
+    }
+
     const auto key_diff = state_.zobrist_key ^ move_key;
 
     U32 slot = search::cuckoo::H1(key_diff);
