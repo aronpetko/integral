@@ -59,7 +59,7 @@ TUNABLE(kSeePruneHistDiv, 136, 50, 300, false);
 
 TUNABLE(kHistPruneDepth, 5, 3, 8, true);
 TUNABLE(kHistThreshBase, -387, -1000, 500, false);
-TUNABLE(kHistThreshMult, -2064, -3000, -500, false);
+TUNABLE(kHistThreshMult, -2500, -3000, -500, false);
 TUNABLE(kCaptHistThreshBase, -535, -1000, 500, false);
 TUNABLE(kCaptHistThreshMult, -1780, -3000, -1000, false);
 
