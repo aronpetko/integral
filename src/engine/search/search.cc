@@ -612,11 +612,12 @@ Score Searcher::PVSearch(Thread &thread,
     }
   }
 
-  Score raw_static_eval, eval_complexity = 0;
+  Score raw_static_eval;
 
   // Approximate the current evaluation at this node
   if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
+    stack->eval_complexity = 0;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
         tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
@@ -645,7 +646,7 @@ Score Searcher::PVSearch(Thread &thread,
       stack->eval = stack->static_eval;
     }
 
-    eval_complexity = std::abs(stack->static_eval - raw_static_eval);
+    stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
   }
 
   const auto &prev_stack = stack - 1;
@@ -697,7 +698,8 @@ Score Searcher::PVSearch(Thread &thread,
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin;
       const int futility_margin =
           depth * kRevFutMargin - improving_margin -
-          kRevFutOppWorseningMargin * opponent_worsening + eval_complexity / 2 +
+          kRevFutOppWorseningMargin * opponent_worsening +
+          stack->eval_complexity / 2 +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
@@ -1063,7 +1065,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      if (eval_complexity > kLmrComplexityDiff) {
+      if (stack->eval_complexity > kLmrComplexityDiff) {
         reduction -= kLmrComplexity;
       }
 
