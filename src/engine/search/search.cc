@@ -942,7 +942,7 @@ Score Searcher::PVSearch(Thread &thread,
       // near-leaf nodes
       const int history_margin =
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
-                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
+                   : kCaptHistThreshBase + kCaptHistThreshMult * lmr_depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
         move_picker.SkipQuiets();
         continue;
