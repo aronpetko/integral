@@ -56,7 +56,7 @@ struct StackEntry {
   // Number of ply from root
   I32 ply;
   // Scores at this ply
-  Score static_eval, eval, score;
+  Score static_eval, eval, score, eval_complexity;
   I64 history_score;
   // Best moves following down this ply
   PVLine pv;
@@ -92,6 +92,7 @@ struct StackEntry {
       : ply(ply),
         static_eval(kScoreNone),
         eval(kScoreNone),
+        eval_complexity(0),
         history_score(0),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
