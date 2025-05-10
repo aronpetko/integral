@@ -721,9 +721,9 @@ Score Searcher::PVSearch(Thread &thread,
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we
     // still have the advantage
     if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
-        stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
-        stack->eval_complexity < 100 && !stack->excluded_tt_move &&
-        stack->ply >= thread.nmp_min_ply) {
+        stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth +
+                                  stack->eval_complexity / 2 &&
+        !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
       // Avoid null move pruning a position with high zugzwang potential
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
