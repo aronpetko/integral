@@ -1107,7 +1107,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       if (reduction != 0 && is_quiet) {
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
-                        : score >= beta  ? history::HistoryBonus(depth)
+                        : score >= beta  ? history::HistoryBonus(new_depth)
                                          : 0;
         history.continuation_history->UpdateMoveScore(
             board.GetStateHistory().Back(), move, bonus, stack);
