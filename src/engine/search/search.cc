@@ -687,14 +687,14 @@ Score Searcher::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!stack->in_check && !stack->excluded_tt_move && stack->ply >= 1 &&
-      prev_stack->reduction >= 3000 && !thread.nmp_min_ply &&
-      stack->static_eval + prev_stack->static_eval < 0) {
-    ++depth;
-  }
-
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
+
+    if (!stack->excluded_tt_move && stack->ply >= 1 &&
+        prev_stack->reduction >= 3000 && !thread.nmp_min_ply &&
+        stack->static_eval + prev_stack->static_eval < 0) {
+      ++depth;
+    }
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
