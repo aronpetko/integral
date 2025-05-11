@@ -691,7 +691,7 @@ Score Searcher::PVSearch(Thread &thread,
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     if (!stack->excluded_tt_move && stack->ply >= 1 &&
-        prev_stack->reduction >= 3000 && !thread.nmp_min_ply &&
+        prev_stack->reduction >= 3 && !thread.nmp_min_ply &&
         stack->static_eval + prev_stack->static_eval < 0) {
       ++depth;
     }
@@ -1080,13 +1080,13 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      stack->reduction = reduction;
-
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
       reduction =
           std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+
+      stack->reduction = new_depth - reduction;
 
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
