@@ -34,7 +34,10 @@ class CorrectionHistory {
     const I16 bonus = CalculateBonus(stack->static_eval, search_score, depth);
 
     // Update pawn table score
-    UpdateTableScore(pawn_table_[GetPawnTableIndex(state)][state.turn], bonus);
+    UpdateTableScore(
+        pawn_table_[GetPawnTableIndex(state)][nnue::GetKingBucket(
+            state.King(state.turn).GetLsb(), state.turn)][state.turn],
+        bonus);
 
     // Update major piece table score
     UpdateTableScore(major_table_[GetMajorTableIndex(state)][state.turn],
@@ -42,11 +45,9 @@ class CorrectionHistory {
 
     // Update non-pawn table scores for both colors
     for (Color color : {Color::kWhite, Color::kBlack}) {
-      UpdateTableScore(
-          non_pawn_table_[GetNonPawnTableIndex(state, color)]
-                         [nnue::GetKingBucket(state.King(color).GetLsb(),
-                                              color)][state.turn][color],
-          bonus);
+      UpdateTableScore(non_pawn_table_[GetNonPawnTableIndex(state, color)]
+                                      [state.turn][color],
+                       bonus);
     }
 
     // Update continuation table scores
@@ -65,18 +66,15 @@ class CorrectionHistory {
                                         StackEntry *stack,
                                         Score static_eval) const {
     const Score pawn_correction =
-        pawn_table_[GetPawnTableIndex(state)][state.turn] *
+        pawn_table_[GetPawnTableIndex(state)][nnue::GetKingBucket(
+            state.King(state.turn).GetLsb(), state.turn)][state.turn] *
         kPawnCorrectionWeight;
     const I32 non_pawn_white_correction =
-        non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)]
-                       [nnue::GetKingBucket(state.King(Color::kWhite).GetLsb(),
-                                            Color::kWhite)][state.turn]
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)][state.turn]
                        [Color::kWhite] *
         kNonPawnCorrectionWeight;
     const I32 non_pawn_black_correction =
-        non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)]
-                       [nnue::GetKingBucket(state.King(Color::kBlack).GetLsb(),
-                                            Color::kBlack)][state.turn]
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)][state.turn]
                        [Color::kBlack] *
         kNonPawnCorrectionWeight;
     const I32 major_correction =
@@ -147,10 +145,9 @@ class CorrectionHistory {
   }
 
  private:
-  MultiArray<I16, 16384, kNumColors> pawn_table_;
+  MultiArray<I16, 16384, nnue::arch::kInputBucketCount, kNumColors> pawn_table_;
   MultiArray<I16, 16384, kNumColors> major_table_;
-  MultiArray<I16, 16384, nnue::arch::kInputBucketCount, kNumColors, kNumColors>
-      non_pawn_table_;
+  MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };
