@@ -1,8 +1,8 @@
 #include "nnue.h"
 
-#include "../../../utils/simd.h"
+#include "../../../../shared/nnue/definitions.h"
+#include "../../../../shared/simd.h"
 #include "accumulator.h"
-#include "arch.h"
 
 #ifdef _MSC_VER
 #define SP_MSVC
@@ -32,79 +32,7 @@ namespace nnue {
 
 void LoadFromIncBin() {
   // Load raw network from binary data
-  raw_network = std::make_unique<RawNetwork>();
-  std::memcpy(raw_network.get(), gEVALData, sizeof(RawNetwork));
-
-  network = std::make_unique<Network>();
-
-  // Copy over arrays that don't need transposing
-  network->feature_weights = raw_network->feature_weights;
-  network->feature_biases = raw_network->feature_biases;
-
-#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
-  constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
-  std::array<__m128i, kNumRegs> regs;
-
-  auto weights = reinterpret_cast<__m128i *>(&network->feature_weights);
-  auto biases = reinterpret_cast<__m128i *>(&network->feature_biases);
-
-  for (int i = 0;
-       i < arch::kInputBucketCount * 768 * arch::kL1Size / kWeightsPerBlock;
-       i += kNumRegs) {
-    for (int j = 0; j < kNumRegs; j++) regs[j] = weights[i + j];
-
-    for (int j = 0; j < kNumRegs; j++)
-      weights[i + j] = regs[simd::kPackusOrder[j]];
-  }
-
-  for (int i = 0; i < arch::kL1Size / kWeightsPerBlock; i += kNumRegs) {
-    for (int j = 0; j < kNumRegs; j++) regs[j] = biases[i + j];
-
-    for (int j = 0; j < kNumRegs; j++)
-      biases[i + j] = regs[simd::kPackusOrder[j]];
-  }
-#endif
-
-  network->l1_biases = raw_network->l1_biases;
-  network->l2_biases = raw_network->l2_biases;
-  network->l3_weights = raw_network->l3_weights;
-  network->l3_biases = raw_network->l3_biases;
-
-  // Transpose l1_weights from [b][l2][l1] to [b][l1][l2]
-  for (int b = 0; b < arch::kOutputBucketCount; b++) {
-    for (int l1 = 0; l1 < arch::kL1Size; l1++) {
-      for (int l2 = 0; l2 < arch::kL2Size; l2++) {
-        network->l1_weights[b][l1][l2] = raw_network->l1_weights[b][l2][l1];
-      }
-    }
-  }
-
-#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  // Weight permutation for DpbusdEpi32
-  {
-    const auto tmp = std::make_shared<Network>(*network);
-    for (int bucket = 0; bucket < arch::kOutputBucketCount; bucket++) {
-      for (int i = 0; i < arch::kL1Size; i += 4) {
-        for (int j = 0; j < arch::kL2Size; ++j) {
-          for (int k = 0; k < 4; k++) {
-            network->l1_weights_alt[bucket][i * arch::kL2Size + j * 4 + k] =
-                tmp->l1_weights[bucket][i + k][j];
-          }
-        }
-      }
-    }
-  }
-#endif
-
-  // Transpose l2_weights from [b][l3][l2] to [b][l2][l3]
-  for (int b = 0; b < arch::kOutputBucketCount; b++) {
-    for (int l2 = 0; l2 < arch::kL2Size; l2++) {
-      for (int l3 = 0; l3 < arch::kL3Size; l3++) {
-        network->l2_weights[b][l2][l3] = raw_network->l2_weights[b][l3][l2];
-      }
-    }
-  }
+  network = reinterpret_cast<Network*>(const_cast<unsigned char*>(gEVALData));
 }
 
 Score Evaluate(Board &board) {
@@ -276,7 +204,7 @@ Score Evaluate(Board &board) {
     }
   }
 
-  std::array<float, arch::kL3Size> l2_output{};
+  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output;
   for (int i = 0; i < arch::kL3Size; i += kF32ChunkSize) {
     const auto &sum_vector = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[i]);
     auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
@@ -288,7 +216,7 @@ Score Evaluate(Board &board) {
   constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
   const auto zero_ps = simd::SetPs(0.0f);
 
-  std::array<simd::Vepf32, kResultChunks> result_sums;
+  alignas(simd::kAlignment) std::array<simd::Vepf32, kResultChunks> result_sums;
   result_sums.fill(zero_ps);
 
   for (int i = 0; i < arch::kL3Size / kF32ChunkSize; i += kResultChunks) {

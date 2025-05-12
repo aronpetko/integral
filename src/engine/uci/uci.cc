@@ -20,7 +20,7 @@ void Initialize(search::Searcher &searcher) {
   listener.AddOption<OptionVisibility::kPublic>("Hash", 64, 1, 1048576, [&searcher](const Option &option) {
     searcher.ResizeHash(option.GetValue<int>());
   });
-  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 256, [&searcher](const Option &option) {
+  listener.AddOption<OptionVisibility::kPublic>("Threads", 1, 1, 512, [&searcher](const Option &option) {
     searcher.SetThreadCount(option.GetValue<U16>());
   });
   listener.AddOption<OptionVisibility::kPublic>("MultiPV", 1, 1, 6);

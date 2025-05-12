@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_CORRECTION_HISTORY_H
 #define INTEGRAL_CORRECTION_HISTORY_H
 
+#include "../../../../shared/multi_array.h"
 #include "../../../tuner/spsa.h"
-#include "../../../utils/multi_array.h"
 #include "../stack.h"
 
 namespace search::history {
@@ -30,19 +30,19 @@ class CorrectionHistory {
       return;
     }
 
-    const Score bonus = CalculateBonus(stack->static_eval, search_score, depth);
+    const I16 bonus = CalculateBonus(stack->static_eval, search_score, depth);
 
     // Update pawn table score
-    UpdateTableScore(pawn_table_[state.turn][GetPawnTableIndex(state)], bonus);
+    UpdateTableScore(pawn_table_[GetPawnTableIndex(state)][state.turn], bonus);
 
     // Update major piece table score
-    UpdateTableScore(major_table_[state.turn][GetMajorTableIndex(state)],
+    UpdateTableScore(major_table_[GetMajorTableIndex(state)][state.turn],
                      bonus);
 
     // Update non-pawn table scores for both colors
     for (Color color : {Color::kWhite, Color::kBlack}) {
-      UpdateTableScore(non_pawn_table_[state.turn][color]
-                                      [GetNonPawnTableIndex(state, color)],
+      UpdateTableScore(non_pawn_table_[GetNonPawnTableIndex(state, color)]
+                                      [state.turn][color],
                        bonus);
     }
 
@@ -62,18 +62,18 @@ class CorrectionHistory {
                                         StackEntry *stack,
                                         Score static_eval) const {
     const Score pawn_correction =
-        pawn_table_[state.turn][GetPawnTableIndex(state)] *
+        pawn_table_[GetPawnTableIndex(state)][state.turn] *
         kPawnCorrectionWeight;
     const I32 non_pawn_white_correction =
-        non_pawn_table_[state.turn][Color::kWhite]
-                       [GetNonPawnTableIndex(state, Color::kWhite)] *
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)][state.turn]
+                       [Color::kWhite] *
         kNonPawnCorrectionWeight;
     const I32 non_pawn_black_correction =
-        non_pawn_table_[state.turn][Color::kBlack]
-                       [GetNonPawnTableIndex(state, Color::kBlack)] *
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)][state.turn]
+                       [Color::kBlack] *
         kNonPawnCorrectionWeight;
     const I32 major_correction =
-        major_table_[state.turn][GetMajorTableIndex(state)] *
+        major_table_[GetMajorTableIndex(state)][state.turn] *
         kMajorCorrectionWeight;
     const I32 continuation_correction = [&]() -> I32 {
       Score total = 0;
@@ -106,13 +106,13 @@ class CorrectionHistory {
   }
 
  private:
-  [[nodiscard]] Score CalculateBonus(Score static_eval,
-                                     Score search_score,
-                                     int depth) {
+  [[nodiscard]] I16 CalculateBonus(Score static_eval,
+                                   Score search_score,
+                                   int depth) {
     return std::clamp((search_score - static_eval) * depth / 8, -256, 256);
   }
 
-  void UpdateTableScore(Score &current_score, Score bonus) {
+  void UpdateTableScore(I16 &current_score, Score bonus) {
     current_score += ScaleBonus(current_score, bonus, 1024);
   }
 
@@ -140,9 +140,9 @@ class CorrectionHistory {
   }
 
  private:
-  MultiArray<Score, kNumColors, 16384> pawn_table_;
-  MultiArray<Score, kNumColors, 16384> major_table_;
-  MultiArray<Score, kNumColors, kNumColors, 16384> non_pawn_table_;
+  MultiArray<I16, 16384, kNumColors> pawn_table_;
+  MultiArray<I16, 16384, kNumColors> major_table_;
+  MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };

@@ -3,12 +3,10 @@
 
 #include <fstream>
 
+#include "../../../../shared/nnue/definitions.h"
 #include "../../../chess/bitboard.h"
 #include "../../../utils/types.h"
-#include "arch.h"
 #include "nnue.h"
-
-// #define SPARSE_PERMUTE
 
 // #if BUILD_HAS_SIMD
 namespace nnue::sparse {
@@ -32,7 +30,7 @@ struct NnzEntry {
   return table;
 }
 
-constexpr auto nnz_table = GenerateNnzTable();
+alignas(simd::kAlignment) constexpr auto nnz_table = GenerateNnzTable();
 
 #ifdef SPARSE_PERMUTE
 //  This is the array where we keep track of the number of pair-wise activated
@@ -49,7 +47,7 @@ static void CountActivations(
 
 static void SavePermutedNetwork(std::string output) {
   auto permuted_network = std::make_unique<RawNetwork>();
-  std::memcpy(permuted_network.get(), raw_network.get(), sizeof(RawNetwork));
+  std::memcpy(permuted_network.get(), network, sizeof(RawNetwork));
 
   std::array<int, arch::kL1Size / 2> sorted_neurons;
   // Each neuron is at its own index initially (of course)
@@ -67,9 +65,9 @@ static void SavePermutedNetwork(std::string output) {
     const int idx = sorted_neurons[i];
 
     // Feature biases
-    permuted_network->feature_biases[i] = raw_network->feature_biases[idx];
+    permuted_network->feature_biases[i] = network->feature_biases[idx];
     permuted_network->feature_biases[i + arch::kL1Size / 2] =
-        raw_network->feature_biases[idx + arch::kL1Size / 2];
+        network->feature_biases[idx + arch::kL1Size / 2];
 
     // Feature weights
     for (int bucket = 0; bucket < arch::kInputBucketCount; ++bucket) {
@@ -77,11 +75,11 @@ static void SavePermutedNetwork(std::string output) {
         for (int piece = 0; piece < kNumPieceTypes; ++piece) {
           for (int square = 0; square < kSquareCount; ++square) {
             permuted_network->feature_weights[bucket][side][piece][square][i] =
-                raw_network->feature_weights[bucket][side][piece][square][idx];
+                network->feature_weights[bucket][side][piece][square][idx];
             permuted_network->feature_weights[bucket][side][piece][square]
                                              [i + arch::kL1Size / 2] =
-                raw_network->feature_weights[bucket][side][piece][square]
-                                            [idx + arch::kL1Size / 2];
+                network->feature_weights[bucket][side][piece][square]
+                                        [idx + arch::kL1Size / 2];
           }
         }
       }
@@ -91,9 +89,9 @@ static void SavePermutedNetwork(std::string output) {
     for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
       for (int j = 0; j < arch::kL2Size; ++j) {
         permuted_network->l1_weights[bucket][j][i] =
-            raw_network->l1_weights[bucket][j][idx];
+            network->l1_weights[bucket][j][idx];
         permuted_network->l1_weights[bucket][j][i + arch::kL1Size / 2] =
-            raw_network->l1_weights[bucket][j][idx + arch::kL1Size / 2];
+            network->l1_weights[bucket][j][idx + arch::kL1Size / 2];
       }
     }
   }

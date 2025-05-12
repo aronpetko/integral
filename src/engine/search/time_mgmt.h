@@ -2,21 +2,17 @@
 #define INTEGRAL_TIME_MGMT_H_
 
 #include <array>
-#include <chrono>
 #include <memory>
 #include <optional>
 #include <vector>
 
 #include "../../chess/board.h"
+#include "../../utils/time.h"
 #include "../../utils/types.h"
 
 namespace search {
 
-using TimeStamp = I64;
-
 class Thread;
-
-U64 GetCurrentTime();
 
 struct TimeConfig {
   bool infinite = false;
@@ -34,7 +30,7 @@ class TimeLimiter {
  public:
   virtual ~TimeLimiter() = default;
 
-  virtual bool ShouldStop(Move best_move, int depth, Thread &thread) = 0;
+  virtual bool ShouldStop(Move best_move, int depth, Thread& thread) = 0;
 
   virtual bool TimesUp(U64 nodes_searched) = 0;
 
@@ -51,7 +47,7 @@ class DepthLimiter : public TimeLimiter {
  public:
   explicit DepthLimiter(int max_depth);
 
-  bool ShouldStop(Move best_move, int depth, Thread &thread) override;
+  bool ShouldStop(Move best_move, int depth, Thread& thread) override;
 
   bool TimesUp(U64 nodes_searched) override;
 
@@ -71,7 +67,7 @@ class NodeLimiter : public TimeLimiter {
  public:
   NodeLimiter(U64 max_nodes, U64 soft_max_nodes);
 
-  bool ShouldStop(Move best_move, int depth, Thread &thread) override;
+  bool ShouldStop(Move best_move, int depth, Thread& thread) override;
 
   bool TimesUp(U64 nodes_searched) override;
 
@@ -92,7 +88,7 @@ class TimedLimiter : public TimeLimiter {
  public:
   TimedLimiter(int time_left, int increment, int move_time);
 
-  bool ShouldStop(Move best_move, int depth, Thread &thread) override;
+  bool ShouldStop(Move best_move, int depth, Thread& thread) override;
 
   bool TimesUp(U64 nodes_searched) override;
 
@@ -136,7 +132,7 @@ class TimeManagement {
 
   void Stop();
 
-  bool ShouldStop(Move best_move, int depth, Thread &thread);
+  bool ShouldStop(Move best_move, int depth, Thread& thread);
 
   bool TimesUp(U64 nodes_searched);
 
@@ -152,7 +148,6 @@ class TimeManagement {
   void ConfigureLimiters(const TimeConfig& config);
 
  private:
-
   TimeConfig config_;
   TimeStamp start_time_ = 0;
   TimeStamp end_time_ = 0;
