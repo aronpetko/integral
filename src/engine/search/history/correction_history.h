@@ -3,6 +3,7 @@
 
 #include "../../../../shared/multi_array.h"
 #include "../../../tuner/spsa.h"
+#include "../../evaluation/nnue/accumulator.h"
 #include "../stack.h"
 
 namespace search::history {
@@ -41,9 +42,11 @@ class CorrectionHistory {
 
     // Update non-pawn table scores for both colors
     for (Color color : {Color::kWhite, Color::kBlack}) {
-      UpdateTableScore(non_pawn_table_[GetNonPawnTableIndex(state, color)]
-                                      [state.turn][color],
-                       bonus);
+      UpdateTableScore(
+          non_pawn_table_[GetNonPawnTableIndex(state, color)]
+                         [nnue::GetKingBucket(state.King(color).GetLsb(),
+                                              color)][state.turn][color],
+          bonus);
     }
 
     // Update continuation table scores
@@ -65,11 +68,15 @@ class CorrectionHistory {
         pawn_table_[GetPawnTableIndex(state)][state.turn] *
         kPawnCorrectionWeight;
     const I32 non_pawn_white_correction =
-        non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)][state.turn]
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)]
+                       [nnue::GetKingBucket(state.King(Color::kWhite).GetLsb(),
+                                            Color::kWhite)][state.turn]
                        [Color::kWhite] *
         kNonPawnCorrectionWeight;
     const I32 non_pawn_black_correction =
-        non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)][state.turn]
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)]
+                       [nnue::GetKingBucket(state.King(Color::kBlack).GetLsb(),
+                                            Color::kBlack)][state.turn]
                        [Color::kBlack] *
         kNonPawnCorrectionWeight;
     const I32 major_correction =
@@ -142,7 +149,8 @@ class CorrectionHistory {
  private:
   MultiArray<I16, 16384, kNumColors> pawn_table_;
   MultiArray<I16, 16384, kNumColors> major_table_;
-  MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
+  MultiArray<I16, 16384, nnue::arch::kInputBucketCount, kNumColors, kNumColors>
+      non_pawn_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };

@@ -40,6 +40,10 @@ struct AccumulatorChange {
   } type;
 };
 
+[[nodiscard]] static int GetKingBucket(Square king_square, Color king_color) {
+  return kKingBucketMap[king_square ^ (56 * king_color)];
+}
+
 static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
                                                        Square king_square,
                                                        PieceType piece,
@@ -480,12 +484,6 @@ class Accumulator {
   [[nodiscard]] const PerspectiveAccumulator& operator[](
       int perspective) const {
     return stack_[head_idx_].perspectives[perspective];
-  }
-
- private:
-  [[nodiscard]] inline int GetKingBucket(Square king_square,
-                                         Color king_color) const {
-    return kKingBucketMap[king_square ^ (56 * king_color)];
   }
 
  private:
