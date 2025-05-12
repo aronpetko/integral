@@ -558,9 +558,8 @@ Score Searcher::PVSearch(Thread &thread,
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
     // Give the TT move a bonus as it would if it failed high in the move loop
     if (tt_move && tt_entry->score >= beta && !tt_move.IsNoisy(state)) {
-      const I16 bonus = std::min<I16>(history::HistoryBonus(depth), 1200);
       history.quiet_history->UpdateMoveScore(
-          state.turn, tt_move, state.threats, bonus);
+          state.turn, tt_move, state.threats, history::HistoryBonus(depth));
     }
 
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
