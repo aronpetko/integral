@@ -115,11 +115,11 @@ class PerspectiveAccumulator {
                    Square king_square,
                    const Ts&... accumulator_changes) {
     auto FeatureTable = [&](const FeatureData& feature) {
-      return std::as_const(GetFeaturePointer(feature.square,
-                                             king_square,
-                                             feature.piece,
-                                             feature.color,
-                                             perspective));
+      return GetFeaturePointer(feature.square,
+                               king_square,
+                               feature.piece,
+                               feature.color,
+                               perspective);
     };
 
     const std::tuple changes = {FeatureTable(accumulator_changes)...};
