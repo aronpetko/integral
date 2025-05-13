@@ -13,7 +13,7 @@ enum FusedOperation {
 template <FusedOperation... ops,
           typename T,
           std::enable_if_t<sizeof...(ops) == 0, bool> = true>
-T Fused(const T& in) {
+inline constexpr T Fused(const T& in) {
   return in;
 }
 
@@ -23,7 +23,7 @@ template <FusedOperation update_op,
           typename... Ts,
           std::enable_if_t<is_all_same_v<T, Ts...>, bool> = true,
           std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
-T Fused(const T& in, const T& operand, const Ts&... operands) {
+inline constexpr T Fused(const T& in, const T& operand, const Ts&... operands) {
   switch (update_op) {
     case kAdd:
       return Fused<ops...>(static_cast<T>(in + operand), operands...);
