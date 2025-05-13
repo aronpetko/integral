@@ -4,6 +4,7 @@
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
 #include "../../../chess/board.h"
+#include "../../../utils/fused.h"
 #include "nnue.h"
 
 namespace nnue {
@@ -94,18 +95,6 @@ class PerspectiveAccumulator {
         .data();
   }
 
-  void AddFeature(Color perspective,
-                  Square king_square,
-                  Square square,
-                  PieceType piece,
-                  Color piece_color) {
-    const auto& table =
-        GetFeatureTable(square, king_square, piece, piece_color, perspective);
-    for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] += table[i];
-    }
-  }
-
   template <FusedOperation... ops,
             typename... Ts,
             std::enable_if_t<is_all_same_v<FeatureData, Ts...>, bool> = true,
@@ -133,9 +122,14 @@ class PerspectiveAccumulator {
                              perspective);
     };
 
+    const std::tuple changes = {FeatureTable(accumulator_changes)...};
+
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] =
-          Fused<ops...>(previous[i], FeatureTable(accumulator_changes)[i]...);
+      values_[i] = std::apply(
+          [&](const auto&... changes) {
+            return Fused<ops...>(previous[i], changes[i]...);
+          },
+          changes);
     }
   }
 
