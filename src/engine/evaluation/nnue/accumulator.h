@@ -86,11 +86,11 @@ class PerspectiveAccumulator {
     }
   }
 
-  I16 const* GetFeaturePointer(Color perspective,
+  I16 const* GetFeaturePointer(Square square,
                                Square king_square,
-                               Square square,
                                PieceType piece,
-                               Color piece_color) {
+                               Color piece_color,
+                               Color perspective) {
     return GetFeatureTable(square, king_square, piece, piece_color, perspective)
         .data();
   }
@@ -249,22 +249,22 @@ class Accumulator {
         const BitBoard to_remove = ~new_pieces & old_pieces;
         for (Square square : to_remove) {
           subs[num_subs++] = perspective_accumulator.GetFeaturePointer(
-              perspective,
-              king_square,
               square,
+              king_square,
               static_cast<PieceType>(piece),
-              color);
+              color,
+              perspective);
         }
 
         // Calculate difference of features to add
         const BitBoard to_add = new_pieces & ~old_pieces;
         for (Square square : to_add) {
           adds[num_adds++] = perspective_accumulator.GetFeaturePointer(
-              perspective,
-              king_square,
               square,
+              king_square,
               static_cast<PieceType>(piece),
-              color);
+              color,
+              perspective);
         }
       }
     }
