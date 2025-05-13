@@ -4,6 +4,7 @@
 #include <numeric>
 #include <thread>
 
+#include "../../data_gen/data_gen.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -62,10 +63,9 @@ Searcher::~Searcher() {
 
 template <SearchType type>
 void Searcher::IterativeDeepening(Thread &thread) {
-  constexpr bool print_info = type == SearchType::kRegular;
+  constexpr bool regular_search = type == SearchType::kRegular;
 
   const auto root_stack = &thread.stack.Front();
-
   thread.root_moves = RootMoveList(thread.board);
 
   const int multi_pv =
@@ -75,7 +75,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
   std::unique_ptr<uci::reporter::ReportInfo> report_info;
   if (thread.IsMainThread()) {
-    if (uci::reporter::using_uci) {
+    if (uci::reporter::using_uci || !regular_search) {
       report_info = std::make_unique<uci::reporter::UCIReportInfo>();
     } else {
       report_info = std::make_unique<uci::reporter::PrettyReportInfo>();
@@ -148,7 +148,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
         time_mgmt_.ShouldStop(best_move.move, depth, thread);
     const bool hard_timeout = ShouldQuit();
 
-    if (print_info && (!minimal || soft_timeout) && thread.IsMainThread() &&
+    if (regular_search && (!minimal || soft_timeout) && thread.IsMainThread() &&
         !hard_timeout) {
       for (int i = 0; i < multi_pv; ++i) {
         auto &pv_move = thread.root_moves[i];
@@ -203,7 +203,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
     // Age the transposition table to recognize TT entries from past searches
     transposition_table_.Age();
 
-    if (print_info) {
+    if (regular_search) {
       fmt::println(
           "bestmove {}",
           !thread.root_moves.Empty() ? best_move.move.ToString() : "0000");
@@ -241,7 +241,13 @@ Score Searcher::QuiescentSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
-  stack->pv.Clear();
+  // A principal variation (PV) node falls inside the [alpha, beta] window and
+  // is one which has most of its child moves searched
+  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
+
+  if (in_pv_node) {
+    stack->pv.Clear();
+  }
 
   if (stack->ply >= kMaxPlyFromRoot) {
     return eval::Evaluate(board);
@@ -254,10 +260,6 @@ Score Searcher::QuiescentSearch(Thread &thread,
   }
 
   stack->in_check = state.InCheck();
-
-  // A principal variation (PV) node falls inside the [alpha, beta] window and
-  // is one which has most of its child moves searched
-  constexpr bool in_pv_node = node_type != NodeType::kNonPV;
 
   // Probe the transposition table to see if we have already evaluated this
   // position
@@ -464,8 +466,6 @@ Score Searcher::PVSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
-  stack->pv.Clear();
-
   static thread_local int counter = 0;
   if (thread.IsMainThread() && (++counter & 4095) == 0) {
     counter = 0;
@@ -478,17 +478,21 @@ Score Searcher::PVSearch(Thread &thread,
     return 0;
   }
 
-  if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
-  }
-
-  thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
-
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
   // The root node is also a PV node by default
   const bool in_root = stack->ply == 0;
+
+  if (in_pv_node) {
+    stack->pv.Clear();
+  }
+
+  if (stack->ply >= kMaxPlyFromRoot) {
+    return eval::Evaluate(board);
+  }
+
+  thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
   // If the position has a move that causes a repetition, and we are losing,
   // then we can cut off early since we can secure a draw
@@ -613,6 +617,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Approximate the current evaluation at this node
   if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
+    stack->eval_complexity = 0;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
         tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
@@ -640,6 +645,8 @@ Score Searcher::PVSearch(Thread &thread,
     } else {
       stack->eval = stack->static_eval;
     }
+
+    stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
   }
 
   const auto &prev_stack = stack - 1;
@@ -692,6 +699,7 @@ Score Searcher::PVSearch(Thread &thread,
       const int futility_margin =
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
+          stack->eval_complexity / 2 +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
@@ -885,7 +893,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce based on the history score of this move
       if (is_quiet) {
-        reduction -= stack->history_score / kLmrHistDiv * kLmrDepthHistQuiet;
+        reduction -= stack->history_score * kLmrDepthHistQuiet / kLmrHistDiv;
       }
 
       // Reduce more if our static evaluation is going down
@@ -1057,7 +1065,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      if (std::abs(stack->static_eval - raw_static_eval) > kLmrComplexityDiff) {
+      if (stack->eval_complexity > kLmrComplexityDiff) {
         reduction -= kLmrComplexity;
       }
 
@@ -1347,12 +1355,12 @@ std::pair<Score, Move> Searcher::DataGenStart(std::unique_ptr<Thread> &thread,
                                               TimeConfig time_config) {
   stop_.store(false, std::memory_order_relaxed);
 
-  time_mgmt_.SetConfig(time_config);
-  time_mgmt_.Start();
-
   // The thread's board gets directly modified, so we don't need to call
   // SetBoard
   thread->Reset();
+
+  time_mgmt_.SetConfig(time_config);
+  time_mgmt_.Start();
 
   IterativeDeepening<SearchType::kBench>(*thread);
 
@@ -1363,16 +1371,15 @@ std::pair<Score, Move> Searcher::DataGenStart(std::unique_ptr<Thread> &thread,
           best_move.move};
 }
 
-U64 Searcher::Bench(int depth) {
+U64 Searcher::Bench(std::unique_ptr<Thread> &thread, int depth) {
+  stop_.store(false, std::memory_order_seq_cst);
+
+  thread->Reset();
+  thread->SetBoard(board_);
+
   TimeConfig config{.depth = depth};
   time_mgmt_.SetConfig(config);
   time_mgmt_.Start();
-
-  stop_.store(false, std::memory_order_seq_cst);
-
-  auto thread = std::make_unique<Thread>(0);
-  thread->Reset();
-  thread->SetBoard(board_);
 
   IterativeDeepening<SearchType::kBench>(*thread);
   return thread->nodes_searched;

@@ -164,17 +164,18 @@ const std::vector<std::string> kSparsityFens = {
 void BenchSuite(int depth, bool sparsity_fens) {
   Board board;
   search::Searcher searcher(board);
-  searcher.ResizeHash(64);
+  searcher.ResizeHash(16);
+
+  auto bench_thread = std::make_unique<search::Thread>(0);
 
   U64 nodes = 0, elapsed = 0;
   const auto fens = sparsity_fens ? kSparsityFens : kBenchFens;
   for (const auto &position : fens) {
     board.SetFromFen(position);
-    searcher.NewGame();
+    searcher.NewGame(false);
 
-    auto &time_mgmt = searcher.GetTimeManagement();
-    nodes += searcher.Bench(depth);
-    elapsed += time_mgmt.TimeElapsed();
+    nodes += searcher.Bench(bench_thread, depth);
+    elapsed += searcher.GetTimeManagement().TimeElapsed();
   }
 
   fmt::println("{} nodes {} nps",

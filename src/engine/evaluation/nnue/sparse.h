@@ -31,7 +31,7 @@ struct NnzEntry {
   return table;
 }
 
-constexpr auto nnz_table = GenerateNnzTable();
+alignas(simd::kAlignment) constexpr auto nnz_table = GenerateNnzTable();
 
 // #ifdef SPARSE_PERMUTE
 constexpr int kHalfL1 = arch::kL1Size / 2;

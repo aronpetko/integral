@@ -204,7 +204,7 @@ Score Evaluate(Board &board) {
     }
   }
 
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output{};
+  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output;
   for (int i = 0; i < arch::kL3Size; i += kF32ChunkSize) {
     const auto &sum_vector = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[i]);
     auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
@@ -234,6 +234,7 @@ Score Evaluate(Board &board) {
       simd::ReduceAddPs(result_sums.data()) + network->l3_biases[bucket];
 
   return static_cast<Score>(l3_output * arch::kEvalScale);
+
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
   std::array<U8, arch::kL1Size> feature_output{};
@@ -249,8 +250,7 @@ Score Evaluate(Board &board) {
   }
 
 #ifdef SPARSE_PERMUTE
-  //sparse::CountActivations(feature_output);
-  sparse::CountSparsity(feature_output);
+  sparse::CountActivations(feature_output);
 #endif
 
   const float kL1Normalization =

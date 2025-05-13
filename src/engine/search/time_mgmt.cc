@@ -16,12 +16,6 @@ TUNABLE(kNodeFactorBase, 0.546157946120436, 0.3, 0.7, false);
 TUNABLE(kNodeFactorSlope, 2.296080118538782, 1.8, 2.5, false);
 TUNABLE(kNodeFactorIntercept, 0.4535368327980294, 0.2, 0.65, false);
 
-U64 GetCurrentTime() {
-  const auto duration = std::chrono::steady_clock::now().time_since_epoch();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(duration)
-      .count();
-}
-
 bool TimeConfig::HasBeenModified() const {
   static const TimeConfig default_config;
   return !(*this == default_config);
