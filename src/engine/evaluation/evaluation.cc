@@ -4,7 +4,7 @@
 
 namespace eval {
 
-TUNABLE_STEP(kMaterialScaleBase, 26720, 10000, 32768, false, 500);
+TUNABLE_STEP(kMaterialScaleBase, 22720, 10000, 32768, false, 500);
 
 Score Evaluate(Board &board) {
   const auto network_eval = nnue::Evaluate(board);
@@ -15,6 +15,7 @@ Score Evaluate(Board &board) {
 
   const auto &state = board.GetState();
   const auto material_phase =
+      *kSeePieceScores[kPawn] * state.Pawns().PopCount() +
       *kSeePieceScores[kKnight] * state.Knights().PopCount() +
       *kSeePieceScores[kBishop] * state.Bishops().PopCount() +
       *kSeePieceScores[kRook] * state.Rooks().PopCount() +
