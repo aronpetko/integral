@@ -431,6 +431,11 @@ Score Searcher::QuiescentSearch(Thread &thread,
     history.capture_history->Penalize(state, 1, captures);
   }
 
+  // Return an interpolated score toward beta for a safety "cushion"
+  if (best_score >= beta && std::abs(beta) < kTBWinInMaxPlyScore) {
+    best_score = std::lerp(best_score, beta, 0.5);
+  }
+
   TranspositionTableEntry::Flag tt_flag;
   if (alpha >= beta) {
     // Beta cutoff
