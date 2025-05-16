@@ -432,7 +432,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   }
 
   // Return an interpolated score toward beta for a safety "cushion"
-  if (best_score >= beta && std::abs(beta) < kTBWinInMaxPlyScore) {
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore) {
     best_score = std::lerp(best_score, beta, 0.5);
   }
 
