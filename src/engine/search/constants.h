@@ -15,6 +15,7 @@ TUNABLE_STEP(kAspWindowDelta, 8, 1, 50, false, 1);
 TUNABLE_STEP(kAspWindowGrowth, 1.3968181632525003, 0.1, 2.0, false, 0.03);
 
 TUNABLE_STEP(kQsCutoffLerpFactor, 0.46762757125234183, 0.0, 1.0, false, 0.1);
+TUNABLE_STEP(kQsFailHighLerpFactor, 0.5, 0.0, 1.0, false, 0.1);
 TUNABLE_STEP(kQsFutMargin, 156, 20, 300, false, 20);
 
 TUNABLE(kEvalHistUpdateMult, 63, 20, 100, false);
