@@ -626,8 +626,12 @@ Score Searcher::PVSearch(Thread &thread,
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
     stack->eval_complexity = 0;
   } else if (!stack->excluded_tt_move) {
-    raw_static_eval =
-        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
+    if (tt_static_eval != kScoreNone) {
+      raw_static_eval = tt_static_eval;
+      if (in_pv_node) board.GetAccumulator()->ApplyChanges();
+    } else {
+      raw_static_eval = eval::Evaluate(board);
+    }
 
     // Save the static eval in the TT if we have nothing yet
     if (!tt_hit) {
@@ -654,6 +658,8 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
+  } else {
+    board.GetAccumulator()->ApplyChanges();
   }
 
   const auto &prev_stack = stack - 1;
