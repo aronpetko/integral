@@ -1327,15 +1327,13 @@ void Searcher::SetThreadCount(U16 count) {
   threads_.shrink_to_fit();
   threads_.reserve(count);
 
-  thread_id_mutex_.lock();
   next_thread_id_ = 0;
-  thread_id_mutex_.unlock();
 
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back([this]() {
-      thread_id_mutex_.lock();
-      threads_.emplace_back(std::make_unique<Thread>(next_thread_id_++));
-      thread_id_mutex_.unlock();
+      thread_create_mutex_.lock();
+      threads_.emplace_back(std::make_unique<Thread>(next_thread_id_.fetch_add(1)));
+      thread_create_mutex_.unlock();
       Run(*threads_.back());
     });
   }

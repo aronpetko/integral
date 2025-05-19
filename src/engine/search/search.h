@@ -211,9 +211,8 @@ class Searcher {
   TimeManagement time_mgmt_;
   std::atomic_bool stop_, quit_;
   Barrier stop_barrier_, start_barrier_, search_end_barrier_;
-  std::mutex stop_mutex_, thread_stopped_mutex_, thread_id_mutex_;
-  std::atomic_int searching_threads_;
-  U16 next_thread_id_;
+  std::mutex stop_mutex_, thread_stopped_mutex_, thread_create_mutex_;
+  std::atomic_int searching_threads_, next_thread_id_;
   std::condition_variable thread_stopped_signal_;
   std::vector<std::unique_ptr<Thread>> threads_;
   std::vector<std::thread> raw_threads_;
