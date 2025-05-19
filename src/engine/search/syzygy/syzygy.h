@@ -2,6 +2,8 @@
 #define INTEGRAL_SYZYGY_H
 
 #include <atomic>
+#include <tbprobe.h>
+#include <tbconfig.h>
 
 #include "../../../chess/board.h"
 

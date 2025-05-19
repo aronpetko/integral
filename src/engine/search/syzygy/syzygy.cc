@@ -1,7 +1,5 @@
 #include "syzygy.h"
 
-#include <tbprobe.h>
-
 namespace syzygy {
 
 void SetPath(std::string_view path) {

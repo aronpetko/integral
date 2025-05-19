@@ -568,7 +568,8 @@ Score Searcher::PVSearch(Thread &thread,
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
-      state.Occupied().PopCount() <= 7 && depth >= syzygy::probe_depth &&
+      state.Occupied().PopCount() <= TB_LARGEST &&
+      depth >= syzygy::probe_depth &&
       state.fifty_moves_clock == 0 &&
       !state.castle_rights.CanCastle(state.turn) &&
       !state.castle_rights.CanCastle(FlipColor(state.turn))) {
