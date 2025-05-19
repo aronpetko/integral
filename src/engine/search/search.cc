@@ -1298,9 +1298,9 @@ void Searcher::QuitThreads() {
   stop_barrier_.ArriveAndWait();
   start_barrier_.ArriveAndWait();
 
-  for (auto &thread : threads_) {
-    if (thread->raw_thread.joinable()) {
-      thread->raw_thread.join();
+  for (auto &thread : raw_threads_) {
+    if (thread.joinable()) {
+      thread.join();
     }
   }
 }
@@ -1329,9 +1329,10 @@ void Searcher::SetThreadCount(U16 count) {
 
   next_thread_id_ = 0;
   for (U16 i = 0; i < count; i++) {
-    auto &thread =
-        threads_.emplace_back(std::make_unique<Thread>(next_thread_id_++));
-    thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
+    raw_threads_.emplace_back([&]() {
+      threads_.emplace_back(std::make_unique<Thread>(next_thread_id_++));
+      Run(*threads_.back());
+    });
   }
 }
 

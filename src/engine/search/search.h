@@ -139,7 +139,6 @@ struct alignas(64) Thread {
     tb_hits = 0;
   }
 
-  std::thread raw_thread;
   U32 id;
   Board board;
   history::History history;
@@ -216,6 +215,7 @@ class Searcher {
   std::atomic_int searching_threads_, next_thread_id_;
   std::condition_variable thread_stopped_signal_;
   std::vector<std::unique_ptr<Thread>> threads_;
+  std::vector<std::thread> raw_threads_;
   TranspositionTable transposition_table_;
 };
 
