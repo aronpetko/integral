@@ -987,8 +987,7 @@ Score Searcher::PVSearch(Thread &thread,
         // Extend more if the TT move is singular by a big margin
         if (!in_pv_node &&
             tt_move_excluded_score < new_beta - kSeDoubleMargin) {
-          extensions = 2 + (is_quiet && tt_move_excluded_score <
-                                            new_beta - kSeTripleMargin);
+          extensions = 2 + (tt_move_excluded_score < new_beta - kSeTripleMargin + 30 * is_capture);
           depth += depth < kSeDepthExtensionDepth;
         } else {
           extensions = 1;
