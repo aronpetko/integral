@@ -26,7 +26,11 @@ class History {
 
   // Reinitialize the history objects for quicker clearing
   void Clear() {
-    Initialize();
+    quiet_history->Clear();
+    continuation_history->Clear();
+    correction_history->Clear();
+    capture_history->Clear();
+    pawn_history->Clear();
   }
 
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,

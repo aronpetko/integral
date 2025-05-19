@@ -42,6 +42,10 @@ class QuietHistory {
                  [ThreatIndex(move, threats)];
   }
 
+  void Clear() {
+    table_.fill(0);
+  }
+
  private:
   [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
     return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());

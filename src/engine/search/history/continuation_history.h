@@ -10,7 +10,13 @@ namespace search::history {
 
 class ContinuationHistory {
  public:
-  ContinuationHistory() : table_({}) {}
+  ContinuationHistory() {
+    Clear();
+  }
+
+  void Clear() {
+   table_ = {};
+  }
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,

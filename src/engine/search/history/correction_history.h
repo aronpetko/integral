@@ -14,11 +14,16 @@ TUNABLE_STEP(kContinuationCorrectionWeight, 52, 0, 125, false, 3);
 
 class CorrectionHistory {
  public:
-  CorrectionHistory()
-      : non_pawn_table_({}),
-        pawn_table_({}),
-        major_table_({}),
-        continuation_table_({}) {}
+  CorrectionHistory() {
+    Clear();
+  }
+
+  void Clear() {
+    non_pawn_table_.fill(0);
+    pawn_table_.fill(0);
+    major_table_.fill(0);
+    continuation_table_.fill(ContinuationCorrectionEntry{});
+  }
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,

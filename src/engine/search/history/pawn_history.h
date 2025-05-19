@@ -11,7 +11,11 @@ TUNABLE(kPawnHistFill, -982, -3000, 0, false);
 
 class PawnHistory {
  public:
-  PawnHistory() : table_({}) {
+  PawnHistory() {
+    Clear();
+  }
+
+  void Clear() {
     table_.fill(kPawnHistFill);
   }
 
