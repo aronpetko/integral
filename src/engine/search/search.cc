@@ -1333,7 +1333,7 @@ void Searcher::SetThreadCount(U16 count) {
     raw_threads_.emplace_back([this]() {
       thread_create_mutex_.lock();
       const auto &thread_obj =
-          threads_[next_thread_id_++] = std::make_unique<Thread>(next_thread_id_);
+          threads_[next_thread_id_] = std::make_unique<Thread>(next_thread_id_++);
       thread_create_mutex_.unlock();
       Run(*thread_obj);
     });
