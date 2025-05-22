@@ -720,7 +720,7 @@ Score Searcher::PVSearch(Thread &thread,
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
-        return razoring_score;
+        return static_cast<Score>(std::lerp(razoring_score, alpha, 0.5));
       }
     }
 
