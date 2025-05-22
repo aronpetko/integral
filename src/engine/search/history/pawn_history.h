@@ -27,7 +27,7 @@ class PawnHistory {
                    I16 depth,
                    MoveList &quiets,
                    Score pawn_correction) {
-    const I16 bonus = HistoryBonus(depth) + pawn_correction / 2;
+    const I16 bonus = HistoryBonus(depth) + std::min(std::abs(pawn_correction) / 2, 100);
 
     // Apply a linear dampening to the bonus as the depth increases
     UpdateMoveScore(state, stack->move, bonus);
