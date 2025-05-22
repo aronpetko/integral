@@ -660,7 +660,7 @@ Score Searcher::PVSearch(Thread &thread,
       !prev_stack->in_check) {
     const int bonus =
         std::clamp<int>(-kEvalHistUpdateMult *
-                            (stack->static_eval + prev_stack->static_eval) / 10,
+                            (stack->static_eval + prev_stack->static_eval) / 10 + stack->eval_complexity / 4,
                         -kEvalHistUpdateMin,
                         kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
