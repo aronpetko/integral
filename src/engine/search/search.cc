@@ -1179,7 +1179,7 @@ Score Searcher::PVSearch(Thread &thread,
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
             history.pawn_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, quiets, history.correction_history->GetPawnCorrection(state, stack->static_eval));
             history.continuation_history->UpdateScore(
                 state, stack, history_depth, quiets);
           } else if (is_capture) {

@@ -25,8 +25,9 @@ class PawnHistory {
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    I16 depth,
-                   MoveList &quiets) {
-    const I16 bonus = HistoryBonus(depth);
+                   MoveList &quiets,
+                   Score pawn_correction) {
+    const I16 bonus = HistoryBonus(depth) + pawn_correction / 2;
 
     // Apply a linear dampening to the bonus as the depth increases
     UpdateMoveScore(state, stack->move, bonus);

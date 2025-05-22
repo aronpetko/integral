@@ -58,6 +58,13 @@ class CorrectionHistory {
     }
   }
 
+  [[nodiscard]] Score GetPawnCorrection(const BoardState &state,
+                                        Score static_eval) const {
+    const Score correction = pawn_table_[GetPawnTableIndex(state)][state.turn] *
+           kPawnCorrectionWeight;
+    return static_cast<I32>(static_eval) + correction / 512;
+  }
+
   [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
                                         StackEntry *stack,
                                         Score static_eval) const {
