@@ -1254,7 +1254,8 @@ Score Searcher::PVSearch(Thread &thread,
         tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
   }
 
-  if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
+  if (!stack->in_check && (!best_move || !best_move.IsNoisy(state)) &&
+      (!stack->excluded_tt_move || best_score >= beta)) {
     history.correction_history->UpdateScore(
         state, stack, best_score, tt_flag, depth);
   }
