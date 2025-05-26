@@ -939,7 +939,7 @@ Score Searcher::PVSearch(Thread &thread,
       // much material
       const int see_threshold =
           (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
-          stack->history_score / kSeePruneHistDiv;
+          stack->history_score / kSeePruneHistDiv + (std::abs(alpha) < kTBWinInMaxPlyScore ? (alpha - best_score) / 3 : 0);
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
               move,
