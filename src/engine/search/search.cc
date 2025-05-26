@@ -931,6 +931,11 @@ Score Searcher::PVSearch(Thread &thread,
           stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
+        if (std::abs(best_score) < kTBWinInMaxPlyScore) {
+          best_score =
+              std::max(best_score, stack->static_eval + futility_margin);
+        }
+
         move_picker.SkipQuiets();
         continue;
       }
@@ -939,7 +944,7 @@ Score Searcher::PVSearch(Thread &thread,
       // much material
       const int see_threshold =
           (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
-          stack->history_score / kSeePruneHistDiv + (std::abs(alpha) < kTBWinInMaxPlyScore ? (alpha - best_score) / 3 : 0);
+          stack->history_score / kSeePruneHistDiv;
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
               move,
