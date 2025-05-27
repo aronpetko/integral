@@ -76,7 +76,7 @@ struct StackEntry {
   // Threats
   BitBoard threats;
   // If this node belonged in the PV before
-  bool tt_was_in_pv;
+  bool  tt_was_in_pv;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves

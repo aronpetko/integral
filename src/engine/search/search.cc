@@ -266,8 +266,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
 
-  stack->tt_was_in_pv =
-      stack->excluded_tt_move ? stack->tt_was_in_pv : in_pv_node;
+  stack->tt_was_in_pv = in_pv_node;
 
   const int tt_depth = state.InCheck();
   const auto tt_entry = transposition_table_.Probe(zobrist_key);
@@ -537,8 +536,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
-  stack->tt_was_in_pv =
-      stack->excluded_tt_move ? stack->tt_was_in_pv : in_pv_node;
+  stack->tt_was_in_pv = in_pv_node;
 
   auto tt_move = Move::NullMove();
   bool tt_hit = false, can_use_tt_eval = false;
