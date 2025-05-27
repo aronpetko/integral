@@ -75,6 +75,8 @@ struct StackEntry {
   bool in_check;
   // Threats
   BitBoard threats;
+  // If this node belonged in the PV before
+  bool tt_was_in_pv;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -97,7 +99,8 @@ struct StackEntry {
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
-        continuation_entry(nullptr) {
+        continuation_entry(nullptr),
+        tt_was_in_pv(false) {
     ClearKillerMoves();
   }
 

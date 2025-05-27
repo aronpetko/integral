@@ -266,18 +266,20 @@ Score Searcher::QuiescentSearch(Thread &thread,
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
 
+  stack->tt_was_in_pv =
+      stack->excluded_tt_move ? stack->tt_was_in_pv : in_pv_node;
+
   const int tt_depth = state.InCheck();
   const auto tt_entry = transposition_table_.Probe(zobrist_key);
   const bool tt_hit = tt_entry->CompareKey(zobrist_key);
 
   auto tt_move = Move::NullMove();
-  bool tt_was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
   if (tt_hit) {
-    tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    stack->tt_was_in_pv |= tt_entry->was_in_pv;
   }
 
   // Use the TT entry's evaluation if possible
@@ -325,7 +327,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
             kScoreNone,
             raw_static_eval,
             Move::NullMove(),
-            tt_was_in_pv);
+            stack->tt_was_in_pv);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
       }
@@ -433,8 +435,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   // Return an interpolated score toward beta for a safety "cushion"
   if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore) {
-    best_score = static_cast<Score>(
-        std::lerp(best_score, beta, kQsFailHighLerpFactor));
+    best_score =
+        static_cast<Score>(std::lerp(best_score, beta, kQsFailHighLerpFactor));
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -454,7 +456,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
                                              best_score,
                                              raw_static_eval,
                                              Move::NullMove(),
-                                             tt_was_in_pv);
+                                             stack->tt_was_in_pv);
   transposition_table_.Save(
       tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
 
@@ -535,8 +537,11 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Probe the transposition table to see if we have already evaluated this
   // position
+  stack->tt_was_in_pv =
+      stack->excluded_tt_move ? stack->tt_was_in_pv : in_pv_node;
+
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false;
   Score tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
@@ -548,9 +553,9 @@ Score Searcher::PVSearch(Thread &thread,
   // Use the TT entry's evaluation if possible
   if (tt_hit) {
     can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-    tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    stack->tt_was_in_pv |= tt_entry->was_in_pv;
   }
 
   if (in_root) {
@@ -600,7 +605,7 @@ Score Searcher::PVSearch(Thread &thread,
                                                    score,
                                                    tt_static_eval,
                                                    Move::NullMove(),
-                                                   tt_was_in_pv);
+                                                   stack->tt_was_in_pv);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
         return score;
@@ -636,7 +641,7 @@ Score Searcher::PVSearch(Thread &thread,
                                                  kScoreNone,
                                                  raw_static_eval,
                                                  Move::NullMove(),
-                                                 tt_was_in_pv);
+                                                 stack->tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
@@ -840,7 +845,7 @@ Score Searcher::PVSearch(Thread &thread,
                 score,
                 raw_static_eval,
                 Move::NullMove(),
-                tt_was_in_pv);
+                stack->tt_was_in_pv);
             transposition_table_.Save(
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
@@ -1044,7 +1049,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if we have seen this node in the PV before
-      if (tt_was_in_pv) {
+      if (stack->tt_was_in_pv) {
         reduction -= kLmrWasPvNode;
       }
 
@@ -1212,19 +1217,22 @@ Score Searcher::PVSearch(Thread &thread,
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
-  }
-  // This node failed low, meaning the parent node will fail high. The previous
-  // move will already be given a history bonus by the parent node in the beta
-  // cutoff. However, we also give a history bonus in the event of a fail low to
-  // allow history tweaks to occur in PVS re-searches
-  else if (prev_stack->move && !prev_stack->capture_move &&
-           prev_stack->move.GetType() != MoveType::kPromotion) {
-    const auto history_bonus = history::HistoryBonus(depth);
-    const auto past_turn = FlipColor(state.turn);
-    history.quiet_history->UpdateMoveScore(
-        past_turn, prev_stack->move, prev_stack->threats, history_bonus);
-    history.pawn_history->UpdateMoveScore(
-        board.GetStateHistory().Back(), prev_stack->move, history_bonus / 2);
+  } else {
+    stack->tt_was_in_pv |= (stack - 1)->tt_was_in_pv;
+
+    // This node failed low, meaning the parent node will fail high. The
+    // previous move will already be given a history bonus by the parent node in
+    // the beta cutoff. However, we also give a history bonus in the event of a
+    // fail low to allow history tweaks to occur in PVS re-searches
+    if (prev_stack->move && !prev_stack->capture_move &&
+        prev_stack->move.GetType() != MoveType::kPromotion) {
+      const auto history_bonus = history::HistoryBonus(depth);
+      const auto past_turn = FlipColor(state.turn);
+      history.quiet_history->UpdateMoveScore(
+          past_turn, prev_stack->move, prev_stack->threats, history_bonus);
+      history.pawn_history->UpdateMoveScore(
+          board.GetStateHistory().Back(), prev_stack->move, history_bonus / 2);
+    }
   }
 
   if (syzygy::enabled) {
@@ -1250,7 +1258,7 @@ Score Searcher::PVSearch(Thread &thread,
                                                  best_score,
                                                  raw_static_eval,
                                                  best_move,
-                                                 tt_was_in_pv);
+                                                 stack->tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
