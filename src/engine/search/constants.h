@@ -39,7 +39,7 @@ TUNABLE(kNmpRedBase, 4, 1, 5, true);
 TUNABLE(kNmpRedDiv, 3, 2, 8, true);
 TUNABLE(kNmpEvalDiv, 163, 100, 300, false);
 
-TUNABLE(kIirDepth, 4, 2, 8, true);
+TUNABLE(kIirDepth, 6, 2, 8, true);
 
 TUNABLE_STEP(kLmrDepthNonPvNode, 1176, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthHistQuiet, 1189, 512, 2048, false, 150);
