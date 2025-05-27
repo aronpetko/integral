@@ -433,8 +433,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   // Return an interpolated score toward beta for a safety "cushion"
   if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore) {
-    best_score = static_cast<Score>(
-        std::lerp(best_score, beta, kQsFailHighLerpFactor));
+    best_score =
+        static_cast<Score>(std::lerp(best_score, beta, kQsFailHighLerpFactor));
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -707,8 +707,7 @@ Score Searcher::PVSearch(Thread &thread,
           kRevFutOppWorseningMargin * opponent_worsening +
           stack->eval_complexity / 2 +
           (stack - 1)->history_score / kRevFutHistoryDiv;
-      if (stack->eval - std::max(futility_margin, kRevFutMinMargin) >=
-          beta) {
+      if (stack->eval - futility_margin >= beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
