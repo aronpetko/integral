@@ -1177,7 +1177,7 @@ Score Searcher::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+                state, stack, history_depth, stack->threats, quiets, moves_seen);
             history.pawn_history->UpdateScore(
                 state, stack, history_depth, quiets);
             history.continuation_history->UpdateScore(
