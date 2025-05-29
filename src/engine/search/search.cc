@@ -942,8 +942,9 @@ Score Searcher::PVSearch(Thread &thread,
           return kSeeQuietThresh * lmr_fractional_depth * lmr_fractional_depth /
                  (kLmrDepthScale * kLmrDepthScale);
         }
-        return kSeeNoisyThresh * depth;
-      }() - stack->history_score / kSeePruneHistDiv;
+        return kSeeNoisyThresh * depth -
+               stack->history_score / kSeePruneHistDiv;
+      }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
               move,
