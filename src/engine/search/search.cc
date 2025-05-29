@@ -939,9 +939,10 @@ Score Searcher::PVSearch(Thread &thread,
       // much material
       const int see_threshold = [&]() -> int {
         if (is_quiet) {
-          return std::min(0,
-                          kSeeQuietThresh * lmr_fractional_depth * lmr_depth /
-                              kLmrDepthScale);
+          const int quiet_threshold = kSeeQuietThresh * lmr_fractional_depth *
+                                      lmr_depth / kLmrDepthScale;
+          // Ensure quiet moves aren't expected to win an exchange
+          return std::min(0, quiet_threshold);
         }
         return kSeeNoisyThresh * depth -
                stack->history_score / kSeePruneHistDiv;
