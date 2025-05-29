@@ -433,8 +433,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   // Return an interpolated score toward beta for a safety "cushion"
   if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore) {
-    best_score = static_cast<Score>(
-        std::lerp(best_score, beta, kQsFailHighLerpFactor));
+    best_score =
+        static_cast<Score>(std::lerp(best_score, beta, kQsFailHighLerpFactor));
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -938,8 +938,9 @@ Score Searcher::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold =
-          (is_quiet ? kSeeQuietThresh * lmr_depth * lmr_depth : kSeeNoisyThresh * depth -
-          stack->history_score / kSeePruneHistDiv);
+          (is_quiet ? kSeeQuietThresh * lmr_depth * lmr_depth
+                    : kSeeNoisyThresh * depth -
+                          stack->history_score / kSeePruneHistDiv);
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
               move,
@@ -1211,7 +1212,8 @@ Score Searcher::PVSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, depth, captures);
+    history.capture_history->Penalize(
+        state, depth + (alpha > beta + kHistoryBonusMargin), captures);
   }
   // This node failed low, meaning the parent node will fail high. The previous
   // move will already be given a history bonus by the parent node in the beta
