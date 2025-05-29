@@ -939,7 +939,7 @@ Score Searcher::PVSearch(Thread &thread,
       // much material
       const int see_threshold = [&]() -> int {
         if (is_quiet) {
-          return kSeeQuietThresh * lmr_fractional_depth * lmr_fractional_depth /
+          return kSeeQuietThresh * (lmr_fractional_depth + kLmrDepthRoundingCutoff) * (lmr_fractional_depth + kLmrDepthRoundingCutoff) /
                  (kLmrDepthScale * kLmrDepthScale);
         }
         return kSeeNoisyThresh * depth -
