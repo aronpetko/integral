@@ -1006,6 +1006,8 @@ Score Searcher::PVSearch(Thread &thread,
         extensions = -3;
       } else if (cut_node) {
         extensions = -2;
+      } else if (tt_entry->score <= alpha) {
+        extensions = -1;
       }
     }
 
