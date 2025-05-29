@@ -1046,7 +1046,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce more if this node is expected to fail high
       if (cut_node) {
-        reduction += kLmrCutNode - 1024 * (tt_entry->score <= alpha);
+        reduction += kLmrCutNode;
       }
 
       // Reduce less if this move gives check
@@ -1080,7 +1080,7 @@ Score Searcher::PVSearch(Thread &thread,
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
       reduction =
-          std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+          std::clamp(reduction, -(in_pv_node || cut_node), new_depth - 1);
 
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
