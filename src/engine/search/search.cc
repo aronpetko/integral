@@ -433,8 +433,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   // Return an interpolated score toward beta for a safety "cushion"
   if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore) {
-    best_score = static_cast<Score>(
-        std::lerp(best_score, beta, kQsFailHighLerpFactor));
+    best_score =
+        static_cast<Score>(std::lerp(best_score, beta, kQsFailHighLerpFactor));
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -937,9 +937,13 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
-      const int see_threshold =
-          (is_quiet ? kSeeQuietThresh * lmr_depth * lmr_depth : kSeeNoisyThresh * depth -
-          stack->history_score / kSeePruneHistDiv);
+      const int see_threshold = [&]() -> int {
+        if (is_quiet) {
+          return kSeeQuietThresh * lmr_fractional_depth * lmr_fractional_depth /
+                 (kLmrDepthScale * kLmrDepthScale);
+        }
+        return kSeeNoisyThresh * depth;
+      }() - stack->history_score / kSeePruneHistDiv;
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(
               move,
