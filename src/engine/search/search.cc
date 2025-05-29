@@ -791,11 +791,6 @@ Score Searcher::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
-          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-              moves_seen > 0) {
-            break;
-          }
-
           if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
             continue;
           }
