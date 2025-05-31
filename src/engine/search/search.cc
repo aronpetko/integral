@@ -699,7 +699,7 @@ Score Searcher::PVSearch(Thread &thread,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
-        stack->eval >= beta) {
+        stack->eval >= beta && (!tt_move || tt_move.IsNoisy(state))) {
       const int improving_margin =
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin;
       const int futility_margin =
