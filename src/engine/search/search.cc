@@ -158,7 +158,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
         report_info->Print(depth,
                            thread.sel_depth,
                            is_mate,
-                           pv_move.score,
+                           eval::NormalizeScore(pv_move.score, board_.GetState().MaterialCount()),
                            nodes_searched,
                            time_mgmt_.TimeElapsed(),
                            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
