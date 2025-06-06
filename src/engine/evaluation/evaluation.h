@@ -7,10 +7,10 @@
 namespace eval {
 
 TUNABLE(kSeePawnScore, 109, 50, 150, false);
-TUNABLE(kSeeKnightScore, 303, 200, 400, false);
-TUNABLE(kSeeBishopScore, 303, 200, 400, false);
-TUNABLE(kSeeRookScore, 547, 400, 600, false);
-TUNABLE(kSeeQueenScore, 909, 700, 1100, false);
+TUNABLE(kSeeKnightScore, 370, 200, 400, false);
+TUNABLE(kSeeBishopScore, 390, 200, 400, false);
+TUNABLE(kSeeRookScore, 600, 400, 600, false);
+TUNABLE(kSeeQueenScore, 1200, 700, 1100, false);
 TUNABLE(kSeeKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kSeeNoneScore, 0, 0, 0, true);  // Always 0
 
@@ -28,7 +28,7 @@ inline std::array kSeePieceScores = {
 
 // Constants derived from WDL_model
 constexpr std::array kAs = {
-    52.44311451, -197.92668497, 168.31113282, 109.73439040};
+    86.66506958, -259.82299819, 205.33735813, 127.53923650};
 
 [[nodiscard]] static Score NormalizeScore(Score score, int material_count) {
   if (score == 0 || std::abs(score) >= kTBWinInMaxPlyScore) return score;

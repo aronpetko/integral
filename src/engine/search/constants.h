@@ -15,6 +15,7 @@ TUNABLE_STEP(kAspWindowDelta, 8, 1, 50, false, 1);
 TUNABLE_STEP(kAspWindowGrowth, 1.3968181632525003, 0.1, 2.0, false, 0.03);
 
 TUNABLE_STEP(kQsCutoffLerpFactor, 0.46762757125234183, 0.0, 1.0, false, 0.1);
+TUNABLE_STEP(kQsFailHighLerpFactor, 0.5, 0.0, 1.0, false, 0.1);
 TUNABLE_STEP(kQsFutMargin, 156, 20, 300, false, 20);
 
 TUNABLE(kEvalHistUpdateMult, 63, 20, 100, false);
@@ -46,14 +47,14 @@ TUNABLE_STEP(kLmrDepthHistCapture, 1011, 512, 2048, true, 150);
 TUNABLE_STEP(kLmrDepthNotImproving, 1224, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthRoundingCutoff, 610, 512, 2048, false, 100);
 
-TUNABLE(kLmpBase, 5.0, 1.5, 5.0, true);
+TUNABLE(kLmpBase, 5, 1, 10, true);
 
 TUNABLE(kFutPruneDepth, 8, 6, 12, true);
 TUNABLE_STEP(kFutMarginBase, 188, 100, 250, false, 20);
 TUNABLE_STEP(kFutMarginMult, 85, 50, 200, false, 5);
 TUNABLE(kFutMarginHistDiv, 142, 32, 256, false);
 
-TUNABLE(kSeeQuietThresh, -58, -150, -5, false);
+TUNABLE(kSeeQuietThresh, -20, -150, -5, false);
 TUNABLE(kSeeNoisyThresh, -105, -150, -5, false);
 TUNABLE(kSeePruneHistDiv, 136, 50, 300, false);
 

@@ -159,7 +159,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
         report_info->Print(depth,
                            thread.sel_depth,
                            is_mate,
-                           pv_move.score,
+                           eval::NormalizeScore(pv_move.score, board_.GetState().MaterialCount()),
                            nodes_searched,
                            time_mgmt_.TimeElapsed(),
                            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
@@ -430,6 +430,12 @@ Score Searcher::QuiescentSearch(Thread &thread,
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, 1, captures);
+  }
+
+  // Return an interpolated score toward beta for a safety "cushion"
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore) {
+    best_score =
+        static_cast<Score>(std::lerp(best_score, beta, kQsFailHighLerpFactor));
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -786,11 +792,6 @@ Score Searcher::PVSearch(Thread &thread,
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
-          if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-              moves_seen > 0) {
-            break;
-          }
-
           if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
             continue;
           }
@@ -932,14 +933,15 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
-      const int see_threshold =
-          (is_quiet ? kSeeQuietThresh : kSeeNoisyThresh) * depth -
-          stack->history_score / kSeePruneHistDiv;
+      const int see_threshold = [&]() -> int {
+        if (is_quiet) {
+          return kSeeQuietThresh * lmr_depth * lmr_depth;
+        }
+        return kSeeNoisyThresh * depth -
+               stack->history_score / kSeePruneHistDiv;
+      }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-          !eval::StaticExchange(
-              move,
-              is_quiet ? std::min(see_threshold, 0) : see_threshold,
-              state)) {
+          !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
 
