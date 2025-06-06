@@ -1046,7 +1046,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce more if this node is expected to fail high
       if (cut_node) {
-        reduction += kLmrCutNode - 768 * tt_was_in_pv;
+        reduction += kLmrCutNode - 1024 * tt_was_in_pv;
       }
 
       // Reduce less if this move gives check
