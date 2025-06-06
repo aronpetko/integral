@@ -155,18 +155,20 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
         const bool is_mate = eval::IsMateScore(pv_move.score);
         const auto nodes_searched = GetNodesSearched();
-        report_info->Print(depth,
-                           thread.sel_depth,
-                           is_mate,
-                           eval::NormalizeScore(pv_move.score, board_.GetState().MaterialCount()),
-                           nodes_searched,
-                           time_mgmt_.TimeElapsed(),
-                           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-                           transposition_table_.HashFull(),
-                           syzygy::enabled,
-                           GetTbHits(),
-                           pv_move.pv.UCIFormat(),
-                           i);
+        report_info->Print(
+            depth,
+            thread.sel_depth,
+            is_mate,
+            eval::NormalizeScore(pv_move.score,
+                                 board_.GetState().MaterialCount()),
+            nodes_searched,
+            time_mgmt_.TimeElapsed(),
+            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
+            transposition_table_.HashFull(),
+            syzygy::enabled,
+            GetTbHits(),
+            pv_move.pv.UCIFormat(),
+            i);
       }
     }
 
@@ -658,11 +660,11 @@ Score Searcher::PVSearch(Thread &thread,
   const auto &prev_stack = stack - 1;
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
-    const int bonus =
-        std::clamp<int>(-kEvalHistUpdateMult *
-                            (stack->static_eval + prev_stack->static_eval) / 10,
-                        -kEvalHistUpdateMin,
-                        kEvalHistUpdateMax);
+    const int their_loss =
+        prev_stack->static_eval + stack->static_eval - kEvalHistUpdateOffset;
+    const int bonus = std::clamp(-kEvalHistUpdateMult * their_loss / 10,
+                                 -kEvalHistUpdateMin,
+                                 kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
