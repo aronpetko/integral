@@ -12,7 +12,7 @@ include(CheckIPOSupported)
 
 # Build options for different architectures
 set(BUILD_NATIVE ON)
-option(BUILD_NATIVE "Build with native optimizations" ON)
+option(BUILD_NATIVE "Build with native optimizations" OFF)
 option(BUILD_VNNI512 "Build with AVX512 VNNI support" OFF)
 option(BUILD_AVX512 "Build with AVX512 optimizations" OFF)
 option(BUILD_AVX2_BMI2 "Build with AVX2 + BMI2 optimizations" OFF)
@@ -21,7 +21,7 @@ option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
-set(NETWORK_NAME zekrom-v6)
+set(NETWORK_NAME dual_act)
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/releases/download/${NETWORK_NAME}/${NETWORK_NAME}.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/${NETWORK_NAME}.nnue")

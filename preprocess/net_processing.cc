@@ -70,7 +70,7 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
 
   // Transpose l2_weights from [b][l3][l2] to [b][l2][l3]
   for (int b = 0; b < nnue::arch::kOutputBucketCount; b++) {
-    for (int l2 = 0; l2 < nnue::arch::kL2Size; l2++) {
+    for (int l2 = 0; l2 < nnue::arch::kL2Size * 2; l2++) {
       for (int l3 = 0; l3 < nnue::arch::kL3Size; l3++) {
         network->l2_weights[b][l2][l3] = raw_network->l2_weights[b][l3][l2];
       }
