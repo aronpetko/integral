@@ -715,8 +715,8 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Razoring: At low depths, if this node seems like it might fail low, we
     // do a quiescent search to determine if we should prune
-    if (!stack->excluded_tt_move && alpha < 2000 &&
-        stack->static_eval + 300 + 200 * depth * depth <= alpha) {
+    if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
+        stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
