@@ -160,6 +160,7 @@ Move MovePicker::Next() {
     }
 
     stage_ = Stage::kBadQuiets;
+    moves_idx_ = 0;
   }
 
   if (stage_ == Stage::kBadQuiets) {
