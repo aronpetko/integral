@@ -31,6 +31,8 @@ TUNABLE(kRookMinorThreatScoreNeg, 12720, 5000, 20000, false);
 TUNABLE(kMinorPawnThreatScorePos, 8063, 3000, 12000, false);
 TUNABLE(kMinorPawnThreatScoreNeg, 8355, 3000, 12000, false);
 
+TUNABLE(kGoodQuietMinimumScore, -10000, -20000, 0, false);
+
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -63,7 +65,7 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kGenerateNoisies) {
     stage_ = Stage::kGoodNoisies;
-    GenerateAndScoreMoves<MoveGenType::kNoisy>(noisies_);
+    GenerateAndScoreNoisies();
   }
 
   if (stage_ == Stage::kGoodNoisies) {
@@ -125,20 +127,7 @@ Move MovePicker::Next() {
       stage_ = Stage::kBadNoisies;
     } else {
       stage_ = Stage::kGoodQuiets;
-
-      List<ScoredMove, kMaxMoves> temp_quiet_moves;
-      GenerateAndScoreMoves<MoveGenType::kQuiet>(temp_quiet_moves);
-
-      for (int i = 0; i < temp_quiet_moves.Size(); ++i) {
-        const auto &scored_move = temp_quiet_moves[i];
-        const auto history_score =
-            history_.GetQuietMoveScore(state, scored_move.move, stack_);
-
-        if (history_score > 0)
-          quiets_.Push(scored_move);
-        else
-          bad_quiets_.Push(scored_move);
-      }
+      GenerateAndScoreQuiets();
     }
   }
 
@@ -193,21 +182,42 @@ ScoredMove &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
   return move_list[index];
 }
 
-template <MoveGenType move_type>
-void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
+void MovePicker::GenerateAndScoreQuiets() {
   const auto &state = board_.GetState();
+  auto moves = move_gen::GenerateMoves<kQuiet>(board_);
 
   const auto &killers = stack_->killer_moves;
-  const bool killer_0_noisy = killers[0].IsNoisy(state),
-             killer_1_noisy = killers[1].IsNoisy(state);
+  const auto first_killer = killers[0], second_killer = killers[1];
 
-  auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
-        (killers[1] != move || killer_1_noisy)) {
-      list.Push({move, ScoreMove(move)});
+    if (move == tt_move_ || move == stack_->killer_moves[0] ||
+        move == stack_->killer_moves[1]) {
+      continue;
     }
+
+    const auto score = ScoreMove(move);
+    if (score > kGoodQuietMinimumScore) {
+      quiets_.Push({move, score});
+    } else {
+      bad_quiets_.Push({move, score});
+    }
+  }
+}
+
+void MovePicker::GenerateAndScoreNoisies() {
+  const auto &state = board_.GetState();
+  auto moves = move_gen::GenerateMoves<kNoisy>(board_);
+
+  for (int i = 0; i < moves.Size(); i++) {
+    auto move = moves[i];
+    if (move == tt_move_) {
+      continue;
+    }
+
+    // Treat all noisies equally here since splitting the good/bad noisies
+    // happens lazily
+    noisies_.Push({move, ScoreMove(move)});
   }
 }
 
