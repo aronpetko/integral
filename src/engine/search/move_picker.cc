@@ -149,7 +149,6 @@ Move MovePicker::Next() {
     }
 
     stage_ = Stage::kBadQuiets;
-    quiet_moves_idx_ = 0;
   }
 
   if (stage_ == Stage::kBadQuiets) {
