@@ -127,11 +127,14 @@ Move MovePicker::Next() {
       GenerateAndScoreMoves<MoveGenType::kQuiet>(temp_quiet_moves);
 
       for (int i = 0; i < temp_quiet_moves.Size(); ++i) {
-        auto &move = temp_quiet_moves[i];
-        if (move.score >= -25000)
-          quiets_.Push(move);
+        const auto &scored_move = temp_quiet_moves[i];
+        const auto history_score =
+            history_.GetQuietMoveScore(state, scored_move.move, stack_);
+
+        if (history_score >= -1000)
+          quiets_.Push(scored_move);
         else
-          bad_quiets_.Push(move);
+          bad_quiets_.Push(scored_move);
       }
     }
   }
