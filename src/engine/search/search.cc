@@ -350,7 +350,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
         moves_seen > 0) {
       break;
     }
@@ -939,7 +939,7 @@ Score Searcher::PVSearch(Thread &thread,
         return kSeeNoisyThresh * depth -
                stack->history_score / kSeePruneHistDiv;
       }();
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisies &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }

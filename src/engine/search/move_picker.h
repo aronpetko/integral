@@ -24,13 +24,14 @@ class MovePicker {
  public:
   enum class Stage {
     kTTMove,
-    kGenerateNoisys,
-    kGoodNoisys,
+    kGenerateNoisies,
+    kGoodNoisies,
     kFirstKiller,
     kSecondKiller,
     kGenerateQuiets,
-    kQuiets,
-    kBadNoisys,
+    kGoodQuiets,
+    kBadNoisies,
+    kBadQuiets
   };
 
   MovePicker(MovePickerType type,
@@ -49,7 +50,7 @@ class MovePicker {
   }
 
  private:
-  Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
+  ScoredMove &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 
   template <MoveGenType move_type>
   void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
@@ -63,10 +64,11 @@ class MovePicker {
   history::History &history_;
   StackEntry *stack_;
   Stage stage_;
-  List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
+  List<ScoredMove, kMaxMoves> noisies_, bad_noisies_;
   List<ScoredMove, kMaxMoves> quiets_;
-  int moves_idx_;
+  int quiet_moves_idx_, noisy_moves_idx_;
   int see_threshold_;
+  bool skip_quiets_;
 };
 
 }  // namespace search

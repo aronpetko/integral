@@ -43,14 +43,16 @@ MovePicker::MovePicker(MovePickerType type,
       history_(history),
       stack_(stack),
       stage_(Stage::kTTMove),
-      moves_idx_(0),
+      noisy_moves_idx_(0),
+      quiet_moves_idx_(0),
+      skip_quiets_(false),
       see_threshold_(see_threshold) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
 
   if (stage_ == Stage::kTTMove) {
-    stage_ = Stage::kGenerateNoisys;
+    stage_ = Stage::kGenerateNoisies;
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
@@ -60,18 +62,18 @@ Move MovePicker::Next() {
     }
   }
 
-  if (stage_ == Stage::kGenerateNoisys) {
-    stage_ = Stage::kGoodNoisys;
-    GenerateAndScoreMoves<MoveGenType::kNoisy>(noisys_);
+  if (stage_ == Stage::kGenerateNoisies) {
+    stage_ = Stage::kGoodNoisies;
+    GenerateAndScoreMoves<MoveGenType::kNoisy>(noisies_);
   }
 
-  if (stage_ == Stage::kGoodNoisys) {
-    while (moves_idx_ < noisys_.Size()) {
-      const auto move = SelectionSort(noisys_, moves_idx_);
-      const auto score = noisys_[moves_idx_].score;
+  if (stage_ == Stage::kGoodNoisies) {
+    while (noisy_moves_idx_ < noisies_.Size()) {
+      const auto move = SelectionSort(noisies_, noisy_moves_idx_).move;
+      const auto score = noisies_[noisy_moves_idx_].score;
       const auto history_score = history_.GetCaptureMoveScore(state, move);
 
-      moves_idx_++;
+      noisy_moves_idx_++;
 
       const bool loses_material = !eval::StaticExchange(
           move, see_threshold_ - history_score / kSeeNoisyHistoryDiv, state);
@@ -79,7 +81,7 @@ Move MovePicker::Next() {
         return move;
       }
 
-      bad_noisys_.Push({move, score});
+      bad_noisies_.Push({move, score});
     }
 
     if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
@@ -116,25 +118,46 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kGenerateQuiets) {
-    stage_ = Stage::kQuiets;
-    moves_idx_ = 0;
-    GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
+    if (skip_quiets_) {
+      stage_ = Stage::kBadNoisies;
+    } else {
+      stage_ = Stage::kGoodQuiets;
+      quiet_moves_idx_ = 0;
+      GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
+    }
   }
 
-  if (stage_ == Stage::kQuiets) {
-    if (moves_idx_ < quiets_.Size()) {
-      return SelectionSort(quiets_, moves_idx_++);
+  if (stage_ == Stage::kGoodQuiets) {
+    if (quiet_moves_idx_ < quiets_.Size() && !skip_quiets_) {
+      const auto scored_move = SelectionSort(quiets_, quiet_moves_idx_++);
+      if (scored_move.score < -14000) {
+        quiet_moves_idx_--;
+      } else {
+        return scored_move.move;
+      }
     }
 
-    stage_ = Stage::kBadNoisys;
-    moves_idx_ = 0;
+    stage_ = Stage::kBadNoisies;
+    noisy_moves_idx_ = 0;
   }
 
-  if (stage_ == Stage::kBadNoisys) {
-    if (moves_idx_ < bad_noisys_.Size()) {
-      // The bad noisys are already sorted when we split them off in the good
-      // noisys stage
-      return bad_noisys_[moves_idx_++].move;
+  if (stage_ == Stage::kBadNoisies) {
+    if (noisy_moves_idx_ < bad_noisies_.Size()) {
+      // The bad noisies are already sorted when we split them off in the good
+      // noisies stage
+      return bad_noisies_[noisy_moves_idx_++].move;
+    }
+
+    stage_ = Stage::kBadQuiets;
+    quiet_moves_idx_ = 0;
+  }
+
+  if (stage_ == Stage::kBadQuiets) {
+    if (quiet_moves_idx_ < quiets_.Size() && !skip_quiets_) {
+      const auto scored_move = SelectionSort(quiets_, quiet_moves_idx_++);
+      if (scored_move.score < -14000) {
+        return scored_move.move;
+      }
     }
   }
 
@@ -142,14 +165,11 @@ Move MovePicker::Next() {
 }
 
 void MovePicker::SkipQuiets() {
-  if (stage_ == Stage::kQuiets) {
-    stage_ = Stage::kBadNoisys;
-    moves_idx_ = 0;
-  }
+  skip_quiets_ = true;
 }
 
-Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
-                                int index) {
+ScoredMove &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
+                                      int index) {
   int best_move_idx = index;
   int best_score = move_list[index].score;
   for (int next = index + 1; next < move_list.Size(); ++next) {
@@ -163,7 +183,7 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
     std::swap(move_list[index], move_list[best_move_idx]);
   }
 
-  return move_list[index].move;
+  return move_list[index];
 }
 
 template <MoveGenType move_type>
