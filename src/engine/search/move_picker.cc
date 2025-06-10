@@ -126,9 +126,16 @@ Move MovePicker::Next() {
       List<ScoredMove, kMaxMoves> temp_quiet_moves;
       GenerateAndScoreMoves<MoveGenType::kQuiet>(temp_quiet_moves);
 
+      int average_move_score = 0;
+      for (int i = 0; i < temp_quiet_moves.Size(); ++i) {
+        average_move_score += temp_quiet_moves[i].score;
+      }
+
+      average_move_score /= temp_quiet_moves.Size();
+
       for (int i = 0; i < temp_quiet_moves.Size(); ++i) {
         auto &move = temp_quiet_moves[i];
-        if (move.score >= -20000)
+        if (move.score >= average_move_score)
           quiets_.Push(move);
         else
           bad_quiets_.Push(move);
