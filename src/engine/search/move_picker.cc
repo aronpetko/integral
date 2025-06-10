@@ -43,8 +43,7 @@ MovePicker::MovePicker(MovePickerType type,
       history_(history),
       stack_(stack),
       stage_(Stage::kTTMove),
-      noisy_moves_idx_(0),
-      quiet_moves_idx_(0),
+      moves_idx_(0),
       skip_quiets_(false),
       see_threshold_(see_threshold) {}
 
@@ -68,12 +67,12 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kGoodNoisies) {
-    while (noisy_moves_idx_ < noisies_.Size()) {
-      const auto move = SelectionSort(noisies_, noisy_moves_idx_).move;
-      const auto score = noisies_[noisy_moves_idx_].score;
+    while (moves_idx_ < noisies_.Size()) {
+      const auto move = SelectionSort(noisies_, moves_idx_).move;
+      const auto score = noisies_[moves_idx_].score;
       const auto history_score = history_.GetCaptureMoveScore(state, move);
 
-      noisy_moves_idx_++;
+      moves_idx_++;
 
       const bool loses_material = !eval::StaticExchange(
           move, see_threshold_ - history_score / kSeeNoisyHistoryDiv, state);
@@ -122,41 +121,43 @@ Move MovePicker::Next() {
       stage_ = Stage::kBadNoisies;
     } else {
       stage_ = Stage::kGoodQuiets;
-      quiet_moves_idx_ = 0;
-      GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
+      moves_idx_ = 0;
+
+      List<ScoredMove, kMaxMoves> temp_quiet_moves;
+      GenerateAndScoreMoves<MoveGenType::kQuiet>(temp_quiet_moves);
+
+      for (int i = 0; i < temp_quiet_moves.Size(); ++i) {
+        auto &move = temp_quiet_moves[i];
+        if (move.score >= -20000)
+          quiets_.Push(move);
+        else
+          bad_quiets_.Push(move);
+      }
     }
   }
 
   if (stage_ == Stage::kGoodQuiets) {
-    if (quiet_moves_idx_ < quiets_.Size() && !skip_quiets_) {
-      const auto scored_move = SelectionSort(quiets_, quiet_moves_idx_++);
-      if (scored_move.score < -20000) {
-        quiet_moves_idx_--;
-      } else {
-        return scored_move.move;
-      }
+    if (moves_idx_ < quiets_.Size() && !skip_quiets_) {
+      return SelectionSort(quiets_, moves_idx_++).move;
     }
 
     stage_ = Stage::kBadNoisies;
-    noisy_moves_idx_ = 0;
+    moves_idx_ = 0;
   }
 
   if (stage_ == Stage::kBadNoisies) {
-    if (noisy_moves_idx_ < bad_noisies_.Size()) {
+    if (moves_idx_ < bad_noisies_.Size()) {
       // The bad noisies are already sorted when we split them off in the good
       // noisies stage
-      return bad_noisies_[noisy_moves_idx_++].move;
+      return bad_noisies_[moves_idx_++].move;
     }
 
     stage_ = Stage::kBadQuiets;
   }
 
   if (stage_ == Stage::kBadQuiets) {
-    if (quiet_moves_idx_ < quiets_.Size() && !skip_quiets_) {
-      const auto scored_move = SelectionSort(quiets_, quiet_moves_idx_++);
-      if (scored_move.score < -20000) {
-        return scored_move.move;
-      }
+    if (moves_idx_ < bad_quiets_.Size() && !skip_quiets_) {
+      return SelectionSort(bad_quiets_, moves_idx_++).move;
     }
   }
 
