@@ -130,7 +130,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGoodQuiets) {
     if (quiet_moves_idx_ < quiets_.Size() && !skip_quiets_) {
       const auto scored_move = SelectionSort(quiets_, quiet_moves_idx_++);
-      if (scored_move.score < -14000) {
+      if (scored_move.score < -20000) {
         quiet_moves_idx_--;
       } else {
         return scored_move.move;
