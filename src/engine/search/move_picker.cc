@@ -68,19 +68,21 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kGoodNoisies) {
     while (moves_idx_ < noisies_.Size()) {
-      const auto move = SelectionSort(noisies_, moves_idx_).move;
-      const auto score = noisies_[moves_idx_].score;
-      const auto history_score = history_.GetCaptureMoveScore(state, move);
+      const auto scored_move = SelectionSort(noisies_, moves_idx_);
+      const auto history_score =
+          history_.GetCaptureMoveScore(state, scored_move.move);
 
       moves_idx_++;
 
       const bool loses_material = !eval::StaticExchange(
-          move, see_threshold_ - history_score / kSeeNoisyHistoryDiv, state);
-      if (!loses_material && !move.IsUnderPromotion()) {
-        return move;
+          scored_move.move,
+          see_threshold_ - history_score / kSeeNoisyHistoryDiv,
+          state);
+      if (!loses_material && !scored_move.move.IsUnderPromotion()) {
+        return scored_move.move;
       }
 
-      bad_noisies_.Push({move, score});
+      bad_noisies_.Push(scored_move);
     }
 
     if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
@@ -117,11 +119,12 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kGenerateQuiets) {
+    moves_idx_ = 0;
+
     if (skip_quiets_) {
       stage_ = Stage::kBadNoisies;
     } else {
       stage_ = Stage::kGoodQuiets;
-      moves_idx_ = 0;
 
       List<ScoredMove, kMaxMoves> temp_quiet_moves;
       GenerateAndScoreMoves<MoveGenType::kQuiet>(temp_quiet_moves);
