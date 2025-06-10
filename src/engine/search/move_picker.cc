@@ -134,7 +134,7 @@ Move MovePicker::Next() {
         const auto history_score =
             history_.GetQuietMoveScore(state, scored_move.move, stack_);
 
-        if (history_score >= -1000)
+        if (history_score > 0)
           quiets_.Push(scored_move);
         else
           bad_quiets_.Push(scored_move);
