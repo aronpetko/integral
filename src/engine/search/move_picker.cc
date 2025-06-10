@@ -154,7 +154,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kBadQuiets) {
     if (quiet_moves_idx_ < quiets_.Size() && !skip_quiets_) {
       const auto scored_move = SelectionSort(quiets_, quiet_moves_idx_++);
-      if (scored_move.score < -14000) {
+      if (scored_move.score < -20000) {
         return scored_move.move;
       }
     }
