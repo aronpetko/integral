@@ -951,7 +951,7 @@ Score Searcher::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
+        if (is_quiet) move_picker.SkipQuiets();
         continue;
       }
     }
