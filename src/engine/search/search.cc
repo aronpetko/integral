@@ -942,7 +942,7 @@ Score Searcher::PVSearch(Thread &thread,
         return kSeeNoisyThresh * depth -
                stack->history_score / kSeePruneHistDiv +
                (stack->static_eval < alpha) *
-                   std::min((alpha - stack->static_eval) / 3, 300);
+                   std::min((alpha - stack->static_eval) / 4, 200);
       }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(move, see_threshold, state)) {
