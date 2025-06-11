@@ -155,18 +155,20 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
         const bool is_mate = eval::IsMateScore(pv_move.score);
         const auto nodes_searched = GetNodesSearched();
-        report_info->Print(depth,
-                           thread.sel_depth,
-                           is_mate,
-                           eval::NormalizeScore(pv_move.score, board_.GetState().MaterialCount()),
-                           nodes_searched,
-                           time_mgmt_.TimeElapsed(),
-                           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-                           transposition_table_.HashFull(),
-                           syzygy::enabled,
-                           GetTbHits(),
-                           pv_move.pv.UCIFormat(),
-                           i);
+        report_info->Print(
+            depth,
+            thread.sel_depth,
+            is_mate,
+            eval::NormalizeScore(pv_move.score,
+                                 board_.GetState().MaterialCount()),
+            nodes_searched,
+            time_mgmt_.TimeElapsed(),
+            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
+            transposition_table_.HashFull(),
+            syzygy::enabled,
+            GetTbHits(),
+            pv_move.pv.UCIFormat(),
+            i);
       }
     }
 
@@ -938,7 +940,9 @@ Score Searcher::PVSearch(Thread &thread,
           return kSeeQuietThresh * lmr_depth * lmr_depth;
         }
         return kSeeNoisyThresh * depth -
-               stack->history_score / kSeePruneHistDiv;
+               stack->history_score / kSeePruneHistDiv +
+               (stack->static_eval < alpha) *
+                   std::min((alpha - stack->static_eval) / 3, 300);
       }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(move, see_threshold, state)) {
