@@ -196,12 +196,9 @@ void MovePicker::GenerateAndScoreQuiets() {
       continue;
     }
 
-    const auto score = ScoreMove(move);
-    if (score > kGoodQuietMinimumScore) {
-      quiets_.Push({move, score});
-    } else {
-      bad_quiets_.Push({move, score});
-    }
+    const auto history_score = history_.GetQuietMoveScore(state, move, stack_);
+    auto &quiet_list = history_score > kGoodQuietMinimumScore ? quiets_ : bad_quiets_;
+    quiet_list.Push(ScoredMove{move, ScoreMove(move)});
   }
 }
 
