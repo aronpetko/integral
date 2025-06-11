@@ -1,6 +1,6 @@
 # Default compiler settings
 CC=gcc
-CXX=clang++
+CXX=g++
 
 # Detect the operating system
 ifeq ($(OS),Windows_NT)
