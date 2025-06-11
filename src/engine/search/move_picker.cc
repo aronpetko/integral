@@ -31,7 +31,7 @@ TUNABLE(kRookMinorThreatScoreNeg, 12720, 5000, 20000, false);
 TUNABLE(kMinorPawnThreatScorePos, 8063, 3000, 12000, false);
 TUNABLE(kMinorPawnThreatScoreNeg, 8355, 3000, 12000, false);
 
-TUNABLE(kGoodQuietMinimumScore, -5000, -20000, 0, false);
+TUNABLE(kGoodQuietMinimumScore, -0, -20000, 0, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
