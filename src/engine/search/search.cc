@@ -90,11 +90,11 @@ void Searcher::IterativeDeepening(Thread &thread) {
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
       const auto average_score = cur_best_move.average_score;
 
-      Score window =
+      int window =
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
 
-      Score alpha = std::max(-kInfiniteScore, cur_best_move.score - window);
-      Score beta = std::min(kInfiniteScore, cur_best_move.score + window);
+      Score alpha = std::max<int>(-kInfiniteScore, cur_best_move.score - window);
+      Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
 
       int fail_high_count = 0;
 
@@ -114,12 +114,12 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
           // We failed low which means we don't have a move to play, so we widen
           // alpha
-          alpha = std::max(-kInfiniteScore, alpha - window);
+          alpha = std::max<int>(-kInfiniteScore, alpha - window);
           fail_high_count = 0;
         } else if (score >= beta) {
           // We failed high on a PV node, which is abnormal and requires further
           // verification
-          beta = std::min(kInfiniteScore, beta + window);
+          beta = std::min<int>(kInfiniteScore, beta + window);
 
           // Spend less time searching as we expand the search window, unless
           // we're absolutely winning
@@ -799,8 +799,6 @@ Score Searcher::PVSearch(Thread &thread,
 
           ++moves_seen;
 
-          // Set the currently searched move in the stack for continuation
-          // history
           stack->move = move;
           stack->moved_piece = state.GetPieceType(move.GetFrom());
           stack->capture_move = move.IsCapture(state);
@@ -881,13 +879,6 @@ Score Searcher::PVSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    stack->move = move;
-    stack->moved_piece = state.GetPieceType(move.GetFrom());
-    stack->capture_move = is_capture;
-    stack->continuation_entry =
-        history.continuation_history->GetEntry(state, move);
-    stack->continuation_correction_entry =
-        history.correction_history->GetContEntry(state, move);
     stack->history_score = history.GetMoveScore(state, move, stack);
 
     // Pruning guards
@@ -1014,6 +1005,14 @@ Score Searcher::PVSearch(Thread &thread,
         extensions = -2;
       }
     }
+
+    stack->move = move;
+    stack->moved_piece = state.GetPieceType(move.GetFrom());
+    stack->capture_move = is_capture;
+    stack->continuation_entry =
+        history.continuation_history->GetEntry(state, move);
+    stack->continuation_correction_entry =
+        history.correction_history->GetContEntry(state, move);
 
     board.MakeMove(move);
 
