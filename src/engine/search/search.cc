@@ -90,11 +90,11 @@ void Searcher::IterativeDeepening(Thread &thread) {
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
       const auto average_score = cur_best_move.average_score;
 
-      int window = kAspWindowDelta + average_score * average_score / 16384;
+      Score window =
+          kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
 
-      Score alpha =
-          std::max<int>(-kInfiniteScore, cur_best_move.score - window);
-      Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
+      Score alpha = std::max(-kInfiniteScore, cur_best_move.score - window);
+      Score beta = std::min(kInfiniteScore, cur_best_move.score + window);
 
       int fail_high_count = 0;
 
@@ -110,16 +110,16 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
         if (score <= alpha) {
           // Narrow beta to increase the chance of a fail high
-          beta = (alpha + beta) / 2;
+          beta = static_cast<Score>(std::lerp(beta, alpha, kAspBetaLerpFactor));
 
           // We failed low which means we don't have a move to play, so we widen
           // alpha
-          alpha = std::max<int>(-kInfiniteScore, alpha - window);
+          alpha = std::max(-kInfiniteScore, alpha - window);
           fail_high_count = 0;
         } else if (score >= beta) {
           // We failed high on a PV node, which is abnormal and requires further
           // verification
-          beta = std::min<int>(kInfiniteScore, beta + window);
+          beta = std::min(kInfiniteScore, beta + window);
 
           // Spend less time searching as we expand the search window, unless
           // we're absolutely winning
@@ -155,18 +155,20 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
         const bool is_mate = eval::IsMateScore(pv_move.score);
         const auto nodes_searched = GetNodesSearched();
-        report_info->Print(depth,
-                           thread.sel_depth,
-                           is_mate,
-                           eval::NormalizeScore(pv_move.score, board_.GetState().MaterialCount()),
-                           nodes_searched,
-                           time_mgmt_.TimeElapsed(),
-                           nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
-                           transposition_table_.HashFull(),
-                           syzygy::enabled,
-                           GetTbHits(),
-                           pv_move.pv.UCIFormat(),
-                           i);
+        report_info->Print(
+            depth,
+            thread.sel_depth,
+            is_mate,
+            eval::NormalizeScore(pv_move.score,
+                                 board_.GetState().MaterialCount()),
+            nodes_searched,
+            time_mgmt_.TimeElapsed(),
+            nodes_searched * 1000 / time_mgmt_.TimeElapsed(),
+            transposition_table_.HashFull(),
+            syzygy::enabled,
+            GetTbHits(),
+            pv_move.pv.UCIFormat(),
+            i);
       }
     }
 
@@ -375,7 +377,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
     stack->move = move;
     stack->moved_piece = state.GetPieceType(move.GetFrom());
-    stack->capture_move = move.IsCapture(state);
+    stack->capture_move = is_capture;
     stack->continuation_entry =
         history.continuation_history->GetEntry(state, move);
     stack->continuation_correction_entry =
@@ -658,11 +660,11 @@ Score Searcher::PVSearch(Thread &thread,
   const auto &prev_stack = stack - 1;
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check) {
-    const int bonus =
-        std::clamp<int>(-kEvalHistUpdateMult *
-                            (stack->static_eval + prev_stack->static_eval) / 10,
-                        -kEvalHistUpdateMin,
-                        kEvalHistUpdateMax);
+    const I32 their_loss =
+        stack->static_eval + prev_stack->static_eval - kEvalHistUpdateBias;
+    const I32 bonus = std::clamp<I32>(-kEvalHistUpdateMult * their_loss / 10,
+                                      -kEvalHistUpdateMin,
+                                      kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
@@ -742,7 +744,7 @@ Score Searcher::PVSearch(Thread &thread,
         stack->continuation_correction_entry = nullptr;
 
         const int eval_reduction =
-            std::min<int>(2, (stack->eval - beta) / kNmpEvalDiv);
+            std::min(2, (stack->eval - beta) / kNmpEvalDiv);
         int reduction =
             depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
         reduction = std::clamp(reduction, 0, depth);
@@ -879,6 +881,13 @@ Score Searcher::PVSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
+    stack->move = move;
+    stack->moved_piece = state.GetPieceType(move.GetFrom());
+    stack->capture_move = is_capture;
+    stack->continuation_entry =
+        history.continuation_history->GetEntry(state, move);
+    stack->continuation_correction_entry =
+        history.correction_history->GetContEntry(state, move);
     stack->history_score = history.GetMoveScore(state, move, stack);
 
     // Pruning guards
@@ -1006,15 +1015,6 @@ Score Searcher::PVSearch(Thread &thread,
       }
     }
 
-    // Set the currently searched move in the stack for continuation history
-    stack->move = move;
-    stack->moved_piece = state.GetPieceType(move.GetFrom());
-    stack->capture_move = move.IsCapture(state);
-    stack->continuation_entry =
-        history.continuation_history->GetEntry(state, move);
-    stack->continuation_correction_entry =
-        history.correction_history->GetContEntry(state, move);
-
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
@@ -1090,8 +1090,8 @@ Score Searcher::PVSearch(Thread &thread,
       if ((needs_full_search = score > alpha && reduction != 0)) {
         // Search deeper or shallower depending on if the result of the
         // reduced-depth search indicates a promising score
-        const bool do_deeper_search =
-            score > (best_score + kDoDeeperBase + 2 * new_depth);
+        const bool do_deeper_search = score > (best_score + kDoDeeperBase +
+                                               kDoDeeperMult * new_depth / 16);
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
         new_depth += do_deeper_search - do_shallower_search;
       }
