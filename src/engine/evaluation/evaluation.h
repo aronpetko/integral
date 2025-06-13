@@ -10,7 +10,7 @@ TUNABLE(kSeePawnScore, 109, 50, 150, false);
 TUNABLE(kSeeKnightScore, 370, 200, 400, false);
 TUNABLE(kSeeBishopScore, 390, 200, 400, false);
 TUNABLE(kSeeRookScore, 600, 400, 600, false);
-TUNABLE(kSeeQueenScore, 1200, 700, 1100, false);
+TUNABLE(kSeeQueenScore, 1200, 700, 1500, false);
 TUNABLE(kSeeKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kSeeNoneScore, 0, 0, 0, true);  // Always 0
 
