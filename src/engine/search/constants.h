@@ -21,9 +21,9 @@ TUNABLE_STEP(kQsFailHighLerpFactor, 0.5, 0.0, 1.0, false, 0.1);
 TUNABLE_STEP(kQsFutMargin, 156, 20, 300, false, 20);
 
 TUNABLE(kEvalHistUpdateMult, 63, 20, 100, false);
-TUNABLE(kEvalHistUpdateMin, 52, 5, 1000, false);
-TUNABLE(kEvalHistUpdateMax, 104, 5, 1000, false);
-TUNABLE_STEP(kEvalHistUpdateBias, 0, 0, 100, false, 20);
+TUNABLE(kEvalHistUpdateMin, 52, 5, 500, false);
+TUNABLE(kEvalHistUpdateMax, 104, 5, 500, false);
+TUNABLE_STEP(kEvalHistUpdateBias, 0, 0, 50, false, 20);
 
 TUNABLE(kRevFutDepth, 9, 4, 10, true);
 TUNABLE_STEP(kRevFutMargin, 55, 50, 150, false, 5);
@@ -83,7 +83,7 @@ TUNABLE_STEP(kSeDepthExtensionDepth, 11, 0, 20, false, 1);
 
 TUNABLE_STEP(kLmrNonPvNode, 919, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrWasPvNode, 1155, 512, 2048, false, 150);
-TUNABLE_STEP(kLmrCutNode, 2164, 1024, 4096, false, 300);
+TUNABLE_STEP(kLmrCutNode, 2164, 1024, 4096, false, 150);
 TUNABLE_STEP(kLmrGivesCheck, 978, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrHistQuiet, 731, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrHistCapture, 1193, 512, 2048, false, 150);

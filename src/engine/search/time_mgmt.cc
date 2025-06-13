@@ -5,16 +5,16 @@
 
 namespace search {
 
-TUNABLE(kStabilityBase, 1.232044615542811, 0.5, 2.0, false);
-TUNABLE(kStabilitySlope, 0.053606823646481394, 0.02, 0.07, false);
-TUNABLE(kScoreChangeBase, 0.12629154205276114, 0.05, 0.2, false);
-TUNABLE(kSearchScoreCoeff, 0.023107992566090252, 0.01, 0.04, false);
-TUNABLE(kPreviousScoreCoeff, 0.025299252497434234, 0.01, 0.04, false);
-TUNABLE(kScoreChangeMin, 0.5297008962945585, 0.3, 0.7, false);
-TUNABLE(kScoreChangeMax, 1.6994615900363166, 1.25, 2.0, false);
-TUNABLE(kNodeFactorBase, 0.546157946120436, 0.3, 0.7, false);
-TUNABLE(kNodeFactorSlope, 2.296080118538782, 1.8, 2.5, false);
-TUNABLE(kNodeFactorIntercept, 0.4535368327980294, 0.2, 0.65, false);
+TUNABLE(kStabilityBase, 1.232044615542811, 0.5, 2.0, true);
+TUNABLE(kStabilitySlope, 0.053606823646481394, 0.02, 0.07, true);
+TUNABLE(kScoreChangeBase, 0.12629154205276114, 0.05, 0.2, true);
+TUNABLE(kSearchScoreCoeff, 0.023107992566090252, 0.01, 0.04, true);
+TUNABLE(kPreviousScoreCoeff, 0.025299252497434234, 0.01, 0.04, true);
+TUNABLE(kScoreChangeMin, 0.5297008962945585, 0.3, 0.7, true);
+TUNABLE(kScoreChangeMax, 1.6994615900363166, 1.25, 2.0, true);
+TUNABLE(kNodeFactorBase, 0.546157946120436, 0.3, 0.7, true);
+TUNABLE(kNodeFactorSlope, 2.296080118538782, 1.8, 2.5, true);
+TUNABLE(kNodeFactorIntercept, 0.4535368327980294, 0.2, 0.65, true);
 
 bool TimeConfig::HasBeenModified() const {
   static const TimeConfig default_config;
