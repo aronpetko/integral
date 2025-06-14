@@ -6,11 +6,11 @@
 
 namespace search::history {
 
-TUNABLE(kHistBonusGravity, 11109, 8192, 32768, false);
+TUNABLE(kHistBonusGravity, 11149, 8192, 32768, false);
 TUNABLE(kHistBonusScale, 169, 65, 300, false);
-TUNABLE(kHistPenaltyScale, 165, 65, 300, false);
-TUNABLE_STEP(kHistBonusMaxBonus, 1235, 580, 2500, false, 200);
-TUNABLE(kHistBonusBias, 120, 0, 300, false);
+TUNABLE(kHistPenaltyScale, 166, 65, 300, false);
+TUNABLE_STEP(kHistBonusMaxBonus, 1254, 580, 2500, false, 200);
+TUNABLE(kHistBonusBias, 122, 0, 300, false);
 
 static I16 HistoryBonus(I16 depth,
                         I16 scale = kHistBonusScale,

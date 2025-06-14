@@ -6,11 +6,11 @@
 
 namespace eval {
 
-TUNABLE(kSeePawnScore, 111, 50, 150, false);
-TUNABLE(kSeeKnightScore, 367, 200, 400, false);
-TUNABLE(kSeeBishopScore, 390, 200, 400, false);
-TUNABLE(kSeeRookScore, 594, 400, 600, false);
-TUNABLE(kSeeQueenScore, 1195, 700, 1500, false);
+TUNABLE(kSeePawnScore, 114, 50, 150, false);
+TUNABLE(kSeeKnightScore, 369, 200, 400, false);
+TUNABLE(kSeeBishopScore, 388, 200, 400, false);
+TUNABLE(kSeeRookScore, 592, 400, 600, false);
+TUNABLE(kSeeQueenScore, 1197, 700, 1500, false);
 TUNABLE(kSeeKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kSeeNoneScore, 0, 0, 0, true);  // Always 0
 
