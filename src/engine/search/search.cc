@@ -348,7 +348,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack);
+      MovePickerType::kQuiescence, board, tt_move, history, stack, -50);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
