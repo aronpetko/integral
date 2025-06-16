@@ -2,13 +2,13 @@
 
 namespace search {
 
-TUNABLE(kSeeNoisyHistoryDiv, 105, 32, 250, false);
+TUNABLE(kSeeNoisyHistoryDiv, 98, 32, 250, false);
 
-TUNABLE(kPawnScore, 101, 50, 150, false);
-TUNABLE(kKnightScore, 304, 200, 400, false);
+TUNABLE(kPawnScore, 102, 50, 150, false);
+TUNABLE(kKnightScore, 309, 200, 400, false);
 TUNABLE(kBishopScore, 289, 200, 400, false);
-TUNABLE(kRookScore, 528, 400, 600, false);
-TUNABLE(kQueenScore, 917, 700, 1100, false);
+TUNABLE(kRookScore, 523, 400, 600, false);
+TUNABLE(kQueenScore, 908, 700, 1100, false);
 TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
 
@@ -24,12 +24,12 @@ inline std::array kPieceScores = {
 };
 // clang-format on
 
-TUNABLE(kQueenRookThreatScorePos, 20418, 10000, 30000, false);
-TUNABLE(kQueenRookThreatScoreNeg, 18561, 10000, 30000, false);
-TUNABLE(kRookMinorThreatScorePos, 12930, 5000, 20000, false);
-TUNABLE(kRookMinorThreatScoreNeg, 12720, 5000, 20000, false);
-TUNABLE(kMinorPawnThreatScorePos, 8063, 3000, 12000, false);
-TUNABLE(kMinorPawnThreatScoreNeg, 8355, 3000, 12000, false);
+TUNABLE(kQueenRookThreatScorePos, 19821, 10000, 30000, false);
+TUNABLE(kQueenRookThreatScoreNeg, 17579, 10000, 30000, false);
+TUNABLE(kRookMinorThreatScorePos, 13390, 5000, 20000, false);
+TUNABLE(kRookMinorThreatScoreNeg, 12848, 5000, 20000, false);
+TUNABLE(kMinorPawnThreatScorePos, 8179, 3000, 12000, false);
+TUNABLE(kMinorPawnThreatScoreNeg, 8537, 3000, 12000, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
