@@ -93,7 +93,8 @@ void Searcher::IterativeDeepening(Thread &thread) {
       int window =
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
 
-      Score alpha = std::max<int>(-kInfiniteScore, cur_best_move.score - window);
+      Score alpha =
+          std::max<int>(-kInfiniteScore, cur_best_move.score - window);
       Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
 
       int fail_high_count = 0;
@@ -960,49 +961,56 @@ Score Searcher::PVSearch(Thread &thread,
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
     int extensions = 0;
-    if (!in_root && depth >= kSeDepth && move == tt_move &&
-        tt_entry->depth + 3 >= depth &&
-        tt_entry->flag != TranspositionTableEntry::kUpperBound &&
-        std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
-        stack->ply < thread.root_depth * 2) {
-      const int reduced_depth = kSeDepthReduction * (depth - 1) / 16;
-      const Score new_beta = tt_entry->score - kSeBetaMargin * depth / 16;
+    if (!in_root && move == tt_move && stack->ply < thread.root_depth * 2) {
+      if (depth >= kSeDepth && tt_entry->depth + 3 >= depth &&
+          tt_entry->flag != TranspositionTableEntry::kUpperBound &&
+          std::abs(tt_entry->score) < kTBWinInMaxPlyScore) {
+        const int reduced_depth = kSeDepthReduction * (depth - 1) / 16;
+        const Score new_beta = tt_entry->score - kSeBetaMargin * depth / 16;
 
-      stack->excluded_tt_move = tt_move;
-      const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
-          thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
-      stack->excluded_tt_move = Move::NullMove();
+        stack->excluded_tt_move = tt_move;
+        const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
+            thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
+        stack->excluded_tt_move = Move::NullMove();
 
-      if (ShouldQuit()) {
-        return 0;
-      }
+        if (ShouldQuit()) {
+          return 0;
+        }
 
-      // No move was able to beat the TT entries score, so we extend the TT
-      // move's search
-      if (tt_move_excluded_score < new_beta) {
-        // Extend more if the TT move is singular by a big margin
-        if (!in_pv_node &&
-            tt_move_excluded_score < new_beta - kSeDoubleMargin) {
-          extensions = 2 + (is_quiet && tt_move_excluded_score <
-                                            new_beta - kSeTripleMargin);
-          depth += depth < kSeDepthExtensionDepth;
-        } else {
-          extensions = 1;
+        // No move was able to beat the TT entries score, so we extend the TT
+        // move's search
+        if (tt_move_excluded_score < new_beta) {
+          // Extend more if the TT move is singular by a big margin
+          if (!in_pv_node &&
+              tt_move_excluded_score < new_beta - kSeDoubleMargin) {
+            extensions = 2 + (is_quiet && tt_move_excluded_score <
+                                              new_beta - kSeTripleMargin);
+            depth += depth < kSeDepthExtensionDepth;
+          } else {
+            extensions = 1;
+          }
+        }
+        // Multi-cut: The singular search had a beta cutoff, indicating that
+        // the TT move was not singular. Therefore, we prune if the same score
+        // would cause a cutoff based on our current search window
+        else if (tt_move_excluded_score >= beta &&
+                 std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
+          return tt_move_excluded_score;
+        }
+        // Negative Extensions: Search less since the TT move was not
+        // singular, and it might cause a beta cutoff again.
+        else if (tt_entry->score >= beta) {
+          extensions = -3;
+        } else if (cut_node) {
+          extensions = -2;
         }
       }
-      // Multi-cut: The singular search had a beta cutoff, indicating that
-      // the TT move was not singular. Therefore, we prune if the same score
-      // would cause a cutoff based on our current search window
-      else if (tt_move_excluded_score >= beta &&
-               std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
-        return tt_move_excluded_score;
-      }
-      // Negative Extensions: Search less since the TT move was not
-      // singular, and it might cause a beta cutoff again.
-      else if (tt_entry->score >= beta) {
-        extensions = -3;
-      } else if (cut_node) {
-        extensions = -2;
+      // Low-depth Singular Extensions: At low depths, extend the TT move anyway
+      // if it looks like the TT move will save us from failing low
+      else if (depth <= 7 && !stack->in_check &&
+               tt_entry->flag == TranspositionTableEntry::kLowerBound &&
+               stack->static_eval + kLowDepthExtensionMargin <= alpha) {
+        extensions = 1;
       }
     }
 
