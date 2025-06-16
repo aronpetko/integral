@@ -364,8 +364,9 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
     // QS Futility Pruning: Prune noisy moves that don't win material if the
     // static eval is behind alpha by some margin
-    if (!stack->in_check && move.GetTo() != (stack - 1)->move.GetTo() &&
-        move.IsNoisy(state) && futility_score <= alpha &&
+    if (!stack->in_check &&
+        (!(stack - 1)->move || move.GetTo() != (stack - 1)->move.GetTo()) &&
+        move.IsCapture(state) && futility_score <= alpha &&
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
