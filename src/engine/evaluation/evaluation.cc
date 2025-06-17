@@ -6,7 +6,7 @@ namespace eval {
 
 TUNABLE_STEP(kMaterialScaleBase, 26909, 10000, 32768, false, 500);
 
-Score Evaluate(Board &board) {
+Score Evaluate(Board &board, Score optimism) {
   const auto network_eval = nnue::Evaluate(board);
 
 #if DATAGEN
@@ -20,7 +20,8 @@ Score Evaluate(Board &board) {
       *kSeePieceScores[kRook] * state.Rooks().PopCount() +
       *kSeePieceScores[kQueen] * state.Queens().PopCount();
 
-  return network_eval * (kMaterialScaleBase + material_phase) / 32768;
+  //fmt::println("{}", optimism * (2000 + material_phase));
+  return (network_eval * (kMaterialScaleBase + material_phase) + optimism * (2000 + material_phase)) / 32768;
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {

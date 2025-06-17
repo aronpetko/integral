@@ -105,10 +105,12 @@ struct alignas(64) Thread {
       : id(id),
         stack({}),
         previous_score(kScoreNone),
+        average_score(kScoreNone),
         nodes_searched(0),
         sel_depth(0),
         tb_hits(0),
-        nmp_min_ply(0) {
+        nmp_min_ply(0),
+        optimism({}) {
     NewGame();
   }
 
@@ -130,6 +132,8 @@ struct alignas(64) Thread {
   void Reset() {
     stack.Reset();
     scores.fill(kScoreNone);
+    optimism.fill(0);
+    average_score = 0;
 
     nmp_min_ply = 0;
 
@@ -146,12 +150,14 @@ struct alignas(64) Thread {
   Stack stack;
   std::atomic<U64> nodes_searched;
   std::array<Score, kMaxSearchDepth + 1> scores;
+  Score average_score;
   Score previous_score;
   U16 root_depth, sel_depth;
   std::atomic<U64> tb_hits;
   int pv_move_idx;
   RootMoveList root_moves;
   U16 nmp_min_ply;
+  std::array<Score, 2> optimism;
 };
 
 class Searcher {

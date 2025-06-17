@@ -59,7 +59,7 @@ constexpr std::array kAs = {
 
 bool StaticExchange(Move move, int threshold, const BoardState &state);
 
-Score Evaluate(Board &board);
+Score Evaluate(Board &board, Score optimism);
 
 }  // namespace eval
 

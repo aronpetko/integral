@@ -159,7 +159,7 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   });
 
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
-    const auto eval = eval::Evaluate(board);
+    const auto eval = nnue::Evaluate(board);
     fmt::println("info cp {}\ninfo normalized cp {}", eval, eval::NormalizeScore(eval, board.GetState().MaterialCount()));
   });
 

@@ -94,8 +94,12 @@ void Searcher::IterativeDeepening(Thread &thread) {
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
 
       Score alpha =
-          std::max<int>(-kInfiniteScore, cur_best_move.score - window);
-      Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
+          std::max(-kInfiniteScore, cur_best_move.score - window);
+      Score beta = std::min(kInfiniteScore, cur_best_move.score + window);
+
+      const auto turn = thread.board.GetState().turn;
+      thread.optimism[turn] = 128 * thread.average_score / (std::abs(thread.average_score) + 212);
+      thread.optimism[FlipColor(turn)] = -thread.optimism[turn];
 
       int fail_high_count = 0;
 
@@ -128,6 +132,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
             ++fail_high_count;
           }
         } else {
+          thread.average_score = thread.average_score == kScoreNone
+                                   ? score
+                                   : (score + thread.average_score) / 2;
           // Quit now, since the score fell within the bounds of the aspiration
           // window
           break;
@@ -253,7 +260,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   }
 
   if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
+    return eval::Evaluate(board, thread.optimism[state.turn]);
   }
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
@@ -304,7 +311,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     if (tt_static_eval != kScoreNone) {
       raw_static_eval = tt_static_eval;
     } else {
-      raw_static_eval = eval::Evaluate(board);
+      raw_static_eval = eval::Evaluate(board, thread.optimism[state.turn]);
     }
 
     stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
@@ -500,7 +507,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   if (stack->ply >= kMaxPlyFromRoot) {
-    return eval::Evaluate(board);
+    return eval::Evaluate(board, thread.optimism[state.turn]);
   }
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
@@ -631,7 +638,7 @@ Score Searcher::PVSearch(Thread &thread,
     stack->eval_complexity = 0;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
-        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
+        tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board, thread.optimism[state.turn]);
 
     // Save the static eval in the TT if we have nothing yet
     if (!tt_hit) {
