@@ -12,6 +12,9 @@ struct QuietHistoryEntry {
   MultiArray<I16, 2, 2> threat_buckets = {};
 };
 
+TUNABLE(kQuietHistFactorizerBonusGravity, 2790, 8192, 32768, false);
+TUNABLE(kQuietHistBucketBonusGravity, 8371, 8192, 32768, false);
+
 class QuietHistory {
  public:
   QuietHistory() : table_({}) {}
@@ -22,11 +25,11 @@ class QuietHistory {
 
     // Apply a linear dampening to the bonus as the depth increases
     I16 &score = entry.factorizer_score;
-    score += ScaleBonus(score, bonus);
+    score += ScaleBonus(score, bonus, kQuietHistFactorizerBonusGravity);
 
     // Also update the appropriate threat bucket
     I16 &bucket = entry.threat_buckets[threats.IsSet(from)][threats.IsSet(to)];
-    bucket += ScaleBonus(bucket, bonus);
+    bucket += ScaleBonus(bucket, bonus, kQuietHistBucketBonusGravity);
   }
 
   void UpdateScore(const BoardState &state,
