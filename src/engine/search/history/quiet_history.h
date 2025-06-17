@@ -12,8 +12,8 @@ struct QuietHistoryEntry {
   MultiArray<I16, 2, 2> threat_buckets = {};
 };
 
-TUNABLE(kQuietHistFactorizerBonusGravity, 2790, 8192, 32768, false);
-TUNABLE(kQuietHistBucketBonusGravity, 8371, 8192, 32768, false);
+TUNABLE(kQuietHistFactorizerBonusGravity, 3720, 8192, 32768, false);
+TUNABLE(kQuietHistBucketBonusGravity, 7441, 8192, 32768, false);
 
 class QuietHistory {
  public:
