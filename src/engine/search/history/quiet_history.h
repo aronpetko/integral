@@ -7,7 +7,7 @@
 
 namespace search::history {
 
-TUNABLE(kQuietHistoryFactorizerWeight, 16, 0, 64, false);
+TUNABLE(kQuietHistoryFactorizerWeight, 32, 0, 64, false);
 
 struct QuietHistoryEntry {
   I16 factorizer_score = 0;
@@ -53,11 +53,8 @@ class QuietHistory {
                              BitBoard threats) const {
     const auto from = move.GetFrom(), to = move.GetTo();
     const auto &entry = table_[state.turn][from][to];
-    const auto factorizer_score =
-        entry.factorizer_score * kQuietHistoryFactorizerWeight / 64;
-    const auto bucket_score =
-        entry.threat_buckets[threats.IsSet(from)][threats.IsSet(to)] *
-        (64 - kQuietHistoryFactorizerWeight) / 64;
+    const auto factorizer_score = entry.factorizer_score * kQuietHistoryFactorizerWeight / 64;
+    const auto bucket_score = entry.threat_buckets[threats.IsSet(from)][threats.IsSet(to)] * (64 - kQuietHistoryFactorizerWeight) / 64;
     return factorizer_score + bucket_score;
   }
 
