@@ -93,7 +93,8 @@ void Searcher::IterativeDeepening(Thread &thread) {
       int window =
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
 
-      Score alpha = std::max<int>(-kInfiniteScore, cur_best_move.score - window);
+      Score alpha =
+          std::max<int>(-kInfiniteScore, cur_best_move.score - window);
       Score beta = std::min<int>(kInfiniteScore, cur_best_move.score + window);
 
       int fail_high_count = 0;
@@ -361,9 +362,11 @@ Score Searcher::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    // QS Futility Pruning: Prune capture moves that don't win material if the
+    // QS Futility Pruning: Prune noisy moves that don't win material if the
     // static eval is behind alpha by some margin
-    if (!stack->in_check && move.IsCapture(state) && futility_score <= alpha &&
+    if (!stack->in_check &&
+        (!(stack - 1)->move || move.GetTo() != (stack - 1)->move.GetTo()) &&
+        move.IsCapture(state) && futility_score <= alpha &&
         !eval::StaticExchange(move, 1, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
