@@ -9,13 +9,15 @@ namespace search::history {
 
 class QuietHistory {
  public:
-  QuietHistory() : table_({}) {}
+  QuietHistory() : factorizer_table_({}), threat_table_({}) {}
 
   void UpdateMoveScore(Color turn, Move move, BitBoard threats, I16 bonus) {
+    const auto from = move.GetFrom(), to = move.GetTo();
     // Apply a linear dampening to the bonus as the depth increases
-    I16 &score =
-        table_[turn][move.GetFrom()][move.GetTo()][ThreatIndex(move, threats)];
-    score += ScaleBonus(score, bonus);
+    I16 &factorizer_score = factorizer_table_[turn][from][to];
+    factorizer_score += ScaleBonus(factorizer_score, bonus);
+    I16 &threat_score = threat_table_[threats.IsSet(from)][threats.IsSet(to)];
+    threat_score += ScaleBonus(threat_score, bonus);
   }
 
   void UpdateScore(const BoardState &state,
@@ -38,17 +40,14 @@ class QuietHistory {
   [[nodiscard]] int GetScore(const BoardState &state,
                              Move move,
                              BitBoard threats) const {
-    return table_[state.turn][move.GetFrom()][move.GetTo()]
-                 [ThreatIndex(move, threats)];
+    const auto from = move.GetFrom(), to = move.GetTo();
+    return factorizer_table_[state.turn][from][to] +
+           threat_table_[state.threats.IsSet(from)][state.threats.IsSet(to)];
   }
 
  private:
-  [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
-    return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());
-  }
-
- private:
-  MultiArray<I16, kNumColors, kSquareCount, kSquareCount, 4> table_;
+  MultiArray<I16, kNumColors, kSquareCount, kSquareCount> factorizer_table_;
+  MultiArray<I16, 2, 2> threat_table_;
 };
 
 }  // namespace search::history
