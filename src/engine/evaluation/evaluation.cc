@@ -4,7 +4,7 @@
 
 namespace eval {
 
-TUNABLE_STEP(kMaterialScaleBase, 26909, 10000, 32768, false, 500);
+TUNABLE_STEP(kMaterialScaleBase, 24909, 10000, 32768, false, 500);
 
 Score Evaluate(Board &board, Score optimism) {
   const auto network_eval = nnue::Evaluate(board);
@@ -20,7 +20,6 @@ Score Evaluate(Board &board, Score optimism) {
       *kSeePieceScores[kRook] * state.Rooks().PopCount() +
       *kSeePieceScores[kQueen] * state.Queens().PopCount();
 
-  //fmt::println("{}", optimism * (2000 + material_phase));
   return (network_eval * (kMaterialScaleBase + material_phase) + optimism * (2000 + material_phase)) / 32768;
 }
 
