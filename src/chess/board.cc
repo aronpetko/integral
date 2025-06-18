@@ -427,39 +427,6 @@ bool Board::IsDraw(U16 ply) {
     }
   }
 
-  // Insufficient material detection
-  const Color us = state_.turn, them = FlipColor(us);
-
-  // Check for queens, rooks, or pawns on the board
-  if (state_.Queens() || state_.Rooks() || state_.Pawns()) {
-    return false;
-  }
-
-  // Lone kings
-  if (!state_.KinglessOccupied()) {
-    return true;
-  }
-
-  const BitBoard our_knights = state_.Knights(us),
-                 their_knights = state_.Knights(them);
-  const BitBoard our_bishops = state_.Bishops(us),
-                 their_bishops = state_.Bishops(them);
-
-  const BitBoard their_minor_pieces = their_knights | their_bishops;
-  const BitBoard our_minor_pieces = our_knights | our_bishops;
-
-  // More than one minor piece on either side
-  if (their_minor_pieces.MoreThanOne() || our_minor_pieces.MoreThanOne()) {
-    return false;
-  }
-
-  // Lone king on one side and one minor piece on the other
-  if ((their_minor_pieces != 0 && state_.KinglessOccupied(us) == 0) ||
-      (our_minor_pieces != 0 && state_.KinglessOccupied(them) == 0)) {
-    return true;
-  }
-
-  // Any other combination of pieces not covered by the above is not a draw
   return false;
 }
 
