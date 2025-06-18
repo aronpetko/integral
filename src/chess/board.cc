@@ -306,7 +306,7 @@ void Board::MakeNullMove() {
   CalculateThreats();
 }
 
-U64 Board::PredictKeyAfter(Move move) {
+U64 Board::PredictKeyAfter(Move move) const {
   auto key = state_.zobrist_key ^ zobrist::turn;
   if (move == Move::NullMove()) {
     return key ^ zobrist::fifty_move[state_.fifty_moves_clock + 1];
@@ -359,7 +359,7 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasUpcomingRepetition(U16 ply) {
+bool Board::HasUpcomingRepetition(U16 ply) const {
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
   if (max_dist < 3) {
     return false;
@@ -410,7 +410,7 @@ bool Board::HasUpcomingRepetition(U16 ply) {
   return false;
 }
 
-bool Board::IsDraw(U16 ply) {
+bool Board::IsRepetition(U16 ply) const {
   if (state_.fifty_moves_clock >= 100 &&
       (!state_.InCheck() || !GetLegalMoves().Empty())) {
     return true;
@@ -425,6 +425,41 @@ bool Board::IsDraw(U16 ply) {
       if (hit_before_root) return true;
       hit_before_root = true;
     }
+  }
+
+  return false;
+}
+
+bool Board::IsInsufficientMaterial() const {
+  const Color us = state_.turn, them = FlipColor(us);
+
+  // Check for queens, rooks, or pawns on the board
+  if (state_.Queens() || state_.Rooks() || state_.Pawns()) {
+    return false;
+  }
+
+  // Lone kings
+  if (!state_.KinglessOccupied()) {
+    return true;
+  }
+
+  const BitBoard our_knights = state_.Knights(us),
+                 their_knights = state_.Knights(them);
+  const BitBoard our_bishops = state_.Bishops(us),
+                 their_bishops = state_.Bishops(them);
+
+  const BitBoard their_minor_pieces = their_knights | their_bishops;
+  const BitBoard our_minor_pieces = our_knights | our_bishops;
+
+  // More than one minor piece on either side
+  if (their_minor_pieces.MoreThanOne() || our_minor_pieces.MoreThanOne()) {
+    return false;
+  }
+
+  // Lone king on one side and one minor piece on the other
+  if ((their_minor_pieces != 0 && state_.KinglessOccupied(us) == 0) ||
+      (our_minor_pieces != 0 && state_.KinglessOccupied(them) == 0)) {
+    return true;
   }
 
   return false;

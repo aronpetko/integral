@@ -320,11 +320,13 @@ class Board {
 
   [[nodiscard]] bool IsMoveLegal(Move move) const;
 
-  [[nodiscard]] U64 PredictKeyAfter(Move move);
+  [[nodiscard]] U64 PredictKeyAfter(Move move) const;
 
-  [[nodiscard]] bool HasUpcomingRepetition(U16 ply);
+  [[nodiscard]] bool HasUpcomingRepetition(U16 ply) const ;
 
-  [[nodiscard]] bool IsDraw(U16 ply);
+  [[nodiscard]] bool IsRepetition(U16 ply) const;
+
+  [[nodiscard]] bool IsInsufficientMaterial() const;
 
   void CalculateKingThreats();
 

@@ -258,7 +258,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
-  if (board.IsDraw(stack->ply)) {
+  if (board.IsRepetition(stack->ply)) {
     return kDrawScore;
   }
 
@@ -523,7 +523,7 @@ Score Searcher::PVSearch(Thread &thread,
   stack->in_check = state.InCheck();
 
   if (!in_root) {
-    if (board.IsDraw(stack->ply)) {
+    if (board.IsRepetition(stack->ply)) {
       return kDrawScore;
     }
 
