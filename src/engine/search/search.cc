@@ -88,7 +88,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
       thread.sel_depth = 0, thread.root_depth = depth;
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
-      const auto average_score = cur_best_move.average_score == kScoreNone ? 0 : cur_best_move.average_score;
+      const auto average_score = cur_best_move.average_score;
 
       int window =
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
@@ -97,9 +97,12 @@ void Searcher::IterativeDeepening(Thread &thread) {
           std::max(-kInfiniteScore, cur_best_move.score - window);
       Score beta = std::min(kInfiniteScore, cur_best_move.score + window);
 
-      const auto turn = thread.board.GetState().turn;
-      thread.optimism[turn] = 128 * average_score / (std::abs(average_score) + 100);
-      thread.optimism[FlipColor(turn)] = -thread.optimism[turn];
+      if (average_score != kScoreNone) {
+        const auto turn = thread.board.GetState().turn;
+        thread.optimism[turn] =
+            128 * average_score / (std::abs(average_score) + 212);
+        thread.optimism[FlipColor(turn)] = -thread.optimism[turn];
+      }
 
       int fail_high_count = 0;
 
