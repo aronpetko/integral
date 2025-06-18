@@ -88,7 +88,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
       thread.sel_depth = 0, thread.root_depth = depth;
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
-      const auto average_score = cur_best_move.average_score;
+      const auto average_score = cur_best_move.average_score == kScoreNone ? 0 : cur_best_move.average_score;
 
       int window =
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
@@ -98,7 +98,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
       Score beta = std::min(kInfiniteScore, cur_best_move.score + window);
 
       const auto turn = thread.board.GetState().turn;
-      thread.optimism[turn] = 128 * thread.average_score / (std::abs(thread.average_score) + 212);
+      thread.optimism[turn] = 128 * average_score / (std::abs(average_score) + 100);
       thread.optimism[FlipColor(turn)] = -thread.optimism[turn];
 
       int fail_high_count = 0;
@@ -132,9 +132,6 @@ void Searcher::IterativeDeepening(Thread &thread) {
             ++fail_high_count;
           }
         } else {
-          thread.average_score = thread.average_score == kScoreNone
-                                   ? score
-                                   : (score + thread.average_score) / 2;
           // Quit now, since the score fell within the bounds of the aspiration
           // window
           break;
