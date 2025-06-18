@@ -66,8 +66,8 @@ TUNABLE(kHistThreshMult, -2211, -3000, -500, false);
 TUNABLE(kCaptHistThreshBase, -453, -1000, 500, false);
 TUNABLE(kCaptHistThreshMult, -1774, -3000, -1000, false);
 
-TUNABLE(kLmrHistDiv, 11680, 5000, 15000, false);
-TUNABLE(kLmrCaptHistDiv, 11008, 5000, 15000, false);
+TUNABLE(kLmrHistDiv, 11680, 5000, 15000, true);
+TUNABLE(kLmrCaptHistDiv, 11008, 5000, 15000, true);
 TUNABLE(kLmrComplexityDiff, 73, 5, 150, false);
 
 TUNABLE(kDoDeeperBase, 31, 10, 60, false);
