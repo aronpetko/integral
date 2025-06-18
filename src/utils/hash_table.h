@@ -90,7 +90,7 @@ class AlignedHashTable {
     return table_[Index(key)];
   }
 
-  virtual void Prefetch(const U64& key) {
+  void Prefetch(const U64& key) {
     auto& entry = (*this)[key];
     __builtin_prefetch(&entry);
   }
