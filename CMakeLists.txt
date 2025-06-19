@@ -184,7 +184,7 @@ if (DATAGEN)
 endif ()
 
 # Set common flags for release and debug builds
-set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -fno-stack-protector -fno-math-errno -funroll-loops -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
 
 # Check for Link-Time Optimization (LTO) support
@@ -282,13 +282,37 @@ if(USE_PGO)
     add_dependencies(integral_pgo_gen run_preprocess)
 
     # Custom target to run profiling
-    add_custom_target(run_pgo_profiling
-            COMMAND ${CMAKE_COMMAND} -E echo "Running PGO profiling with benchmark..."
-            COMMAND $<TARGET_FILE:integral_pgo_gen> bench depth 14
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS integral_pgo_gen
-            COMMENT "Collecting PGO profile data"
-    )
+    if(WIN32)
+        # Windows-specific approach using batch file
+        add_custom_target(run_pgo_profiling
+                COMMAND ${CMAKE_COMMAND} -E echo "Running PGO profiling with comprehensive benchmark..."
+                COMMAND $<TARGET_FILE:integral_pgo_gen> bench
+                COMMAND ${CMAKE_COMMAND} -E echo "Running evaluation profiling..."
+                COMMAND ${CMAKE_COMMAND} -E echo "eval" > temp_eval.txt
+                COMMAND $<TARGET_FILE:integral_pgo_gen> < temp_eval.txt || ${CMAKE_COMMAND} -E true
+                COMMAND ${CMAKE_COMMAND} -E echo "perft 4" > temp_perft.txt
+                COMMAND $<TARGET_FILE:integral_pgo_gen> < temp_perft.txt || ${CMAKE_COMMAND} -E true
+                COMMAND ${CMAKE_COMMAND} -E echo "go depth 5" > temp_search.txt
+                COMMAND $<TARGET_FILE:integral_pgo_gen> < temp_search.txt || ${CMAKE_COMMAND} -E true
+                COMMAND ${CMAKE_COMMAND} -E remove -f temp_eval.txt temp_perft.txt temp_search.txt
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                DEPENDS integral_pgo_gen
+                COMMENT "Collecting PGO profile data with comprehensive coverage"
+        )
+    else()
+        # Unix-style approach
+        add_custom_target(run_pgo_profiling
+                COMMAND ${CMAKE_COMMAND} -E echo "Running PGO profiling with comprehensive benchmark..."
+                COMMAND $<TARGET_FILE:integral_pgo_gen> bench
+                COMMAND ${CMAKE_COMMAND} -E echo "Running evaluation profiling..."
+                COMMAND echo "eval" | $<TARGET_FILE:integral_pgo_gen> || true
+                COMMAND echo "perft 4" | $<TARGET_FILE:integral_pgo_gen> || true
+                COMMAND echo "go depth 5" | $<TARGET_FILE:integral_pgo_gen> || true
+                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                DEPENDS integral_pgo_gen
+                COMMENT "Collecting PGO profile data with comprehensive coverage"
+        )
+    endif()
 
     # For Clang, convert raw profile data to indexed format
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
@@ -305,70 +329,80 @@ if(USE_PGO)
             )
             add_custom_target(convert_pgo_profile DEPENDS ${PGO_PROFILE_FILE})
         endif()
-    else()
         # For GCC, copy profile files to match the final target structure
+        add_custom_command(
+                OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/copy_profiles.stamp
+                COMMAND ${CMAKE_COMMAND} -E echo "Copying profile data..."
+                # Copy .gcda files individually rather than entire directories
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral.dir
+                COMMAND ${CMAKE_COMMAND} -c "find ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral_pgo_gen.dir -name '*.gcda' -exec cp {} ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral.dir/ \\; || find ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral_pgo_gen.dir -name '*.gcda' | while read f; do cp \"$f\" ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral.dir/; done"
+                COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/copy_profiles.stamp
+                DEPENDS run_pgo_profiling
+                COMMENT "Copying profile data for optimization build"
+        )
+
         add_custom_target(convert_pgo_profile DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/copy_profiles.stamp)
+
+        # Second build: optimized using profile data
+        add_executable(integral ${SOURCES}
+                third-party/fathom/tbconfig.h
+                third-party/fathom/tbprobe.h
+                third-party/fathom/stdendian.h
+                third-party/fathom/tbprobe.c
+                src/data_gen/data_gen.h
+                src/data_gen/format/binpack.h
+                src/engine/search/cuckoo.cc)
+
+        # Apply PGO optimization flags properly
+        foreach(FLAG ${PGO_USE_FLAGS})
+            target_compile_options(integral PRIVATE ${FLAG})
+            target_link_options(integral PRIVATE ${FLAG})
+        endforeach()
+
+        # Dependencies
+        add_dependencies(integral run_preprocess convert_pgo_profile)
+
+        # Custom target for complete PGO build
+        add_custom_target(pgo_build
+                DEPENDS integral
+                COMMENT "PGO build completed"
+        )
+
+        # Make the default target build with PGO
+        set_target_properties(integral PROPERTIES
+                EXCLUDE_FROM_ALL FALSE
+        )
+
+        message(STATUS "PGO build configured:")
+        message(STATUS "  1. Build instrumented binary: integral_pgo_gen")
+        message(STATUS "  2. Run profiling: make run_pgo_profiling")
+        message(STATUS "  3. Build optimized binary: make integral")
+        message(STATUS "  Or use: make pgo_build (runs all steps)")
+
+    else()
+        # Standard build without PGO
+        add_executable(integral ${SOURCES}
+                third-party/fathom/tbconfig.h
+                third-party/fathom/tbprobe.h
+                third-party/fathom/stdendian.h
+                third-party/fathom/tbprobe.c
+                src/data_gen/data_gen.h
+                src/data_gen/format/binpack.h
+                src/engine/search/cuckoo.cc)
+
+        add_dependencies(integral run_preprocess)
     endif()
 
-    # Second build: optimized using profile data
-    add_executable(integral ${SOURCES}
-            third-party/fathom/tbconfig.h
-            third-party/fathom/tbprobe.h
-            third-party/fathom/stdendian.h
-            third-party/fathom/tbprobe.c
-            src/data_gen/data_gen.h
-            src/data_gen/format/binpack.h
-            src/engine/search/cuckoo.cc)
-
-    # Apply PGO optimization flags properly
-    foreach(FLAG ${PGO_USE_FLAGS})
-        target_compile_options(integral PRIVATE ${FLAG})
-        target_link_options(integral PRIVATE ${FLAG})
-    endforeach()
-
-    add_dependencies(integral run_preprocess convert_pgo_profile)
-
-    # Custom target for complete PGO build
-    add_custom_target(pgo_build
-            DEPENDS integral
-            COMMENT "PGO build completed"
+    # Clean PGO profiles
+    add_custom_target(clean_pgo
+            COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.gcda
+            COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.gcno
+            COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.profraw
+            COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.profdata
+            COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/copy_profiles.stamp
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral_pgo_gen.dir
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral.dir
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${PGO_PROFILE_DIR}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${PGO_PROFILE_DIR}
+            COMMENT "Cleaning PGO profile data"
     )
-
-    # Make the default target build with PGO
-    set_target_properties(integral PROPERTIES
-            EXCLUDE_FROM_ALL FALSE
-    )
-
-    message(STATUS "PGO build configured:")
-    message(STATUS "  1. Build instrumented binary: integral_pgo_gen")
-    message(STATUS "  2. Run profiling: make run_pgo_profiling")
-    message(STATUS "  3. Build optimized binary: make integral")
-    message(STATUS "  Or use: make pgo_build (runs all steps)")
-
-else()
-    # Standard build without PGO
-    add_executable(integral ${SOURCES}
-            third-party/fathom/tbconfig.h
-            third-party/fathom/tbprobe.h
-            third-party/fathom/stdendian.h
-            third-party/fathom/tbprobe.c
-            src/data_gen/data_gen.h
-            src/data_gen/format/binpack.h
-            src/engine/search/cuckoo.cc)
-
-    add_dependencies(integral run_preprocess)
-endif()
-
-# Clean PGO profiles
-add_custom_target(clean_pgo
-        COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.gcda
-        COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.gcno
-        COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.profraw
-        COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/*.profdata
-        COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_CURRENT_BINARY_DIR}/copy_profiles.stamp
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral_pgo_gen.dir
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/integral.dir
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${PGO_PROFILE_DIR}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${PGO_PROFILE_DIR}
-        COMMENT "Cleaning PGO profile data"
-)
