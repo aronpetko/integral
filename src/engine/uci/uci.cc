@@ -190,7 +190,7 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   });
 
   listener.RegisterCommand("bench", CommandType::kUnordered, {
-    CreateArgument("depth", ArgumentType::kOptional, NoInputProcessor()),
+    CreateArgument("depth", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [](Command *cmd) {
     const auto bench_depth = cmd->ParseArgument<int>("depth");
     if (bench_depth) tests::BenchSuite(*bench_depth);
@@ -248,7 +248,7 @@ void AcceptCommands(int arg_count, char **args) {
   // OpenBench requires the bench command to be parsed from the command line
   if (args[1] && std::string(args[1]) == "bench") {
     const int depth =
-        arg_count == 3 ? std::stoi(args[2]) : tests::kDefaultBenchDepth;
+        arg_count == 4 ? std::stoi(args[3]) : tests::kDefaultBenchDepth;
     tests::BenchSuite(depth);
     return;
   }
