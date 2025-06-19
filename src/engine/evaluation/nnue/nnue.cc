@@ -32,7 +32,7 @@ namespace nnue {
 
 void LoadFromIncBin() {
   // Load raw network from binary data
-  network = reinterpret_cast<Network*>(const_cast<unsigned char*>(gEVALData));
+  network = reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
 }
 
 Score Evaluate(Board &board) {
@@ -131,39 +131,15 @@ Score Evaluate(Board &board) {
 
   // Forward the feature layer neurons to the 2nd layer
   alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
-  {
-    int i = 0;
-    for (; i < nnz_count - 1; i += 2) {
-      const int idx = nnz_indices[i] * 4, idx_two = nnz_indices[i + 1] * 4;
-      const auto feature_vector =
-          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx]));
-      const auto feature_vector_two =
-          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx_two]));
-      for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
-        const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
-            &network->l1_weights[bucket][idx + j / 4]);
-        const auto weight_vector_two = *reinterpret_cast<simd::Vepi8 *>(
-            &network->l1_weights[bucket][idx_two + j / 4]);
-        auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
-        features = simd::DpbusdEpi32x2(features,
-                                       feature_vector,
-                                       weight_vector,
-                                       feature_vector_two,
-                                       weight_vector_two);
-      }
-    }
-
-    // Handle the remaining features
-    for (; i < nnz_count; i++) {
-      const int idx = nnz_indices[i] * 4;
-      const auto feature_vector =
-          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx]));
-      for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
-        const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
-            &network->l1_weights[bucket][idx + j / 4]);
-        auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
-        features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
-      }
+  for (int i = 0; i < nnz_count; ++i) {
+    const int idx = nnz_indices[i] * 4;
+    const auto feature_vector =
+        simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx]));
+    for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
+      const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
+          &network->l1_weights[bucket][idx + j / 4]);
+      auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
+      features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
     }
   }
 
