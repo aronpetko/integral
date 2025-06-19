@@ -2,6 +2,10 @@
 
 #include "precomputed.h"
 
+#ifdef USE_PEXT
+#include <immintrin.h>
+#endif
+
 namespace magics::attacks {
 
 template <Direction Dir>
@@ -29,7 +33,7 @@ constexpr int DistanceToEdge(Square square) {
 }
 
 template <Direction dir>
-constexpr BitBoard SlidingAttacks(U8 from, const BitBoard &occupied) {
+constexpr BitBoard SlidingAttacks(U8 from, const BitBoard& occupied) {
   BitBoard attacks;
   BitBoard current = BitBoard::FromSquare(from);
 
@@ -103,64 +107,75 @@ BitBoard GenerateRookMask(Square square) {
          SlidingOccupancies<Direction::kWest>(square);
 }
 
-BitBoard GenerateBishopMoves(Square square, const BitBoard &occupied) {
+BitBoard GenerateBishopMoves(Square square, const BitBoard& occupied) {
   return SlidingAttacks<Direction::kNorthWest>(square, occupied) |
          SlidingAttacks<Direction::kNorthEast>(square, occupied) |
          SlidingAttacks<Direction::kSouthWest>(square, occupied) |
          SlidingAttacks<Direction::kSouthEast>(square, occupied);
 }
 
-BitBoard GenerateRookMoves(Square square, const BitBoard &occupied) {
+BitBoard GenerateRookMoves(Square square, const BitBoard& occupied) {
   return SlidingAttacks<Direction::kNorth>(square, occupied) |
          SlidingAttacks<Direction::kEast>(square, occupied) |
          SlidingAttacks<Direction::kSouth>(square, occupied) |
          SlidingAttacks<Direction::kWest>(square, occupied);
 }
 
-BishopAttacksTable GenerateBishopAttacks() {
-  BishopAttacksTable bishop_attacks{};
+U64 GetBishopAttackIndex(Square square, const BitBoard& occupied) {
+#ifdef USE_PEXT
+  return _pext_u64(occupied.AsU64(), kBishopMagics[square].mask);
+#else
+  const auto& entry = kBishopMagics[square];
+  return ((occupied.AsU64() & entry.mask) * entry.magic) >> entry.shift;
+#endif
+}
+
+U64 GetRookAttackIndex(Square square, const BitBoard& occupied) {
+#ifdef USE_PEXT
+  return _pext_u64(occupied.AsU64(), kRookMagics[square].mask);
+#else
+  const auto& entry = kRookMagics[square];
+  return ((occupied.AsU64() & entry.mask) * entry.magic) >> entry.shift;
+#endif
+}
+
+// Generic attack table generation function
+template <typename AttacksTable,
+          typename MagicEntry,
+          size_t kBlockerCombinations>
+AttacksTable GenerateAttacks(
+    const std::array<MagicEntry, kSquareCount>& magics,
+    const std::function<BitBoard(Square, const BitBoard&)>& generate_moves,
+    const std::function<U64(Square, const BitBoard&)>& get_index) {
+  AttacksTable attacks{};
 
   for (int square = 0; square < kSquareCount; square++) {
-    // Compute the attack and blocker combinations for bishops
-    auto entry = kBishopMagics[square];
-    auto blockers = attacks::CreateBlockers(entry.mask);
+    auto blockers = attacks::CreateBlockers(magics[square].mask);
+    std::array<BitBoard, kBlockerCombinations> square_attacks{};
 
-    std::array<BitBoard, kBishopBlockerCombinations> square_bishop_attacks{};
-
-    for (const auto &occupied : blockers) {
-      const U64 magic_index =
-          ((entry.mask & occupied.AsU64()) * entry.magic) >> entry.shift;
-      square_bishop_attacks[magic_index] =
-          attacks::GenerateBishopMoves(Square(square), occupied);
+    for (const auto& occupied : blockers) {
+      const U64 index = get_index(Square(square), occupied);
+      square_attacks[index] = generate_moves(Square(square), occupied);
     }
 
-    bishop_attacks[square] = square_bishop_attacks;
+    attacks[square] = square_attacks;
   }
 
-  return bishop_attacks;
+  return attacks;
+}
+
+BishopAttacksTable GenerateBishopAttacks() {
+  return GenerateAttacks<BishopAttacksTable,
+                         decltype(kBishopMagics)::value_type,
+                         kBishopBlockerCombinations>(
+      kBishopMagics, attacks::GenerateBishopMoves, GetBishopAttackIndex);
 }
 
 RookAttacksTable GenerateRookAttacks() {
-  RookAttacksTable rook_attacks{};
-
-  for (int square = 0; square < kSquareCount; square++) {
-    // Compute the attack and blocker combinations for rooks
-    auto entry = kRookMagics[square];
-    auto blockers = attacks::CreateBlockers(entry.mask);
-
-    std::array<BitBoard, kRookBlockerCombinations> square_rook_attacks{};
-
-    for (const auto &occupied : blockers) {
-      const U64 magic_index =
-          ((entry.mask & occupied.AsU64()) * entry.magic) >> entry.shift;
-      square_rook_attacks[magic_index] =
-          attacks::GenerateRookMoves(Square(square), occupied);
-    }
-
-    rook_attacks[square] = square_rook_attacks;
-  }
-
-  return rook_attacks;
+  return GenerateAttacks<RookAttacksTable,
+                         decltype(kRookMagics)::value_type,
+                         kRookBlockerCombinations>(
+      kRookMagics, attacks::GenerateRookMoves, GetRookAttackIndex);
 }
 
 BishopAttacksTable kBishopAttacks = GenerateBishopAttacks();

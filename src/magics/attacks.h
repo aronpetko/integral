@@ -17,6 +17,10 @@ using RookAttacksTable =
 extern BishopAttacksTable kBishopAttacks;
 extern RookAttacksTable kRookAttacks;
 
+U64 GetBishopAttackIndex(Square square, const BitBoard& occupied);
+
+U64 GetRookAttackIndex(Square square, const BitBoard& occupied);
+
 BitBoard GenerateBishopMask(Square square);
 
 BitBoard GenerateRookMask(Square square);

@@ -84,9 +84,9 @@ add_definitions(-DEVALFILE="${PREPROCESSED_FILE}")
 
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
-set(CXXFLAGS_VNNI512 "-march=znver4 -mtune=znver4 -DBUILD_VNNI512 -DBUILD_FAST_PEXT")
-set(CXXFLAGS_AVX512 "-march=x86-64-v4 -mtune=skylake-avx512 -DBUILD_AVX512 -DBUILD_FAST_PEXT")
-set(CXXFLAGS_AVX2_BMI2 "-march=haswell -mtune=haswell -mavx2 -mbmi2 -DBUILD_AVX2_BMI2 -DBUILD_FAST_PEXT")
+set(CXXFLAGS_VNNI512 "-march=znver4 -mtune=znver4 -DBUILD_VNNI512 -DUSE_PEXT")
+set(CXXFLAGS_AVX512 "-march=x86-64-v4 -mtune=skylake-avx512 -DBUILD_AVX512 -DUSE_PEXT")
+set(CXXFLAGS_AVX2_BMI2 "-march=haswell -mtune=haswell -mavx2 -mbmi2 -DBUILD_AVX2_BMI2 -DUSE_PEXT")
 set(CXXFLAGS_AVX2 "-march=bdver4 -mno-tbm -mno-sse4a -mno-bmi2 -mtune=znver2 -DBUILD_AVX2")
 set(CXXFLAGS_SSE41_POPCNT "-march=nehalem -mtune=sandybridge -DBUILD_SSE41_POPCNT")
 
@@ -106,6 +106,56 @@ elseif (BUILD_SSE41_POPCNT)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_SSE41_POPCNT} -DBUILD_SSE41_POPCNT")
 elseif (BUILD_NATIVE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_NATIVE} -DBUILD_NATIVE")
+
+    execute_process(
+            COMMAND ${CMAKE_CXX_COMPILER} -march=native -E -dM -
+            INPUT_FILE /dev/null
+            OUTPUT_VARIABLE COMPILER_DEFINES
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+    )
+
+    # Debug output
+    message(STATUS "Checking for BMI2 support in native build...")
+
+    # Check if BMI2 is supported
+    string(FIND "${COMPILER_DEFINES}" "__BMI2__" HAS_BMI2)
+
+    # Also check for specific Zen architectures
+    string(FIND "${COMPILER_DEFINES}" "__znver1" IS_ZNVER1)
+    string(FIND "${COMPILER_DEFINES}" "__znver2" IS_ZNVER2)
+    string(FIND "${COMPILER_DEFINES}" "__znver3" IS_ZNVER3)
+    string(FIND "${COMPILER_DEFINES}" "__znver4" IS_ZNVER4)
+
+    if (NOT HAS_BMI2 EQUAL -1)
+        # BMI2 is supported
+        if (NOT IS_ZNVER3 EQUAL -1 OR NOT IS_ZNVER4 EQUAL -1)
+            # Zen 3 and Zen 4 have fast PEXT
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_PEXT")
+            message(STATUS "BMI2 (PEXT) support detected and enabled for Zen 3/4 processor")
+        elseif (IS_ZNVER1 EQUAL -1 AND IS_ZNVER2 EQUAL -1)
+            # Not znver1 or znver2, so PEXT should be fast (Intel or other)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_PEXT")
+            message(STATUS "BMI2 (PEXT) support detected and enabled for native build")
+        elseif (NOT IS_ZNVER2 EQUAL -1 AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            # Special case: Check for AMD EPYC 7B on znver2
+            execute_process(
+                    COMMAND lscpu
+                    OUTPUT_VARIABLE LSCPU_OUTPUT
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+            string(FIND "${LSCPU_OUTPUT}" "AMD EPYC 7B" IS_EPYC_7B)
+            if (NOT IS_EPYC_7B EQUAL -1)
+                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_PEXT")
+                message(STATUS "BMI2 (PEXT) support enabled for AMD EPYC 7B processor")
+            else()
+                message(STATUS "BMI2 detected but PEXT disabled due to slow implementation on znver2")
+            endif()
+        else()
+            message(STATUS "BMI2 detected but PEXT disabled due to slow implementation on znver1")
+        endif()
+    endif()
 endif ()
 
 option(DATAGEN OFF)
