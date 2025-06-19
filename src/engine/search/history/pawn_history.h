@@ -45,11 +45,11 @@ class PawnHistory {
 
  private:
   [[nodiscard]] int GetIndex(const BoardState &state) const {
-    return state.pawn_key & 16383;
+    return state.pawn_key & 1023;
   }
 
  private:
-  MultiArray<I16, 16384, kNumColors, kNumPieceTypes, kSquareCount> table_;
+  MultiArray<I16, 1024, kNumColors, kNumPieceTypes, kSquareCount> table_;
 };
 
 }  // namespace search::history
