@@ -35,15 +35,14 @@ namespace search {
 void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
-                              I32 ply,
-                              bool in_pv) {
+                              I32 ply) {
   if (new_entry.move || !old_entry->CompareKey(key)) {
     old_entry->move = new_entry.move;
   }
 
   if (!old_entry->CompareKey(key) ||
       new_entry.flag == TranspositionTableEntry::kExact ||
-      new_entry.depth + 3 + 2 * in_pv >= old_entry->depth ||
+      new_entry.depth + 3 + 2 * new_entry.was_in_pv >= old_entry->depth ||
       old_entry->age != age_) {
     new_entry.age = age_;
 

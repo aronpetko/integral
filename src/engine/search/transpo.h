@@ -104,8 +104,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
   void Save(TranspositionTableEntry *old_entry,
             TranspositionTableEntry new_entry,
             const U64 &key,
-            I32 ply,
-            bool in_pv);
+            I32 ply);
 
   void Age();
 
