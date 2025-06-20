@@ -863,7 +863,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
-  Move singular_move = stack->best_move = Move::NullMove();
+  Move best_move = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -976,8 +976,6 @@ Score Searcher::PVSearch(Thread &thread,
           thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
       stack->excluded_tt_move = Move::NullMove();
 
-      singular_move = stack->best_move;
-
       if (ShouldQuit()) {
         return 0;
       }
@@ -985,6 +983,7 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
+        stack->best_singular = Move::NullMove();
         // Extend more if the TT move is singular by a big margin
         if (!in_pv_node &&
             tt_move_excluded_score < new_beta - kSeDoubleMargin) {
@@ -1009,7 +1008,7 @@ Score Searcher::PVSearch(Thread &thread,
       } else if (cut_node) {
         extensions = -2;
       }
-    } else if (move == singular_move) {
+    } else if (move == stack->best_singular) {
       extensions = 1;
     }
 
@@ -1165,7 +1164,7 @@ Score Searcher::PVSearch(Thread &thread,
       best_score = score;
 
       if (score > alpha) {
-        stack->best_move = move;
+        best_move = move;
 
         if (in_pv_node && !in_root) {
           stack->pv.Clear();
@@ -1198,7 +1197,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     // Penalize the history score of moves that failed to raise alpha
-    if (move != stack->best_move) {
+    if (move != best_move) {
       if (is_quiet)
         quiets.Push(move);
       else if (is_capture)
@@ -1211,7 +1210,10 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (stack->best_move) {
+  if (best_move) {
+    if (stack->excluded_tt_move) {
+      stack->best_singular = best_move;
+    }
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
@@ -1252,14 +1254,13 @@ Score Searcher::PVSearch(Thread &thread,
                                                  tt_flag,
                                                  best_score,
                                                  raw_static_eval,
-                                                 stack->best_move,
+                                                 best_move,
                                                  tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    if (!stack->in_check &&
-        (!stack->best_move || !stack->best_move.IsNoisy(state))) {
+    if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }

@@ -75,8 +75,8 @@ struct StackEntry {
   bool in_check;
   // Threats
   BitBoard threats;
-  // Best move at this ply
-  Move best_move;
+  // Best move in singular search
+  Move best_singular;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -100,7 +100,7 @@ struct StackEntry {
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr),
-        best_move(Move::NullMove()) {
+        best_singular(Move::NullMove()) {
     ClearKillerMoves();
   }
 
