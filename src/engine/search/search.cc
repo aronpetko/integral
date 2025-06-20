@@ -863,7 +863,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
-  Move best_move = Move::NullMove();
+  Move singular_move = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -976,6 +976,8 @@ Score Searcher::PVSearch(Thread &thread,
           thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
       stack->excluded_tt_move = Move::NullMove();
 
+      singular_move = stack->best_move;
+
       if (ShouldQuit()) {
         return 0;
       }
@@ -1007,6 +1009,8 @@ Score Searcher::PVSearch(Thread &thread,
       } else if (cut_node) {
         extensions = -2;
       }
+    } else if (move == singular_move) {
+      extensions = 1;
     }
 
     stack->move = move;
@@ -1161,7 +1165,7 @@ Score Searcher::PVSearch(Thread &thread,
       best_score = score;
 
       if (score > alpha) {
-        best_move = move;
+        stack->best_move = move;
 
         if (in_pv_node && !in_root) {
           stack->pv.Clear();
@@ -1194,7 +1198,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     // Penalize the history score of moves that failed to raise alpha
-    if (move != best_move) {
+    if (move != stack->best_move) {
       if (is_quiet)
         quiets.Push(move);
       else if (is_capture)
@@ -1207,7 +1211,7 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_move) {
+  if (stack->best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
@@ -1248,13 +1252,14 @@ Score Searcher::PVSearch(Thread &thread,
                                                  tt_flag,
                                                  best_score,
                                                  raw_static_eval,
-                                                 best_move,
+                                                 stack->best_move,
                                                  tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
+    if (!stack->in_check &&
+        (!stack->best_move || !stack->best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }

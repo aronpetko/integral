@@ -75,6 +75,8 @@ struct StackEntry {
   bool in_check;
   // Threats
   BitBoard threats;
+  // Best move at this ply
+  Move best_move;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
