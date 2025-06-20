@@ -99,7 +99,8 @@ struct StackEntry {
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
-        continuation_entry(nullptr) {
+        continuation_entry(nullptr),
+        best_move(Move::NullMove()) {
     ClearKillerMoves();
   }
 

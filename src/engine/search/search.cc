@@ -863,7 +863,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
-  Move singular_move = Move::NullMove();
+  Move singular_move = stack->best_move = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
