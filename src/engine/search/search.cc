@@ -863,7 +863,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
-  Move best_move = Move::NullMove();
+  Move best_move = stack->best_singular = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -983,7 +983,6 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
-        stack->best_singular = Move::NullMove();
         // Extend more if the TT move is singular by a big margin
         if (!in_pv_node &&
             tt_move_excluded_score < new_beta - kSeDoubleMargin) {
@@ -1210,10 +1209,11 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
+  if (stack->excluded_tt_move) {
+    stack->best_singular = best_move;
+  }
+
   if (best_move) {
-    if (stack->excluded_tt_move) {
-      stack->best_singular = best_move;
-    }
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
     history.capture_history->Penalize(state, depth, captures);
