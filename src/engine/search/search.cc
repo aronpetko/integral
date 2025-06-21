@@ -883,6 +883,7 @@ Score Searcher::PVSearch(Thread &thread,
     const bool is_capture = move.IsCapture(state);
 
     stack->history_score = history.GetMoveScore(state, move, stack);
+    moves_seen++;
 
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
@@ -916,7 +917,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
-          (kLmpBase + depth * depth) / (3 - (improving || stack->eval >= beta));
+          (kLmpBase + depth * depth) / (2 - (improving || stack->eval >= beta));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
@@ -1031,7 +1032,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
+    if (depth > 2 && moves_seen > 1 + in_root * 2 &&
         !(in_pv_node && is_capture)) {
       constexpr int kLmrScale = 1024;
       reduction =
@@ -1101,7 +1102,7 @@ Score Searcher::PVSearch(Thread &thread,
       // If we didn't perform late move reduction, then we search this move at
       // full depth with a null window search if we don't expect it to be a PV
       // move
-      needs_full_search = !in_pv_node || moves_seen >= 1;
+      needs_full_search = !in_pv_node || moves_seen > 1;
     }
 
     // Either the move has potential from a reduced depth search or it's not
@@ -1120,7 +1121,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     // Perform a full window search on this move if it's known to be good
-    if (in_pv_node && (score > alpha || moves_seen == 0)) {
+    if (in_pv_node && (score > alpha || moves_seen == 1)) {
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
@@ -1130,8 +1131,6 @@ Score Searcher::PVSearch(Thread &thread,
     if (ShouldQuit()) {
       return 0;
     }
-
-    moves_seen++;
 
     if (in_root) {
       // Update the number of nodes we searched for this root move
