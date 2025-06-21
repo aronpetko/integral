@@ -7,6 +7,8 @@ namespace syzygy {
 void SetPath(std::string_view path) {
   syzygy::enabled = path != "<empty>";
   tb_init(path.data());
+
+  syzygy::max_pieces = TB_LARGEST;
 }
 
 void Free() {
