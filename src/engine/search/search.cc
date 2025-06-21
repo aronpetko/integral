@@ -1007,6 +1007,10 @@ Score Searcher::PVSearch(Thread &thread,
       } else if (cut_node) {
         extensions = -2;
       }
+
+      if (tt_move_excluded_score <= alpha && tt_move_excluded_score >= new_beta) {
+        --depth;
+      }
     }
 
     stack->move = move;
