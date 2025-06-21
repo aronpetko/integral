@@ -930,6 +930,7 @@ Score Searcher::PVSearch(Thread &thread,
       if (lmr_depth <= kFutPruneDepth && !stack->in_check &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
+        if (is_quiet) continue;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
