@@ -354,12 +354,19 @@ Score Searcher::QuiescentSearch(Thread &thread,
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
     if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen > 0) {
+        best_score > -kTBWinInMaxPlyScore) {
       break;
     }
 
     if (!board.IsMoveLegal(move)) {
       continue;
+    }
+
+    moves_seen++;
+
+    // Late Move Pruning: Don't search more moves than we have to
+    if (!stack->in_check && moves_seen >= 3) {
+      break;
     }
 
     // QS Futility Pruning: Prune noisy moves that don't win material if the
@@ -393,8 +400,6 @@ Score Searcher::QuiescentSearch(Thread &thread,
     const Score score =
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
-
-    moves_seen++;
 
     if (score > best_score) {
       best_score = score;
