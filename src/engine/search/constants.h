@@ -6,9 +6,9 @@
 namespace search {
 
 TUNABLE_STEP(kLmrQuietBase, 0.8480882955595078, 0.5, 2.0, false, 0.08);
-TUNABLE_STEP(kLmrQuietDiv, 2.081673155142633, 0.5, 3.0, false, 0.08);
+TUNABLE_STEP(kLmrQuietDiv, 2.2, 0.5, 3.0, false, 0.08);
 TUNABLE_STEP(kLmrTactBase, -0.28654078465717797, -1.0, 0.5, false, 0.08);
-TUNABLE_STEP(kLmrTactDiv, 2.81656413812439, 1.0, 4.0, false, 0.08);
+TUNABLE_STEP(kLmrTactDiv, 3.0, 1.0, 4.0, false, 0.08);
 
 TUNABLE(kAspWindowDepth, 4, 2, 8, true);
 TUNABLE_STEP(kAspWindowDelta, 9, 1, 50, false, 1);
