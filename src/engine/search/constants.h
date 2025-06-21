@@ -14,10 +14,10 @@ TUNABLE(kAspWindowDepth, 4, 2, 8, true);
 TUNABLE_STEP(kAspWindowDelta, 9, 1, 50, false, 1);
 TUNABLE_STEP(kAspWindowGrowth, 1.4059365733780913, 0.1, 2.0, false, 0.03);
 TUNABLE(kAspWindowScoreDiv, 16176, 8192, 32768, false);
-TUNABLE_STEP(kAspBetaLerpFactor, 0.48837473492636696, 0.0, 1.0, false, 0.1);
+TUNABLE(kAspBetaLerpFactor, 500, 0, 1024, false);
 
-TUNABLE_STEP(kQsCutoffLerpFactor, 0.3625354895273262, 0.0, 1.0, false, 0.1);
-TUNABLE_STEP(kQsFailHighLerpFactor, 0.5777391111317516, 0.0, 1.0, false, 0.1);
+TUNABLE(kQsCutoffLerpFactor, 371, 0, 1024, false);
+TUNABLE(kQsFailHighLerpFactor, 596, 0, 1024, false);
 TUNABLE_STEP(kQsFutMargin, 156, 20, 300, false, 20);
 
 TUNABLE(kEvalHistUpdateMult, 60, 20, 100, false);
@@ -30,7 +30,7 @@ TUNABLE_STEP(kRevFutMargin, 51, 50, 150, false, 5);
 TUNABLE_STEP(kRevFutImprovingMargin, 92, 20, 150, false, 5);
 TUNABLE_STEP(kRevFutOppWorseningMargin, 24, 5, 70, false, 4);
 TUNABLE_STEP(kRevFutMinMargin, 16, 5, 100, false, 10);
-TUNABLE_STEP(kRevFutLerpFactor, 0.49231300185302573, 0.0, 1.0, false, 0.05);
+TUNABLE(kRevFutLerpFactor, 504, 0, 1024, false);
 TUNABLE(kRevFutHistoryDiv, 584, 200, 800, false);
 
 TUNABLE(kRazoringDepth, 4, 1, 8, true);

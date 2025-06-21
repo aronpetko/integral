@@ -13,6 +13,7 @@
 #include "syzygy/syzygy.h"
 #include "time_mgmt.h"
 #include "transpo.h"
+#include "../../utils/math.h"
 
 namespace search {
 
@@ -111,7 +112,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
         if (score <= alpha) {
           // Narrow beta to increase the chance of a fail high
-          beta = static_cast<Score>(std::lerp(beta, alpha, kAspBetaLerpFactor));
+          beta = Lerp(beta, alpha, kAspBetaLerpFactor);
 
           // We failed low which means we don't have a move to play, so we widen
           // alpha
@@ -333,8 +334,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
       }
 
-      return static_cast<Score>(
-          std::lerp(best_score, beta, kQsCutoffLerpFactor));
+      return Lerp(best_score, beta, kQsCutoffLerpFactor);
     }
 
     // Alpha can be updated if no cutoff occurred
@@ -438,8 +438,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   // Return an interpolated score toward beta for a safety "cushion"
   if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore) {
-    best_score =
-        static_cast<Score>(std::lerp(best_score, beta, kQsFailHighLerpFactor));
+    best_score = Lerp(best_score, beta, kQsFailHighLerpFactor);
   }
 
   TranspositionTableEntry::Flag tt_flag;
@@ -714,7 +713,7 @@ Score Searcher::PVSearch(Thread &thread,
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
-        return std::lerp(stack->eval, beta, kRevFutLerpFactor);
+        return Lerp(stack->eval, beta, kRevFutLerpFactor);
       }
     }
 
