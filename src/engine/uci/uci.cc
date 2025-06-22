@@ -1,6 +1,7 @@
 #include "uci.h"
 
 #include <string>
+#include <algorithm>
 
 #include "../../ascii_logo.h"
 #include "../../data_gen/data_gen.h"
@@ -31,6 +32,10 @@ void Initialize(search::Searcher &searcher) {
   });
   listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeDepth", 1, 1, 100, [](const Option &option) {
     syzygy::probe_depth = option.GetValue<int>();
+  });
+  listener.AddOption<OptionVisibility::kPublic>("SyzygyProbeLimit", 32, 3, 32, [](const Option &option) {
+    syzygy::piece_probe_limit = option.GetValue<int>();
+    syzygy::max_pieces = std::min<int>(syzygy::max_pieces, syzygy::piece_probe_limit);
   });
   // clang-format on
 }
