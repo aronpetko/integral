@@ -1209,7 +1209,7 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (stack->excluded_tt_move && best_score >= beta + 10) {
+  if (stack->excluded_tt_move && best_score >= tt_entry->score) {
     stack->best_singular = best_move;
   }
 
