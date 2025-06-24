@@ -20,7 +20,7 @@ TUNABLE_STEP(kQsCutoffLerpFactor, 0.3625354895273262, 0.0, 1.0, false, 0.1);
 TUNABLE_STEP(kQsFailHighLerpFactor, 0.5777391111317516, 0.0, 1.0, false, 0.1);
 TUNABLE_STEP(kQsFutMargin, 156, 20, 300, false, 20);
 
-TUNABLE(kEvalHistUpdateMult, 50, 20, 100, false);
+TUNABLE(kEvalHistUpdateMult, 70, 20, 100, false);
 TUNABLE(kEvalHistUpdateMin, 500, 5, 500, false);
 TUNABLE(kEvalHistUpdateMax, 500, 5, 500, false);
 TUNABLE_STEP(kEvalHistUpdateBias, 1, 0, 50, false, 5);
