@@ -353,8 +353,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen > 0) {
+    if (best_score > -kTBWinInMaxPlyScore && (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys || moves_seen > 2)) {
       break;
     }
 
@@ -414,6 +413,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
           }
           break;
         }
+      }
+
+      if (stack->in_check && best_score > -kTBWinInMaxPlyScore && is_quiet) {
+        break;
       }
     }
 
@@ -711,8 +714,7 @@ Score Searcher::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           stack->eval_complexity / 2 +
-          (stack - 1)->history_score / kRevFutHistoryDiv -
-          (stack->eval != stack->static_eval) * 15;
+          (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
