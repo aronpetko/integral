@@ -1204,6 +1204,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Terminal state if no legal moves were found
   if (moves_seen == 0) {
+    if (stack->excluded_tt_move) return alpha;
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
