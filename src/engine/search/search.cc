@@ -1066,7 +1066,8 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce more if our static evaluation is going down
       if (!improving) {
-        reduction += kLmrNotImproving;
+        const auto static_eval_loss = past_stack ? past_stack->static_eval - stack->static_eval : 0;
+        reduction += std::min(kLmrNotImproving + 24 * static_eval_loss / 8, 1200);
       }
 
       // Reduce less if the static evaluation has been corrected a lot
