@@ -1,12 +1,15 @@
 #include "syzygy.h"
 
 #include <tbprobe.h>
+#include <algorithm>
 
 namespace syzygy {
 
 void SetPath(std::string_view path) {
   syzygy::enabled = path != "<empty>";
   tb_init(path.data());
+
+  syzygy::max_pieces = std::min<int>(TB_LARGEST, syzygy::piece_probe_limit);
 }
 
 void Free() {

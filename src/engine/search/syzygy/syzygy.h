@@ -7,6 +7,9 @@
 
 namespace syzygy {
 
+inline std::atomic<int> max_pieces = 0;
+inline std::atomic<int> piece_probe_limit = 32;
+
 inline std::atomic<bool> enabled = false;
 inline std::atomic<int> probe_depth = 0;
 
