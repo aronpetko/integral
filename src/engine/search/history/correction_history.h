@@ -21,10 +21,11 @@ class CorrectionHistory {
         continuation_table_({}) {}
 
   void UpdateScore(const BoardState &state,
-                   StackEntry *stack,
-                   Score search_score,
-                   TranspositionTableEntry::Flag score_type,
-                   int depth) {
+                 StackEntry *stack,
+                 Score search_score,
+                 TranspositionTableEntry::Flag score_type,
+                 int depth,
+                 Move best_move) {
     if (!IsStaticEvalWithinBounds(
             stack->static_eval, search_score, score_type)) {
       return;
@@ -32,19 +33,25 @@ class CorrectionHistory {
 
     const I16 bonus = CalculateBonus(stack->static_eval, search_score, depth);
 
+    // Update non-pawn table scores for both colors
+    const bool is_capture = best_move && best_move.IsCapture(state);
+
+    for (Color color : {Color::kWhite, Color::kBlack}) {
+      auto &entry =
+          non_pawn_table_[GetNonPawnTableIndex(state, color)][state.turn][color];
+      entry.Update(bonus, is_capture);
+    }
+
+    if (is_capture) {
+      return;
+    }
+
     // Update pawn table score
     UpdateTableScore(pawn_table_[GetPawnTableIndex(state)][state.turn], bonus);
 
     // Update major piece table score
     UpdateTableScore(major_table_[GetMajorTableIndex(state)][state.turn],
                      bonus);
-
-    // Update non-pawn table scores for both colors
-    for (Color color : {Color::kWhite, Color::kBlack}) {
-      UpdateTableScore(non_pawn_table_[GetNonPawnTableIndex(state, color)]
-                                      [state.turn][color],
-                       bonus);
-    }
 
     // Update continuation table scores
     for (int ply_ago : {2, 3}) {
@@ -60,17 +67,22 @@ class CorrectionHistory {
 
   [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
                                         StackEntry *stack,
-                                        Score static_eval) const {
+                                        Score static_eval,
+                                        Move best_move) const {
+    const bool is_capture = best_move && best_move.IsCapture(state);
+
     const Score pawn_correction =
         pawn_table_[GetPawnTableIndex(state)][state.turn] *
         kPawnCorrectionWeight;
     const I32 non_pawn_white_correction =
         non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)][state.turn]
-                       [Color::kWhite] *
+                       [Color::kWhite]
+            .GetTotal(is_capture) *
         kNonPawnCorrectionWeight;
     const I32 non_pawn_black_correction =
         non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)][state.turn]
-                       [Color::kBlack] *
+                       [Color::kBlack]
+            .GetTotal(is_capture) *
         kNonPawnCorrectionWeight;
     const I32 major_correction =
         major_table_[GetMajorTableIndex(state)][state.turn] *
@@ -140,9 +152,27 @@ class CorrectionHistory {
   }
 
  private:
+  struct CaptureCorrectionEntry {
+    Score standard_correction = 0;
+    Score capture_correction = 0;
+
+    void Update(Score bonus, bool is_capture) {
+      if (is_capture) {
+        capture_correction += ScaleBonus(capture_correction, bonus, 1024);
+      } else {
+        standard_correction += ScaleBonus(standard_correction, bonus, 1024);
+      }
+    }
+
+    [[nodiscard]] Score GetTotal(bool is_capture) const {
+      return is_capture ? standard_correction + capture_correction
+                        : standard_correction;
+    }
+  };
+
   MultiArray<I16, 16384, kNumColors> pawn_table_;
   MultiArray<I16, 16384, kNumColors> major_table_;
-  MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
+  MultiArray<CaptureCorrectionEntry, 16384, kNumColors, kNumColors> non_pawn_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };

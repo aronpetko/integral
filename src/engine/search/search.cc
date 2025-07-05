@@ -218,12 +218,13 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
 [[nodiscard]] Score AdjustStaticEval(Score static_eval,
                                      Thread &thread,
-                                     StackEntry *stack) {
+                                     StackEntry *stack,
+                                     Move best_move) {
   const auto &state = thread.board.GetState();
 
   // Adjust based on prior search scores in similar positions
   static_eval = thread.history.correction_history->CorrectStaticEval(
-      state, stack, static_eval);
+      state, stack, static_eval, best_move);
 
 #if DATAGEN
   return static_eval;
@@ -307,7 +308,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack, tt_move);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -646,7 +647,7 @@ Score Searcher::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack, tt_move);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
@@ -1255,9 +1256,9 @@ Score Searcher::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
+    if (!stack->in_check) {
       history.correction_history->UpdateScore(
-          state, stack, best_score, tt_flag, depth);
+          state, stack, best_score, tt_flag, depth, best_move);
     }
   }
 
