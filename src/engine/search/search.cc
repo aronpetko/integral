@@ -362,15 +362,24 @@ Score Searcher::QuiescentSearch(Thread &thread,
       continue;
     }
 
-    // QS Futility Pruning: Prune noisy moves that don't win material if the
-    // static eval is behind alpha by some margin
-    if (!stack->in_check &&
-        (!(stack - 1)->move || move.GetTo() != (stack - 1)->move.GetTo()) &&
-        move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1, state)) {
-      best_score = std::max(best_score, futility_score);
-      continue;
+    if (best_score > -kTBWinInMaxPlyScore && !stack->in_check) {
+      // History Pruning: Prune moves with a low history score moves at
+      // near-leaf nodes
+      if (stack->history_score <= -5000) {
+        continue;
+      }
+
+      // QS Futility Pruning: Prune noisy moves that don't win material if the
+      // static eval is behind alpha by some margin
+      if ((!(stack - 1)->move || move.GetTo() != (stack - 1)->move.GetTo()) &&
+          move.IsCapture(state) && futility_score <= alpha &&
+          !eval::StaticExchange(move, 1, state)) {
+        best_score = std::max(best_score, futility_score);
+        continue;
+      }
     }
+
+
 
     // Prefetch the TT entry for the next move as early as possible
     transposition_table_.Prefetch(board.PredictKeyAfter(move));
