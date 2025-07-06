@@ -21,8 +21,8 @@ namespace search {
       }
       // Always prefer the lowest quality entry
       const int lowest_quality =
-          replace_entry->depth - 8 * GetAgeDelta(replace_entry);
-      const int current_quality = entry->depth - 8 * GetAgeDelta(entry);
+          replace_entry->depth - GetAgeDelta(replace_entry);
+      const int current_quality = entry->depth - GetAgeDelta(entry);
       if (lowest_quality > current_quality) {
         replace_entry = entry;
       }
