@@ -646,7 +646,11 @@ Score Searcher::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval = board.HasUpcomingRepetition(stack->ply) ? 0 : AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->static_eval =  AdjustStaticEval(raw_static_eval, thread, stack);
+
+    if (stack->static_eval < kDrawScore && board.HasUpcomingRepetition(stack->ply) ) {
+      stack->static_eval = kDrawScore;
+    }
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
