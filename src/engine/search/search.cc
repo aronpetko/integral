@@ -653,11 +653,11 @@ Score Searcher::PVSearch(Thread &thread,
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+      stack->eval_complexity = std::abs(stack->static_eval - tt_entry->score);
     } else {
       stack->eval = stack->static_eval;
+      stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
     }
-
-    stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
   }
 
   const auto &prev_stack = stack - 1;
