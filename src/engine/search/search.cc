@@ -699,6 +699,9 @@ Score Searcher::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+    if (stack->eval_complexity - (stack - 1)->eval_complexity > 50)
+      ++depth;
+
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
