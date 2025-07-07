@@ -865,6 +865,8 @@ Score Searcher::PVSearch(Thread &thread,
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
+  bool is_tt_move_singular = false;
+
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
@@ -983,6 +985,7 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
+        is_tt_move_singular = true;
         // Extend more if the TT move is singular by a big margin
         if (!in_pv_node &&
             tt_move_excluded_score < new_beta - kSeDoubleMargin) {
@@ -1077,6 +1080,10 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
         reduction -= kLmrKillerMoves;
+      }
+
+      if (is_tt_move_singular && tt_move.IsNoisy(board.GetStateHistory().Back())) {
+        reduction += 1024;
       }
 
       // Scale reduction back down to an integer
