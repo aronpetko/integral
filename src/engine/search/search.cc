@@ -786,7 +786,7 @@ Score Searcher::PVSearch(Thread &thread,
       const Score pc_beta = beta + kProbcutBetaDelta;
       if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
-           tt_entry->score + history.GetMoveScore(state, tt_move, stack) / 128 >= pc_beta)) {
+           tt_entry->score + history.GetMoveScore(state, tt_move, stack) / 512 >= pc_beta)) {
         const int pc_see = pc_beta - stack->eval;
         const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
                                   ? tt_move
