@@ -1082,7 +1082,7 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      if (is_tt_move_singular && tt_move.IsNoisy(board.GetStateHistory().Back())) {
+      if (is_tt_move_singular && tt_move.IsNoisy(board.GetStateHistory().Back()) && is_quiet) {
         reduction += 1024;
       }
 
