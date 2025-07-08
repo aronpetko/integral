@@ -783,11 +783,10 @@ Score Searcher::PVSearch(Thread &thread,
       // ProbCut: When the current position's score is likely to cause a beta
       // cutoff, we attempt a shallower quiescent-like search and prune early
       // if possible
-      const Score pc_beta = beta + kProbcutBetaDelta -
-        (tt_move ? + history.GetMoveScore(state, tt_move, stack) / 64 : 0);
+      const Score pc_beta = beta + kProbcutBetaDelta;
       if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
-           tt_entry->score >= pc_beta)) {
+           tt_entry->score + (tt_move ? history.GetMoveScore(state, tt_move, stack) / 64 : 0) >= pc_beta)) {
         const int pc_see = pc_beta - stack->eval;
         const Move pc_tt_move = tt_move && eval::StaticExchange(tt_move, pc_see, state)
                                   ? tt_move
@@ -1208,7 +1207,7 @@ Score Searcher::PVSearch(Thread &thread,
     if (stack->excluded_tt_move) return alpha;
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
-  
+
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
