@@ -309,8 +309,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
     stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
 
-    const bool can_use_tt_score = tt_hit &&
-        tt_entry->CanUseScore(stack->static_eval, stack->static_eval);
+    const bool can_use_tt_score =
+        tt_hit && tt_entry->CanUseScore(stack->static_eval, stack->static_eval);
     if (can_use_tt_score) {
       best_score =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
@@ -319,9 +319,11 @@ Score Searcher::QuiescentSearch(Thread &thread,
     }
 
     // Early beta cutoff
-    if (best_score + (can_use_tt_score && tt_move && tt_move.IsNoisy(state)
-                          ? history.GetCaptureMoveScore(state, tt_move) / 128
-                          : 0) >= beta) {
+    const auto standpat_margin =
+        !can_use_tt_score && tt_move && tt_move.IsNoisy(state)
+            ? history.GetCaptureMoveScore(state, tt_move) / 128
+            : 0;
+    if (best_score + standpat_margin >= beta) {
       // Save the static eval in the TT if we have nothing yet
       if (!tt_hit) {
         const TranspositionTableEntry new_tt_entry(
@@ -1211,7 +1213,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
