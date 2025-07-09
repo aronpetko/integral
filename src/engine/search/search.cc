@@ -1208,6 +1208,9 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+    best_score = (best_score * depth + beta) / (depth + 1);
+
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
