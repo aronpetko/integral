@@ -321,7 +321,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     // Early beta cutoff
     const auto standpat_margin =
         !can_use_tt_score && tt_move && tt_move.IsNoisy(state)
-            ? history.GetCaptureMoveScore(state, tt_move) / 128
+            ? history.GetCaptureMoveScore(state, tt_move) / 256
             : 0;
     if (best_score + standpat_margin >= beta) {
       // Save the static eval in the TT if we have nothing yet
