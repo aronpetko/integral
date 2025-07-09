@@ -318,7 +318,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     }
 
     // Early beta cutoff
-    if (best_score >= beta) {
+    if (best_score + (tt_move && tt_move.IsNoisy(state) ? history.GetCaptureMoveScore(state, tt_move) / 256 : 0) >= beta) {
       // Save the static eval in the TT if we have nothing yet
       if (!tt_hit) {
         const TranspositionTableEntry new_tt_entry(
