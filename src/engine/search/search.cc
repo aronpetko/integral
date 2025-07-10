@@ -696,8 +696,6 @@ Score Searcher::PVSearch(Thread &thread,
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
-  (stack + 1)->ClearKillerMoves();
-
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
@@ -1074,11 +1072,6 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrComplexity;
       }
 
-      // Reduce less if this move is a killer move
-      if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
-        reduction -= kLmrKillerMoves;
-      }
-
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
@@ -1174,7 +1167,6 @@ Score Searcher::PVSearch(Thread &thread,
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
-            stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
             history.pawn_history->UpdateScore(
