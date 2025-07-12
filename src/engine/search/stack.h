@@ -102,7 +102,8 @@ struct StackEntry {
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr),
-        reduction(0) {
+        reduction(0),
+        was_in_pv(false) {
     ClearKillerMoves();
   }
 

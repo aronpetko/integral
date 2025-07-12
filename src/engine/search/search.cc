@@ -700,8 +700,10 @@ Score Searcher::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    if (!stack->excluded_tt_move && prev_stack->reduction >= 4096) {
-      depth += !opponent_worsening || (stack->was_in_pv && !(stack - 1)->was_in_pv);
+    if (!stack->excluded_tt_move) {
+      depth += (!opponent_worsening && prev_stack->reduction >= 4096) ||
+               (stack->was_in_pv && !(stack - 1)->was_in_pv &&
+                prev_stack->reduction >= 2048);
     }
 
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
@@ -1217,7 +1219,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
