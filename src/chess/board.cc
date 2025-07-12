@@ -124,9 +124,6 @@ bool Board::IsMoveLegal(Move move) const {
 
       const bool is_kingside = to > from;
 
-      assert(is_kingside ? state_.castle_rights.CanKingsideCastle(us)
-                         : state_.castle_rights.CanQueensideCastle(us));
-
       if (state_.pinned[state_.turn].IsSet(to)) return false;
 
       const Square king_sq = move.GetFrom();
@@ -146,12 +143,12 @@ bool Board::IsMoveLegal(Move move) const {
       between_bb.ClearBit(king_sq);
       between_bb.ClearBit(rook_sq);
 
-      if ((between_bb & state_.Occupied()).PopCount() > 0) return false;
+      if (between_bb & state_.Occupied()) return false;
 
       between_bb = move_gen::RayIncluding(king_sq, king_to);
       between_bb.ClearBit(king_sq);
 
-      while (between_bb.PopCount() > 0)
+      while (between_bb)
         if (state_.threats.IsSet(between_bb.PopLsb())) return false;
 
       return true;
