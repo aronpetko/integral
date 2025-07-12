@@ -701,7 +701,7 @@ Score Searcher::PVSearch(Thread &thread,
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
         !opponent_worsening) {
-      ++depth;
+      depth = 1 + tt_was_in_pv;
     }
 
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
