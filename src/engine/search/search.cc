@@ -274,13 +274,13 @@ Score Searcher::QuiescentSearch(Thread &thread,
   const bool tt_hit = tt_entry->CompareKey(zobrist_key);
 
   auto tt_move = Move::NullMove();
-  bool tt_was_in_pv = in_pv_node;
+  stack->was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
   if (tt_hit) {
-    tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    stack->was_in_pv |= tt_entry->was_in_pv;
   }
 
   // Use the TT entry's evaluation if possible
@@ -328,7 +328,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
             kScoreNone,
             raw_static_eval,
             Move::NullMove(),
-            tt_was_in_pv);
+            stack->was_in_pv);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
       }
@@ -459,7 +459,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
                                              best_score,
                                              raw_static_eval,
                                              Move::NullMove(),
-                                             tt_was_in_pv);
+                                             stack->was_in_pv);
   transposition_table_.Save(
       tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
 
@@ -541,7 +541,8 @@ Score Searcher::PVSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false;
+  stack->was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
@@ -553,9 +554,9 @@ Score Searcher::PVSearch(Thread &thread,
   // Use the TT entry's evaluation if possible
   if (tt_hit) {
     can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-    tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    stack->was_in_pv |= tt_entry->was_in_pv;
   }
 
   if (in_root) {
@@ -605,7 +606,7 @@ Score Searcher::PVSearch(Thread &thread,
                                                    score,
                                                    tt_static_eval,
                                                    Move::NullMove(),
-                                                   tt_was_in_pv);
+                                                   stack->was_in_pv);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
         return score;
@@ -641,7 +642,7 @@ Score Searcher::PVSearch(Thread &thread,
                                                  kScoreNone,
                                                  raw_static_eval,
                                                  Move::NullMove(),
-                                                 tt_was_in_pv);
+                                                 stack->was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
@@ -699,9 +700,8 @@ Score Searcher::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
-        !opponent_worsening) {
-      depth = 1 + tt_was_in_pv;
+    if (!stack->excluded_tt_move && prev_stack->reduction >= 4096) {
+      depth += !opponent_worsening || (stack->was_in_pv && !(stack - 1)->was_in_pv);
     }
 
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
@@ -843,7 +843,7 @@ Score Searcher::PVSearch(Thread &thread,
                 score,
                 raw_static_eval,
                 Move::NullMove(),
-                tt_was_in_pv);
+                stack->was_in_pv);
             transposition_table_.Save(
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
@@ -1048,7 +1048,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if we have seen this node in the PV before
-      if (tt_was_in_pv) {
+      if (stack->was_in_pv) {
         reduction -= kLmrWasPvNode;
       }
 
@@ -1262,7 +1262,7 @@ Score Searcher::PVSearch(Thread &thread,
                                                  best_score,
                                                  raw_static_eval,
                                                  best_move,
-                                                 tt_was_in_pv);
+                                                 stack->was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }

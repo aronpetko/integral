@@ -77,6 +77,8 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
+  // If this node appeared in the PV
+  bool was_in_pv;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
