@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "../../third-party/fmt/include/fmt/format.h"
 #include "list.h"
 
 using I8 = std::int8_t;
@@ -183,6 +184,12 @@ class Square {
 
   constexpr Square operator*(int scalar) const {
     return square_ * scalar;
+  }
+
+  [[nodiscard]] std::string ToString() const {
+    return fmt::format("{}{}",
+                       static_cast<char>('a' + (square_ % 8)),
+                       static_cast<char>('1' + (square_ / 8)));
   }
 
  private:
