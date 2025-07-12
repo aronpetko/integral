@@ -704,6 +704,11 @@ Score Searcher::PVSearch(Thread &thread,
       ++depth;
     }
 
+    if (!stack->excluded_tt_move && prev_stack->reduction >= 1024 &&
+        depth >= 2 && stack->static_eval + prev_stack->static_eval > 200) {
+      --depth;
+    }
+
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -1217,7 +1222,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
