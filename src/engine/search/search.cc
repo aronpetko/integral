@@ -705,7 +705,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     if (!stack->excluded_tt_move && prev_stack->reduction >= 1024 &&
-        depth >= 2 && stack->static_eval + prev_stack->static_eval > 200) {
+        depth >= 2 && stack->static_eval + prev_stack->static_eval > 150) {
       --depth;
     }
 
