@@ -228,7 +228,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
   if (tt_move && tt_move.IsNoisy(state)) {
     static_eval +=
-        thread.history.capture_history->GetScore(state, tt_move) / 64;
+        thread.history.capture_history->GetScore(state, tt_move) / 200;
   }
 
 #if DATAGEN
