@@ -218,12 +218,18 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
 [[nodiscard]] Score AdjustStaticEval(Score static_eval,
                                      Thread &thread,
-                                     StackEntry *stack) {
+                                     StackEntry *stack,
+                                     Move tt_move) {
   const auto &state = thread.board.GetState();
 
   // Adjust based on prior search scores in similar positions
   static_eval = thread.history.correction_history->CorrectStaticEval(
       state, stack, static_eval);
+
+  if (tt_move && tt_move.IsNoisy(state)) {
+    static_eval +=
+        thread.history.capture_history->GetScore(state, tt_move) / 128;
+  }
 
 #if DATAGEN
   return static_eval;
@@ -307,7 +313,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->static_eval =
+        AdjustStaticEval(raw_static_eval, thread, stack, tt_move);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -646,7 +653,8 @@ Score Searcher::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->static_eval =
+        AdjustStaticEval(raw_static_eval, thread, stack, tt_move);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
@@ -1217,7 +1225,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
