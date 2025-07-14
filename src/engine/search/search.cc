@@ -709,7 +709,9 @@ Score Searcher::PVSearch(Thread &thread,
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
-        stack->eval >= beta) {
+        stack->eval >= beta &&
+        (!tt_hit || (stack->eval != stack->static_eval &&
+                     tt_entry->flag != TranspositionTableEntry::kUpperBound))) {
       const int improving_margin =
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin;
       const int futility_margin =
@@ -1217,7 +1219,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
