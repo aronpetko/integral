@@ -624,6 +624,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   Score raw_static_eval;
+  bool using_tt_score = false;
 
   // Approximate the current evaluation at this node
   if (stack->in_check) {
@@ -653,6 +654,7 @@ Score Searcher::PVSearch(Thread &thread,
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+      using_tt_score = true;
     } else {
       stack->eval = stack->static_eval;
     }
@@ -710,7 +712,8 @@ Score Searcher::PVSearch(Thread &thread,
     // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta &&
-        (!tt_hit || stack->eval != stack->static_eval || tt_entry->flag != TranspositionTableEntry::kUpperBound)) {
+        (!using_tt_score ||
+         tt_entry->flag != TranspositionTableEntry::kUpperBound)) {
       const int improving_margin =
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin;
       const int futility_margin =
