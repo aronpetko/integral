@@ -710,7 +710,7 @@ Score Searcher::PVSearch(Thread &thread,
     // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta &&
-        (!tt_hit || tt_entry->flag != TranspositionTableEntry::kUpperBound)) {
+        (!tt_hit || stack->eval != stack->static_eval || tt_entry->flag != TranspositionTableEntry::kUpperBound)) {
       const int improving_margin =
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin;
       const int futility_margin =
