@@ -654,7 +654,7 @@ Score Searcher::PVSearch(Thread &thread,
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
-      stack->eval = stack->static_eval;
+      stack->eval = depth > 8 ? QuiescentSearch<node_type>(thread, alpha, beta, stack) : stack->static_eval;
     }
 
     stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
