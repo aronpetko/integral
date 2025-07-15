@@ -831,6 +831,8 @@ Score Searcher::PVSearch(Thread &thread,
                                          -pc_beta + 1,
                                          stack + 1,
                                          !cut_node);
+          } else if (score >= beta && cut_node) {
+            --depth;
           }
 
           board.UndoMove();
