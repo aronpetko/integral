@@ -565,9 +565,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
   if (!stack->excluded_tt_move && !in_pv_node &&
-      (can_use_tt_eval ||
-       tt_entry->flag == TranspositionTableEntry::kUpperBound &&
-           tt_entry->score - 100 >= beta) &&
+      can_use_tt_eval &&
       (cut_node || tt_entry->score <= alpha) &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
@@ -650,6 +648,13 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+
+    if (!in_pv_node && cut_node &&
+        stack->static_eval - 50 >= beta && tt_entry->score - 50 >= beta &&
+        tt_entry->flag == TranspositionTableEntry::kUpperBound &&
+        tt_entry->depth >= depth) {
+      return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+    }
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
