@@ -564,7 +564,10 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
+  if (!stack->excluded_tt_move && !in_pv_node &&
+      (can_use_tt_eval ||
+       tt_entry->flag == TranspositionTableEntry::kUpperBound &&
+           tt_entry->score - 100 >= beta) &&
       (cut_node || tt_entry->score <= alpha) &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
@@ -1217,7 +1220,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
