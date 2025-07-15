@@ -22,17 +22,17 @@ class QuietHistory {
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    I16 depth,
-                   BitBoard threats,
-                   MoveList &quiets) {
+                   MoveList &quiets,
+                   I32 moves_seen) {
     const I16 bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
-    UpdateMoveScore(state.turn, stack->move, threats, bonus);
+    UpdateMoveScore(state.turn, stack->move, stack->threats, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
-    const I16 penalty = HistoryPenalty(depth);
+    const I16 penalty = HistoryPenalty(depth) - 16 * (moves_seen - 1);
     for (int i = 0; i < quiets.Size(); i++) {
-      UpdateMoveScore(state.turn, quiets[i], threats, penalty);
+      UpdateMoveScore(state.turn, quiets[i], stack->threats, penalty);
     }
   }
 

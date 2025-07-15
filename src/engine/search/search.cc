@@ -1184,11 +1184,11 @@ Score Searcher::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+                state, stack, history_depth, quiets, moves_seen);
             history.pawn_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, quiets, moves_seen);
             history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, quiets, moves_seen);
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
@@ -1230,7 +1230,7 @@ Score Searcher::PVSearch(Thread &thread,
   // allow history tweaks to occur in PVS re-searches
   else if (prev_stack->move && !prev_stack->capture_move &&
            prev_stack->move.GetType() != MoveType::kPromotion) {
-    const auto history_bonus = history::HistoryBonus(depth) + 100 * (!in_pv_node && !cut_node);
+    const auto history_bonus = history::HistoryBonus(depth);
     const auto past_turn = FlipColor(state.turn);
     history.quiet_history->UpdateMoveScore(
         past_turn, prev_stack->move, prev_stack->threats, history_bonus);

@@ -25,14 +25,15 @@ class PawnHistory {
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    I16 depth,
-                   MoveList &quiets) {
+                   MoveList &quiets,
+                   I32 moves_seen) {
     const I16 bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
     UpdateMoveScore(state, stack->move, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
-    const I16 penalty = HistoryPenalty(depth);
+    const I16 penalty = HistoryPenalty(depth) - 16 * (moves_seen - 1);
     for (int i = 0; i < quiets.Size(); i++) {
       UpdateMoveScore(state, quiets[i], penalty);
     }
