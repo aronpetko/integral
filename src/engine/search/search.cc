@@ -699,14 +699,11 @@ Score Searcher::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
-        !opponent_worsening) {
-      ++depth;
-    }
-
-    if (!stack->excluded_tt_move && prev_stack->reduction >= 1024 &&
-        depth >= 2 && stack->static_eval + prev_stack->static_eval > 150) {
-      --depth;
+    if (!stack->excluded_tt_move) {
+      depth += prev_stack->reduction >= 4096 && !opponent_worsening;
+      depth -= prev_stack->reduction >= 1024 && depth >= 2 &&
+               stack->static_eval + prev_stack->static_eval > 150 &&
+               stack->static_eval <= alpha;
     }
 
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
