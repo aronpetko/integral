@@ -708,8 +708,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
-    if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
-        stack->eval >= beta) {
+    if (depth <= kRevFutDepth && !stack->excluded_tt_move) {
       const int improving_margin =
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin;
       const int futility_margin =
@@ -1231,7 +1230,7 @@ Score Searcher::PVSearch(Thread &thread,
   // allow history tweaks to occur in PVS re-searches
   else if (prev_stack->move && !prev_stack->capture_move &&
            prev_stack->move.GetType() != MoveType::kPromotion) {
-    const auto history_bonus = history::HistoryBonus(depth);
+    const auto history_bonus = history::HistoryBonus(depth) + 100 * (!in_pv_node && !cut_node);
     const auto past_turn = FlipColor(state.turn);
     history.quiet_history->UpdateMoveScore(
         past_turn, prev_stack->move, prev_stack->threats, history_bonus);
