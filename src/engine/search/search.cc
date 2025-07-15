@@ -624,6 +624,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   Score raw_static_eval;
+  bool using_tt_score = false;
 
   // Approximate the current evaluation at this node
   if (stack->in_check) {
@@ -653,6 +654,7 @@ Score Searcher::PVSearch(Thread &thread,
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+      using_tt_score = true;
     } else {
       stack->eval = stack->static_eval;
     }
@@ -716,7 +718,8 @@ Score Searcher::PVSearch(Thread &thread,
           depth * kRevFutMargin - improving_margin -
           kRevFutOppWorseningMargin * opponent_worsening +
           stack->eval_complexity / 2 +
-          (stack - 1)->history_score / kRevFutHistoryDiv;
+          (stack - 1)->history_score / kRevFutHistoryDiv -
+          using_tt_score * 5 * tt_entry->depth;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
@@ -1217,7 +1220,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
