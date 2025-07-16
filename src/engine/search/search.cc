@@ -1084,6 +1084,12 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      // Reduce more if the TT score indicates a fail low
+      if (tt_hit && tt_entry->score != kScoreNone && tt_entry->score < alpha &&
+          tt_entry->flag == TranspositionTableEntry::kUpperBound) {
+        reduction += 768;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
@@ -1217,7 +1223,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
