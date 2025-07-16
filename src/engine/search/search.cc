@@ -854,7 +854,7 @@ Score Searcher::PVSearch(Thread &thread,
         }
 
         // TT score and node type are misleading, so reduce since the node looks likely to fail low
-        if (best_pc_score <= alpha && cut_node) {
+        if (best_pc_score != kScoreNone && best_pc_score <= alpha && cut_node) {
           --depth;
         }
       }
