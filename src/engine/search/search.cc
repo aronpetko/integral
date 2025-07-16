@@ -846,6 +846,7 @@ Score Searcher::PVSearch(Thread &thread,
                 tt_was_in_pv);
             transposition_table_.Save(
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
+            history.capture_history->UpdateScore(state, move, probcut_depth);
             return score;
           }
         }
