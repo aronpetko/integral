@@ -853,7 +853,8 @@ Score Searcher::PVSearch(Thread &thread,
           }
         }
 
-        if (best_pc_score >= beta && cut_node) {
+        // TT score and node type are misleading, so reduce since the node looks likely to fail low
+        if (best_pc_score <= alpha && cut_node) {
           --depth;
         }
       }
