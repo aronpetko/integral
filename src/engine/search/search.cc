@@ -796,6 +796,7 @@ Score Searcher::PVSearch(Thread &thread,
         const Move pc_tt_move = eval::StaticExchange(tt_move, pc_see, state)
                                   ? tt_move
                                   : Move::NullMove();
+        auto best_pc_score = kScoreNone;
 
         int moves_seen = 0;
         MovePicker move_picker(
@@ -831,11 +832,11 @@ Score Searcher::PVSearch(Thread &thread,
                                          -pc_beta + 1,
                                          stack + 1,
                                          !cut_node);
-          } else if (score >= beta && cut_node) {
-            --depth;
           }
 
           board.UndoMove();
+
+          best_pc_score = std::max(best_pc_score, score);
 
           if (score >= pc_beta) {
             const TranspositionTableEntry new_tt_entry(
@@ -850,6 +851,10 @@ Score Searcher::PVSearch(Thread &thread,
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
           }
+        }
+
+        if (best_pc_score >= beta && cut_node) {
+          --depth;
         }
       }
     }
