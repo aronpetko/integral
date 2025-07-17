@@ -33,8 +33,8 @@ TUNABLE_STEP(kRevFutMinMargin, 16, 5, 100, false, 10);
 TUNABLE_STEP(kRevFutLerpFactor, 0.49231300185302573, 0.0, 1.0, false, 0.05);
 TUNABLE(kRevFutHistoryDiv, 584, 200, 800, false);
 
-TUNABLE(kRazoringDepth, 4, 1, 8, true);
-TUNABLE_STEP(kRazoringMult, 405, 200, 600, false, 20);
+TUNABLE_STEP(kRazoringBase, 300, 200, 600, false, 20);
+TUNABLE_STEP(kRazoringMult, 200, 200, 600, false, 20);
 
 TUNABLE_STEP(kNmpBetaBase, 137, 50, 200, false, 15);
 TUNABLE_STEP(kNmpBetaMult, 7, 5, 50, false, 5);

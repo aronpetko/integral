@@ -725,13 +725,8 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Razoring: At low depths, if this node seems like it might fail low, we
     // do a quiescent search to determine if we should prune
-    if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
-        stack->static_eval + kRazoringMult * (depth - !improving) < alpha) {
-      const Score razoring_score =
-          QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
-      if (razoring_score <= alpha) {
-        return razoring_score;
-      }
+    if (stack->eval + kRazoringBase + kRazoringMult * depth * depth < alpha) {
+      return QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
     }
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we
@@ -1217,7 +1212,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
