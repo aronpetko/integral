@@ -97,7 +97,7 @@ class CorrectionHistory {
     }();
     const I32 threat_correction =
         threat_table_[GetMajorTableIndex(state)][state.turn] *
-        kMajorCorrectionWeight;
+        kThreatCorrectionWeight;
     const I32 correction = pawn_correction + non_pawn_white_correction +
                            non_pawn_black_correction + major_correction +
                            continuation_correction + threat_correction;
