@@ -944,8 +944,8 @@ Score Searcher::PVSearch(Thread &thread,
             move.IsEnPassant(state) ? kPawn : state.GetPieceType(move.GetTo());
         const int capture_futlity_margin =
             400 + *eval::kSeePieceScores[captured_piece] + 400 * depth;
-        if (!in_pv_node && depth <= 8 &&
-            stack->static_eval + capture_futlity_margin < alpha) {
+        if (!in_pv_node && depth <= 8 && !stack->in_check &&
+            stack->eval + capture_futlity_margin < alpha) {
           continue;
         }
       }
