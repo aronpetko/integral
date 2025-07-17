@@ -927,7 +927,7 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
-      // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
+      // Futility Pruning: Skip futile moves at near-leaf nodes when
       // there's a low chance to raise alpha
       const int futility_margin =
           kFutMarginBase +
@@ -937,6 +937,17 @@ Score Searcher::PVSearch(Thread &thread,
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
+      }
+
+      if (is_capture) {
+        const auto captured_piece =
+            move.IsEnPassant(state) ? kPawn : state.GetPieceType(move.GetTo());
+        const int capture_futlity_margin =
+            400 + *eval::kSeePieceScores[captured_piece] + 400 * depth;
+        if (!in_pv_node && depth <= 8 &&
+            stack->static_eval + capture_futlity_margin < alpha) {
+          continue;
+        }
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
@@ -1217,7 +1228,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
