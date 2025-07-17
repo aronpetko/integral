@@ -11,6 +11,7 @@ TUNABLE_STEP(kPawnCorrectionWeight, 41, 0, 125, false, 3);
 TUNABLE_STEP(kNonPawnCorrectionWeight, 39, 0, 125, false, 3);
 TUNABLE_STEP(kMajorCorrectionWeight, 39, 0, 125, false, 3);
 TUNABLE_STEP(kContinuationCorrectionWeight, 51, 0, 125, false, 3);
+TUNABLE_STEP(kThreatCorrectionWeight, 30, 0, 125, false, 3);
 
 class CorrectionHistory {
  public:
@@ -56,6 +57,10 @@ class CorrectionHistory {
                          bonus);
       }
     }
+
+    // Update threat table scores
+    UpdateTableScore(threat_table_[GetThreatTableIndex(state)][state.turn],
+                     bonus);
   }
 
   [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
@@ -90,9 +95,12 @@ class CorrectionHistory {
 
       return total;
     }();
+    const I32 threat_correction =
+        threat_table_[GetMajorTableIndex(state)][state.turn] *
+        kMajorCorrectionWeight;
     const I32 correction = pawn_correction + non_pawn_white_correction +
                            non_pawn_black_correction + major_correction +
-                           continuation_correction;
+                           continuation_correction + threat_correction;
     const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 512;
     // Ensure no static evaluations are mate scores
     return std::clamp(
@@ -139,10 +147,15 @@ class CorrectionHistory {
     return state.non_pawn_keys[color] & 16383;
   }
 
+  [[nodiscard]] int GetThreatTableIndex(const BoardState &state) const {
+    return state.threats.AsU64() & 16383;
+  }
+
  private:
   MultiArray<I16, 16384, kNumColors> pawn_table_;
   MultiArray<I16, 16384, kNumColors> major_table_;
   MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
+  MultiArray<I16, 16384, kNumColors> threat_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };
