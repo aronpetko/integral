@@ -1053,7 +1053,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more if this node is expected to fail high
-      if (cut_node) {
+      if (!tt_was_in_pv && cut_node) {
         reduction += kLmrCutNode;
       }
 
