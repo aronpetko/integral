@@ -931,8 +931,7 @@ Score Searcher::PVSearch(Thread &thread,
       // there's a low chance to raise alpha
       const int futility_margin =
           kFutMarginBase +
-          kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
-          stack->history_score / kFutMarginHistDiv;
+          kFutMarginMult * lmr_fractional_depth / kLmrDepthScale;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
