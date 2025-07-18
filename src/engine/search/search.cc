@@ -627,7 +627,8 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Approximate the current evaluation at this node
   if (stack->in_check) {
-    stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
+    raw_static_eval = kScoreNone;
+    stack->static_eval = stack->eval = QuiescentSearch<node_type>(thread, alpha, beta, stack);
     stack->eval_complexity = 0;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
@@ -691,10 +692,8 @@ Score Searcher::PVSearch(Thread &thread,
     past_stack = stack - 4;
   }
 
-  if (!stack->in_check) {
-    improving = past_stack && stack->static_eval > past_stack->static_eval;
-    opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
-  }
+  improving = past_stack && stack->static_eval > past_stack->static_eval;
+  opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
 
   (stack + 1)->ClearKillerMoves();
 
