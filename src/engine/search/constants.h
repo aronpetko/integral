@@ -45,7 +45,7 @@ TUNABLE(kNmpEvalDiv, 165, 100, 300, false);
 TUNABLE(kIirDepth, 4, 2, 8, true);
 
 TUNABLE_STEP(kLmrDepthNonPvNode, 1222, 512, 2048, false, 150);
-TUNABLE_STEP(kLmrDepthHistQuiet, 1295, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrDepthHistQuiet, 1395, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthNotImproving, 1263, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthRoundingCutoff, 537, 512, 2048, false, 100);
 
