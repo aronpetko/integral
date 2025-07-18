@@ -916,7 +916,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
 
-      const int lmr_depth = std::max(depth - reduction, 0);
+      const int lmr_depth = depth - reduction;
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
@@ -943,7 +943,7 @@ Score Searcher::PVSearch(Thread &thread,
       // much material
       const int see_threshold = [&]() -> int {
         if (is_quiet) {
-          return kSeeQuietThresh * lmr_depth * lmr_depth;
+          return kSeeQuietThresh * lmr_depth * std::abs(lmr_depth);
         }
         return kSeeNoisyThresh * depth -
                stack->history_score / kSeePruneHistDiv;
