@@ -731,6 +731,8 @@ Score Searcher::PVSearch(Thread &thread,
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
         return razoring_score;
+      } else if (razoring_score - 20 > alpha) {
+        ++depth;
       }
     }
 
