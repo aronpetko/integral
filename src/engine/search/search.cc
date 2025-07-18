@@ -1089,8 +1089,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
-      reduction =
-          std::clamp(reduction, -(!in_pv_node && !cut_node), new_depth - 1);
+      reduction = std::clamp(reduction, -1, new_depth - 1);
 
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
@@ -1217,7 +1216,8 @@ Score Searcher::PVSearch(Thread &thread,
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
 
-  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore && std::abs(alpha) < kTBWinInMaxPlyScore)
+  if (best_score >= beta && std::abs(best_score) < kTBWinInMaxPlyScore &&
+      std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
   if (best_move) {
