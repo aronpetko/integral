@@ -73,7 +73,8 @@ struct TranspositionTableEntry {
   U8 depth;
   union {
     struct {
-      U8 age : 5;
+      U8 age : 4;
+      U8 has_singular_move : 1;
       U8 was_in_pv : 1;
       U8 flag : 2;
     };
@@ -90,7 +91,7 @@ struct TranspositionTableCluster {
   U16 padding;
 };
 
-constexpr int kMaxTTAge = 32;
+constexpr int kMaxTTAge = 16;
 
 class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  public:

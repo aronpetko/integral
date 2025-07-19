@@ -541,7 +541,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node, singular_move_found = false;
   Score tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
@@ -556,6 +556,7 @@ Score Searcher::PVSearch(Thread &thread,
     tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    singular_move_found = tt_entry->has_singular_move;
   }
 
   if (in_root) {
@@ -967,8 +968,8 @@ Score Searcher::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
-    int extensions = 0;
-    if (!in_root && depth >= kSeDepth && move == tt_move &&
+    int extensions = singular_move_found;
+    if (!in_root && !singular_move_found && depth >= kSeDepth && move == tt_move &&
         tt_entry->depth + 3 >= depth &&
         tt_entry->flag != TranspositionTableEntry::kUpperBound &&
         std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
