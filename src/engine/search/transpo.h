@@ -26,7 +26,8 @@ struct TranspositionTableEntry {
         move(Move::NullMove()),
         age(0),
         was_in_pv(false),
-        flag(kNone) {}
+        flag(kNone),
+        has_singular_move(false) {}
 
   explicit TranspositionTableEntry(U64 key,
                                    U8 depth,
@@ -34,7 +35,8 @@ struct TranspositionTableEntry {
                                    Score score,
                                    Score static_eval,
                                    Move move,
-                                   bool was_in_pv)
+                                   bool was_in_pv,
+                                   bool has_singular_move)
       : key(static_cast<U16>(key)),
         depth(depth),
         score(score),
@@ -42,7 +44,8 @@ struct TranspositionTableEntry {
         move(move),
         age(0),
         was_in_pv(was_in_pv),
-        flag(flag) {}
+        flag(flag),
+        has_singular_move(has_singular_move) {}
 
   // Keys are packed to maximize the number of entries the table can hold
   // Therefore, we must down-cast when checking for key equality

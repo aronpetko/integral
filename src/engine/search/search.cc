@@ -274,13 +274,14 @@ Score Searcher::QuiescentSearch(Thread &thread,
   const bool tt_hit = tt_entry->CompareKey(zobrist_key);
 
   auto tt_move = Move::NullMove();
-  bool tt_was_in_pv = in_pv_node;
+  bool tt_was_in_pv = in_pv_node, singular_move_found = false;
   Score tt_static_eval = kScoreNone;
 
   if (tt_hit) {
     tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
+    singular_move_found = tt_entry->has_singular_move;
   }
 
   // Use the TT entry's evaluation if possible
@@ -328,7 +329,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
             kScoreNone,
             raw_static_eval,
             Move::NullMove(),
-            tt_was_in_pv);
+            tt_was_in_pv,
+            singular_move_found);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
       }
@@ -459,7 +461,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
                                              best_score,
                                              raw_static_eval,
                                              Move::NullMove(),
-                                             tt_was_in_pv);
+                                             tt_was_in_pv,
+                                             singular_move_found);
   transposition_table_.Save(
       tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
 
@@ -606,7 +609,8 @@ Score Searcher::PVSearch(Thread &thread,
                                                    score,
                                                    tt_static_eval,
                                                    Move::NullMove(),
-                                                   tt_was_in_pv);
+                                                   tt_was_in_pv,
+                                                   singular_move_found);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
         return score;
@@ -642,7 +646,8 @@ Score Searcher::PVSearch(Thread &thread,
                                                  kScoreNone,
                                                  raw_static_eval,
                                                  Move::NullMove(),
-                                                 tt_was_in_pv);
+                                                 tt_was_in_pv,
+                                                 singular_move_found);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
@@ -844,7 +849,8 @@ Score Searcher::PVSearch(Thread &thread,
                 score,
                 raw_static_eval,
                 Move::NullMove(),
-                tt_was_in_pv);
+                tt_was_in_pv,
+                singular_move_found);
             transposition_table_.Save(
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
@@ -988,7 +994,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
-      if (tt_move_excluded_score < new_beta) {
+      if ((singular_move_found = tt_move_excluded_score < new_beta)) {
         // Extend more if the TT move is singular by a big margin
         if (!in_pv_node &&
             tt_move_excluded_score < new_beta - kSeDoubleMargin) {
@@ -1262,7 +1268,8 @@ Score Searcher::PVSearch(Thread &thread,
                                                  best_score,
                                                  raw_static_eval,
                                                  best_move,
-                                                 tt_was_in_pv);
+                                                 tt_was_in_pv,
+                                                 singular_move_found);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
