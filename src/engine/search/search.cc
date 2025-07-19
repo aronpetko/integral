@@ -706,7 +706,7 @@ Score Searcher::PVSearch(Thread &thread,
   (stack + 1)->ClearKillerMoves();
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    if (tt_hit && singular_move_found &&
+    if (tt_hit && singular_move_found && depth >= 2 &&
         tt_entry->flag != TranspositionTableEntry::kUpperBound &&
         tt_entry->depth + 3 >= depth && tt_entry->score - depth >= beta) {
       --depth;
