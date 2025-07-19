@@ -497,8 +497,8 @@ void Board::HandleCastling(Move move) {
   const Square rook_to = kRookEndSquares[CastleRights::CastleIndex(
       us, king_sq > rook_sq ? CastleRights::kQueenside : CastleRights::kKingside)];
 
-  state_.PlacePiece(king_to, PieceType::kKing, us);
   state_.RemovePiece(rook_sq, us);
+  state_.PlacePiece(king_to, PieceType::kKing, us);
   state_.PlacePiece(rook_to, PieceType::kRook, us);
 }
 
