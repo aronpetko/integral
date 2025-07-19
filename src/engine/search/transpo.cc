@@ -54,6 +54,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
     old_entry->age = new_entry.age;
     old_entry->flag = new_entry.flag;
     old_entry->was_in_pv = new_entry.was_in_pv;
+    old_entry->has_singular_move = new_entry.has_singular_move;
     old_entry->static_eval = new_entry.static_eval;
   }
 }

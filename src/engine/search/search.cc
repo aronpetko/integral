@@ -974,9 +974,9 @@ Score Searcher::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
-    int extensions = singular_move_found;
-    if (!in_root && !singular_move_found && depth >= kSeDepth && move == tt_move &&
-        tt_entry->depth + 3 >= depth &&
+    int extensions = move == tt_move && singular_move_found;
+    if (!in_root && depth >= kSeDepth && move == tt_move &&
+        tt_entry->depth + 3 >= depth && !singular_move_found &&
         tt_entry->flag != TranspositionTableEntry::kUpperBound &&
         std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         stack->ply < thread.root_depth * 2) {
@@ -994,7 +994,8 @@ Score Searcher::PVSearch(Thread &thread,
 
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
-      if ((singular_move_found = tt_move_excluded_score < new_beta)) {
+      if (tt_move_excluded_score < new_beta) {
+        singular_move_found = true;
         // Extend more if the TT move is singular by a big margin
         if (!in_pv_node &&
             tt_move_excluded_score < new_beta - kSeDoubleMargin) {
