@@ -69,8 +69,8 @@ bool Board::IsMovePseudoLegal(Move move) const {
     if (state_.GetPieceType(to) != PieceType::kRook) return false;
 
     if (to > from)
-      return state_.castle_rights.CastleSq(state_.turn, CastleRights::kKingside) == to;
-    return state_.castle_rights.CastleSq(state_.turn, CastleRights::kQueenside) == to;
+      return state_.castle_rights.CastleSquare(state_.turn, CastleRights::kKingside) == to;
+    return state_.castle_rights.CastleSquare(state_.turn, CastleRights::kQueenside) == to;
   }
 
   if (move_type == MoveType::kEnPassant) {
@@ -271,7 +271,7 @@ void Board::MakeMove(Move move) {
   if (piece == kRook) {
     const auto side = from > state_.King(us).GetLsb() ? CastleRights::kKingside : CastleRights::kQueenside;
 
-    const Square sq = state_.castle_rights.CastleSq(us, side);
+    const Square sq = state_.castle_rights.CastleSquare(us, side);
 
     if (from == sq)
       state_.castle_rights.SetCastlingRights(us, side, kNoSquare);
@@ -281,7 +281,7 @@ void Board::MakeMove(Move move) {
   if (state_.GetPieceType(to)) {
     const auto side = to > state_.King(them).GetLsb() ? CastleRights::kKingside : CastleRights::kQueenside;
 
-    const Square sq = state_.castle_rights.CastleSq(them, side);
+    const Square sq = state_.castle_rights.CastleSquare(them, side);
 
     if (to == sq)
       state_.castle_rights.SetCastlingRights(them, side, kNoSquare);

@@ -235,19 +235,19 @@ BitBoard CastlingMoves(Color side, const BoardState &state) {
 
   if (side == Color::kWhite) {
     if (state.castle_rights.CanKingsideCastle(Color::kWhite)) {
-      moves.SetBit(state.castle_rights.CastleSq(Color::kWhite, CastleRights::kKingside));
+      moves.SetBit(state.castle_rights.CastleSquare(Color::kWhite, CastleRights::kKingside));
     }
 
     if (state.castle_rights.CanQueensideCastle(Color::kWhite)) {
-      moves.SetBit(state.castle_rights.CastleSq(Color::kWhite, CastleRights::kQueenside));
+      moves.SetBit(state.castle_rights.CastleSquare(Color::kWhite, CastleRights::kQueenside));
     }
   } else {
     if (state.castle_rights.CanKingsideCastle(Color::kBlack)) {
-      moves.SetBit(state.castle_rights.CastleSq(Color::kBlack, CastleRights::kKingside));
+      moves.SetBit(state.castle_rights.CastleSquare(Color::kBlack, CastleRights::kKingside));
     }
 
     if (state.castle_rights.CanQueensideCastle(Color::kBlack)) {
-      moves.SetBit(state.castle_rights.CastleSq(Color::kBlack, CastleRights::kQueenside));
+      moves.SetBit(state.castle_rights.CastleSquare(Color::kBlack, CastleRights::kQueenside));
     }
   }
 

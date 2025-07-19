@@ -80,22 +80,22 @@ class CastleRights {
   }
 
   [[nodiscard]] U8 AsU8() const {
-    constexpr U8 blackQ = 0b1;
-    constexpr U8 blackK = 0b10;
-    constexpr U8 whiteQ = 0b100;
-    constexpr U8 whiteK = 0b1000;
+    constexpr U8 kBlackQueen = 0b1;
+    constexpr U8 kBlackKing = 0b10;
+    constexpr U8 kWhiteQueen = 0b100;
+    constexpr U8 kWhiteKing = 0b1000;
 
     U8 flags = 0;
 
-    if (rights_[CastleIndex(kWhite, kKingside)] != kNoSquare) flags |= whiteK;
-    if (rights_[CastleIndex(kWhite, kQueenside)] != kNoSquare) flags |= whiteQ;
-    if (rights_[CastleIndex(kBlack, kKingside)] != kNoSquare) flags |= blackK;
-    if (rights_[CastleIndex(kBlack, kQueenside)] != kNoSquare) flags |= blackQ;
+    if (rights_[CastleIndex(kWhite, kKingside)] != kNoSquare) flags |= kWhiteKing;
+    if (rights_[CastleIndex(kWhite, kQueenside)] != kNoSquare) flags |= kWhiteQueen;
+    if (rights_[CastleIndex(kBlack, kKingside)] != kNoSquare) flags |= kBlackKing;
+    if (rights_[CastleIndex(kBlack, kQueenside)] != kNoSquare) flags |= kBlackQueen;
 
     return flags;
   }
 
-  [[nodiscard]] Square CastleSq(Color turn, CastleSide side) const {
+  [[nodiscard]] Square CastleSquare(Color turn, CastleSide side) const {
     return rights_[CastleIndex(turn, side)];
   }
 

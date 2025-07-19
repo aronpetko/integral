@@ -60,25 +60,24 @@ BoardState StringToBoard(std::string_view fen_str) {
   for (const char &ch : castle_rights) {
     // Standard FENs, XFEN later
     if (ch == 'K')
-      state.castle_rights.SetCanKingsideCastle(Color::kWhite, Square(kH1));
+      state.castle_rights.SetCanKingsideCastle(Color::kWhite, kH1);
     else if (ch == 'Q')
-      state.castle_rights.SetCanQueensideCastle(Color::kWhite, Square(kA1));
+      state.castle_rights.SetCanQueensideCastle(Color::kWhite, kA1);
     else if (ch == 'k')
-      state.castle_rights.SetCanKingsideCastle(Color::kBlack, Square(kH8));
+      state.castle_rights.SetCanKingsideCastle(Color::kBlack, kH8);
     else if (ch == 'q')
-      state.castle_rights.SetCanQueensideCastle(Color::kBlack, Square(kA8));
+      state.castle_rights.SetCanQueensideCastle(Color::kBlack, kA8);
 
     // FRC FEN
     if (std::tolower(ch) >= 'a' &&
         std::tolower(ch) <= 'h') {
       uci::listener.GetOption("UCI_Chess960").SetValue("true");
-      const File file = static_cast<File>(std::tolower(ch) - 'a');
-      const Square kingSq = state.King(std::islower(ch) ? Color::kBlack : Color::kWhite).GetLsb();
 
-      if (std::isupper(ch))
-        state.castle_rights.SetCastlingRights(Color::kWhite, file > kingSq.File() ? CastleRights::kKingside : CastleRights::kQueenside, Square::FromRankFile(kRank1, file));
-      else
-        state.castle_rights.SetCastlingRights(Color::kBlack, file > kingSq.File() ? CastleRights::kKingside : CastleRights::kQueenside, Square::FromRankFile(kRank8, file));
+      const Color color = std::isupper(ch) ? kWhite : kBlack;
+      const File file = static_cast<File>(std::tolower(ch) - 'a');
+      const Square king_sq = state.King(color).GetLsb();
+
+      state.castle_rights.SetCastlingRights(color, file > king_sq.File() ? CastleRights::kKingside : CastleRights::kQueenside, Square::FromRankFile(color == kWhite ? kRank1 : kRank8, file));
     }
   }
 

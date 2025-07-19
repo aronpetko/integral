@@ -93,8 +93,8 @@ std::string Move::ToString() const {
   std::string res = GetFrom().ToString();
   if (GetType() == MoveType::kCastle &&
       !uci::listener.GetOption("UCI_Chess960").GetValue<bool>()) {
-    const bool isKingside = GetFrom() < GetTo();
-    return res + (GetFrom() + (isKingside ? 2 : -2)).ToString();
+    const bool is_kingside = GetFrom() < GetTo();
+    return res + (GetFrom() + (is_kingside ? 2 : -2)).ToString();
   }
 
   res += GetTo().ToString();
