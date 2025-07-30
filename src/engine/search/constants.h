@@ -30,6 +30,7 @@ TUNABLE_STEP(kRevFutMargin, 51, 50, 150, false, 5);
 TUNABLE_STEP(kRevFutImprovingMargin, 92, 20, 150, false, 5);
 TUNABLE_STEP(kRevFutOppWorseningMargin, 24, 5, 70, false, 4);
 TUNABLE_STEP(kRevFutMinMargin, 16, 5, 100, false, 10);
+TUNABLE_STEP(kRevFutComplexityMargin, 16, 1, 64, false, 10);
 TUNABLE_STEP(kRevFutLerpFactor, 0.49231300185302573, 0.0, 1.0, false, 0.05);
 TUNABLE(kRevFutHistoryDiv, 584, 200, 800, false);
 
