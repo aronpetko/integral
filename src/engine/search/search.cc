@@ -52,7 +52,6 @@ Searcher::Searcher(Board &board)
       stop_barrier_(2),
       start_barrier_(2),
       search_end_barrier_(1),
-      next_thread_id_(0),
       searching_threads_(0) {}
 
 Searcher::~Searcher() {
@@ -1307,9 +1306,9 @@ void Searcher::QuitThreads() {
   stop_barrier_.ArriveAndWait();
   start_barrier_.ArriveAndWait();
 
-  for (auto &thread : threads_) {
-    if (thread->raw_thread.joinable()) {
-      thread->raw_thread.join();
+  for (auto &thread : raw_threads_) {
+    if (thread.joinable()) {
+      thread.join();
     }
   }
 }
@@ -1321,7 +1320,9 @@ bool Searcher::ShouldQuit() {
 void Searcher::SetThreadCount(U16 count) {
   if (threads_.size() == count) {
     return;
-  } else if (!threads_.empty()) {
+  }
+
+  if (!threads_.empty()) {
     QuitThreads();
   }
 
@@ -1334,13 +1335,13 @@ void Searcher::SetThreadCount(U16 count) {
 
   threads_.clear();
   threads_.shrink_to_fit();
-  threads_.reserve(count);
+  threads_.resize(count);
 
-  next_thread_id_ = 0;
   for (U16 i = 0; i < count; i++) {
-    auto &thread =
-        threads_.emplace_back(std::make_unique<Thread>(next_thread_id_++));
-    thread->raw_thread = std::thread([this, &thread]() { Run(*thread); });
+    raw_threads_.emplace_back([&, i]() {
+      threads_[i] = std::make_unique<Thread>(i);
+      Run(*threads_[i]);
+    });
   }
 }
 
