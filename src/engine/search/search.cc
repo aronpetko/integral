@@ -1334,8 +1334,11 @@ void Searcher::SetThreadCount(U16 count) {
   start_barrier_.Reset(count + 1);
 
   threads_.clear();
+  raw_threads_.clear();
   threads_.shrink_to_fit();
+  raw_threads_.shrink_to_fit();
   threads_.resize(count);
+  raw_threads_.resize(count);
 
   Barrier thread_init_barrier(count + 1);
   for (U16 i = 0; i < count; i++) {
