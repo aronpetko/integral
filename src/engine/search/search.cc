@@ -1337,12 +1337,15 @@ void Searcher::SetThreadCount(U16 count) {
   threads_.shrink_to_fit();
   threads_.resize(count);
 
+  Barrier thread_init_barrier(count + 1);
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back([&, i]() {
       threads_[i] = std::make_unique<Thread>(i);
+      thread_init_barrier.ArriveAndWait();
       Run(*threads_[i]);
     });
   }
+  thread_init_barrier.ArriveAndWait();
 }
 
 void Searcher::Start(TimeConfig time_config) {
