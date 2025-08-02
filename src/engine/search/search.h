@@ -210,7 +210,7 @@ class Searcher {
   Board &board_;
   TimeManagement time_mgmt_;
   std::atomic_bool stop_, quit_;
-  Barrier stop_barrier_, start_barrier_, search_end_barrier_;
+  Barrier stop_barrier_, start_barrier_, search_end_barrier_, thread_init_barrier_;
   std::mutex stop_mutex_, thread_stopped_mutex_;
   std::atomic_int searching_threads_;
   std::condition_variable thread_stopped_signal_;

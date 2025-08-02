@@ -52,7 +52,8 @@ Searcher::Searcher(Board &board)
       stop_barrier_(2),
       start_barrier_(2),
       search_end_barrier_(1),
-      searching_threads_(0) {}
+      searching_threads_(0),
+      thread_init_barrier_(2) {}
 
 Searcher::~Searcher() {
   if (!quit_.load(std::memory_order_acquire)) {
@@ -1306,7 +1307,7 @@ void Searcher::QuitThreads() {
   stop_barrier_.ArriveAndWait();
   start_barrier_.ArriveAndWait();
 
-  for (auto &thread : raw_threads_) {
+  for (auto &&thread : raw_threads_) {
     if (thread.joinable()) {
       thread.join();
     }
@@ -1328,27 +1329,25 @@ void Searcher::SetThreadCount(U16 count) {
 
   quit_.store(false, std::memory_order_release);
 
+  thread_init_barrier_.Reset(count + 1);
   search_end_barrier_.Reset(count);
   // Count + 1 so that we can arrive/wait in the UCI thread as well
   stop_barrier_.Reset(count + 1);
   start_barrier_.Reset(count + 1);
 
-  threads_.clear();
   raw_threads_.clear();
+  threads_.clear();
   threads_.shrink_to_fit();
-  raw_threads_.shrink_to_fit();
   threads_.resize(count);
-  raw_threads_.resize(count);
 
-  Barrier thread_init_barrier(count + 1);
   for (U16 i = 0; i < count; i++) {
-    raw_threads_.emplace_back([&, i]() {
+    raw_threads_.emplace_back([this, i]() {
       threads_[i] = std::make_unique<Thread>(i);
-      thread_init_barrier.ArriveAndWait();
+      thread_init_barrier_.ArriveAndWait();
       Run(*threads_[i]);
     });
   }
-  thread_init_barrier.ArriveAndWait();
+  thread_init_barrier_.ArriveAndWait();
 }
 
 void Searcher::Start(TimeConfig time_config) {
