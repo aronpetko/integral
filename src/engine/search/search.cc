@@ -1336,6 +1336,8 @@ void Searcher::SetThreadCount(U16 count) {
   start_barrier_.Reset(count + 1);
 
   raw_threads_.clear();
+  raw_threads_.shrink_to_fit();
+  raw_threads_.reserve(count);
   threads_.clear();
   threads_.shrink_to_fit();
   threads_.resize(count);
@@ -1343,7 +1345,14 @@ void Searcher::SetThreadCount(U16 count) {
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back([this, i]() {
       threads_[i] = std::make_unique<Thread>(i);
+      // Touch memory to enforce first-touch
+      auto &thread = *threads_[i];
+      thread.stack.Reset();
+      thread.history.Clear();
+      thread.scores.fill(kScoreNone);
+
       thread_init_barrier_.ArriveAndWait();
+
       Run(*threads_[i]);
     });
   }
