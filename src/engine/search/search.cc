@@ -1285,6 +1285,9 @@ void Searcher::Run(Thread &thread) {
       return;
     }
 
+    thread.Reset();
+    thread.SetBoard(board_);
+
     IterativeDeepening<SearchType::kRegular>(thread);
   }
 }
@@ -1373,10 +1376,6 @@ void Searcher::Start(TimeConfig time_config) {
 
   searching_threads_.store(static_cast<U16>(threads_.size()),
                            std::memory_order_seq_cst);
-  for (auto &thread : threads_) {
-    thread->Reset();
-    thread->SetBoard(board_);
-  }
 
   // Wait until all search threads have received the signal
   start_barrier_.ArriveAndWait();
