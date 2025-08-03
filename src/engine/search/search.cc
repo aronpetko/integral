@@ -1285,6 +1285,9 @@ void Searcher::Run(Thread &thread) {
       return;
     }
 
+    thread.Reset();
+    thread.SetBoard(board_);
+
     IterativeDeepening<SearchType::kRegular>(thread);
   }
 }
@@ -1336,6 +1339,8 @@ void Searcher::SetThreadCount(U16 count) {
   start_barrier_.Reset(count + 1);
 
   raw_threads_.clear();
+  raw_threads_.shrink_to_fit();
+  raw_threads_.reserve(count);
   threads_.clear();
   threads_.shrink_to_fit();
   threads_.resize(count);
@@ -1343,7 +1348,14 @@ void Searcher::SetThreadCount(U16 count) {
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back([this, i]() {
       threads_[i] = std::make_unique<Thread>(i);
+      // Touch memory to enforce first-touch
+      auto &thread = *threads_[i];
+      thread.stack.Reset();
+      thread.history.Clear();
+      thread.scores.fill(kScoreNone);
+
       thread_init_barrier_.ArriveAndWait();
+
       Run(*threads_[i]);
     });
   }
@@ -1364,10 +1376,6 @@ void Searcher::Start(TimeConfig time_config) {
 
   searching_threads_.store(static_cast<U16>(threads_.size()),
                            std::memory_order_seq_cst);
-  for (auto &thread : threads_) {
-    thread->Reset();
-    thread->SetBoard(board_);
-  }
 
   // Wait until all search threads have received the signal
   start_barrier_.ArriveAndWait();
