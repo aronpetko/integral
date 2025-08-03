@@ -10,11 +10,11 @@
 
 namespace search::history {
 
-TUNABLE(kQuietHistoryWeight, 984, 0, 2048, false);
-TUNABLE(kFirstContinuationHistoryWeight,  1192, 0, 2048, false);
-TUNABLE(kSecondContinuationHistoryWeight, 949, 0, 2048, false);
-TUNABLE(kFourthContinuationHistoryWeight, 969, 0, 2048, false);
-TUNABLE(kPawnHistoryWeight, 1047, 0, 2048, false);
+TUNABLE(kQuietHistoryWeight, 1055, 0, 2048, false);
+TUNABLE(kFirstContinuationHistoryWeight,  1275, 0, 2048, false);
+TUNABLE(kSecondContinuationHistoryWeight, 974, 0, 2048, false);
+TUNABLE(kFourthContinuationHistoryWeight, 910, 0, 2048, false);
+TUNABLE(kPawnHistoryWeight, 1036, 0, 2048, false);
 
 constexpr int kHistoryWeightScale = 1024;
 
