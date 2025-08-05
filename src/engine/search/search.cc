@@ -1043,12 +1043,13 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
         reduction += kLmrNonPvNode;
+      } else {
+        reduction -= 768 * !is_quiet;
       }
 
       // Reduce less if we have seen this node in the PV before
       if (tt_was_in_pv) {
         reduction -= kLmrWasPvNode;
-        reduction -= 768 * !is_quiet;
       }
 
       // Reduce more if this node is expected to fail high
