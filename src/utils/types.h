@@ -299,4 +299,12 @@ const Score kTBWinScore = kMateScore - kMaxPlyFromRoot - 1;
 const Score kTBWinInMaxPlyScore = kTBWinScore - kMaxPlyFromRoot;
 const Score kScoreNone = -kInfiniteScore;
 
+template <typename T, typename... Ts>
+struct is_all_same {
+  static constexpr bool value = (std::is_same_v<T, Ts> && ...);
+};
+
+template <typename... Ts>
+constexpr auto is_all_same_v = is_all_same<Ts...>::value;
+
 #endif  // INTEGRAL_TYPES_H_

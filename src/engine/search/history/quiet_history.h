@@ -14,7 +14,8 @@ class QuietHistory {
   void UpdateMoveScore(Color turn, Move move, BitBoard threats, I16 bonus) {
     // Apply a linear dampening to the bonus as the depth increases
     I16 &score =
-        table_[turn][move.GetFrom()][move.GetTo()][ThreatIndex(move, threats)];
+        table_[turn][move.GetFrom()][move.GetTo()]
+              [threats.IsSet(move.GetFrom())][threats.IsSet(move.GetTo())];
     score += ScaleBonus(score, bonus);
   }
 
@@ -39,7 +40,7 @@ class QuietHistory {
                              Move move,
                              BitBoard threats) const {
     return table_[state.turn][move.GetFrom()][move.GetTo()]
-                 [ThreatIndex(move, threats)];
+                 [threats.IsSet(move.GetFrom())][threats.IsSet(move.GetTo())];
   }
 
  private:
@@ -48,7 +49,7 @@ class QuietHistory {
   }
 
  private:
-  MultiArray<I16, kNumColors, kSquareCount, kSquareCount, 4> table_;
+  MultiArray<I16, kNumColors, kSquareCount, kSquareCount, 2, 2> table_;
 };
 
 }  // namespace search::history

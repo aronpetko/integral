@@ -306,7 +306,7 @@ void Board::MakeNullMove() {
   CalculateThreats();
 }
 
-U64 Board::PredictKeyAfter(Move move) {
+U64 Board::PredictKeyAfter(Move move) const {
   auto key = state_.zobrist_key ^ zobrist::turn;
   if (move == Move::NullMove()) {
     return key ^ zobrist::fifty_move[state_.fifty_moves_clock + 1];
@@ -359,7 +359,7 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasUpcomingRepetition(U16 ply) {
+bool Board::HasUpcomingRepetition(U16 ply) const {
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
   if (max_dist < 3) {
     return false;
@@ -410,7 +410,7 @@ bool Board::HasUpcomingRepetition(U16 ply) {
   return false;
 }
 
-bool Board::IsDraw(U16 ply) {
+bool Board::IsRepetition(U16 ply) const {
   if (state_.fifty_moves_clock >= 100 &&
       (!state_.InCheck() || !GetLegalMoves().Empty())) {
     return true;
@@ -427,7 +427,10 @@ bool Board::IsDraw(U16 ply) {
     }
   }
 
-  // Insufficient material detection
+  return false;
+}
+
+bool Board::IsInsufficientMaterial() const {
   const Color us = state_.turn, them = FlipColor(us);
 
   // Check for queens, rooks, or pawns on the board
@@ -459,7 +462,6 @@ bool Board::IsDraw(U16 ply) {
     return true;
   }
 
-  // Any other combination of pieces not covered by the above is not a draw
   return false;
 }
 
