@@ -242,6 +242,19 @@ void AcceptCommands(int arg_count, char **args) {
 
   search::Searcher searcher(board);
 
+  /*std::fstream lichess("lichess-big3-resolved.book", std::ios::in);
+  std::string fen;
+  U64 evals = 0, num_evals = 0;
+  while (std::getline(lichess, fen)) {
+    if (num_evals == 100000) break;
+    if (num_evals % 1000 == 0) std::cout << num_evals << std::endl;
+    board.SetFromFen(fen);
+    evals += std::abs(eval::Evaluate(board));
+    num_evals++;
+  }
+
+  std::cout << evals / num_evals << std::endl;*/
+
   options::Initialize(searcher);
   commands::Initialize(board, searcher);
 
