@@ -909,6 +909,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction += kLmrDepthNotImproving;
       }
 
+      if (stack->in_check) {
+        reduction -= 1024;
+      }
+
       const int lmr_fractional_depth =
           std::max(depth * kLmrDepthScale - reduction, 0);
 
