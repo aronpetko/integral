@@ -19,7 +19,7 @@ constexpr std::size_t kOutputBucketCount = 8;
 constexpr std::int32_t kFtQuantization = 255;
 constexpr std::int32_t kL1Quantization = 128;
 
-constexpr std::int32_t kEvalScale = 200;
+constexpr std::int32_t kEvalScale = 174;
 
 }  // namespace arch
 
