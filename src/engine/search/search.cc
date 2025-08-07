@@ -1061,6 +1061,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrGivesCheck;
       }
 
+      if (stack->in_check) {
+        reduction -= 1024;
+      }
+
       // Reduce based on the history score of this move
       if (is_quiet) {
         reduction -= stack->history_score * kLmrHistQuiet / kLmrHistDiv;
