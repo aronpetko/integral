@@ -1006,10 +1006,13 @@ Score Searcher::PVSearch(Thread &thread,
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.
-      else if (tt_entry->score >= beta) {
-        extensions = -3;
-      } else if (cut_node) {
-        extensions = -2;
+      else {
+        depth -= !in_pv_node;
+        if (tt_entry->score >= beta) {
+          extensions = -2;
+        } else if (cut_node) {
+          extensions = -1;
+        }
       }
     }
 
@@ -1191,9 +1194,9 @@ Score Searcher::PVSearch(Thread &thread,
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
-          // Since "good" captures are expected to be the best moves, we apply a
-          // penalty to all captures even in the case where the best move was
-          // quiet
+          // Since "good" captures are expected to be the best moves, we apply
+          // a penalty to all captures even in the case where the best move
+          // was quiet
           history.capture_history->Penalize(state, history_depth, captures);
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
@@ -1223,10 +1226,10 @@ Score Searcher::PVSearch(Thread &thread,
       std::abs(alpha) < kTBWinInMaxPlyScore)
     best_score = (best_score * depth + beta) / (depth + 1);
 
-  // This node failed low, meaning the parent node will fail high. The previous
-  // move will already be given a history bonus by the parent node in the beta
-  // cutoff. However, we also give a history bonus in the event of a fail low to
-  // allow history tweaks to occur in PVS re-searches
+  // This node failed low, meaning the parent node will fail high. The
+  // previous move will already be given a history bonus by the parent node in
+  // the beta cutoff. However, we also give a history bonus in the event of a
+  // fail low to allow history tweaks to occur in PVS re-searches
   if (!best_move && prev_stack->move && !prev_stack->capture_move &&
       prev_stack->move.GetType() != MoveType::kPromotion) {
     const auto history_bonus = history::HistoryBonus(depth);
