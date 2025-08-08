@@ -513,6 +513,12 @@ Score Searcher::PVSearch(Thread &thread,
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
+  // Enter quiescent search when we've reached the depth limit
+  assert(depth >= 0);
+  if (depth == 0) {
+    return QuiescentSearch<node_type>(thread, alpha, beta, stack);
+  }
+
   // If the position has a move that causes a repetition, and we are losing,
   // then we can cut off early since we can secure a draw
   if (!in_root && alpha < kDrawScore &&
@@ -520,12 +526,6 @@ Score Searcher::PVSearch(Thread &thread,
     if ((alpha = kDrawScore) >= beta) {
       return alpha;
     }
-  }
-
-  // Enter quiescent search when we've reached the depth limit
-  assert(depth >= 0);
-  if (depth == 0) {
-    return QuiescentSearch<node_type>(thread, alpha, beta, stack);
   }
 
   stack->in_check = state.InCheck();
