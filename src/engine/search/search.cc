@@ -258,6 +258,14 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
+  // If the position has a move that causes a repetition, and we are losing,
+  // then we can cut off early since we can secure a draw
+  if (alpha < kDrawScore && board.HasUpcomingRepetition(stack->ply)) {
+    if ((alpha = kDrawScore) >= beta) {
+      return alpha;
+    }
+  }
+
   if (board.IsRepetition(stack->ply)) {
     return kDrawScore;
   }
@@ -1002,8 +1010,7 @@ Score Searcher::PVSearch(Thread &thread,
       // would cause a cutoff based on our current search window
       else if (tt_move_excluded_score >= beta &&
                std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
-        best_score = tt_move_excluded_score;
-        break;
+        return tt_move_excluded_score;
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.
