@@ -90,27 +90,13 @@ Move MovePicker::Next() {
   }
 
   if (stage_ == Stage::kFirstKiller) {
-    stage_ = Stage::kSecondKiller;
-
-    if (stack_) {
-      const auto first_killer = stack_->killer_moves[0];
-      if (first_killer && first_killer != tt_move_ &&
-          !first_killer.IsNoisy(state) &&
-          board_.IsMovePseudoLegal(first_killer)) {
-        return first_killer;
-      }
-    }
-  }
-
-  if (stage_ == Stage::kSecondKiller) {
     stage_ = Stage::kGenerateQuiets;
 
     if (stack_) {
-      const auto second_killer = stack_->killer_moves[1];
-      if (second_killer && second_killer != tt_move_ &&
-          !second_killer.IsNoisy(state) &&
-          board_.IsMovePseudoLegal(second_killer)) {
-        return second_killer;
+      if (stack_->killer_move && stack_->killer_move != tt_move_ &&
+          !stack_->killer_move.IsNoisy(state) &&
+          board_.IsMovePseudoLegal(stack_->killer_move)) {
+        return stack_->killer_move;
       }
     }
   }
@@ -170,15 +156,11 @@ template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const auto &state = board_.GetState();
 
-  const auto &killers = stack_->killer_moves;
-  const bool killer_0_noisy = killers[0].IsNoisy(state),
-             killer_1_noisy = killers[1].IsNoisy(state);
-
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
-        (killers[1] != move || killer_1_noisy)) {
+    if (move != tt_move_ &&
+        (stack_->killer_move != move || stack_->killer_move.IsNoisy(state))) {
       list.Push({move, ScoreMove(move)});
     }
   }

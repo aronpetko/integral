@@ -69,26 +69,14 @@ struct StackEntry {
   // Continuation-based heuristics entries for this move
   history::ContinuationEntry *continuation_entry;
   history::ContinuationCorrectionEntry *continuation_correction_entry;
-  // Moves that caused a beta cutoff at this ply
-  std::array<Move, 2> killer_moves;
+  // Move that caused a beta cutoff at this ply
+  Move killer_move;
   // Was in check at this ply
   bool in_check;
   // Threats
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
-
-  void AddKillerMove(Move killer_move) {
-    // Ensure we don't have duplicate killer moves
-    if (killer_move != killer_moves.front()) {
-      killer_moves[1] = killer_moves[0];
-      killer_moves[0] = killer_move;
-    }
-  }
-
-  void ClearKillerMoves() {
-    killer_moves.fill(Move::NullMove());
-  }
 
   explicit StackEntry(U16 ply)
       : ply(ply),
@@ -98,11 +86,9 @@ struct StackEntry {
         history_score(0),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
-        killer_moves({}),
+        killer_move({}),
         continuation_entry(nullptr),
-        reduction(0) {
-    ClearKillerMoves();
-  }
+        reduction(0) {}
 
   StackEntry() : StackEntry(0) {}
 };
