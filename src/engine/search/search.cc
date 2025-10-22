@@ -629,6 +629,14 @@ Score Searcher::PVSearch(Thread &thread,
   if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
     stack->eval_complexity = 0;
+
+    if (tt_hit && can_use_tt_eval) {
+      stack->eval = tt_entry->score;
+
+      if (!in_root && depth <= kRevFutDepth && std::abs(stack->eval) < kTBWinInMaxPlyScore && stack->eval - 100 * depth >= beta) {
+        return (stack->eval + beta) / 2;
+      }
+    }
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
         tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
