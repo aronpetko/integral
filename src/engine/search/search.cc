@@ -943,7 +943,7 @@ Score Searcher::PVSearch(Thread &thread,
       const int see_threshold = [&]() -> int {
         if (is_quiet) {
           return kSeeQuietThresh * lmr_depth * lmr_depth +
-                 (5 * lmr_depth * stack->static_eval < alpha);
+                 (5 * lmr_depth * (stack->static_eval < alpha));
         }
         return kSeeNoisyThresh * depth -
                stack->history_score / kSeePruneHistDiv;
