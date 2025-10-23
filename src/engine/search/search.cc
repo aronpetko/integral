@@ -710,7 +710,7 @@ Score Searcher::PVSearch(Thread &thread,
     // can't fall below beta anytime soon
     if (!stack->excluded_tt_move && stack->eval >= beta) {
       const int futility_margin =
-          30 + depth * kRevFutMargin + depth * depth -
+          -30 + depth * kRevFutMargin + depth * depth -
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin -
           opponent_worsening * kRevFutOppWorseningMargin +
           stack->eval_complexity * kRevFutComplexityMargin / 32 +
