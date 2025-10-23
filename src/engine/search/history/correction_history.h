@@ -113,7 +113,7 @@ class CorrectionHistory {
   }
 
   void UpdateTableScore(I16 &current_score, Score bonus) {
-    current_score += ScaleBonus(current_score, bonus, 1024);
+    current_score += ScaleBonus(current_score, bonus, 2048);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
