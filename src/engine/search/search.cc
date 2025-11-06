@@ -1011,6 +1011,8 @@ Score Searcher::PVSearch(Thread &thread,
       } else if (cut_node) {
         extensions = -2;
       }
+    } else if (in_pv_node && tt_move && prev_stack->move.IsNoisy(state) && tt_move.GetTo() == prev_stack->move.GetTo()) {
+      extensions = 1;
     }
 
     stack->move = move;
