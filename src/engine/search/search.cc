@@ -897,6 +897,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
         reduction += kLmrDepthNonPvNode;
+        reduction += std::max(stack->static_eval - beta, 0);
       }
 
       // Reduce based on the history score of this move
