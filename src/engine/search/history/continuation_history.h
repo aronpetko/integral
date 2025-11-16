@@ -31,10 +31,14 @@ class ContinuationHistory {
                        Move move,
                        I16 bonus,
                        StackEntry *stack) {
-    UpdateIndividualScore(state, move, bonus, stack - 1);
-    UpdateIndividualScore(state, move, bonus, stack - 2);
-    UpdateIndividualScore(state, move, bonus, stack - 4);
-    UpdateIndividualScore(state, move, bonus, stack - 6);
+    const auto total_score = GetScore(state, move, stack - 1) +
+                             GetScore(state, move, stack - 2) +
+                             GetScore(state, move, stack - 4) + GetScore(state, move, stack - 6);
+
+    UpdateIndividualScore(state, move, bonus, total_score, stack - 1);
+    UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
+    UpdateIndividualScore(state, move, bonus, total_score, stack - 4);
+    UpdateIndividualScore(state, move, bonus, total_score, stack - 6);
   }
 
   [[nodiscard]] ContinuationEntry *GetEntry(const BoardState &state,
@@ -61,6 +65,7 @@ class ContinuationHistory {
   void UpdateIndividualScore(const BoardState &state,
                              Move move,
                              int bonus,
+                             int total_score,
                              StackEntry *stack) {
     if (!stack->continuation_entry) {
       return;
@@ -70,8 +75,9 @@ class ContinuationHistory {
     const int to = move.GetTo();
 
     auto &entry = *stack->continuation_entry;
+
     I16 &score = entry[state.turn][piece][to];
-    score += ScaleBonus(score, bonus);
+    score += ScaleBonus(total_score, bonus);
   }
 
  private:
