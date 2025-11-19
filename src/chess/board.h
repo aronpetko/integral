@@ -341,7 +341,7 @@ class Board {
 
  private:
   BoardState state_;
-  List<BoardState, 1024> history_;
+  List<BoardState, 2048> history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 

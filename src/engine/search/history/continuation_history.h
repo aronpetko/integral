@@ -31,9 +31,9 @@ class ContinuationHistory {
                        Move move,
                        I16 bonus,
                        StackEntry *stack) {
-    const auto total_score = GetScore(state, move, stack - 1) +
-                             GetScore(state, move, stack - 2) +
-                             GetScore(state, move, stack - 4) + GetScore(state, move, stack - 6);
+    const auto total_score =
+        GetScore(state, move, stack - 1) + GetScore(state, move, stack - 2) +
+        GetScore(state, move, stack - 4) + GetScore(state, move, stack - 6);
 
     UpdateIndividualScore(state, move, bonus, total_score, stack - 1);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
