@@ -47,13 +47,26 @@ class CorrectionHistory {
     }
 
     // Update continuation table scores
+    I32 total_conthist_correction = 0;
     for (int ply_ago : {2, 3}) {
       if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
           (stack - 1)->move) {
         auto &table = *(stack - ply_ago)->continuation_correction_entry;
-        UpdateTableScore(table[FlipColor(state.turn)][(stack - 1)->moved_piece]
-                              [(stack - 1)->move.GetTo()],
-                         bonus);
+        total_conthist_correction +=
+            table[FlipColor(state.turn)][(stack - 1)->moved_piece]
+                 [(stack - 1)->move.GetTo()];
+      }
+    }
+
+    for (int ply_ago : {2, 3}) {
+      if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
+          (stack - 1)->move) {
+        auto &table = *(stack - ply_ago)->continuation_correction_entry;
+        UpdateTableScoreWithTotal(
+            table[FlipColor(state.turn)][(stack - 1)->moved_piece]
+                 [(stack - 1)->move.GetTo()],
+            total_conthist_correction,
+            bonus);
       }
     }
   }
@@ -114,6 +127,12 @@ class CorrectionHistory {
 
   void UpdateTableScore(I16 &current_score, Score bonus) {
     current_score += ScaleBonus(current_score, bonus, 1024);
+  }
+
+  void UpdateTableScoreWithTotal(I16 &current_score,
+                                 I32 total_score,
+                                 Score bonus) {
+    current_score += ScaleBonus(total_score, bonus, 1024);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
