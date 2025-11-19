@@ -1002,7 +1002,7 @@ Score Searcher::PVSearch(Thread &thread,
       // would cause a cutoff based on our current search window
       else if (tt_move_excluded_score >= beta &&
                std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
-        return tt_move_excluded_score;
+        return (tt_move_excluded_score * reduced_depth + beta) / (reduced_depth + 1);
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.
