@@ -20,7 +20,6 @@ using I64 = std::int64_t;
 using U128 = unsigned __int128;
 
 constexpr int kMaxPlyFromRoot = 256;
-constexpr int kMaxGamePly = 512;
 
 enum PieceType : U8 {
   kPawn,
