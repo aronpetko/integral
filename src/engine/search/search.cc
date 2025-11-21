@@ -700,7 +700,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
-        !opponent_worsening) {
+        (!opponent_worsening || stack->eval_complexity >= 100)) {
       ++depth;
     }
 
