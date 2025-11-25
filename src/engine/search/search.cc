@@ -135,7 +135,8 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
         // Widen the aspiration window for the next iteration if we fail low or
         // high again
-        window *= kAspWindowGrowth;
+        const double asp_depth_growth_modifier = 0.3 * (depth - fail_high_count) / 20;
+        window *= kAspWindowGrowth - asp_depth_growth_modifier;
       }
     }
 
