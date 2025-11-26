@@ -349,7 +349,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack);
+      MovePickerType::kQuiescence, board, tt_move, Move::NullMove(), history, stack);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
@@ -801,7 +801,7 @@ Score Searcher::PVSearch(Thread &thread,
 
         int moves_seen = 0;
         MovePicker move_picker(
-            MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
+            MovePickerType::kNoisy, board, pc_tt_move, Move::NullMove(), history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
           if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
             continue;
@@ -878,7 +878,7 @@ Score Searcher::PVSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kSearch, board, tt_move, history, stack);
+      MovePickerType::kSearch, board, tt_move, best_pc_move, history, stack);
   while (const auto move = move_picker.Next()) {
     if (in_root && !thread.root_moves.MoveExists(move, thread.pv_move_idx)) {
       continue;
@@ -1067,10 +1067,6 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if this move gives check
       if (gives_check) {
         reduction -= kLmrGivesCheck;
-      }
-
-      if (move == best_pc_move) {
-        reduction -= 1024;
       }
 
       // Reduce based on the history score of this move

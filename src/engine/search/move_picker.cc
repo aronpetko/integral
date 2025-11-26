@@ -34,11 +34,13 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8475, 3000, 12000, false);
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
+                       Move best_pc_move,
                        history::History &history,
                        StackEntry *stack,
                        int see_threshold)
     : board_(board),
       tt_move_(tt_move),
+      best_pc_move_(best_pc_move),
       type_(type),
       history_(history),
       stack_(stack),
@@ -50,7 +52,7 @@ Move MovePicker::Next() {
   const auto &state = board_.GetState();
 
   if (stage_ == Stage::kTTMove) {
-    stage_ = Stage::kGenerateNoisys;
+    stage_ = best_pc_move_ ? Stage::kBestPcMove : Stage::kGenerateNoisys;
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
@@ -58,6 +60,11 @@ Move MovePicker::Next() {
         return tt_move_;
       }
     }
+  }
+
+  if (stage_ == Stage::kBestPcMove) {
+    stage_ = Stage::kGenerateNoisys;
+    return best_pc_move_;
   }
 
   if (stage_ == Stage::kGenerateNoisys) {
@@ -177,7 +184,8 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
+    if (move != tt_move_ && move != best_pc_move_ &&
+        (killers[0] != move || killer_0_noisy) &&
         (killers[1] != move || killer_1_noisy)) {
       list.Push({move, ScoreMove(move)});
     }

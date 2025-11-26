@@ -25,6 +25,7 @@ class MovePicker {
   enum class Stage {
     kTTMove,
     kGenerateNoisys,
+    kBestPcMove,
     kGoodNoisys,
     kFirstKiller,
     kSecondKiller,
@@ -36,6 +37,7 @@ class MovePicker {
   MovePicker(MovePickerType type,
              Board &board,
              Move tt_move,
+             Move best_pc_move,
              history::History &history,
              StackEntry *stack,
              int see_threshold = 0);
@@ -59,6 +61,7 @@ class MovePicker {
  private:
   Board &board_;
   Move tt_move_;
+  Move best_pc_move_;
   MovePickerType type_;
   history::History &history_;
   StackEntry *stack_;
