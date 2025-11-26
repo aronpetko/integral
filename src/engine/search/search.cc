@@ -788,6 +788,7 @@ Score Searcher::PVSearch(Thread &thread,
       // cutoff, we attempt a shallower quiescent-like search and prune early
       // if possible
       const Score pc_beta = beta + kProbcutBetaDelta;
+      Score best_pc_score = kScoreNone;
       if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
@@ -830,6 +831,7 @@ Score Searcher::PVSearch(Thread &thread,
                                          -pc_beta + 1,
                                          stack + 1,
                                          !cut_node);
+            best_pc_score = std::max(best_pc_score, score);
           }
 
           board.UndoMove();
@@ -847,6 +849,12 @@ Score Searcher::PVSearch(Thread &thread,
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
           }
+        }
+
+        // ProbCut failed to prove the position is extremely likely to fail high, but still failed low above beta in a cut-node
+        // Ensure we keep search this node deeper to solidify our thoughts on it
+        if (best_pc_score >= beta && cut_node) {
+          ++depth;
         }
       }
     }
