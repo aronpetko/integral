@@ -698,6 +698,8 @@ Score Searcher::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
+  Move best_pc_move = Move::NullMove();
+
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
         !opponent_worsening) {
@@ -831,7 +833,11 @@ Score Searcher::PVSearch(Thread &thread,
                                          -pc_beta + 1,
                                          stack + 1,
                                          !cut_node);
-            best_pc_score = std::max(best_pc_score, score);
+
+            if (score >= best_pc_score) {
+              best_pc_score = score;
+              best_pc_move = move;
+            }
           }
 
           board.UndoMove();
@@ -849,12 +855,6 @@ Score Searcher::PVSearch(Thread &thread,
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
           }
-        }
-
-        // ProbCut failed to prove the position is extremely likely to fail high, but still failed low above beta in a cut-node
-        // Ensure we keep search this node deeper to solidify our thoughts on it
-        if (best_pc_score >= beta && cut_node) {
-          ++depth;
         }
       }
     }
@@ -1067,6 +1067,10 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if this move gives check
       if (gives_check) {
         reduction -= kLmrGivesCheck;
+      }
+
+      if (move == best_pc_move) {
+        reduction -= 1024;
       }
 
       // Reduce based on the history score of this move
