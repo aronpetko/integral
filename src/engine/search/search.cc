@@ -624,6 +624,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   Score raw_static_eval;
+  bool using_tt_score = false;
 
   // Approximate the current evaluation at this node
   if (stack->in_check) {
@@ -653,6 +654,7 @@ Score Searcher::PVSearch(Thread &thread,
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+      using_tt_score = true;
     } else {
       stack->eval = stack->static_eval;
     }
@@ -730,7 +732,7 @@ Score Searcher::PVSearch(Thread &thread,
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
       if (razoring_score <= alpha) {
         return razoring_score;
-      } else if (!can_use_tt_eval) {
+      } else if (!using_tt_score) {
         stack->eval = razoring_score;
       }
     }
@@ -783,6 +785,8 @@ Score Searcher::PVSearch(Thread &thread,
           if (verification_score >= beta) {
             return verification_score;
           }
+        } else if (!using_tt_score) {
+          stack->eval = score;
         }
       }
 
