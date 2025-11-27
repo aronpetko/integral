@@ -988,10 +988,10 @@ Score Searcher::PVSearch(Thread &thread,
       // move's search
       if (tt_move_excluded_score < new_beta) {
         // Extend more if the TT move is singular by a big margin
-        if (tt_move_excluded_score < new_beta - kSeDoubleMargin - 100 * in_pv_node) {
+        if (tt_move_excluded_score < new_beta - kSeDoubleMargin - 150 * in_pv_node) {
           extensions = 2 + (!in_pv_node && is_quiet && tt_move_excluded_score <
                                             new_beta - kSeTripleMargin);
-          depth += depth < kSeDepthExtensionDepth;
+          depth += !in_pv_node && depth < kSeDepthExtensionDepth;
         } else {
           extensions = 1;
         }
