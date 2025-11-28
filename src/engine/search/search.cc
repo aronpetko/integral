@@ -716,7 +716,7 @@ Score Searcher::PVSearch(Thread &thread,
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin -
           opponent_worsening * kRevFutOppWorseningMargin +
           stack->eval_complexity * kRevFutComplexityMargin / 32 +
-          (stack - 1)->history_score / kRevFutHistoryDiv + (stack - 2)->failed_probcut * 30;
+          (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
@@ -788,7 +788,7 @@ Score Searcher::PVSearch(Thread &thread,
       // ProbCut: When the current position's score is likely to cause a beta
       // cutoff, we attempt a shallower quiescent-like search and prune early
       // if possible
-      const Score pc_beta = beta + kProbcutBetaDelta;
+      const Score pc_beta = beta + kProbcutBetaDelta + 50 * (stack - 2)->failed_probcut;
       if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
