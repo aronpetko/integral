@@ -697,6 +697,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  bool failed_probcut = false;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
@@ -848,6 +849,8 @@ Score Searcher::PVSearch(Thread &thread,
             return score;
           }
         }
+
+        failed_probcut = true;
       }
     }
   }
@@ -908,8 +911,6 @@ Score Searcher::PVSearch(Thread &thread,
       if (!improving) {
         reduction += kLmrDepthNotImproving;
       }
-
-      reduction -= stack->eval_complexity * 24 / 8;
 
       const int lmr_fractional_depth =
           std::max(depth * kLmrDepthScale - reduction, 0);
@@ -1056,7 +1057,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce more if this node is expected to fail high
       if (cut_node) {
-        reduction += kLmrCutNode;
+        reduction += kLmrCutNode - 1024 * failed_probcut;
       }
 
       // Reduce less if this move gives check
