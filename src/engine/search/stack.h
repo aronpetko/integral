@@ -77,6 +77,8 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
+  // If this node attempted and failed ProbCut
+  bool failed_probcut;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -100,7 +102,8 @@ struct StackEntry {
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr),
-        reduction(0) {
+        reduction(0),
+        failed_probcut(false) {
     ClearKillerMoves();
   }
 

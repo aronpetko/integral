@@ -697,6 +697,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  stack->failed_probcut = false;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
@@ -715,7 +716,7 @@ Score Searcher::PVSearch(Thread &thread,
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin -
           opponent_worsening * kRevFutOppWorseningMargin +
           stack->eval_complexity * kRevFutComplexityMargin / 32 +
-          (stack - 1)->history_score / kRevFutHistoryDiv;
+          (stack - 1)->history_score / kRevFutHistoryDiv + (stack - 2)->failed_probcut * 30;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
         return std::lerp(stack->eval, beta, kRevFutLerpFactor);
@@ -848,6 +849,8 @@ Score Searcher::PVSearch(Thread &thread,
             return score;
           }
         }
+
+        stack->failed_probcut = true;
       }
     }
   }
