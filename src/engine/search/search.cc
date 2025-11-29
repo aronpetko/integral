@@ -1092,8 +1092,12 @@ Score Searcher::PVSearch(Thread &thread,
       reduction = std::clamp(reduction, -1, new_depth - 1);
 
       // Null window search at reduced depth to see if the move had potential
-      score = -PVSearch<NodeType::kNonPV>(
-          thread, new_depth - reduction, -alpha - 1, -alpha, stack + 1, true);
+      score = -PVSearch<NodeType::kNonPV>(thread,
+                                          new_depth + in_pv_node - reduction,
+                                          -alpha - 1,
+                                          -alpha,
+                                          stack + 1,
+                                          true);
 
       stack->reduction = 0;
 
