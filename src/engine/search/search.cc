@@ -1057,7 +1057,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce more if this node is expected to fail high
       if (cut_node) {
-        reduction += kLmrCutNode - 1024 * failed_probcut;
+        reduction += kLmrCutNode;
       }
 
       // Reduce less if this move gives check
@@ -1085,6 +1085,10 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
         reduction -= kLmrKillerMoves;
+      }
+
+      if (is_capture && failed_probcut) {
+        reduction += 768;
       }
 
       stack->reduction = reduction;
