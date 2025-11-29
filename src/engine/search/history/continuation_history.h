@@ -5,6 +5,7 @@
 #include "../stack.h"
 #include "bonus.h"
 #include "continuation_entries.h"
+#include "quiet_history.h"
 
 namespace search::history {
 
@@ -15,25 +16,36 @@ class ContinuationHistory {
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    I16 depth,
+                   QuietHistory *quiet_history,
                    MoveList &quiets) {
     const int bonus = HistoryBonus(depth);
-    UpdateMoveScore(state, stack->move, bonus, stack);
+    UpdateMoveScore(state,
+                    stack->move,
+                    bonus,
+                    quiet_history->GetScore(state, stack->move, stack->threats),
+                    stack);
 
     // Lower the score of the quiet moves that failed to raise alpha
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      UpdateMoveScore(state, quiets[i], penalty, stack);
+      UpdateMoveScore(state,
+                      quiets[i],
+                      penalty,
+                      quiet_history->GetScore(state, quiets[i], stack->threats),
+                      stack);
     }
   }
 
   void UpdateMoveScore(const BoardState &state,
                        Move move,
                        I16 bonus,
+                       I32 quiet_history_score,
                        StackEntry *stack) {
     const auto total_score =
         GetScore(state, move, stack - 1) + GetScore(state, move, stack - 2) +
-        GetScore(state, move, stack - 4) + GetScore(state, move, stack - 6);
+        GetScore(state, move, stack - 4) + GetScore(state, move, stack - 6) +
+        quiet_history_score / 2;
 
     UpdateIndividualScore(state, move, bonus, total_score, stack - 1);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
