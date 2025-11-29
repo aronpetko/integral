@@ -1087,7 +1087,7 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      if (is_capture && failed_probcut) {
+      if (is_capture && failed_probcut && tt_move && !tt_move.IsCapture(state)) {
         reduction += 768;
       }
 
