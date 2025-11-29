@@ -62,8 +62,6 @@ struct StackEntry {
   PVLine pv;
   // Currently searched move at this ply
   Move move;
-  // Best non-TT move from a singular search
-  Move best_non_tt_move;
   bool capture_move;
   PieceType moved_piece;
   // The excluded TT move when performing singular extensions
@@ -79,6 +77,8 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
+  // Extensions done at this ply
+  int extensions;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -103,7 +103,7 @@ struct StackEntry {
         killer_moves({}),
         continuation_entry(nullptr),
         reduction(0),
-        best_non_tt_move(Move::NullMove()) {
+        extensions(0) {
     ClearKillerMoves();
   }
 

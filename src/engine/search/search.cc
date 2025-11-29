@@ -867,7 +867,8 @@ Score Searcher::PVSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
-  Move best_move = stack->best_non_tt_move = Move::NullMove();
+  Move best_move = Move::NullMove();
+  Move best_non_tt_move = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -972,6 +973,8 @@ Score Searcher::PVSearch(Thread &thread,
         tt_entry->flag != TranspositionTableEntry::kUpperBound &&
         std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         stack->ply < thread.root_depth * 2) {
+      stack->extensions = 0;
+
       const int reduced_depth = kSeDepthReduction * (depth - 1) / 16;
       const Score new_beta = tt_entry->score - kSeBetaMargin * depth / 16;
 
@@ -997,6 +1000,8 @@ Score Searcher::PVSearch(Thread &thread,
         } else {
           extensions = 1;
         }
+
+        stack->extensions = extensions;
       }
       // Multi-cut: The singular search had a beta cutoff, indicating that
       // the TT move was not singular. Therefore, we prune if the same score
@@ -1084,8 +1089,9 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      if (move == stack->best_non_tt_move) {
-        reduction -= 1024;
+      // Reduce LMR for the best non-TT move found from excluded search
+      if (tt_move.IsNoisy(state) && stack->extensions >= 2 && is_quiet) {
+        reduction += 1024;
       }
 
       stack->reduction = reduction;
@@ -1274,8 +1280,6 @@ Score Searcher::PVSearch(Thread &thread,
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }
-  } else {
-    stack->best_non_tt_move = best_move;
   }
 
   return stack->score = best_score;
