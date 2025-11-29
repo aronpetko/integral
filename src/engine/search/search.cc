@@ -867,7 +867,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
-  Move best_move = Move::NullMove();
+  Move best_move = stack->best_non_tt_move = Move::NullMove();
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -1084,6 +1084,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      if (move == stack->best_non_tt_move) {
+        reduction -= 1024;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
@@ -1270,6 +1274,8 @@ Score Searcher::PVSearch(Thread &thread,
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }
+  } else {
+    stack->best_non_tt_move = best_move;
   }
 
   return stack->score = best_score;
