@@ -1087,10 +1087,6 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      if (is_capture && failed_probcut && tt_move && !tt_move.IsCapture(state)) {
-        reduction += 768;
-      }
-
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
@@ -1197,7 +1193,7 @@ Score Searcher::PVSearch(Thread &thread,
             history.continuation_history->UpdateScore(
                 state, stack, history_depth, quiets);
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, move, history_depth);
+            history.capture_history->UpdateScore(state, move, history_depth + failed_probcut);
           }
           // Since "good" captures are expected to be the best moves, we apply a
           // penalty to all captures even in the case where the best move was
