@@ -718,7 +718,15 @@ Score Searcher::PVSearch(Thread &thread,
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
-        return std::lerp(stack->eval, beta, kRevFutLerpFactor);
+
+        if (stack->eval_complexity > 80) {
+          const auto score = QuiescentSearch<NodeType::kNonPV>(thread, beta + futility_margin - 1, beta + futility_margin, stack);
+          if (score >= beta + futility_margin) {
+            return score;
+          }
+        } else {
+          return std::lerp(stack->eval, beta, kRevFutLerpFactor);
+        }
       }
     }
 
