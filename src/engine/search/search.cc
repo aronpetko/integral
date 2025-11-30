@@ -719,8 +719,11 @@ Score Searcher::PVSearch(Thread &thread,
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
 
-        if (stack->eval_complexity > 80) {
-          const auto score = QuiescentSearch<NodeType::kNonPV>(thread, beta + futility_margin - 1, beta + futility_margin, stack);
+        if (stack->eval_complexity > 80 && tt_move) {
+          board.MakeMove(tt_move);
+          const auto score = -QuiescentSearch<NodeType::kNonPV>(thread, -beta - futility_margin, -beta - futility_margin + 1, stack);
+          board.UndoMove();
+
           if (score >= beta + futility_margin) {
             return score;
           }
