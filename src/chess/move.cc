@@ -1,5 +1,6 @@
 #include "move.h"
 
+#include "../engine/uci/uci.h"
 #include "board.h"
 
 Move Move::NullMove() {
@@ -23,18 +24,19 @@ Move Move::FromStr(std::string_view str, const BoardState &state) {
     return Move::NullMove();
 
   const auto from = Square::FromRankFile(from_rank, from_file);
-  const auto to = Square::FromRankFile(to_rank, to_file);
+  auto to = Square::FromRankFile(to_rank, to_file);
 
   auto flag = MoveType::kNormal;
 
   if (str.length() < kMaxMoveLen) {
     const auto piece = state.GetPieceType(from);
-    if (piece == PieceType::kKing && std::abs(from_file - to_file) == 2) {
+    if (piece == PieceType::kKing && (std::abs(from_file - to_file) == 2 || (state.GetPieceType(to) == kRook && state.GetPieceColor(to) == state.turn))) {
+      if (!uci::listener.GetOption("UCI_Chess960").GetValue<bool>())
+        to = Square(state.turn == kWhite ? (to > from ? kH1 : kA1)
+                                  : (to > from ? kH8 : kA8));
       flag = MoveType::kCastle;
-    } else if (piece == PieceType::kPawn) {
-      if (state.en_passant && to == state.en_passant) {
+    } else if (piece == PieceType::kPawn && state.en_passant && to == state.en_passant) {
         flag = MoveType::kEnPassant;
-      }
     }
 
     return Move(from, to, flag);
@@ -66,7 +68,8 @@ Move Move::FromStr(std::string_view str, const BoardState &state) {
 }
 
 bool Move::IsCapture(const BoardState &state) const {
-  return state.GetPieceType(GetTo()) != PieceType::kNone || IsEnPassant(state);
+  return state.GetPieceType(GetTo()) != PieceType::kNone && GetType() != MoveType::kCastle ||
+         IsEnPassant(state);
 }
 
 bool Move::IsNoisy(const BoardState &state) const {
@@ -87,12 +90,14 @@ bool Move::IsUnderPromotion() const {
 std::string Move::ToString() const {
   if (data_ == 0) return "null";
 
-  const auto from_rank = GetFrom().Rank(), from_file = GetFrom().File();
-  const auto to_rank = GetTo().Rank(), to_file = GetTo().File();
+  std::string res = GetFrom().ToString();
+  if (GetType() == MoveType::kCastle &&
+      !uci::listener.GetOption("UCI_Chess960").GetValue<bool>()) {
+    const bool is_kingside = GetFrom() < GetTo();
+    return res + (GetFrom() + (is_kingside ? 2 : -2)).ToString();
+  }
 
-  std::string res = std::string(1, 'a' + from_file) +
-                    std::to_string(from_rank + 1) +
-                    std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);
+  res += GetTo().ToString();
 
   if (GetType() == MoveType::kPromotion) {
     switch (GetPromotionType()) {
