@@ -909,13 +909,12 @@ Score Searcher::PVSearch(Thread &thread,
         reduction += kLmrDepthNotImproving;
       }
 
-      const int lmr_fractional_depth =
-          std::max(depth * kLmrDepthScale - reduction, 0);
+      const int lmr_fractional_depth = depth * kLmrDepthScale - reduction;
 
       // Scale reduction back down to an integer
       reduction = (reduction + kLmrDepthRoundingCutoff) / kLmrDepthScale;
 
-      const int lmr_depth = std::max(depth - reduction, 0);
+      int lmr_depth = depth - reduction;
 
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
@@ -937,6 +936,8 @@ Score Searcher::PVSearch(Thread &thread,
         move_picker.SkipQuiets();
         continue;
       }
+
+      lmr_depth = std::max(lmr_depth, 0);
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
