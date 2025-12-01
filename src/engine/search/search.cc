@@ -1036,8 +1036,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2 &&
-        !(in_pv_node && is_capture)) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2) {
       constexpr int kLmrScale = 1024;
       reduction =
           tables::kLateMoveReduction[is_quiet][depth][moves_seen] * kLmrScale;
