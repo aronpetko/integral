@@ -1011,6 +1011,8 @@ Score Searcher::PVSearch(Thread &thread,
         extensions = -3;
       } else if (cut_node) {
         extensions = -2;
+      } else if (depth <= 8 && stack->eval_complexity > 80) {
+        ++depth;
       }
     }
 
