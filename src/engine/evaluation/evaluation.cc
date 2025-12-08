@@ -29,8 +29,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   const PieceType &from_piece = state.GetPieceType(from);
   // Ignore en passant captures and castling
-  if (move.IsEnPassant(state) ||
-      (from_piece == kKing && std::abs(static_cast<int>(from) - to) == 2)) {
+  if (move.IsEnPassant(state) || move.GetType() == MoveType::kCastle) {
     return threshold <= 0;
   }
 

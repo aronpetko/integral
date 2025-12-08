@@ -1,5 +1,7 @@
 #include "fen.h"
 
+#include "../engine/uci/uci.h"
+
 namespace fen {
 
 // clang-format off
@@ -54,15 +56,29 @@ BoardState StringToBoard(std::string_view fen_str) {
 
   std::string castle_rights;
   stream >> castle_rights;
+  state.castle_rights.GetUnderlying().fill(kNoSquare);
   for (const char &ch : castle_rights) {
+    // Standard FENs, XFEN later
     if (ch == 'K')
-      state.castle_rights.SetCanKingsideCastle(Color::kWhite, true);
+      state.castle_rights.SetCanKingsideCastle(Color::kWhite, kH1);
     else if (ch == 'Q')
-      state.castle_rights.SetCanQueensideCastle(Color::kWhite, true);
+      state.castle_rights.SetCanQueensideCastle(Color::kWhite, kA1);
     else if (ch == 'k')
-      state.castle_rights.SetCanKingsideCastle(Color::kBlack, true);
+      state.castle_rights.SetCanKingsideCastle(Color::kBlack, kH8);
     else if (ch == 'q')
-      state.castle_rights.SetCanQueensideCastle(Color::kBlack, true);
+      state.castle_rights.SetCanQueensideCastle(Color::kBlack, kA8);
+
+    // FRC FEN
+    if (std::tolower(ch) >= 'a' &&
+        std::tolower(ch) <= 'h') {
+      uci::listener.GetOption("UCI_Chess960").SetValue("true");
+
+      const Color color = std::isupper(ch) ? kWhite : kBlack;
+      const File file = static_cast<File>(std::tolower(ch) - 'a');
+      const Square king_sq = state.King(color).GetLsb();
+
+      state.castle_rights.SetCastlingRights(color, file > king_sq.File() ? CastleRights::kKingside : CastleRights::kQueenside, Square::FromRankFile(color == kWhite ? kRank1 : kRank8, file));
+    }
   }
 
   state.zobrist_key ^= zobrist::castle_rights[state.castle_rights.AsU8()];
