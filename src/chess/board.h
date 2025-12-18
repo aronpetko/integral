@@ -316,6 +316,8 @@ class Board {
 
   void PrintPieces();
 
+  [[nodiscard]] bool MoveGivesCheck(Move move) const;
+
   [[nodiscard]] bool IsMovePseudoLegal(Move move) const;
 
   [[nodiscard]] bool IsMoveLegal(Move move) const;

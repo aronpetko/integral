@@ -306,6 +306,69 @@ void Board::MakeNullMove() {
   CalculateThreats();
 }
 
+bool Board::MoveGivesCheck(Move move) const {
+  const auto their_king_square = state_.King(FlipColor(state_.turn)).PopLsb();
+
+  const auto from = move.GetFrom(), to = move.GetTo();
+  const auto piece = state_.GetPieceType(from);
+
+  auto our_occupancy = state_.Occupied();
+  our_occupancy.ClearBit(from);
+  our_occupancy.SetBit(to);
+
+  BitBoard possible_moves;
+  switch (piece) {
+    case PieceType::kPawn:
+      possible_moves = move_gen::PawnAttacks(to, state_.turn);
+      break;
+    case PieceType::kKnight:
+      possible_moves = move_gen::KnightMoves(to);
+      break;
+    case PieceType::kBishop:
+      possible_moves = move_gen::BishopMoves(to, our_occupancy);
+      break;
+    case PieceType::kRook:
+      possible_moves = move_gen::RookMoves(to, our_occupancy);
+      break;
+    case PieceType::kQueen:
+      possible_moves = move_gen::QueenMoves(to, our_occupancy);
+      break;
+    case PieceType::kKing:
+      possible_moves = 0;
+      break;
+    default:
+      return false;
+  }
+
+  // Direct check
+  if (possible_moves.IsSet(their_king_square)) {
+    return true;
+  }
+
+  if (move.GetType() == MoveType::kCastle) {
+    const auto new_rook_square = Square(to > from ? Squares::kF1 : Squares::kD1)
+                                     .RelativeTo(FlipColor(state_.turn));
+    const int old_rook_square = Square(to > from ? Squares::kH1 : Squares::kA1)
+                                    .RelativeTo(FlipColor(state_.turn));
+    return move_gen::RookMoves(new_rook_square, our_occupancy ^ old_rook_square)
+        .IsSet(their_king_square);
+  }
+
+  // Discovered check
+  const BitBoard from_bb = BitBoard::FromSquare(from);
+  const BitBoard queens = state_.Queens() & ~from_bb;
+  const BitBoard bishops = state_.Bishops() & ~from_bb;
+  const BitBoard rooks = state_.Rooks() & ~from_bb;
+
+  BitBoard attackers;
+  attackers |= move_gen::BishopMoves(their_king_square, our_occupancy) &
+               (bishops | queens);
+  attackers |=
+      move_gen::RookMoves(their_king_square, our_occupancy) & (rooks | queens);
+
+  return (attackers & (state_.Occupied(state_.turn) & ~from_bb)) != 0;
+}
+
 U64 Board::PredictKeyAfter(Move move) const {
   auto key = state_.zobrist_key ^ zobrist::turn;
   if (move == Move::NullMove()) {

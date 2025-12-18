@@ -941,7 +941,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold = [&]() -> int {
-        if (is_quiet) {
+        if (is_quiet && !board.MoveGivesCheck(move)) {
           return kSeeQuietThresh * lmr_depth * lmr_depth;
         }
         return kSeeNoisyThresh * depth -
