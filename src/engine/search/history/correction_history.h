@@ -105,6 +105,13 @@ class CorrectionHistory {
     return &continuation_table_[state.turn][state.GetPieceType(from)][to];
   }
 
+  void Clear() {
+    pawn_table_ = {};
+    major_table_ = {};
+    non_pawn_table_ = {};
+    continuation_table_ = {};
+  }
+
  private:
   [[nodiscard]] I16 CalculateBonus(Score static_eval,
                                    Score search_score,

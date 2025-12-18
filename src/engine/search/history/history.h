@@ -27,7 +27,6 @@ class History {
   void Initialize() {
     quiet_history = std::make_unique<QuietHistory>();
     continuation_history = std::make_unique<ContinuationHistory>();
-    correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
   }
@@ -35,6 +34,7 @@ class History {
   // Reinitialize the history objects for quicker clearing
   void Clear() {
     Initialize();
+    correction_history->Clear();
   }
 
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,
@@ -71,7 +71,7 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<PawnHistory> pawn_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
-  std::unique_ptr<CorrectionHistory> correction_history;
+  inline static std::unique_ptr<CorrectionHistory> correction_history = std::make_unique<CorrectionHistory>();
 };
 
 }  // namespace search::history
