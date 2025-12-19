@@ -1086,7 +1086,8 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      if (failed_probcut && stack->eval >= beta && is_capture) {
+      if (failed_probcut && stack->eval >= beta &&
+          move_picker.GetStage() == MovePicker::Stage::kBadNoisys) {
         reduction += 1024;
       }
 
