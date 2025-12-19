@@ -697,6 +697,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  bool failed_probcut = false;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (!stack->excluded_tt_move && prev_stack->reduction >= 4096 &&
@@ -848,6 +849,8 @@ Score Searcher::PVSearch(Thread &thread,
             return score;
           }
         }
+
+        failed_probcut = true;
       }
     }
   }
@@ -1081,6 +1084,10 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
         reduction -= kLmrKillerMoves;
+      }
+
+      if (failed_probcut && stack->eval >= beta && is_capture) {
+        reduction += 1024;
       }
 
       stack->reduction = reduction;
