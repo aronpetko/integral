@@ -1083,6 +1083,11 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      if (history.continuation_history->GetScore(state, move, stack - 1) - 1024 >
+          history.quiet_history->GetScore(state, move, stack->threats)) {
+        reduction -= 1024;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
