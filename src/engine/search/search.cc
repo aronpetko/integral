@@ -1083,7 +1083,7 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
-      if (!in_root && history.continuation_history->GetScore(board.GetStateHistory().Back(), move, stack - 1) - 1024 >
+      if (!in_root && is_quiet && history.continuation_history->GetScore(board.GetStateHistory().Back(), move, stack - 1) - 1024 >
           history.quiet_history->GetScore(board.GetStateHistory().Back(), move, stack->threats)) {
         reduction -= 1024;
       }
