@@ -938,28 +938,30 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
-      // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
-      // much material
-      const int see_threshold = [&]() -> int {
-        if (is_quiet) {
-          return kSeeQuietThresh * lmr_depth * lmr_depth;
+      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys) {
+        // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
+        // much material
+        const int see_threshold = [&]() -> int {
+          if (is_quiet) {
+            return kSeeQuietThresh * lmr_depth * lmr_depth;
+          }
+          return kSeeNoisyThresh * depth -
+                 stack->history_score / kSeePruneHistDiv;
+        }();
+        if (!eval::StaticExchange(move, see_threshold, state)) {
+          continue;
         }
-        return kSeeNoisyThresh * depth -
-               stack->history_score / kSeePruneHistDiv;
-      }();
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-          !eval::StaticExchange(move, see_threshold, state)) {
-        continue;
-      }
 
-      // History Pruning: Prune moves with a low history score moves at
-      // near-leaf nodes
-      const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth
-                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
-        continue;
+        // History Pruning: Prune moves with a low history score moves at
+        // near-leaf nodes
+        const int history_margin =
+            is_quiet ? kHistThreshBase + kHistThreshMult * depth
+                     : kCaptHistThreshBase + kCaptHistThreshMult * depth;
+        if (depth <= kHistPruneDepth &&
+            stack->history_score <= history_margin) {
+          move_picker.SkipQuiets();
+          continue;
+        }
       }
     }
 
