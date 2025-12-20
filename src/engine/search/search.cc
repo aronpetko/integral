@@ -704,6 +704,12 @@ Score Searcher::PVSearch(Thread &thread,
       ++depth;
     }
 
+    if (!stack->excluded_tt_move && prev_stack->reduction <= 2048 &&
+        prev_stack->history_score >= 8192 && depth >= 2 &&
+        stack->static_eval + prev_stack->static_eval > 100) {
+      --depth;
+    }
+
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -1081,11 +1087,6 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
         reduction -= kLmrKillerMoves;
-      }
-
-      if (!in_root && is_quiet && history.continuation_history->GetScore(board.GetStateHistory().Back(), move, stack - 1) - 1024 >
-          history.quiet_history->GetScore(board.GetStateHistory().Back(), move, stack->threats)) {
-        reduction -= 1024;
       }
 
       stack->reduction = reduction;
