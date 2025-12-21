@@ -718,7 +718,7 @@ Score Searcher::PVSearch(Thread &thread,
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
-        return std::lerp(stack->eval, beta, kRevFutLerpFactor);
+        return (stack->eval * depth + beta) / (depth + 1);
       }
     }
 
