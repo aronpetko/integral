@@ -17,7 +17,7 @@ struct ScoredMove {
 enum class MovePickerType {
   kSearch,
   kQuiescence,
-  kNoisy = kQuiescence
+  kProbCut
 };
 
 class MovePicker {
