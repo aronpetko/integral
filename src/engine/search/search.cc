@@ -859,6 +859,8 @@ Score Searcher::PVSearch(Thread &thread,
     depth--;
   }
 
+  int unexpected_fail_lows = 0;
+
   // Keep track of the original alpha for bound determination when updating
   // the transposition table
   const int original_alpha = alpha;
@@ -1083,6 +1085,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      if (unexpected_fail_lows > 0) {
+        reduction -= 1024;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
@@ -1130,6 +1136,10 @@ Score Searcher::PVSearch(Thread &thread,
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
+
+      if (score <= alpha) {
+        ++unexpected_fail_lows;
+      }
     }
 
     board.UndoMove();
