@@ -1086,7 +1086,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       if (unexpected_fail_lows > 0) {
-        reduction -= 1024;
+        reduction += 1024;
       }
 
       stack->reduction = reduction;
