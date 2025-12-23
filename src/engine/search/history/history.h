@@ -11,7 +11,7 @@
 namespace search::history {
 
 TUNABLE(kQuietHistoryWeight, 1055, 0, 2048, false);
-TUNABLE(kFirstContinuationHistoryWeight,  1275, 0, 2048, false);
+TUNABLE(kFirstContinuationHistoryWeight, 1275, 0, 2048, false);
 TUNABLE(kSecondContinuationHistoryWeight, 974, 0, 2048, false);
 TUNABLE(kFourthContinuationHistoryWeight, 910, 0, 2048, false);
 TUNABLE(kPawnHistoryWeight, 1036, 0, 2048, false);
@@ -59,6 +59,21 @@ class History {
     move_score += pawn_history->GetScore(state, move) * kPawnHistoryWeight;
 
     return move_score / kHistoryWeightScale;
+  }
+
+  [[nodiscard]] I32 GetQuietMoveComplexity(const BoardState &state,
+                                           Move move,
+                                           StackEntry *stack) const {
+    I32 complexity = 0,
+        q = quiet_history->GetScore(state, move, stack->threats);
+    complexity +=
+        std::abs(q - continuation_history->GetScore(state, move, stack - 1));
+    complexity +=
+        std::abs(q - continuation_history->GetScore(state, move, stack - 2));
+    complexity +=
+        std::abs(q - continuation_history->GetScore(state, move, stack - 4));
+    complexity += std::abs(q - pawn_history->GetScore(state, move));
+    return complexity;
   }
 
   [[nodiscard]] I32 GetCaptureMoveScore(const BoardState &state,
