@@ -865,7 +865,10 @@ Score Searcher::PVSearch(Thread &thread,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
-  bool proved_singularity = false;
+  bool potential_singularity =
+      depth >= kSeDepth && tt_entry->depth + 3 >= depth &&
+      tt_entry->flag != TranspositionTableEntry::kUpperBound &&
+      std::abs(tt_entry->score) < kTBWinInMaxPlyScore;
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
@@ -968,10 +971,7 @@ Score Searcher::PVSearch(Thread &thread,
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
     int extensions = 0;
-    if (!in_root && depth >= kSeDepth && move == tt_move &&
-        tt_entry->depth + 3 >= depth &&
-        tt_entry->flag != TranspositionTableEntry::kUpperBound &&
-        std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
+    if (!in_root && move == tt_move && potential_singularity &&
         stack->ply < thread.root_depth * 2) {
       const int reduced_depth = kSeDepthReduction * (depth - 1) / 16;
       const Score new_beta = tt_entry->score - kSeBetaMargin * depth / 16;
@@ -988,7 +988,6 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
-        proved_singularity = true;
         // Extend more if the TT move is singular by a big margin
         if (tt_move_excluded_score <
             new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
@@ -1193,7 +1192,7 @@ Score Searcher::PVSearch(Thread &thread,
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
-          if (!proved_singularity) {
+          if (!potential_singularity) {
             // Since "good" captures are expected to be the best moves, we apply
             // a penalty to all captures even in the case where the best move
             // was quiet
