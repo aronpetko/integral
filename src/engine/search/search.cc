@@ -865,6 +865,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
+  bool proved_singularity = false;
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
@@ -987,6 +988,7 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
+        proved_singularity = true;
         // Extend more if the TT move is singular by a big margin
         if (tt_move_excluded_score <
             new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
@@ -1191,10 +1193,12 @@ Score Searcher::PVSearch(Thread &thread,
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
-          // Since "good" captures are expected to be the best moves, we apply a
-          // penalty to all captures even in the case where the best move was
-          // quiet
-          history.capture_history->Penalize(state, history_depth, captures);
+          if (!proved_singularity) {
+            // Since "good" captures are expected to be the best moves, we apply
+            // a penalty to all captures even in the case where the best move
+            // was quiet
+            history.capture_history->Penalize(state, history_depth, captures);
+          }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
