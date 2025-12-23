@@ -48,6 +48,14 @@ class MovePicker {
     return stage_;
   }
 
+  [[nodiscard]] int GetBestHistoryScore() const {
+    return best_hist_;
+  }
+
+  [[nodiscard]] int GetHistoryBadness() const {
+    return hist_badness_;
+  }
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 
@@ -67,6 +75,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
   int see_threshold_;
+  int best_hist_, hist_badness_;
 };
 
 }  // namespace search

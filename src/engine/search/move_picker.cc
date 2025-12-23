@@ -174,12 +174,25 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const bool killer_0_noisy = killers[0].IsNoisy(state),
              killer_1_noisy = killers[1].IsNoisy(state);
 
+  best_hist_ = 0;
+  hist_badness_ = 0;
+
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
     if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
         (killers[1] != move || killer_1_noisy)) {
-      list.Push({move, ScoreMove(move)});
+      const int score = ScoreMove(move);
+      list.Push({move, score});
+      if constexpr (move_type == MoveGenType::kQuiet) {
+        best_hist_ = std::max(best_hist_, score);
+      }
+    }
+  }
+
+  if constexpr (move_type == MoveGenType::kQuiet) {
+    for (int i = 0; i < list.Size(); ++i) {
+      hist_badness_ += best_hist_ - list[i].score;
     }
   }
 }
@@ -238,7 +251,8 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
+  const int history_score = history_.GetQuietMoveScore(state, move, stack_);
+  return threat_score + history_score;
 }
 
 }  // namespace search

@@ -954,15 +954,35 @@ Score Searcher::PVSearch(Thread &thread,
 
       // History Pruning: Prune moves with a low history score moves at
       // near-leaf nodes
-      const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth
-                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
-        continue;
+      if (depth <= kHistPruneDepth) {
+        if (is_quiet) {
+          const int best_hist = move_picker.GetBestHistoryScore();
+          const int total_bad = move_picker.GetHistoryBadness();
+
+          if (total_bad > 0) {
+            constexpr int kHistDivBase = 2;
+            constexpr int kHistDivMult = 1;
+            constexpr int kHistDivMax = 16;
+
+            const int div =
+                std::min(kHistDivBase + depth * kHistDivMult, kHistDivMax);
+            const int badness = best_hist - stack->history_score;
+
+            if (badness > total_bad / div) {
+              move_picker.SkipQuiets();
+              continue;
+            }
+          }
+        } else {
+          const int history_margin =
+              kCaptHistThreshBase + kCaptHistThreshMult * depth;
+          if (depth <= kHistPruneDepth &&
+              stack->history_score <= history_margin) {
+            continue;
+          }
+        }
       }
     }
-
     // Singular Extensions: If a TT move exists and its score is accurate
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
