@@ -960,7 +960,7 @@ Score Searcher::PVSearch(Thread &thread,
           const int total_bad = move_picker.GetHistoryBadness();
 
           if (total_bad > 0) {
-            constexpr int kHistDivBase = 2;
+            constexpr int kHistDivBase = 4;
             constexpr int kHistDivMult = 1;
             constexpr int kHistDivMax = 16;
 
