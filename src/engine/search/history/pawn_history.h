@@ -2,6 +2,8 @@
 #define INTEGRAL_PAWN_HISTORY_H
 
 #include "../../../../shared/multi_array.h"
+#include "../../../../shared/nnue/definitions.h"
+#include "../../evaluation/nnue/accumulator.h"
 #include "../stack.h"
 #include "bonus.h"
 
@@ -17,8 +19,10 @@ class PawnHistory {
 
   void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
     // Apply a linear dampening to the bonus as the depth increases
-    I16 &score = table_[GetIndex(state)][state.turn]
-                       [state.GetPieceType(move.GetFrom())][move.GetTo()];
+    I16 &score =
+        table_[nnue::GetKingBucket(state.King(state.turn).GetLsb(), state.turn)]
+              [GetIndex(state)][state.turn][state.GetPieceType(move.GetFrom())]
+              [move.GetTo()];
     score += ScaleBonus(score, bonus);
   }
 
@@ -39,17 +43,24 @@ class PawnHistory {
   }
 
   [[nodiscard]] int GetScore(const BoardState &state, Move move) const {
-    return table_[GetIndex(state)][state.turn]
+    return table_[nnue::GetKingBucket(state.King(state.turn).GetLsb(),
+                                      state.turn)][GetIndex(state)][state.turn]
                  [state.GetPieceType(move.GetFrom())][move.GetTo()];
   }
 
  private:
   [[nodiscard]] int GetIndex(const BoardState &state) const {
-    return state.pawn_key & 16383;
+    return state.pawn_key & 511;
   }
 
  private:
-  MultiArray<I16, 16384, kNumColors, kNumPieceTypes, kSquareCount> table_;
+  MultiArray<I16,
+             nnue::arch::kInputBucketCount,
+             512,
+             kNumColors,
+             kNumPieceTypes,
+             kSquareCount>
+      table_;
 };
 
 }  // namespace search::history
