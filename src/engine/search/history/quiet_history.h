@@ -24,7 +24,7 @@ class QuietHistory {
                    I16 depth,
                    BitBoard threats,
                    MoveList &quiets) {
-    const I16 bonus = HistoryBonus(depth);
+    const I16 bonus = HistoryBonus(depth) + (stack - 1)->history_score / 32;
 
     // Apply a linear dampening to the bonus as the depth increases
     UpdateMoveScore(state.turn, stack->move, threats, bonus);
