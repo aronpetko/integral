@@ -1100,7 +1100,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       stack->reduction = 0;
 
-      if ((needs_full_search = score > alpha && reduction != 0)) {
+      if ((needs_full_search = score > alpha && reduction != 0 && !in_root)) {
         // Search deeper or shallower depending on if the result of the
         // reduced-depth search indicates a promising score
         const bool do_deeper_search = score > (best_score + kDoDeeperBase +
