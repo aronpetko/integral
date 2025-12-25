@@ -358,6 +358,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
       break;
     }
 
+    if (!in_pv_node && moves_seen >= 2 && best_score > -kTBWinInMaxPlyScore) {
+      break;
+    }
+
     if (!board.IsMoveLegal(move)) {
       continue;
     }
