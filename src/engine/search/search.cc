@@ -358,7 +358,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
       break;
     }
 
-    if (!in_pv_node && moves_seen >= 3 && !state.InCheck() && best_score > -kTBWinInMaxPlyScore) {
+    if (stack->history_score <= -2500 && moves_seen >= 3 && !state.InCheck() && best_score > -kTBWinInMaxPlyScore) {
       break;
     }
 
