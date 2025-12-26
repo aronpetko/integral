@@ -1083,6 +1083,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      if (prev_stack->reduction >= 4096) {
+        reduction += 768;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
