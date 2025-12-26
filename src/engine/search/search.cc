@@ -835,13 +835,6 @@ Score Searcher::PVSearch(Thread &thread,
           board.UndoMove();
 
           if (score >= pc_beta) {
-            history.correction_history->UpdateScore(
-                state,
-                stack,
-                score,
-                TranspositionTableEntry::kLowerBound,
-                probcut_depth);
-
             const TranspositionTableEntry new_tt_entry(
                 zobrist_key,
                 probcut_depth,
@@ -943,6 +936,12 @@ Score Searcher::PVSearch(Thread &thread,
           stack->static_eval + futility_margin < alpha) {
         move_picker.SkipQuiets();
         continue;
+      }
+
+      const int bad_noisy_futility_margin = 250 + 150 * depth;
+      if (depth <= 8 && !stack->in_check && move_picker.GetStage() == MovePicker::Stage::kBadNoisys &&
+          stack->static_eval + bad_noisy_futility_margin < alpha) {
+        break;
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
