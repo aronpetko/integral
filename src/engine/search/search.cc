@@ -835,6 +835,13 @@ Score Searcher::PVSearch(Thread &thread,
           board.UndoMove();
 
           if (score >= pc_beta) {
+            history.correction_history->UpdateScore(
+                state,
+                stack,
+                score,
+                TranspositionTableEntry::kLowerBound,
+                probcut_depth);
+
             const TranspositionTableEntry new_tt_entry(
                 zobrist_key,
                 probcut_depth,
