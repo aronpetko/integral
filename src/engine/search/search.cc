@@ -1079,7 +1079,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if this move is a killer move
-      if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
+      if (move == stack->killer_moves[0]) {
         reduction -= kLmrKillerMoves;
       }
 
