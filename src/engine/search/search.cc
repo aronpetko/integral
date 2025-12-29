@@ -909,6 +909,11 @@ Score Searcher::PVSearch(Thread &thread,
         reduction += kLmrDepthNotImproving;
       }
 
+      // Reduce less if this move is a killer move
+      if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
+        reduction -= kLmrKillerMoves;
+      }
+
       const int lmr_fractional_depth =
           std::max(depth * kLmrDepthScale - reduction, 0);
 
