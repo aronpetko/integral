@@ -977,7 +977,7 @@ Score Searcher::PVSearch(Thread &thread,
 
       stack->excluded_tt_move = tt_move;
       const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
-          thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
+          thread, reduced_depth, new_beta - 1, new_beta, stack, false);
       stack->excluded_tt_move = Move::NullMove();
 
       if (ShouldQuit()) {
