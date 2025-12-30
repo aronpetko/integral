@@ -82,6 +82,8 @@ void Searcher::IterativeDeepening(Thread &thread) {
     }
   }
 
+  thread.history.quiet_history->Age();
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     for (thread.pv_move_idx = 0; thread.pv_move_idx < multi_pv;
          ++thread.pv_move_idx) {

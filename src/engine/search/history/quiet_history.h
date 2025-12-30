@@ -43,9 +43,19 @@ class QuietHistory {
                  [threats.IsSet(move.GetFrom())][threats.IsSet(move.GetTo())];
   }
 
- private:
-  [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
-    return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());
+  void Age() {
+    for (int c = 0; c < kNumColors; ++c) {
+      for (int from = 0; from < kSquareCount; ++from) {
+        for (int to = 0; to < kSquareCount; ++to) {
+          for (int from_threat = 0; from_threat < 2; ++from_threat) {
+            for (int to_threat = 0; to_threat < 2; ++to_threat) {
+              I16 &score = table_[c][from][to][from_threat][to_threat];
+              score = (score * 3) / 4;
+            }
+          }
+        }
+      }
+    }
   }
 
  private:
