@@ -50,7 +50,7 @@ class QuietHistory {
           for (int from_threat = 0; from_threat < 2; ++from_threat) {
             for (int to_threat = 0; to_threat < 2; ++to_threat) {
               I16 &score = table_[c][from][to][from_threat][to_threat];
-              score = (score * 3) / 4;
+              score /= 2;
             }
           }
         }
