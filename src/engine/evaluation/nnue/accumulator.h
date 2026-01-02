@@ -51,13 +51,12 @@ static std::array<I16, arch::kL1Size>& GetFeatureTable(Square square,
   }
 
   const int relative_king_square = king_square ^ (56 * perspective);
-  const int king_bucket_idx = kKingBucketMap[relative_king_square];
   const int square_idx = square ^ 56 * perspective;
   const int color_idx = perspective != piece_color;
   const int piece_idx = piece;
 
   return network
-      ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx]
+      ->feature_weights[color_idx][piece_idx][square_idx]
       .as_array();
 }
 
@@ -409,13 +408,13 @@ class Accumulator {
  private:
   [[nodiscard]] inline int GetKingBucket(Square king_square,
                                          Color king_color) const {
-    return kKingBucketMap[king_square ^ (56 * king_color)];
+    return 0;
   }
 
  private:
   int head_idx_;
   std::vector<AccumulatorEntry> stack_;
-  MultiArray<BucketCacheEntry, 2, arch::kInputBucketCount> input_bucket_cache_;
+  MultiArray<BucketCacheEntry, 2, 1> input_bucket_cache_;
 };
 
 }  // namespace nnue

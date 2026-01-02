@@ -10,7 +10,10 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
+  network->output_weights = raw_network->output_weights;
+  network->output_biases = raw_network->output_biases;
 
+/*
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
   constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
@@ -76,6 +79,7 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
       }
     }
   }
+*/
 
   return network;
 }
