@@ -68,17 +68,24 @@ void BenchSuite(int depth) {
   auto bench_thread = std::make_unique<search::Thread>(0);
 
   U64 nodes = 0, elapsed = 0;
+  I64 total_eval = 0, total_calls = 0;
   for (const auto &position : kBenchFens) {
     board.SetFromFen(position);
     searcher.NewGame(false);
 
     nodes += searcher.Bench(bench_thread, depth);
     elapsed += searcher.GetTimeManagement().TimeElapsed();
+
+    if (!board.GetState().InCheck()) {
+      total_eval += nnue::Evaluate(board);
+      ++total_calls;
+    }
   }
 
   fmt::println("{} nodes {} nps",
                nodes,
                static_cast<U64>(nodes * 1000 / std::max<U64>(elapsed, 1)));
+  fmt::println("{} average cp", total_eval / total_calls);
 }
 
 }  // namespace tests
