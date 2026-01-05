@@ -71,8 +71,8 @@ void NodeLimiter::Start() {}
 void NodeLimiter::Stop() {}
 
 void NodeLimiter::Update(const TimeConfig& config) {
-  max_nodes_ = config.nodes;
-  soft_max_nodes_ = config.soft_nodes;
+  max_nodes_ = 1'000'000;
+  soft_max_nodes_ = config.nodes;
 }
 
 // TimedLimiter implementation
