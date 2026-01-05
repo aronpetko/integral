@@ -16,7 +16,7 @@ constexpr std::size_t kOutputBucketCount = 8;
 constexpr std::int32_t kQA = 255;
 constexpr std::int32_t kQB = 64;
 
-constexpr std::int32_t kEvalScale = 200;
+constexpr std::int32_t kEvalScale = 238;
 
 }  // namespace arch
 

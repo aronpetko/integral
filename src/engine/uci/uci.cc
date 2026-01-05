@@ -236,6 +236,17 @@ Listener::~Listener() {
   }
 }
 
+std::int64_t sum_evals = 0;
+std::int64_t total_evals = 0;
+
+void process_line(std::string_view line) {
+  Board board;
+  board.SetFromFen(line);
+  sum_evals += nnue::Evaluate(board);
+  ++total_evals;
+  if (total_evals % 1024 == 0) std::cout << sum_evals / total_evals << std::endl;
+}
+
 void AcceptCommands(int arg_count, char **args) {
   Board board;
   board.SetFromFen(fen::kStartFen);
@@ -252,6 +263,20 @@ void AcceptCommands(int arg_count, char **args) {
     tests::BenchSuite(depth);
     return;
   }
+
+  /* std::ifstream file("lichess-big3-resolved.book", std::ios::binary);
+  if (!file) {
+    std::cerr << "Failed to open file\n";
+  }
+
+  std::string line;
+  line.reserve(4096);
+
+  while (std::getline(file, line) && total_evals < 1'000'000) {
+    process_line(line);
+  }
+
+  std::cout << "average eval: " << sum_evals / total_evals << std::endl;*/
 
   PrintAsciiLogo();
   fmt::println(
