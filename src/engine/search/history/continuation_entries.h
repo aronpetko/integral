@@ -7,7 +7,7 @@
 namespace search::history {
 
 using ContinuationEntry =
-    MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount>;
+    MultiArray<I16, kNumColors, 2, 2, kNumPieceTypes, kSquareCount>;
 
 using ContinuationCorrectionEntry =
     MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount>;

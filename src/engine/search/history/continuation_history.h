@@ -58,7 +58,7 @@ class ContinuationHistory {
     const int to = move.GetTo();
 
     auto &entry = *stack->continuation_entry;
-    return entry[state.turn][piece][to];
+    return entry[state.turn][state.InCheck()][move.IsCapture(state)][piece][to];
   }
 
  private:
@@ -76,7 +76,7 @@ class ContinuationHistory {
 
     auto &entry = *stack->continuation_entry;
 
-    I16 &score = entry[state.turn][piece][to];
+    I16 &score = entry[state.turn][state.InCheck()][move.IsCapture(state)][piece][to];
     score += ScaleBonus(total_score, bonus);
   }
 
