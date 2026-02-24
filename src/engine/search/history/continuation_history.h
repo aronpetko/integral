@@ -44,7 +44,8 @@ class ContinuationHistory {
   [[nodiscard]] ContinuationEntry *GetEntry(const BoardState &state,
                                             Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &table_[state.turn][state.GetPieceType(from)][to];
+    return &table_[state.turn][state.turn][state.InCheck()]
+                  [state.GetPieceType(from)][to];
   }
 
   [[nodiscard]] int GetScore(const BoardState &state,
@@ -58,7 +59,7 @@ class ContinuationHistory {
     const int to = move.GetTo();
 
     auto &entry = *stack->continuation_entry;
-    return entry[state.turn][state.InCheck()][move.IsCapture(state)][piece][to];
+    return entry[move.IsCapture(state)][piece][to];
   }
 
  private:
@@ -76,12 +77,12 @@ class ContinuationHistory {
 
     auto &entry = *stack->continuation_entry;
 
-    I16 &score = entry[state.turn][state.InCheck()][move.IsCapture(state)][piece][to];
+    I16 &score = entry[state.turn][piece][to];
     score += ScaleBonus(total_score, bonus);
   }
 
  private:
-  MultiArray<ContinuationEntry, kNumColors, kNumPieceTypes, kSquareCount>
+  MultiArray<ContinuationEntry, kNumColors, 2, 2, kNumPieceTypes, kSquareCount>
       table_;
 };
 
