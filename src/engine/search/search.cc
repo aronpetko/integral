@@ -339,6 +339,9 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
     // Alpha can be updated if no cutoff occurred
     alpha = std::max(alpha, best_score);
+  } else if (tt_hit && tt_entry->CanUseScore(alpha, beta)) {
+    best_score =
+        TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
   stack->threats = state.threats;
