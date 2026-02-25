@@ -59,7 +59,7 @@ class ContinuationHistory {
     const int to = move.GetTo();
 
     auto &entry = *stack->continuation_entry;
-    return entry[move.IsCapture(state)][piece][to];
+    return entry[state.turn][piece][to];
   }
 
  private:
