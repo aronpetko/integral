@@ -54,7 +54,7 @@ class MovePicker {
   template <MoveGenType move_type>
   void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
 
-  int ScoreMove(Move &move);
+  int ScoreMove(Move &move) const;
 
  private:
   Board &board_;

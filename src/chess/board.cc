@@ -492,39 +492,41 @@ void Board::HandleCastling(Move move) {
 }
 
 void Board::CalculateThreats() {
-  const Color them = FlipColor(state_.turn);
+  const auto side = FlipColor(state_.turn);
 
-  state_.threatened_by[kPawn] = move_gen::PawnAttacks(state_.Pawns(them), them);
+  //for (const auto side : {Color::kWhite, Color::kBlack}) {
+    state_.threatened_by[side][kPawn] = move_gen::PawnAttacks(state_.Pawns(side), side);
 
-  state_.threatened_by[kKnight] = 0;
-  for (Square square : state_.Knights(them)) {
-    state_.threatened_by[kKnight] |= move_gen::KnightMoves(square);
-  }
+    state_.threatened_by[side][kKnight] = 0;
+    for (Square square : state_.Knights(side)) {
+      state_.threatened_by[side][kKnight] |= move_gen::KnightMoves(square);
+    }
 
-  const BitBoard queens = state_.Queens(them);
-  const BitBoard occupied = state_.Occupied();
+    const BitBoard queens = state_.Queens(side);
+    const BitBoard occupied = state_.Occupied();
 
-  state_.threatened_by[kBishop] = 0;
-  state_.threatened_by[kQueen] = 0;
-  state_.threatened_by[kRook] = 0;
+    state_.threatened_by[side][kBishop] = 0;
+    state_.threatened_by[side][kQueen] = 0;
+    state_.threatened_by[side][kRook] = 0;
 
-  for (Square square : state_.Bishops(them) | queens) {
-    state_.threatened_by[(queens.IsSet(square) ? kQueen : kBishop)] |=
-        move_gen::BishopMoves(square, occupied);
-  }
+    for (Square square : state_.Bishops(side) | queens) {
+      state_.threatened_by[side][(queens.IsSet(square) ? kQueen : kBishop)] |=
+          move_gen::BishopMoves(square, occupied);
+    }
 
-  for (Square square : state_.Rooks(them) | queens) {
-    state_.threatened_by[(queens.IsSet(square) ? kQueen : kRook)] |=
-        move_gen::RookMoves(square, occupied);
-  }
+    for (Square square : state_.Rooks(side) | queens) {
+      state_.threatened_by[side][(queens.IsSet(square) ? kQueen : kRook)] |=
+          move_gen::RookMoves(square, occupied);
+    }
 
-  state_.threatened_by[kKing] =
-      move_gen::KingAttacks(state_.King(them).GetLsb());
+    state_.threatened_by[side][kKing] =
+        move_gen::KingAttacks(state_.King(side).GetLsb());
 
-  state_.threats = state_.threatened_by[kPawn] | state_.threatened_by[kKnight] |
-                   state_.threatened_by[kBishop] | state_.threatened_by[kRook] |
-                   state_.threatened_by[kQueen] | state_.threatened_by[kKing];
-
+    state_.threats = state_.threatened_by[side][kPawn] | state_.threatened_by[side][kKnight] |
+                     state_.threatened_by[side][kBishop] | state_.threatened_by[side][kRook] |
+                     state_.threatened_by[side][kQueen] | state_.threatened_by[side][kKing];
+  //}
+  
   CalculateKingThreats();
 }
 
@@ -566,16 +568,32 @@ void Board::CalculateKingThreats() {
 }
 
 BitBoard Board::GetOpponentWinningCaptures() const {
-  const Color us = state_.turn;
+  const Color us = state_.turn, them = FlipColor(us);
 
   const BitBoard queens = state_.Queens(us);
   const BitBoard rooks = queens | state_.Rooks(us);
   const BitBoard minors = rooks | state_.Knights(us) | state_.Bishops(us);
 
-  const BitBoard pawn_threats = state_.threatened_by[kPawn];
-  const BitBoard minor_threats = pawn_threats | state_.threatened_by[kKnight] |
-                                 state_.threatened_by[kBishop];
-  const BitBoard rook_threats = minor_threats | state_.threatened_by[kRook];
+  const BitBoard pawn_threats = state_.threatened_by[them][kPawn];
+  const BitBoard minor_threats = pawn_threats | state_.threatened_by[them][kKnight] |
+                                 state_.threatened_by[them][kBishop];
+  const BitBoard rook_threats = minor_threats | state_.threatened_by[them][kRook];
+
+  return (queens & rook_threats) | (rooks & minor_threats) |
+         (minors & pawn_threats);
+}
+
+BitBoard Board::GetOurWinningCaptures() const {
+  const Color us = state_.turn, them = FlipColor(us);
+
+  const BitBoard queens = state_.Queens(them);
+  const BitBoard rooks = queens | state_.Rooks(them);
+  const BitBoard minors = rooks | state_.Knights(them) | state_.Bishops(them);
+
+  const BitBoard pawn_threats = state_.threatened_by[us][kPawn];
+  const BitBoard minor_threats = pawn_threats | state_.threatened_by[us][kKnight] |
+                                 state_.threatened_by[us][kBishop];
+  const BitBoard rook_threats = minor_threats | state_.threatened_by[us][kRook];
 
   return (queens & rook_threats) | (rooks & minor_threats) |
          (minors & pawn_threats);

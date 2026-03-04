@@ -184,7 +184,7 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   }
 }
 
-int MovePicker::ScoreMove(Move &move) {
+int MovePicker::ScoreMove(Move &move) const {
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
 
@@ -211,10 +211,12 @@ int MovePicker::ScoreMove(Move &move) {
     return victim_value + history_.GetCaptureMoveScore(state, move);
   }
 
-  const BitBoard pawn_threats = state.threatened_by[kPawn];
-  const BitBoard minor_threats = pawn_threats | state.threatened_by[kKnight] |
-                                 state.threatened_by[kBishop];
-  const BitBoard rook_threats = minor_threats | state.threatened_by[kRook];
+  const Color them = FlipColor(state.turn);
+
+  const BitBoard pawn_threats = state.threatened_by[them][kPawn];
+  const BitBoard minor_threats = pawn_threats | state.threatened_by[them][kKnight] |
+                                 state.threatened_by[them][kBishop];
+  const BitBoard rook_threats = minor_threats | state.threatened_by[them][kRook];
 
   int threat_score = 0;
   switch (state.GetPieceType(from)) {

@@ -272,7 +272,7 @@ struct BoardState {
   std::array<U64, 2> non_pawn_keys;
   BitBoard checkers;
   BitBoard threats;
-  std::array<BitBoard, kNumPieceTypes> threatened_by;
+  MultiArray<BitBoard, 2, kNumPieceTypes> threatened_by;
   std::array<BitBoard, kNumColors> pinned;
 };
 
@@ -333,6 +333,7 @@ class Board {
   void CalculateThreats();
 
   [[nodiscard]] BitBoard GetOpponentWinningCaptures() const;
+  [[nodiscard]] BitBoard GetOurWinningCaptures() const;
 
   [[nodiscard]] MoveList GetLegalMoves() const;
 
