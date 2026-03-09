@@ -8,8 +8,8 @@ option(BUILD_AVX512 "Build with AVX512 optimizations" ${PREPROCESS_BUILD_AVX512}
 option(BUILD_AVX2_BMI2 "Build with AVX2 + BMI2 optimizations" ${PREPROCESS_BUILD_AVX2_BMI2})
 option(BUILD_AVX2 "Build with AVX2 optimizations" ${PREPROCESS_BUILD_AVX2})
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" ${PREPROCESS_BUILD_SSE41_POPCNT})
+option(BUILD_APPLE_SILICON "Build with Apple Silicon (NEON) optimizations" ${PREPROCESS_BUILD_APPLE_SILICON})
 option(BUILD_DEBUG "Build with debug information" ${PREPROCESS_BUILD_DEBUG})
-option(SPARSE_PERMUTE "Use sparse permute network format" ${PREPROCESS_SPARSE_PERMUTE})
 
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
@@ -18,12 +18,16 @@ set(CXXFLAGS_AVX512 "-march=x86-64-v4 -mtune=skylake-avx512 -DBUILD_AVX512 -DBUI
 set(CXXFLAGS_AVX2_BMI2 "-march=haswell -mtune=haswell -mavx2 -mbmi2 -DBUILD_AVX2_BMI2 -DBUILD_FAST_PEXT")
 set(CXXFLAGS_AVX2 "-march=bdver4 -mno-tbm -mno-sse4a -mno-bmi2 -mtune=znver2 -DBUILD_AVX2")
 set(CXXFLAGS_SSE41_POPCNT "-march=nehalem -mtune=sandybridge -DBUILD_SSE41_POPCNT")
+set(CXXFLAGS_APPLE_SILICON "-mcpu=apple-m1 -DBUILD_APPLE_SILICON")
 
 # Apply the correct flags based on the build type
 if (BUILD_DEBUG)
     set(CMAKE_BUILD_TYPE Debug)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+elseif (BUILD_APPLE_SILICON)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_APPLE_SILICON} -DBUILD_APPLE_SILICON")
 elseif (BUILD_VNNI512)
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_VNNI512} -DBUILD_VNNI512")
 elseif (BUILD_AVX512)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_AVX512} -DBUILD_AVX512")

@@ -345,15 +345,16 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   const Score futility_score = best_score + kQsFutMargin;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
-  MoveList quiets, captures;
+  stack->quiets.Clear();
+  stack->captures.Clear();
   Move best_move = Move::NullMove();
 
-  MovePicker move_picker(
+  stack->move_picker = std::make_unique<MovePicker>(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
-  while (const auto move = move_picker.Next()) {
+  while (const auto move = stack->move_picker->Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
-    if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+    if (stack->move_picker->GetStage() > MovePicker::Stage::kGoodNoisys &&
         moves_seen > 0) {
       break;
     }
@@ -420,9 +421,9 @@ Score Searcher::QuiescentSearch(Thread &thread,
     // Penalize the history score of moves that failed to raise alpha
     if (move != best_move) {
       if (is_quiet)
-        quiets.Push(move);
+        stack->quiets.Push(move);
       else if (is_capture)
-        captures.Push(move);
+        stack->captures.Push(move);
     }
   }
 
@@ -433,7 +434,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, 1, captures);
+    history.capture_history->Penalize(state, 1, stack->captures);
   }
 
   // Return an interpolated score toward beta for a safety "cushion"
@@ -797,9 +798,9 @@ Score Searcher::PVSearch(Thread &thread,
                                   : Move::NullMove();
 
         int moves_seen = 0;
-        MovePicker move_picker(
+        stack->move_picker = std::make_unique<MovePicker>(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
-        while (const auto move = move_picker.Next()) {
+        while (const auto move = stack->move_picker->Next()) {
           if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
             continue;
           }
@@ -863,15 +864,16 @@ Score Searcher::PVSearch(Thread &thread,
   // the transposition table
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
-  MoveList quiets, captures;
+  stack->quiets.Clear();
+  stack->captures.Clear();
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
-  MovePicker move_picker(
+  stack->move_picker = std::make_unique<MovePicker>(
       MovePickerType::kSearch, board, tt_move, history, stack);
-  while (const auto move = move_picker.Next()) {
+  while (const auto move = stack->move_picker->Next()) {
     if (in_root && !thread.root_moves.MoveExists(move, thread.pv_move_idx)) {
       continue;
     }
@@ -922,7 +924,7 @@ Score Searcher::PVSearch(Thread &thread,
       const int lmp_threshold =
           (kLmpBase + depth * depth) / (3 - (improving || stack->eval >= beta));
       if (is_quiet && moves_seen >= lmp_threshold) {
-        move_picker.SkipQuiets();
+        stack->move_picker->SkipQuiets();
         continue;
       }
 
@@ -934,7 +936,7 @@ Score Searcher::PVSearch(Thread &thread,
           stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin < alpha) {
-        move_picker.SkipQuiets();
+        stack->move_picker->SkipQuiets();
         continue;
       }
 
@@ -947,7 +949,7 @@ Score Searcher::PVSearch(Thread &thread,
         return kSeeNoisyThresh * depth -
                stack->history_score / kSeePruneHistDiv;
       }();
-      if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+      if (stack->move_picker->GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
@@ -958,7 +960,7 @@ Score Searcher::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
+        stack->move_picker->SkipQuiets();
         continue;
       }
     }
@@ -1183,18 +1185,18 @@ Score Searcher::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+                state, stack, history_depth, stack->threats, stack->quiets);
             history.pawn_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, stack->quiets);
             history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, stack->quiets);
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
-          // Since "good" captures are expected to be the best moves, we apply a
+          // Since \"good\" captures are expected to be the best moves, we apply a
           // penalty to all captures even in the case where the best move was
           // quiet
-          history.capture_history->Penalize(state, history_depth, captures);
+          history.capture_history->Penalize(state, history_depth, stack->captures);
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
@@ -1207,9 +1209,9 @@ Score Searcher::PVSearch(Thread &thread,
     // Penalize the history score of moves that failed to raise alpha
     if (move != best_move) {
       if (is_quiet)
-        quiets.Push(move);
+        stack->quiets.Push(move);
       else if (is_capture)
-        captures.Push(move);
+        stack->captures.Push(move);
     }
   }
 

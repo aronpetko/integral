@@ -18,7 +18,13 @@ option(BUILD_AVX512 "Build with AVX512 optimizations" OFF)
 option(BUILD_AVX2_BMI2 "Build with AVX2 + BMI2 optimizations" OFF)
 option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
+option(BUILD_APPLE_SILICON "Build with Apple Silicon (NEON) optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
+
+# PGO options
+option(USE_PGO_GENERATE "Build with PGO instrumentation" OFF)
+option(USE_PGO_USE "Build with PGO profiles" OFF)
+set(PGO_PROFILE_DIR "${PROJECT_BINARY_DIR}/pgo_profile" CACHE STRING "Directory for PGO profiles")
 
 # Allow user to specify EVALFILE through CMake
 set(NETWORK_NAME zekrom-v7)
@@ -61,6 +67,7 @@ set(PREPROCESS_BUILD_AVX512 ${BUILD_AVX512} CACHE INTERNAL "")
 set(PREPROCESS_BUILD_AVX2_BMI2 ${BUILD_AVX2_BMI2} CACHE INTERNAL "")
 set(PREPROCESS_BUILD_AVX2 ${BUILD_AVX2} CACHE INTERNAL "")
 set(PREPROCESS_BUILD_SSE41_POPCNT ${BUILD_SSE41_POPCNT} CACHE INTERNAL "")
+set(PREPROCESS_BUILD_APPLE_SILICON ${BUILD_APPLE_SILICON} CACHE INTERNAL "")
 set(PREPROCESS_BUILD_DEBUG ${BUILD_DEBUG} CACHE INTERNAL "")
 set(PREPROCESS_SPARSE_PERMUTE ${SPARSE_PERMUTE} CACHE INTERNAL "")
 
@@ -89,11 +96,14 @@ set(CXXFLAGS_AVX512 "-march=x86-64-v4 -mtune=skylake-avx512 -DBUILD_AVX512 -DUSE
 set(CXXFLAGS_AVX2_BMI2 "-march=haswell -mtune=haswell -mavx2 -mbmi2 -DBUILD_AVX2_BMI2 -DUSE_PEXT")
 set(CXXFLAGS_AVX2 "-march=bdver4 -mno-tbm -mno-sse4a -mno-bmi2 -mtune=znver2 -DBUILD_AVX2")
 set(CXXFLAGS_SSE41_POPCNT "-march=nehalem -mtune=sandybridge -DBUILD_SSE41_POPCNT")
+set(CXXFLAGS_APPLE_SILICON "-mcpu=apple-m1 -DBUILD_APPLE_SILICON")
 
 # Apply the correct flags based on the build type
 if (BUILD_DEBUG)
     set(CMAKE_BUILD_TYPE Debug)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+elseif (BUILD_APPLE_SILICON)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_APPLE_SILICON} -DBUILD_APPLE_SILICON")
 elseif (BUILD_VNNI512)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_VNNI512} -DBUILD_VNNI512")
 elseif (BUILD_AVX512)
@@ -163,6 +173,32 @@ if (DATAGEN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDATAGEN")
 endif ()
 
+# PGO configuration
+if (USE_PGO_GENERATE)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-generate=${PGO_PROFILE_DIR}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-generate=${PGO_PROFILE_DIR}")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-generate")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-generate")
+    endif()
+elseif (USE_PGO_USE)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+        # Find the profile file
+        file(GLOB PGO_PROFILES "${PGO_PROFILE_DIR}/*.profraw")
+        if (PGO_PROFILES)
+            # Clang needs a merged profile. This will be done in the Makefile
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-use=${PGO_PROFILE_DIR}/integral.profdata")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-use=${PGO_PROFILE_DIR}/integral.profdata")
+        else()
+            message(WARNING "No PGO profiles found in ${PGO_PROFILE_DIR}")
+        endif()
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-use -fprofile-correction")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fprofile-use")
+    endif()
+endif()
+
 # Set common flags for release and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
@@ -205,7 +241,8 @@ add_executable(integral ${SOURCES}
         third-party/fathom/tbprobe.c
         src/data_gen/data_gen.h
         src/data_gen/format/binpack.h
-        src/engine/search/cuckoo.cc)
+        src/engine/search/cuckoo.cc
+        src/engine/search/stack.cc)
 
 # Make sure main build depends on this
 add_dependencies(integral run_preprocess)

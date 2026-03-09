@@ -28,7 +28,7 @@ EXE ?= integral
 DATAGEN ?= OFF
 
 # Standard targets
-.PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
+.PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native apple_silicon pgo
 
 all: $(BUILD_DIR)
 	@echo Building $(EXE) with $(BUILD_TYPE)...
@@ -43,7 +43,7 @@ else
 	@mkdir -p $(BUILD_DIR)
 endif
 	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE)...
-	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) ..
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) $(EXTRA_CMAKE_ARGS) ..
 
 clean:
 ifeq ($(detected_OS),Windows)
@@ -63,6 +63,8 @@ else ifeq ($(BUILD_TYPE),BUILD_X86_64_MODERN)
 	$(eval EXE_NAME := $(EXE)_x86_64_modern$(EXE_EXT))
 else ifeq ($(BUILD_TYPE),BUILD_X86_64_BMI2)
 	$(eval EXE_NAME := $(EXE)_x86_64_bmi2$(EXE_EXT))
+else ifeq ($(BUILD_TYPE),BUILD_APPLE_SILICON)
+	$(eval EXE_NAME := $(EXE)_apple_silicon$(EXE_EXT))
 else
 	$(eval EXE_NAME := $(EXE)$(EXE_EXT))
 endif
@@ -76,6 +78,47 @@ endif
 debug:
 	@echo Building with debug
 	@$(MAKE) all BUILD_TYPE=BUILD_DEBUG
+
+apple_silicon:
+	@echo Building for Apple Silicon...
+	@$(MAKE) all BUILD_TYPE=BUILD_APPLE_SILICON
+
+apple_pgo:
+	@echo Building for Apple Silicon with PGO...
+	@$(MAKE) pgo BUILD_TYPE=BUILD_APPLE_SILICON
+
+pgo:
+	@echo Starting PGO build...
+	@$(MAKE) clean
+	@echo Phase 1: Building with instrumentation...
+	@mkdir -p $(BUILD_DIR)/pgo_profile
+	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE) and USE_PGO_GENERATE=ON...
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) -DUSE_PGO_GENERATE=ON ..
+	@$(MAKE) -C $(BUILD_DIR)
+	@$(MAKE) copy_executable
+	@echo Phase 2: Generating profiles...
+ifeq ($(detected_OS),Windows)
+	@$(BUILD_DIR)\integral$(EXE_EXT) bench 12
+else
+	@$(BUILD_DIR)/integral$(EXE_EXT) bench 12
+endif
+	@echo Phase 3: Building with profiles...
+ifeq ($(detected_OS),Darwin)
+	@echo Merging Clang profiles...
+	@xcrun llvm-profdata merge -output=$(BUILD_DIR)/pgo_profile/integral.profdata $(BUILD_DIR)/pgo_profile/*.profraw
+endif
+	@# Preserve the profiles by moving them out of the build directory temporarily
+	@mkdir -p pgo_temp
+	@cp -r $(BUILD_DIR)/pgo_profile/* pgo_temp/
+	@$(MAKE) clean
+	@mkdir -p $(BUILD_DIR)/pgo_profile
+	@cp -r pgo_temp/* $(BUILD_DIR)/pgo_profile/
+	@rm -rf pgo_temp
+	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE) and USE_PGO_USE=ON...
+	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) -DUSE_PGO_USE=ON ..
+	@$(MAKE) -C $(BUILD_DIR)
+	@$(MAKE) copy_executable
+	@echo PGO build complete.
 
 vnni512:
 	@echo Building with BUILD_VNNI512

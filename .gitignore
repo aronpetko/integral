@@ -4,6 +4,8 @@
 
 ## Eval File
 *.nnue
+build/
+integral
 
 # User-specific stuff
 .idea/**/workspace.xml

@@ -52,6 +52,8 @@ struct PVLine {
   List<Move, kMaxPlyFromRoot> moves_;
 };
 
+class MovePicker;
+
 struct StackEntry {
   // Number of ply from root
   I32 ply;
@@ -78,6 +80,10 @@ struct StackEntry {
   // Reduction applied for this ply
   int reduction;
 
+  // Search data stored here to save stack space
+  MoveList quiets, captures;
+  std::unique_ptr<MovePicker> move_picker;
+
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
     if (killer_move != killer_moves.front()) {
@@ -90,21 +96,19 @@ struct StackEntry {
     killer_moves.fill(Move::NullMove());
   }
 
-  explicit StackEntry(U16 ply)
-      : ply(ply),
-        static_eval(kScoreNone),
-        eval(kScoreNone),
-        eval_complexity(0),
-        history_score(0),
-        move(Move::NullMove()),
-        excluded_tt_move(Move::NullMove()),
-        killer_moves({}),
-        continuation_entry(nullptr),
-        reduction(0) {
-    ClearKillerMoves();
-  }
+  void Reset(I32 p);
 
-  StackEntry() : StackEntry(0) {}
+  explicit StackEntry(I32 ply);
+
+  StackEntry();
+
+  ~StackEntry();
+
+  // StackEntry is now move-only due to unique_ptr
+  StackEntry(const StackEntry &) = delete;
+  StackEntry &operator=(const StackEntry &) = delete;
+  StackEntry(StackEntry &&) noexcept;
+  StackEntry &operator=(StackEntry &&) noexcept;
 };
 
 class Stack {
@@ -117,7 +121,7 @@ class Stack {
 
   void Reset() {
     for (int i = 0; i < stack_.size(); i++) {
-      stack_[i] = StackEntry(i - kPadding);
+      stack_[i].Reset(i - kPadding);
     }
   }
 
