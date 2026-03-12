@@ -1266,7 +1266,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state)) ||
-        eval::StaticExchange(best_move, 0, state)) {
+        !eval::StaticExchange(best_move, 0, state)) {
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }
