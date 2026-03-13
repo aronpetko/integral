@@ -151,6 +151,7 @@ struct alignas(64) Thread {
   int pv_move_idx;
   RootMoveList root_moves;
   U16 nmp_min_ply;
+  std::array<I32, 2> optimism;
 };
 
 class Searcher {

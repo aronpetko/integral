@@ -82,6 +82,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
     }
   }
 
+  thread.optimism = {};
+  thread.scores = {};
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     for (thread.pv_move_idx = 0; thread.pv_move_idx < multi_pv;
          ++thread.pv_move_idx) {
@@ -89,6 +92,14 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
       const auto average_score = cur_best_move.average_score;
+
+      if (depth > 1) {
+        const auto turn = board_.GetState().turn;
+        const auto optimism = kOptimismScale * average_score /
+                              (std::abs(average_score) + kOptimismBase);
+        thread.optimism[turn] = optimism;
+        thread.optimism[FlipColor(turn)] = -optimism;
+      }
 
       int window =
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
@@ -216,14 +227,27 @@ void Searcher::IterativeDeepening(Thread &thread) {
   }
 }
 
+template<bool apply_correction_history = true>
 [[nodiscard]] Score AdjustStaticEval(Score static_eval,
                                      Thread &thread,
                                      StackEntry *stack) {
   const auto &state = thread.board.GetState();
 
-  // Adjust based on prior search scores in similar positions
-  static_eval = thread.history.correction_history->CorrectStaticEval(
-      state, stack, static_eval);
+  const auto material_phase =
+      *eval::kSeePieceScores[kKnight] * state.Knights().PopCount() +
+      *eval::kSeePieceScores[kBishop] * state.Bishops().PopCount() +
+      *eval::kSeePieceScores[kRook] * state.Rooks().PopCount() +
+      *eval::kSeePieceScores[kQueen] * state.Queens().PopCount();
+
+  // Adjust based on the material left on the board and our turns average score
+  static_eval = (static_eval * (kMaterialScaleBase + material_phase) + thread.optimism[state.turn] * (kOptimismMaterialBase + material_phase));
+  static_eval /= 32768;
+
+  if constexpr (apply_correction_history) {
+    // Adjust based on prior search scores in similar positions
+    static_eval = thread.history.correction_history->CorrectStaticEval(
+        state, stack, static_eval);
+  }
 
 #if DATAGEN
   return static_eval;

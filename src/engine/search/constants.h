@@ -99,6 +99,12 @@ TUNABLE(kProbcutBetaDelta, 213, 50, 300, false);
 
 TUNABLE_STEP(kHistoryBonusMargin, 44, 5, 120, false, 10);
 
+TUNABLE_STEP(kMaterialScaleBase, 27600, 10000, 32768, false, 500);
+
+TUNABLE(kOptimismScale, 100, 50, 200, false);
+TUNABLE(kOptimismBase, 150, 100, 200, false);
+TUNABLE(kOptimismMaterialBase, 2000, 1500, 2500, false);
+
 }  // namespace search
 
 #endif  // INTEGRAL_CONSTANTS_H
