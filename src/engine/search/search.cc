@@ -1128,6 +1128,11 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (score > alpha || moves_seen == 0)) {
+      // Don't allow the TT move to drop into QS for the full-window search
+      if (move == tt_move && thread.root_depth > 8 && tt_entry->depth > 1) {
+        new_depth = std::max(new_depth, 1);
+      }
+
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
