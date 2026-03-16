@@ -367,7 +367,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     if (!stack->in_check &&
         (!(stack - 1)->move || move.GetTo() != (stack - 1)->move.GetTo()) &&
         move.IsCapture(state) && futility_score <= alpha &&
-        !eval::StaticExchange(move, 1 + (alpha - futility_score) / 2, state)) {
+        !eval::StaticExchange(move, (alpha - futility_score) / 2, state)) {
       best_score = std::max(best_score, futility_score);
       continue;
     }
