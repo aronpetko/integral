@@ -1094,7 +1094,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more proportionally to the amount of times alpha was raised
-      reduction += 512 * alpha_raises;
+      reduction += 1280 * alpha_raises;
 
       stack->reduction = reduction;
 
@@ -1185,7 +1185,7 @@ Score Searcher::PVSearch(Thread &thread,
 
         // Count how many times alpha has been raised to a non-decisive score
         if (std::abs(score) < kTBWinInMaxPlyScore) {
-          ++alpha_raises;
+          alpha_raises = std::min(alpha_raises, 2);
         }
 
         if (in_pv_node && !in_root) {
