@@ -95,7 +95,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
       if (depth > 1) {
         const auto turn = thread.board.GetState().turn;
         const auto optimism =
-            150 * average_score / (std::abs(average_score) + 100);
+            100 * average_score / (std::abs(average_score) + 50);
         thread.optimism[turn] = optimism;
         thread.optimism[FlipColor(turn)] = -optimism;
       }
