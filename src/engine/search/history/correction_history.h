@@ -93,7 +93,7 @@ class CorrectionHistory {
     const I32 correction = pawn_correction + non_pawn_white_correction +
                            non_pawn_black_correction + major_correction +
                            continuation_correction;
-    const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 512;
+    const I32 adjusted_score = static_eval + correction / 512;
     // Ensure no static evaluations are mate scores
     return std::clamp(
         adjusted_score, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
@@ -109,7 +109,7 @@ class CorrectionHistory {
   [[nodiscard]] I16 CalculateBonus(Score static_eval,
                                    Score search_score,
                                    int depth) {
-    return std::clamp((search_score - static_eval) * depth / 8, -256, 256);
+    return std::clamp((search_score - static_eval) * 2 * depth / 3, -256, 256);
   }
 
   void UpdateTableScore(I16 &current_score, Score bonus) {
