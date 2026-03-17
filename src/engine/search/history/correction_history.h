@@ -47,7 +47,7 @@ class CorrectionHistory {
     }
 
     // Update continuation table scores
-    for (int ply_ago : {2, 3}) {
+    for (int ply_ago : {1, 2, 3}) {
       if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
           (stack - 1)->move) {
         auto &table = *(stack - ply_ago)->continuation_correction_entry;
@@ -78,7 +78,7 @@ class CorrectionHistory {
     const I32 continuation_correction = [&]() -> I32 {
       Score total = 0;
 
-      for (int ply_ago : {2, 3}) {
+      for (int ply_ago : {1, 2, 3}) {
         if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
             (stack - 1)->move) {
           auto &table = *(stack - ply_ago)->continuation_correction_entry;
