@@ -102,7 +102,8 @@ class CorrectionHistory {
   [[nodiscard]] ContinuationCorrectionEntry *GetContEntry(
       const BoardState &state, Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &continuation_table_[state.turn][state.GetPieceType(from)][to];
+    return &continuation_table_[state.turn][state.GetPieceType(
+        from)][to][state.threats.IsSet(from)][state.threats.IsSet(to)];
   }
 
  private:
@@ -143,7 +144,7 @@ class CorrectionHistory {
   MultiArray<I16, 16384, kNumColors> pawn_table_;
   MultiArray<I16, 16384, kNumColors> major_table_;
   MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
-  MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
+  MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64, 2, 2>
       continuation_table_;
 };
 
