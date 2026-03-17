@@ -1094,7 +1094,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more proportionally to the amount of times alpha was raised
-      reduction += 1024 * alpha_raises;
+      reduction += 512 * alpha_raises;
 
       stack->reduction = reduction;
 
