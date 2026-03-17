@@ -109,11 +109,11 @@ class CorrectionHistory {
   [[nodiscard]] I16 CalculateBonus(Score static_eval,
                                    Score search_score,
                                    int depth) {
-    return std::clamp((search_score - static_eval) * 2 * depth / 3, -256, 256);
+    return std::clamp((search_score - static_eval) * depth / 16, -256, 256);
   }
 
   void UpdateTableScore(I16 &current_score, Score bonus) {
-    current_score += ScaleBonus(current_score, bonus, 1024);
+    current_score += ScaleBonus(current_score, bonus, 2048);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
