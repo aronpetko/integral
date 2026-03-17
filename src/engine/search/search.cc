@@ -871,6 +871,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Keep track of the original alpha for bound determination when updating
   // the transposition table
   const int original_alpha = alpha;
+  int alpha_raises = 0;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
@@ -1092,6 +1093,9 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      // Reduce more proportionally to the amount of times alpha was raised
+      reduction += 1024 * alpha_raises;
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
@@ -1179,6 +1183,11 @@ Score Searcher::PVSearch(Thread &thread,
       if (score > alpha) {
         best_move = move;
 
+        // Count how many times alpha has been raised to a non-decisive score
+        if (std::abs(score) < kTBWinInMaxPlyScore) {
+          ++alpha_raises;
+        }
+
         if (in_pv_node && !in_root) {
           stack->pv.Clear();
           stack->pv.Push(move);
@@ -1206,9 +1215,6 @@ Score Searcher::PVSearch(Thread &thread,
           history.capture_history->Penalize(state, history_depth, captures);
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
-        } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
-                   alpha > -kTBWinInMaxPlyScore) {
-          --depth;
         }
       }
     }
