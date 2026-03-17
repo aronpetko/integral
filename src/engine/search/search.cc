@@ -358,6 +358,12 @@ Score Searcher::QuiescentSearch(Thread &thread,
       break;
     }
 
+    // Only play quiet TT move's if the position seems complex
+    if (move == tt_move && !tt_move.IsNoisy(state) &&
+        std::abs(stack->static_eval - raw_static_eval) < 100) {
+      continue;
+    }
+
     if (!board.IsMoveLegal(move)) {
       continue;
     }
