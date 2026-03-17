@@ -82,6 +82,8 @@ void Searcher::IterativeDeepening(Thread &thread) {
     }
   }
 
+  thread.optimism = {};
+
   for (int depth = 1; depth <= time_mgmt_.GetSearchDepth(); depth++) {
     for (thread.pv_move_idx = 0; thread.pv_move_idx < multi_pv;
          ++thread.pv_move_idx) {
@@ -89,6 +91,14 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
       const auto &cur_best_move = thread.root_moves[thread.pv_move_idx];
       const auto average_score = cur_best_move.average_score;
+
+      if (depth > 1) {
+        const auto turn = thread.board.GetState().turn;
+        const auto optimism =
+            150 * average_score / (std::abs(average_score) + 100);
+        thread.optimism[turn] = optimism;
+        thread.optimism[FlipColor(turn)] = -optimism;
+      }
 
       int window =
           kAspWindowDelta + average_score * average_score / kAspWindowScoreDiv;
@@ -228,7 +238,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
       *eval::kSeePieceScores[kBishop] * state.Bishops().PopCount() +
       *eval::kSeePieceScores[kRook] * state.Rooks().PopCount() +
       *eval::kSeePieceScores[kQueen] * state.Queens().PopCount();
-  static_eval = static_eval * (kMaterialScaleBase + material_phase) / 32768;
+  static_eval = (static_eval * (kMaterialScaleBase + material_phase) +
+                 thread.optimism[state.turn] * (1000 + material_phase));
+  static_eval /= 32768;
 #endif
 
   // Adjust based on prior search scores in similar positions

@@ -12,7 +12,7 @@
 
 namespace search {
 
-class Thread;
+struct Thread;
 
 struct TimeConfig {
   bool infinite = false;

@@ -106,9 +106,13 @@ struct alignas(64) Thread {
         stack({}),
         previous_score(kScoreNone),
         nodes_searched(0),
+        root_depth(0),
+        scores({}),
+        pv_move_idx(0),
         sel_depth(0),
         tb_hits(0),
-        nmp_min_ply(0) {
+        nmp_min_ply(0),
+        optimism({}) {
     NewGame();
   }
 
@@ -151,6 +155,7 @@ struct alignas(64) Thread {
   int pv_move_idx;
   RootMoveList root_moves;
   U16 nmp_min_ply;
+  std::array<Score, 2> optimism;
 };
 
 class Searcher {
@@ -210,7 +215,8 @@ class Searcher {
   Board &board_;
   TimeManagement time_mgmt_;
   std::atomic_bool stop_, quit_;
-  Barrier stop_barrier_, start_barrier_, search_end_barrier_, thread_init_barrier_;
+  Barrier stop_barrier_, start_barrier_, search_end_barrier_,
+      thread_init_barrier_;
   std::mutex stop_mutex_, thread_stopped_mutex_;
   std::atomic_int searching_threads_;
   std::condition_variable thread_stopped_signal_;
