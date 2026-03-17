@@ -221,6 +221,14 @@ void Searcher::IterativeDeepening(Thread &thread) {
                                      StackEntry *stack) {
   const auto &state = thread.board.GetState();
 
+  // Adjust eval based on the number of material left on the board
+  const auto material_phase =
+      *eval::kSeePieceScores[kKnight] * state.Knights().PopCount() +
+      *eval::kSeePieceScores[kBishop] * state.Bishops().PopCount() +
+      *eval::kSeePieceScores[kRook] * state.Rooks().PopCount() +
+      *eval::kSeePieceScores[kQueen] * state.Queens().PopCount();
+  static_eval = static_eval * (kMaterialScaleBase + material_phase) / 32768;
+
   // Adjust based on prior search scores in similar positions
   static_eval = thread.history.correction_history->CorrectStaticEval(
       state, stack, static_eval);
