@@ -996,12 +996,20 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
+        const int pv_double_margin = kSePvDoubleMargin * in_pv_node;
+        const int pv_triple_margin = kSePvTripleMargin * in_pv_node;
+
+        const bool is_double_singular =
+            tt_move_excluded_score <
+            new_beta - kSeDoubleMargin - pv_double_margin;
+
+        const bool is_triple_singular =
+            is_quiet && tt_move_excluded_score <
+                            new_beta - kSeTripleMargin - pv_triple_margin;
+
         // Extend more if the TT move is singular by a big margin
-        if (tt_move_excluded_score <
-            new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
-          extensions =
-              2 + (!in_pv_node && is_quiet &&
-                   tt_move_excluded_score < new_beta - kSeTripleMargin);
+        if (is_double_singular) {
+          extensions = 2 + is_triple_singular;
           depth += !in_pv_node && depth < kSeDepthExtensionDepth;
         } else {
           extensions = 1;
