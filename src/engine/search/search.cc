@@ -947,16 +947,17 @@ Score Searcher::PVSearch(Thread &thread,
           move_picker.SkipQuiets();
           continue;
         }
-      } else if (is_capture) {
+      } else if (is_capture &&
+                 move_picker.GetStage() == MovePicker::Stage::kBadNoisys) {
         const auto captured_piece_score =
             *eval::kSeePieceScores[move.IsEnPassant(state)
-                                      ? PieceType::kPawn
-                                      : state.GetPieceType(move.GetTo())];
+                                       ? PieceType::kPawn
+                                       : state.GetPieceType(move.GetTo())];
         const int futility_margin =
             kFutMarginBase +
             kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
             captured_piece_score;
-        if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+        if (lmr_depth <= kFutPruneDepth && !stack->in_check &&
             stack->static_eval + futility_margin < alpha) {
           break;
         }
