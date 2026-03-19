@@ -58,9 +58,8 @@ class CorrectionHistory {
     }
   }
 
-  [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
-                                        StackEntry *stack,
-                                        Score static_eval) const {
+  [[nodiscard]] std::pair<Score, I32> CorrectStaticEval(
+      const BoardState &state, StackEntry *stack, Score static_eval) const {
     const Score pawn_correction =
         pawn_table_[GetPawnTableIndex(state)][state.turn] *
         kPawnCorrectionWeight;
@@ -95,8 +94,10 @@ class CorrectionHistory {
                            continuation_correction;
     const I32 adjusted_score = static_cast<I32>(static_eval) + correction / 512;
     // Ensure no static evaluations are mate scores
-    return std::clamp(
-        adjusted_score, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1);
+    return {
+        std::clamp(
+            adjusted_score, -kTBWinInMaxPlyScore + 1, kTBWinInMaxPlyScore - 1),
+        correction};
   }
 
   [[nodiscard]] ContinuationCorrectionEntry *GetContEntry(

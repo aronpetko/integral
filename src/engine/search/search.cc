@@ -233,8 +233,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
 #endif
 
   // Adjust based on prior search scores in similar positions
-  static_eval = thread.history.correction_history->CorrectStaticEval(
-      state, stack, static_eval);
+  std::tie(static_eval, stack->correction_value) =
+      thread.history.correction_history->CorrectStaticEval(
+          state, stack, static_eval);
 
 #ifndef DATAGEN
   // Adjust based on proximity to a fifty-move-rule draw
@@ -637,7 +638,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Approximate the current evaluation at this node
   if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
-    stack->eval_complexity = 0;
+    stack->eval_complexity = 0, stack->correction_value = 0;
   } else if (!stack->excluded_tt_move) {
     raw_static_eval =
         tt_static_eval != kScoreNone ? tt_static_eval : eval::Evaluate(board);
@@ -1083,9 +1084,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      if (stack->eval_complexity > kLmrComplexityDiff) {
-        reduction -= kLmrComplexity;
-      }
+      reduction -= std::abs(stack->correction_value / 32768);
 
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
