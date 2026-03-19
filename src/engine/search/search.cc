@@ -935,16 +935,31 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
-      // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
+      // Futility Pruning: Skip futile moves at near-leaf nodes when
       // there's a low chance to raise alpha
-      const int futility_margin =
-          kFutMarginBase +
-          kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
-          stack->history_score / kFutMarginHistDiv;
-      if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
-          stack->static_eval + futility_margin < alpha) {
-        move_picker.SkipQuiets();
-        continue;
+      if (is_quiet) {
+        const int futility_margin =
+            kFutMarginBase +
+            kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
+            stack->history_score / kFutMarginHistDiv;
+        if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+            stack->static_eval + futility_margin < alpha) {
+          move_picker.SkipQuiets();
+          continue;
+        }
+      } else if (is_capture) {
+        const auto captured_piece_score =
+            *eval::kSeePieceScores[move.IsEnPassant(state)
+                                      ? PieceType::kPawn
+                                      : state.GetPieceType(move.GetTo())];
+        const int futility_margin =
+            kFutMarginBase +
+            kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
+            captured_piece_score;
+        if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
+            stack->static_eval + futility_margin < alpha) {
+          break;
+        }
       }
 
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
