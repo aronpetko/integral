@@ -1095,9 +1095,10 @@ Score Searcher::PVSearch(Thread &thread,
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
+      const bool lmr_extension = stack->reduction < -3072 && moves_seen <= 3;
       reduction = (reduction + kLmrRoundingCutoff) / kLmrScale;
       // Ensure the reduction doesn't give us a depth below 0
-      reduction = std::clamp(reduction, -1, new_depth - 1);
+      reduction = std::clamp(reduction, -1 - lmr_extension, new_depth - 1);
 
       // Null window search at reduced depth to see if the move had potential
       score = -PVSearch<NodeType::kNonPV>(
