@@ -301,6 +301,11 @@ Score Searcher::QuiescentSearch(Thread &thread,
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
+  // Keep track of the original alpha for bound determination when updating
+  // the transposition table
+  const int original_alpha = alpha;
+
+  int moves_seen = 0;
   Score best_score = kScoreNone;
   Score raw_static_eval = kScoreNone;
 
@@ -346,7 +351,6 @@ Score Searcher::QuiescentSearch(Thread &thread,
   }
 
   stack->threats = state.threats;
-  stack->moves_seen = 0;
 
   const Score futility_score = best_score + kQsFutMargin;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
@@ -359,7 +363,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
     if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        stack->moves_seen > 0) {
+        moves_seen > 0) {
       break;
     }
 
@@ -399,7 +403,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
 
-    stack->moves_seen++;
+    moves_seen++;
 
     if (score > best_score) {
       best_score = score;
@@ -431,7 +435,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     }
   }
 
-  if (stack->in_check && stack->moves_seen == 0) {
+  if (stack->in_check && moves_seen == 0) {
     return -kMateScore + stack->ply;
   }
 
@@ -582,7 +586,7 @@ Score Searcher::PVSearch(Thread &thread,
           history::HistoryPenalty(depth),
           stack - 1);
     }
-
+    
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
@@ -812,7 +816,7 @@ Score Searcher::PVSearch(Thread &thread,
                                   ? tt_move
                                   : Move::NullMove();
 
-        stack->moves_seen = 0;
+        int moves_seen = 0;
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
@@ -820,7 +824,7 @@ Score Searcher::PVSearch(Thread &thread,
             continue;
           }
 
-          ++stack->moves_seen;
+          ++moves_seen;
 
           stack->move = move;
           stack->moved_piece = state.GetPieceType(move.GetFrom());
@@ -881,7 +885,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
 
-  stack->moves_seen = 0;
+  int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
@@ -907,9 +911,8 @@ Score Searcher::PVSearch(Thread &thread,
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
       constexpr int kLmrDepthScale = 1024;
-      int reduction =
-          tables::kLateMoveReduction[is_quiet][depth][stack->moves_seen] *
-          kLmrDepthScale;
+      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
+                      kLmrDepthScale;
 
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
@@ -938,7 +941,7 @@ Score Searcher::PVSearch(Thread &thread,
       // the most promising moves
       const int lmp_threshold =
           (kLmpBase + depth * depth) / (3 - (improving || stack->eval >= beta));
-      if (is_quiet && stack->moves_seen >= lmp_threshold) {
+      if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
       }
@@ -1053,11 +1056,10 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && stack->moves_seen >= 1 + in_root * 2) {
+    if (depth > 2 && moves_seen >= 1 + in_root * 2) {
       constexpr int kLmrScale = 1024;
       reduction =
-          tables::kLateMoveReduction[is_quiet][depth][stack->moves_seen] *
-          kLmrScale;
+          tables::kLateMoveReduction[is_quiet][depth][moves_seen] * kLmrScale;
 
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
@@ -1126,7 +1128,7 @@ Score Searcher::PVSearch(Thread &thread,
       // If we didn't perform late move reduction, then we search this move at
       // full depth with a null window search if we don't expect it to be a PV
       // move
-      needs_full_search = !in_pv_node || stack->moves_seen >= 1;
+      needs_full_search = !in_pv_node || moves_seen >= 1;
     }
 
     // Either the move has potential from a reduced depth search or it's not
@@ -1145,7 +1147,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
 
     // Perform a full window search on this move if it's known to be good
-    if (in_pv_node && (score > alpha || stack->moves_seen == 0)) {
+    if (in_pv_node && (score > alpha || moves_seen == 0)) {
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
@@ -1156,7 +1158,7 @@ Score Searcher::PVSearch(Thread &thread,
       return 0;
     }
 
-    stack->moves_seen++;
+    stack->moves_seen = moves_seen++;
 
     if (in_root) {
       // Update the number of nodes we searched for this root move
@@ -1168,7 +1170,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       if (const auto root_move = thread.root_moves.FindRootMove(move)) {
-        if (stack->moves_seen == 1 || score > alpha) {
+        if (moves_seen == 1 || score > alpha) {
           root_move->score = score;
           root_move->average_score = root_move->average_score == kScoreNone
                                        ? score
@@ -1232,7 +1234,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   // Terminal state if no legal moves were found
-  if (stack->moves_seen == 0) {
+  if (moves_seen == 0) {
     if (stack->excluded_tt_move) return alpha;
     return stack->in_check ? -kMateScore + stack->ply : kDrawScore;
   }
