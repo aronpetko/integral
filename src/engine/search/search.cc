@@ -675,10 +675,9 @@ Score Searcher::PVSearch(Thread &thread,
       !prev_stack->in_check && !stack->in_check) {
     const I32 their_loss =
         stack->static_eval + prev_stack->static_eval - kEvalHistUpdateBias;
-    const I32 bonus = std::clamp<I32>(
-        -kEvalHistUpdateMult * their_loss / 10 + stack->correction_value / 1024,
-        -kEvalHistUpdateMin,
-        kEvalHistUpdateMax);
+    const I32 bonus = std::clamp<I32>(-kEvalHistUpdateMult * their_loss / 10,
+                                      -kEvalHistUpdateMin,
+                                      kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
@@ -725,7 +724,7 @@ Score Searcher::PVSearch(Thread &thread,
           depth * kRevFutMargin -
           (improving && !opponent_easy_capture) * kRevFutImprovingMargin -
           opponent_worsening * kRevFutOppWorseningMargin +
-          stack->eval_complexity * kRevFutComplexityMargin / 32 +
+          std::abs(stack->correction_value) / 2048 +
           (stack - 1)->history_score / kRevFutHistoryDiv;
       if (stack->eval - std::max<int>(futility_margin, kRevFutMinMargin) >=
           beta) {
