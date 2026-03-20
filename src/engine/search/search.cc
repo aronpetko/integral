@@ -359,6 +359,13 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   MovePicker move_picker(
       MovePickerType::kQuiescence, board, tt_move, history, stack);
+
+  if (!((stack->in_check && best_score <= -kTBWinInMaxPlyScore) ||
+        (!in_pv_node && tt_move && !tt_move.IsNoisy(state) &&
+         tt_entry->flag != TranspositionTableEntry::kUpperBound))) {
+    move_picker.SkipQuiets();
+  }
+
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion

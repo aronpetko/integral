@@ -77,6 +77,7 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
+  //
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves

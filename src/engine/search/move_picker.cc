@@ -44,7 +44,8 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      see_threshold_(see_threshold) {}
+      see_threshold_(see_threshold),
+      skip_quiets_(false) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
@@ -82,11 +83,12 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
-      return Move::NullMove();
+    if (skip_quiets_) {
+      stage_ = Stage::kBadNoisys;
+      moves_idx_ = 0;
+    } else {
+      stage_ = Stage::kFirstKiller;
     }
-
-    stage_ = Stage::kFirstKiller;
   }
 
   if (stage_ == Stage::kFirstKiller) {
@@ -113,6 +115,11 @@ Move MovePicker::Next() {
         return second_killer;
       }
     }
+  }
+
+  if (skip_quiets_ && stage_ != Stage::kBadNoisys) {
+    stage_ = Stage::kBadNoisys;
+    moves_idx_ = 0;
   }
 
   if (stage_ == Stage::kGenerateQuiets) {
@@ -142,10 +149,7 @@ Move MovePicker::Next() {
 }
 
 void MovePicker::SkipQuiets() {
-  if (stage_ == Stage::kQuiets) {
-    stage_ = Stage::kBadNoisys;
-    moves_idx_ = 0;
-  }
+  skip_quiets_ = true;
 }
 
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
