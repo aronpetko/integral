@@ -675,9 +675,10 @@ Score Searcher::PVSearch(Thread &thread,
       !prev_stack->in_check && !stack->in_check) {
     const I32 their_loss =
         stack->static_eval + prev_stack->static_eval - kEvalHistUpdateBias;
-    const I32 bonus = std::clamp<I32>(-kEvalHistUpdateMult * their_loss / 10,
-                                      -kEvalHistUpdateMin,
-                                      kEvalHistUpdateMax);
+    const I32 bonus = std::clamp<I32>(
+        -kEvalHistUpdateMult * their_loss / 10 + stack->correction_value / 1024,
+        -kEvalHistUpdateMin,
+        kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
@@ -948,6 +949,16 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
+      // History Pruning: Prune moves with a low history score moves at
+      // near-leaf nodes
+      const int history_margin =
+          is_quiet ? kHistThreshBase + kHistThreshMult * depth
+                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
+      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
+        move_picker.SkipQuiets();
+        continue;
+      }
+
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold = [&]() -> int {
@@ -959,16 +970,6 @@ Score Searcher::PVSearch(Thread &thread,
       }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(move, see_threshold, state)) {
-        continue;
-      }
-
-      // History Pruning: Prune moves with a low history score moves at
-      // near-leaf nodes
-      const int history_margin =
-          is_quiet ? kHistThreshBase + kHistThreshMult * depth
-                   : kCaptHistThreshBase + kCaptHistThreshMult * depth;
-      if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
         continue;
       }
     }
@@ -1084,8 +1085,9 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      reduction -= std::abs(stack->correction_value / 32768);
-
+      if (stack->eval_complexity > kLmrComplexityDiff) {
+        reduction -= kLmrComplexity;
+      }
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0] || move == stack->killer_moves[1]) {
         reduction -= kLmrKillerMoves;
