@@ -944,7 +944,8 @@ Score Searcher::PVSearch(Thread &thread,
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin <= alpha &&
           !board.MoveGivesDirectCheck(move)) {
-        continue;
+        move_picker.SkipQuiets();
+        break;
       }
 
       // History Pruning: Prune moves with a low history score moves at
