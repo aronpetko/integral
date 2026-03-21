@@ -877,6 +877,7 @@ Score Searcher::PVSearch(Thread &thread,
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
+  int extensions = 0;
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -975,7 +976,6 @@ Score Searcher::PVSearch(Thread &thread,
     // Singular Extensions: If a TT move exists and its score is accurate
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
-    int extensions = 0;
     if (!in_root && depth >= kSeDepth && move == tt_move &&
         tt_entry->depth + 3 >= depth &&
         tt_entry->flag != TranspositionTableEntry::kUpperBound &&
@@ -1038,7 +1038,8 @@ Score Searcher::PVSearch(Thread &thread,
         thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
     // Principal Variation Search (PVS)
-    int new_depth = depth + extensions - 1;
+    int new_depth =
+        moves_seen == 0 ? depth + extensions - 1 : depth + (extensions > 0) - 1;
     int reduction = 0;
     bool needs_full_search;
     Score score;
