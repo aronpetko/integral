@@ -362,7 +362,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
                          tt_move,
                          history,
                          stack,
-                         (stack->static_eval - alpha) / 8);
+                         (alpha - stack->static_eval) / 8);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
