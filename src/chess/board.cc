@@ -465,6 +465,23 @@ bool Board::IsInsufficientMaterial() const {
   return false;
 }
 
+bool Board::MoveGivesDirectCheck(Move move) const {
+  const auto from = move.GetFrom(), to = move.GetTo();
+  const auto moving_piece_type =
+      move.GetType() == MoveType::kPromotion
+          ? static_cast<int>(move.GetPromotionType()) + 1
+          : state_.GetPieceType(from);
+  if (moving_piece_type == PieceType::kKing) {
+    return false;
+  }
+
+  const auto relevant_check_zones =
+      moving_piece_type == PieceType::kQueen
+          ? state_.check_zones[kBishop] | state_.check_zones[kRook]
+          : state_.check_zones[moving_piece_type];
+  return relevant_check_zones.IsSet(to);
+}
+
 void Board::HandleCastling(Move move) {
   const Color us = state_.turn;
   const bool is_white = us == Color::kWhite;
@@ -563,6 +580,16 @@ void Board::CalculateKingThreats() {
       state_.pinned[us] |= pinned;
     }
   }
+
+  // Calculate enemy king superpiece squares that a piece of that type could
+  // give check by moving to
+  const Square their_king_square = state_.King(them).GetLsb();
+  state_.check_zones[kPawn] = move_gen::PawnAttacks(their_king_square, them);
+  state_.check_zones[kKnight] = move_gen::KnightMoves(their_king_square);
+  state_.check_zones[kBishop] =
+      move_gen::BishopMoves(their_king_square, state_.Occupied());
+  state_.check_zones[kRook] =
+      move_gen::RookMoves(their_king_square, state_.Occupied());
 }
 
 BitBoard Board::GetOpponentWinningCaptures() const {

@@ -274,6 +274,7 @@ struct BoardState {
   BitBoard threats;
   std::array<BitBoard, kNumPieceTypes> threatened_by;
   std::array<BitBoard, kNumColors> pinned;
+  std::array<BitBoard, 4> check_zones;
 };
 
 class Board {
@@ -327,6 +328,8 @@ class Board {
   [[nodiscard]] bool IsRepetition(U16 ply) const;
 
   [[nodiscard]] bool IsInsufficientMaterial() const;
+
+  [[nodiscard]] bool MoveGivesDirectCheck(Move move) const;
 
   void CalculateKingThreats();
 
