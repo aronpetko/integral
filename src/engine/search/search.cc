@@ -712,6 +712,10 @@ Score Searcher::PVSearch(Thread &thread,
         !opponent_worsening) {
       ++depth;
     }
+    
+    if (stack->excluded_tt_move && stack->eval_complexity >= 50 && depth <= 8) {
+      ++depth;
+    }
 
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
