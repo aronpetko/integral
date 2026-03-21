@@ -945,7 +945,7 @@ Score Searcher::PVSearch(Thread &thread,
           stack->static_eval + futility_margin <= alpha &&
           !board.MoveGivesDirectCheck(move)) {
         move_picker.SkipQuiets();
-        break;
+        continue;
       }
 
       // History Pruning: Prune moves with a low history score moves at
