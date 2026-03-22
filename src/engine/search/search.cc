@@ -1060,7 +1060,7 @@ Score Searcher::PVSearch(Thread &thread,
       if (tt_was_in_pv) {
         reduction -= kLmrWasPvNode;
 
-        if (tt_entry->score != TranspositionTableEntry::kNone &&
+        if (tt_entry->score != TranspositionTableEntry::kUpperBound &&
             tt_entry->score > alpha) {
           reduction -= 512;
         }
