@@ -363,7 +363,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
     if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
-        moves_seen > 0) {
+        moves_seen > 0 && !board.MoveGivesDirectCheck(move)) {
       break;
     }
 
