@@ -1059,6 +1059,11 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if we have seen this node in the PV before
       if (tt_was_in_pv) {
         reduction -= kLmrWasPvNode;
+
+        if (tt_entry->score != TranspositionTableEntry::kNone &&
+            tt_entry->score > alpha) {
+          reduction -= 1024;
+        }
       }
 
       // Reduce more if this node is expected to fail high
