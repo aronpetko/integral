@@ -1093,6 +1093,12 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      // Reduce less if this move is a recapture
+      if (is_capture && (stack - 1)->capture_move &&
+          move.GetTo() == (stack - 1)->move.GetTo()) {
+        reduction -= 1024;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
