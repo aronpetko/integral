@@ -1062,7 +1062,7 @@ Score Searcher::PVSearch(Thread &thread,
 
         if (tt_entry->score != TranspositionTableEntry::kNone &&
             tt_entry->score > alpha) {
-          reduction -= 1024;
+          reduction -= 512;
         }
       }
 
