@@ -983,7 +983,11 @@ Score Searcher::PVSearch(Thread &thread,
         std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         stack->ply < thread.root_depth * 2) {
       const int reduced_depth = kSeDepthReduction * (depth - 1) / 16;
-      const Score new_beta = tt_entry->score - kSeBetaMargin * depth / 16;
+      const Score new_beta =
+          tt_entry->score -
+          kSeBetaMargin *
+              (tt_entry->flag == TranspositionTableEntry::kExact ? 1 : 2) *
+              depth / 16;
 
       stack->excluded_tt_move = tt_move;
       const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
