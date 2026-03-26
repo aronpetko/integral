@@ -1002,10 +1002,10 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
+        tt_move_is_singular = true;
         // Extend more if the TT move is singular by a big margin
         if (tt_move_excluded_score <
             new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
-          tt_move_is_singular = true;
           extensions =
               2 + (!in_pv_node && is_quiet &&
                    tt_move_excluded_score < new_beta - kSeTripleMargin);
