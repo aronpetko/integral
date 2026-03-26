@@ -877,6 +877,7 @@ Score Searcher::PVSearch(Thread &thread,
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
+  bool tt_move_is_singular = false;
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -916,6 +917,10 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce more if our static evaluation is going down
       if (!improving) {
         reduction += kLmrDepthNotImproving;
+      }
+
+      if (tt_move_is_singular) {
+        reduction += 1024;
       }
 
       const int lmr_fractional_depth =
@@ -1000,6 +1005,7 @@ Score Searcher::PVSearch(Thread &thread,
         // Extend more if the TT move is singular by a big margin
         if (tt_move_excluded_score <
             new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
+          tt_move_is_singular = true;
           extensions =
               2 + (!in_pv_node && is_quiet &&
                    tt_move_excluded_score < new_beta - kSeTripleMargin);
