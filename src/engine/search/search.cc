@@ -930,7 +930,8 @@ Score Searcher::PVSearch(Thread &thread,
       // the most promising moves
       const int lmp_threshold =
           (kLmpBase + depth * depth) / (3 - (improving || stack->eval >= beta));
-      if (is_quiet && moves_seen >= lmp_threshold) {
+      if (is_quiet && moves_seen >= lmp_threshold &&
+          !board.MoveGivesDirectCheck(move)) {
         move_picker.SkipQuiets();
         continue;
       }
