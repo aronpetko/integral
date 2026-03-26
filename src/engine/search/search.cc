@@ -919,10 +919,6 @@ Score Searcher::PVSearch(Thread &thread,
         reduction += kLmrDepthNotImproving;
       }
 
-      if (tt_move_is_singular) {
-        reduction += 1024;
-      }
-
       const int lmr_fractional_depth =
           std::max(depth * kLmrDepthScale - reduction, 0);
 
@@ -934,7 +930,8 @@ Score Searcher::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const int lmp_threshold =
-          (kLmpBase + depth * depth) / (3 - (improving || stack->eval >= beta));
+          (kLmpBase + depth * depth) /
+          (3 - (improving || stack->eval >= beta || tt_move_is_singular));
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
         continue;
