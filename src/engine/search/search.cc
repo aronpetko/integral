@@ -946,7 +946,9 @@ Score Searcher::PVSearch(Thread &thread,
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin <= alpha &&
           !board.MoveGivesDirectCheck(move)) {
-        move_picker.SkipQuiets();
+        if (move_picker.GetStage() == MovePicker::Stage::kQuiets) {
+          move_picker.SkipQuiets();
+        }
         continue;
       }
 
@@ -956,7 +958,9 @@ Score Searcher::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        if (is_quiet) {
+        // Don't allow a history-pruned killer move to skip all other quiets
+        if (is_quiet && move != stack->killer_moves[0] &&
+            move != stack->killer_moves[1]) {
           move_picker.SkipQuiets();
         }
         continue;
