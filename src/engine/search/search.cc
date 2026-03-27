@@ -930,9 +930,11 @@ Score Searcher::PVSearch(Thread &thread,
       // the most promising moves
       const int lmp_threshold =
           (kLmpBase + depth * depth) / (3 - (improving || stack->eval >= beta));
-      if (is_quiet && moves_seen >= lmp_threshold) {
+      if (moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
-        continue;
+        if (is_quiet) {
+          continue;
+        }
       }
 
       // Futility Pruning: Skip (futile) quiet moves at near-leaf nodes when
@@ -954,7 +956,9 @@ Score Searcher::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
+        if (is_quiet) {
+          move_picker.SkipQuiets();
+        }
         continue;
       }
 
