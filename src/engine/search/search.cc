@@ -514,11 +514,41 @@ Score Searcher::PVSearch(Thread &thread,
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
 
+  const U64 zobrist_key =
+      state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
+
+  // Probe the transposition table to see if we have already evaluated this
+  // position
+  auto tt_move = Move::NullMove();
+  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  Score tt_static_eval = kScoreNone;
+
+  const auto &tt_entry = transposition_table_.Probe(zobrist_key);
+  tt_hit = tt_entry->CompareKey(zobrist_key);
+
+  // Use the TT entry's evaluation if possible
+  if (tt_hit) {
+    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+    tt_was_in_pv |= tt_entry->was_in_pv;
+    tt_move = tt_entry->move;
+    tt_static_eval = tt_entry->static_eval;
+  }
+
   // If the position has a move that causes a repetition, and we are losing,
   // then we can cut off early since we can secure a draw
   if (!in_root && alpha < kDrawScore &&
       board.HasUpcomingRepetition(stack->ply)) {
     if ((alpha = kDrawScore) >= beta) {
+      const TranspositionTableEntry new_tt_entry(
+          zobrist_key,
+          0,
+          TranspositionTableEntry::kLowerBound,
+          alpha,
+          kScoreNone,
+          Move::NullMove(),
+          in_pv_node);
+      transposition_table_.Save(
+          tt_entry, new_tt_entry, zobrist_key, stack->ply, tt_was_in_pv);
       return alpha;
     }
   }
@@ -545,26 +575,6 @@ Score Searcher::PVSearch(Thread &thread,
     if (alpha >= beta) {
       return alpha;
     }
-  }
-
-  // Probe the transposition table to see if we have already evaluated this
-  // position
-  auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
-  Score tt_static_eval = kScoreNone;
-
-  const U64 zobrist_key =
-      state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
-
-  const auto &tt_entry = transposition_table_.Probe(zobrist_key);
-  tt_hit = tt_entry->CompareKey(zobrist_key);
-
-  // Use the TT entry's evaluation if possible
-  if (tt_hit) {
-    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
-    tt_was_in_pv |= tt_entry->was_in_pv;
-    tt_move = tt_entry->move;
-    tt_static_eval = tt_entry->static_eval;
   }
 
   if (in_root) {
