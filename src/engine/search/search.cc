@@ -573,9 +573,13 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
-      (cut_node || tt_entry->score <= alpha) &&
-      tt_entry->depth > depth - (tt_entry->score <= beta)) {
+  const auto check_tt_cutoff = [&]() {
+    return !stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
+           (cut_node || tt_entry->score <= alpha) &&
+           tt_entry->depth > depth - (tt_entry->score <= beta);
+  };
+
+  if (check_tt_cutoff()) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
@@ -866,6 +870,11 @@ Score Searcher::PVSearch(Thread &thread,
   if ((in_pv_node || cut_node) && depth >= kIirDepth &&
       !stack->excluded_tt_move && (!tt_move || tt_entry->depth + 4 < depth)) {
     depth--;
+  }
+
+  // Check if we are able to make a TT cutoff after depth adjustments
+  if (check_tt_cutoff()) {
+    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
   // Keep track of the original alpha for bound determination when updating
