@@ -1093,6 +1093,8 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      reduction += (stack - 1)->reduction / 16;
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
