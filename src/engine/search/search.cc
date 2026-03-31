@@ -713,6 +713,11 @@ Score Searcher::PVSearch(Thread &thread,
       ++depth;
     }
 
+    if (!stack->excluded_tt_move && prev_stack->reduction <= 512 &&
+        depth >= 2 && stack->static_eval + prev_stack->static_eval > 150) {
+      --depth;
+    }
+
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
