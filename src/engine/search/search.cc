@@ -337,7 +337,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
             kScoreNone,
             raw_static_eval,
             Move::NullMove(),
-            tt_was_in_pv);
+            tt_was_in_pv,
+            true);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
       }
@@ -467,8 +468,9 @@ Score Searcher::QuiescentSearch(Thread &thread,
                                              tt_flag,
                                              best_score,
                                              raw_static_eval,
-                                             Move::NullMove(),
-                                             tt_was_in_pv);
+                                             best_move,
+                                             tt_was_in_pv,
+                                             true);
   transposition_table_.Save(
       tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
 
@@ -614,7 +616,8 @@ Score Searcher::PVSearch(Thread &thread,
                                                    score,
                                                    tt_static_eval,
                                                    Move::NullMove(),
-                                                   tt_was_in_pv);
+                                                   tt_was_in_pv,
+                                                   false);
         transposition_table_.Save(
             tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
         return score;
@@ -650,7 +653,8 @@ Score Searcher::PVSearch(Thread &thread,
                                                  kScoreNone,
                                                  raw_static_eval,
                                                  Move::NullMove(),
-                                                 tt_was_in_pv);
+                                                 tt_was_in_pv,
+                                                 false);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
@@ -851,7 +855,8 @@ Score Searcher::PVSearch(Thread &thread,
                 score,
                 raw_static_eval,
                 Move::NullMove(),
-                tt_was_in_pv);
+                tt_was_in_pv,
+                false);
             transposition_table_.Save(
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
@@ -1270,7 +1275,8 @@ Score Searcher::PVSearch(Thread &thread,
                                                  best_score,
                                                  raw_static_eval,
                                                  best_move,
-                                                 tt_was_in_pv);
+                                                 tt_was_in_pv,
+                                                 false);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }

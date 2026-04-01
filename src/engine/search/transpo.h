@@ -26,7 +26,8 @@ struct TranspositionTableEntry {
         move(Move::NullMove()),
         age(0),
         was_in_pv(false),
-        flag(kNone) {}
+        flag(kNone),
+        qs(false) {}
 
   explicit TranspositionTableEntry(U64 key,
                                    U8 depth,
@@ -34,7 +35,8 @@ struct TranspositionTableEntry {
                                    Score score,
                                    Score static_eval,
                                    Move move,
-                                   bool was_in_pv)
+                                   bool was_in_pv,
+                                   bool in_qs)
       : key(static_cast<U16>(key)),
         depth(depth),
         score(score),
@@ -42,7 +44,8 @@ struct TranspositionTableEntry {
         move(move),
         age(0),
         was_in_pv(was_in_pv),
-        flag(flag) {}
+        flag(flag),
+        qs(in_qs) {}
 
   // Keys are packed to maximize the number of entries the table can hold
   // Therefore, we must down-cast when checking for key equality
@@ -73,9 +76,10 @@ struct TranspositionTableEntry {
   U8 depth;
   union {
     struct {
-      U8 age : 5;
+      U8 age : 4;
       U8 was_in_pv : 1;
       U8 flag : 2;
+      U8 qs : 1;
     };
     U8 extra_bits;
   };
@@ -90,7 +94,7 @@ struct TranspositionTableCluster {
   U16 padding;
 };
 
-constexpr int kMaxTTAge = 32;
+constexpr int kMaxTTAge = 16;
 
 class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
  public:
@@ -105,7 +109,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
             TranspositionTableEntry new_entry,
             const U64 &key,
             I32 ply,
-            bool in_pv);
+            bool in_pv) const;
 
   void Age();
 

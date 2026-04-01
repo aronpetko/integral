@@ -36,8 +36,9 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               TranspositionTableEntry new_entry,
                               const U64 &key,
                               I32 ply,
-                              bool in_pv) {
-  if (new_entry.move || !old_entry->CompareKey(key)) {
+                              bool in_pv) const {
+  if ((new_entry.move && (old_entry->qs || !new_entry.qs)) ||
+      !old_entry->CompareKey(key)) {
     old_entry->move = new_entry.move;
   }
 
@@ -55,6 +56,7 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
     old_entry->flag = new_entry.flag;
     old_entry->was_in_pv = new_entry.was_in_pv;
     old_entry->static_eval = new_entry.static_eval;
+    old_entry->qs = new_entry.qs;
   }
 }
 
