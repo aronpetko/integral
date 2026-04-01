@@ -713,11 +713,6 @@ Score Searcher::PVSearch(Thread &thread,
       ++depth;
     }
 
-    if (!stack->excluded_tt_move && prev_stack->reduction <= 512 &&
-        depth >= 2 && stack->static_eval + prev_stack->static_eval > 150) {
-      --depth;
-    }
-
     const bool opponent_easy_capture = board.GetOpponentWinningCaptures() != 0;
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
@@ -749,7 +744,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we
     // still have the advantage
-    if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
+    if (!(stack - 1)->move.IsNull() && stack->eval >= beta + 30 &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
         !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
       // Avoid null move pruning a position with high zugzwang potential
