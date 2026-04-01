@@ -38,7 +38,8 @@ class MovePicker {
              Move tt_move,
              history::History &history,
              StackEntry *stack,
-             int see_threshold = 0);
+             int see_threshold = 0,
+             bool force_evasions = false);
 
   Move Next();
 
@@ -67,6 +68,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
   int see_threshold_;
+  bool force_evasions_;
 };
 
 }  // namespace search
