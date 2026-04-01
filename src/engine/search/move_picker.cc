@@ -130,7 +130,7 @@ Move MovePicker::Next() {
     moves_idx_ = 0;
   }
 
-  if (stage_ == Stage::kBadNoisys) {
+  if (stage_ == Stage::kBadNoisys && type_ != MovePickerType::kNoisy) {
     if (moves_idx_ < bad_noisys_.Size()) {
       // The bad noisys are already sorted when we split them off in the good
       // noisys stage
