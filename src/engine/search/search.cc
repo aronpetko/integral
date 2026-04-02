@@ -1021,7 +1021,7 @@ Score Searcher::PVSearch(Thread &thread,
         if (tt_entry->score >= tt_move_excluded_score) {
           const TranspositionTableEntry new_tt_entry(
               zobrist_key,
-              depth,
+              reduced_depth,
               TranspositionTableEntry::kLowerBound,
               tt_entry->score,
               raw_static_eval,
