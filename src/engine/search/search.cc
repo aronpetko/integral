@@ -1018,6 +1018,18 @@ Score Searcher::PVSearch(Thread &thread,
       // would cause a cutoff based on our current search window
       else if (tt_move_excluded_score >= beta &&
                std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
+        if (tt_entry->score >= tt_move_excluded_score) {
+          const TranspositionTableEntry new_tt_entry(
+              zobrist_key,
+              depth,
+              TranspositionTableEntry::kLowerBound,
+              tt_entry->score,
+              raw_static_eval,
+              tt_move,
+              tt_was_in_pv);
+          transposition_table_.Save(
+              tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
+        }
         return tt_move_excluded_score;
       }
       // Negative Extensions: Search less since the TT move was not
