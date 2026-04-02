@@ -56,7 +56,7 @@ Move MovePicker::Next() {
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
-          tt_move_.IsNoisy(state)) {
+          tt_move_.IsNoisy(state) || force_evasions_) {
         return tt_move_;
       }
     }
