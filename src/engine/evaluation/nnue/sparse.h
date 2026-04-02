@@ -8,8 +8,6 @@
 #include "../../../utils/types.h"
 #include "nnue.h"
 
-#define SPARSE_PERMUTE
-
 // #if BUILD_HAS_SIMD
 namespace nnue::sparse {
 
