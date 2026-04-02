@@ -30,6 +30,19 @@ namespace nnue {
   return std::clamp(value, 0.0f, 1.0f);
 }
 
+// helpers
+inline float clamp01(float x) {
+  return std::clamp(x, 0.0f, 1.0f);
+}
+
+inline float HardSwish6(float x) {
+  return x * clamp01(x * (1.0f / 6.0f) + 0.5f);
+}
+
+inline float HardSigmoid6(float x) {
+  return clamp01(x * (1.0f / 6.0f) + 0.5f);
+}
+
 void LoadFromIncBin() {
   // Load raw network from binary data
   network = reinterpret_cast<Network*>(const_cast<unsigned char*>(gEVALData));
@@ -173,46 +186,32 @@ Score Evaluate(Board &board) {
       static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
                          arch::kL1Quantization);
   const auto l1_multiplier_vector = simd::SetPs(kL1Normalization);
-  const auto zero_float_vector = simd::ZeroPs(),
-             one_float_vector = simd::SetPs(1.0f);
+  const auto zero_float_vector = simd::ZeroPs();
+  const auto one_float_vector = simd::SetPs(1.0f);
+  const auto one_sixth_vector = simd::SetPs(1.0f / 6.0f);
+  const auto half_vector = simd::SetPs(0.5f);
 
+  // Activate 2nd layer neurons with HardSwish6
   alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL2Size; i += kF32ChunkSize) {
     const auto bias_vector =
         *reinterpret_cast<simd::Vepf32 *>(&network->l1_biases[bucket][i]);
     const auto float_vector =
         simd::ConvertEpi32ToPs(*reinterpret_cast<simd::Vepi32 *>(&l1_sums[i]));
-    const auto casted_sum =
+    const auto sum_vector =
         simd::MultiplyAddPs(float_vector, l1_multiplier_vector, bias_vector);
+
+    const auto scaled_gate =
+        simd::MultiplyAddPs(sum_vector, one_sixth_vector, half_vector);
+    const auto clamped_gate =
+        simd::MinPs(simd::MaxPs(scaled_gate, zero_float_vector),
+                    one_float_vector);
+
     auto &features = *reinterpret_cast<simd::Vepf32 *>(&l1_output[i]);
-    features = simd::MinPs(simd::MaxPs(casted_sum, zero_float_vector),
-                           one_float_vector);
+    features = simd::MultiplyPs(sum_vector, clamped_gate);
   }
 
-  // Forward the feature layer neurons to the 2nd layer
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_sums;
-  std::memcpy(
-      l2_sums.data(), network->l2_biases[bucket].data(), sizeof(l2_sums));
-
-  for (int i = 0; i < arch::kL2Size; i++) {
-    const auto l1_vector = simd::SetPs(l1_output[i]);
-    for (int j = 0; j < arch::kL3Size; j += kF32ChunkSize) {
-      const auto weight_vector =
-          *reinterpret_cast<simd::Vepf32 *>(&network->l2_weights[bucket][i][j]);
-      auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[j]);
-      features = simd::MultiplyAddPs(weight_vector, l1_vector, features);
-    }
-  }
-
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output;
-  for (int i = 0; i < arch::kL3Size; i += kF32ChunkSize) {
-    const auto &sum_vector = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[i]);
-    auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
-    features = simd::MinPs(simd::MaxPs(sum_vector, zero_float_vector),
-                           one_float_vector);
-  }
-
-  // Forward the feature layer neurons to the 3rd (final) layer
+  // Forward the 2nd layer neurons to the 3rd layer and fuse the final layer
   constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
   const auto zero_ps = simd::SetPs(0.0f);
 
@@ -221,12 +220,41 @@ Score Evaluate(Board &board) {
 
   for (int i = 0; i < arch::kL3Size / kF32ChunkSize; i += kResultChunks) {
     for (int chunk = 0; chunk < kResultChunks; chunk++) {
+      const int base = (i + chunk) * kF32ChunkSize;
+
+      auto value_vector = *reinterpret_cast<simd::Vepf32 *>(
+          &network->l2_biases[bucket][base]);
+      auto gate_vector = *reinterpret_cast<simd::Vepf32 *>(
+          &network->l2_biases[bucket][base + arch::kL3Size]);
+
+      // Matrix multiply l2 -> l3 (value + gate halves)
+      for (int j = 0; j < arch::kL2Size; j++) {
+        const auto l2_vector = simd::SetPs(l1_output[j]);
+
+        const auto value_weight_vector = *reinterpret_cast<simd::Vepf32 *>(
+            &network->l2_weights[bucket][j][base]);
+        const auto gate_weight_vector = *reinterpret_cast<simd::Vepf32 *>(
+            &network->l2_weights[bucket][j][base + arch::kL3Size]);
+
+        value_vector =
+            simd::MultiplyAddPs(value_weight_vector, l2_vector, value_vector);
+        gate_vector =
+            simd::MultiplyAddPs(gate_weight_vector, l2_vector, gate_vector);
+      }
+
+      // Activate l3 with HardSwiGLU6
+      const auto scaled_gate =
+          simd::MultiplyAddPs(gate_vector, one_sixth_vector, half_vector);
+      const auto clamped_gate =
+          simd::MinPs(simd::MaxPs(scaled_gate, zero_float_vector),
+                      one_float_vector);
+      value_vector = simd::MultiplyPs(value_vector, clamped_gate);
+
+      // Matrix multiply l3 -> out
       const auto weight_vector = *reinterpret_cast<simd::Vepf32 *>(
-          &network->l3_weights[bucket][(i + chunk) * kF32ChunkSize]);
-      const auto &l2_vector = *reinterpret_cast<simd::Vepf32 *>(
-          &l2_output[(i + chunk) * kF32ChunkSize]);
+          &network->l3_weights[bucket][base]);
       result_sums[chunk] =
-          simd::MultiplyAddPs(l2_vector, weight_vector, result_sums[chunk]);
+          simd::MultiplyAddPs(value_vector, weight_vector, result_sums[chunk]);
     }
   }
 
@@ -234,7 +262,6 @@ Score Evaluate(Board &board) {
       simd::ReduceAddPs(result_sums.data()) + network->l3_biases[bucket];
 
   return static_cast<Score>(l3_output * arch::kEvalScale);
-
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
   std::array<U8, arch::kL1Size> feature_output{};
@@ -271,16 +298,18 @@ Score Evaluate(Board &board) {
   // Activate 2nd layer neurons
   std::array<float, arch::kL2Size> l1_output{};
   for (int i = 0; i < arch::kL2Size; i++) {
-    l1_output[i] = CReLU(static_cast<float>(l1_sums[i]) * kL1Normalization +
-                         network->l1_biases[bucket][i]);
+    const float sum =
+        static_cast<float>(l1_sums[i]) * kL1Normalization +
+        network->l1_biases[bucket][i];
+    l1_output[i] = HardSwish6(sum);
   }
 
   // Forward the 2nd layer neurons to the 3rd layer
-  std::array<float, arch::kL3Size> l2_output{};
+  std::array<float, arch::kL3Size * 2> l2_output{};
   std::memcpy(
       l2_output.data(), network->l2_biases[bucket].data(), sizeof(l2_output));
   for (int i = 0; i < arch::kL2Size; i++) {
-    for (int j = 0; j < arch::kL3Size; j++) {
+    for (int j = 0; j < arch::kL3Size * 2; j++) {
       l2_output[j] = std::fma(
           l1_output[i], network->l2_weights[bucket][i][j], l2_output[j]);
     }
@@ -292,9 +321,15 @@ Score Evaluate(Board &board) {
 
   for (int i = 0; i < arch::kL3Size; i += kResultChunks) {
     for (int chunk = 0; chunk < kResultChunks; chunk++) {
-      const float activated = CReLU(l2_output[i + chunk]);
+      const int idx = i + chunk;
+
+      const float value = l2_output[idx];
+      const float gate = l2_output[idx + arch::kL3Size];
+
+      const float activated = value * HardSigmoid6(gate);
+
       result_sums[chunk] = std::fma(activated,
-                                    network->l3_weights[bucket][i + chunk],
+                                    network->l3_weights[bucket][idx],
                                     result_sums[chunk]);
     }
   }
