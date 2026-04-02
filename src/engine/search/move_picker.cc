@@ -36,7 +36,8 @@ MovePicker::MovePicker(MovePickerType type,
                        Move tt_move,
                        history::History &history,
                        StackEntry *stack,
-                       int see_threshold)
+                       int see_threshold,
+                       bool force_evasions)
     : board_(board),
       tt_move_(tt_move),
       type_(type),
@@ -44,7 +45,8 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      see_threshold_(see_threshold) {}
+      see_threshold_(see_threshold),
+      force_evasions_(force_evasions) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
@@ -54,7 +56,7 @@ Move MovePicker::Next() {
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
-          tt_move_.IsNoisy(state)) {
+          tt_move_.IsNoisy(state) || force_evasions_) {
         return tt_move_;
       }
     }
@@ -82,7 +84,7 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck() && !force_evasions_) {
       return Move::NullMove();
     }
 
