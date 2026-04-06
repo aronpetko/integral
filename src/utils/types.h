@@ -20,7 +20,6 @@ using I64 = std::int64_t;
 using U128 = unsigned __int128;
 
 constexpr int kMaxPlyFromRoot = 256;
-constexpr int kMaxGamePly = 512;
 
 enum PieceType : U8 {
   kPawn,
@@ -298,5 +297,13 @@ const Score kInfiniteScore = std::numeric_limits<I16>::max();
 const Score kTBWinScore = kMateScore - kMaxPlyFromRoot - 1;
 const Score kTBWinInMaxPlyScore = kTBWinScore - kMaxPlyFromRoot;
 const Score kScoreNone = -kInfiniteScore;
+
+template <typename T, typename... Ts>
+struct is_all_same {
+  static constexpr bool value = (std::is_same_v<T, Ts> && ...);
+};
+
+template <typename... Ts>
+constexpr auto is_all_same_v = is_all_same<Ts...>::value;
 
 #endif  // INTEGRAL_TYPES_H_

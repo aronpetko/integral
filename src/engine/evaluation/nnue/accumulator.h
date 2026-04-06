@@ -4,6 +4,7 @@
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
 #include "../../../chess/board.h"
+#include "../../../utils/fused.h"
 #include "nnue.h"
 
 namespace nnue {
@@ -76,115 +77,59 @@ class PerspectiveAccumulator {
     const Square king_square = state.King(perspective).GetLsb();
     for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
       for (Square square : state.piece_bbs[piece]) {
-        AddFeature(perspective,
-                   king_square,
-                   square,
-                   static_cast<PieceType>(piece),
-                   state.GetPieceColor(square));
+        ApplyChange<kAdd>(perspective,
+                          king_square,
+                          FeatureData{square,
+                                      static_cast<PieceType>(piece),
+                                      state.GetPieceColor(square)});
       }
     }
   }
 
-  I16 const* GetFeaturePointer(Color perspective,
+  I16 const* GetFeaturePointer(Square square,
                                Square king_square,
-                               Square square,
                                PieceType piece,
-                               Color piece_color) {
+                               Color piece_color,
+                               Color perspective) {
     return GetFeatureTable(square, king_square, piece, piece_color, perspective)
         .data();
   }
 
-  void AddFeature(Color perspective,
-                  Square king_square,
-                  Square square,
-                  PieceType piece,
-                  Color piece_color) {
-    const auto& table =
-        GetFeatureTable(square, king_square, piece, piece_color, perspective);
-    for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] += table[i];
-    }
+  template <FusedOperation... ops,
+            typename... Ts,
+            std::enable_if_t<is_all_same_v<FeatureData, Ts...>, bool> = true,
+            std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
+  void ApplyChange(Color perspective,
+                   Square king_square,
+                   const Ts&... accumulator_changes) {
+    ApplyChange<ops...>(
+        *this, perspective, king_square, accumulator_changes...);
   }
 
-  void SubFeature(Color perspective,
-                  Square king_square,
-                  Square square,
-                  PieceType piece,
-                  Color piece_color) {
-    const auto& table =
-        GetFeatureTable(square, king_square, piece, piece_color, perspective);
-    for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] -= table[i];
-    }
-  }
+  template <FusedOperation... ops,
+            typename... Ts,
+            std::enable_if_t<is_all_same_v<FeatureData, Ts...>, bool> = true,
+            std::enable_if_t<sizeof...(ops) == sizeof...(Ts), bool> = true>
+  void ApplyChange(const PerspectiveAccumulator& previous,
+                   Color perspective,
+                   Square king_square,
+                   const Ts&... accumulator_changes) {
+    auto FeatureTable = [&](const FeatureData& feature) {
+      return GetFeaturePointer(feature.square,
+                               king_square,
+                               feature.piece,
+                               feature.color,
+                               perspective);
+    };
 
-  void AddSubFeatures(const PerspectiveAccumulator& previous,
-                      Color perspective,
-                      Square king_square,
-                      Square add_square,
-                      PieceType add_piece,
-                      Color add_piece_color,
-                      Square sub_square,
-                      PieceType sub_piece,
-                      Color sub_piece_color) {
-    const auto& add_table = GetFeatureTable(
-        add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& sub_table = GetFeatureTable(
-        sub_square, king_square, sub_piece, sub_piece_color, perspective);
-    for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table[i];
-    }
-  }
+    const std::tuple changes = {FeatureTable(accumulator_changes)...};
 
-  void AddSubSubFeatures(const PerspectiveAccumulator& previous,
-                         Color perspective,
-                         Square king_square,
-                         Square add_square,
-                         PieceType add_piece,
-                         Color add_piece_color,
-                         Square sub_square1,
-                         PieceType sub_piece1,
-                         Color sub_piece_color1,
-                         Square sub_square2,
-                         PieceType sub_piece2,
-                         Color sub_piece_color2) {
-    const auto& add_table = GetFeatureTable(
-        add_square, king_square, add_piece, add_piece_color, perspective);
-    const auto& sub_table1 = GetFeatureTable(
-        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& sub_table2 = GetFeatureTable(
-        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
     for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table[i] - sub_table1[i] - sub_table2[i];
-    }
-  }
-
-  void AddAddSubSubFeatures(const PerspectiveAccumulator& previous,
-                            Color perspective,
-                            Square king_square,
-                            Square add_square1,
-                            PieceType add_piece1,
-                            Color add_piece_color1,
-                            Square add_square2,
-                            PieceType add_piece2,
-                            Color add_piece_color2,
-                            Square sub_square1,
-                            PieceType sub_piece1,
-                            Color sub_piece_color1,
-                            Square sub_square2,
-                            PieceType sub_piece2,
-                            Color sub_piece_color2) {
-    const auto& add_table1 = GetFeatureTable(
-        add_square1, king_square, add_piece1, add_piece_color1, perspective);
-    const auto& add_table2 = GetFeatureTable(
-        add_square2, king_square, add_piece2, add_piece_color2, perspective);
-    const auto& sub_table1 = GetFeatureTable(
-        sub_square1, king_square, sub_piece1, sub_piece_color1, perspective);
-    const auto& sub_table2 = GetFeatureTable(
-        sub_square2, king_square, sub_piece2, sub_piece_color2, perspective);
-    for (int i = 0; i < arch::kL1Size; ++i) {
-      values_[i] = previous[i] + add_table1[i] + add_table2[i] - sub_table1[i] -
-                   sub_table2[i];
+      values_[i] = std::apply(
+          [&](const auto&... changes) {
+            return Fused<ops...>(previous[i], changes[i]...);
+          },
+          changes);
     }
   }
 
@@ -194,46 +139,25 @@ class PerspectiveAccumulator {
                    Square king_square) {
     switch (change.type) {
       case AccumulatorChange::kNormal:
-        AddSubFeatures(previous,
-                       perspective,
-                       king_square,
-                       change.add_0.square,
-                       change.add_0.piece,
-                       change.add_0.color,
-                       change.sub_0.square,
-                       change.sub_0.piece,
-                       change.sub_0.color);
+        ApplyChange<kAdd, kSub>(
+            previous, perspective, king_square, change.add_0, change.sub_0);
         break;
       case AccumulatorChange::kCapture:
-        AddSubSubFeatures(previous,
-                          perspective,
-                          king_square,
-                          change.add_0.square,
-                          change.add_0.piece,
-                          change.add_0.color,
-                          change.sub_0.square,
-                          change.sub_0.piece,
-                          change.sub_0.color,
-                          change.sub_1.square,
-                          change.sub_1.piece,
-                          change.sub_1.color);
+        ApplyChange<kAdd, kSub, kSub>(previous,
+                                      perspective,
+                                      king_square,
+                                      change.add_0,
+                                      change.sub_0,
+                                      change.sub_1);
         break;
       case AccumulatorChange::kCastle:
-        AddAddSubSubFeatures(previous,
-                             perspective,
-                             king_square,
-                             change.add_0.square,
-                             change.add_0.piece,
-                             change.add_0.color,
-                             change.add_1.square,
-                             change.add_1.piece,
-                             change.add_1.color,
-                             change.sub_0.square,
-                             change.sub_0.piece,
-                             change.sub_0.color,
-                             change.sub_1.square,
-                             change.sub_1.piece,
-                             change.sub_1.color);
+        ApplyChange<kAdd, kAdd, kSub, kSub>(previous,
+                                            perspective,
+                                            king_square,
+                                            change.add_0,
+                                            change.add_1,
+                                            change.sub_0,
+                                            change.sub_1);
         break;
     }
   }
@@ -325,22 +249,22 @@ class Accumulator {
         const BitBoard to_remove = ~new_pieces & old_pieces;
         for (Square square : to_remove) {
           subs[num_subs++] = perspective_accumulator.GetFeaturePointer(
-              perspective,
-              king_square,
               square,
+              king_square,
               static_cast<PieceType>(piece),
-              color);
+              color,
+              perspective);
         }
 
         // Calculate difference of features to add
         const BitBoard to_add = new_pieces & ~old_pieces;
         for (Square square : to_add) {
           adds[num_adds++] = perspective_accumulator.GetFeaturePointer(
-              perspective,
-              king_square,
               square,
+              king_square,
               static_cast<PieceType>(piece),
-              color);
+              color,
+              perspective);
         }
       }
     }

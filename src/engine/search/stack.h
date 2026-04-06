@@ -75,6 +75,8 @@ struct StackEntry {
   bool in_check;
   // Threats
   BitBoard threats;
+  // Reduction applied for this ply
+  int reduction;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -97,7 +99,8 @@ struct StackEntry {
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
-        continuation_entry(nullptr) {
+        continuation_entry(nullptr),
+        reduction(0) {
     ClearKillerMoves();
   }
 
@@ -106,7 +109,7 @@ struct StackEntry {
 
 class Stack {
  public:
-  static constexpr int kPadding = 4;
+  static constexpr int kPadding = 6;
 
   Stack() {
     Reset();

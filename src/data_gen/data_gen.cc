@@ -288,7 +288,7 @@ void GameLoop(const Config &config,
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root
-      if (thread->board.IsDraw(0)) {
+      if (thread->board.IsRepetition(0) || thread->board.IsInsufficientMaterial()) {
         wdl_outcome = 0.5;
         break;
       }

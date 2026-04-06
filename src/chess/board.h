@@ -274,6 +274,7 @@ struct BoardState {
   BitBoard threats;
   std::array<BitBoard, kNumPieceTypes> threatened_by;
   std::array<BitBoard, kNumColors> pinned;
+  std::array<BitBoard, 4> check_zones;
 };
 
 class Board {
@@ -320,11 +321,15 @@ class Board {
 
   [[nodiscard]] bool IsMoveLegal(Move move) const;
 
-  [[nodiscard]] U64 PredictKeyAfter(Move move);
+  [[nodiscard]] U64 PredictKeyAfter(Move move) const;
 
-  [[nodiscard]] bool HasUpcomingRepetition(U16 ply);
+  [[nodiscard]] bool HasUpcomingRepetition(U16 ply) const ;
 
-  [[nodiscard]] bool IsDraw(U16 ply);
+  [[nodiscard]] bool IsRepetition(U16 ply) const;
+
+  [[nodiscard]] bool IsInsufficientMaterial() const;
+
+  [[nodiscard]] bool MoveGivesDirectCheck(Move move) const;
 
   void CalculateKingThreats();
 
@@ -339,7 +344,7 @@ class Board {
 
  private:
   BoardState state_;
-  List<BoardState, 1024> history_;
+  List<BoardState, 2048> history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 

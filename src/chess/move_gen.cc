@@ -173,16 +173,14 @@ BitBoard KnightMoves(Square square) {
   return kKnightMasks[square];
 }
 
-BitBoard BishopMoves(Square square, const BitBoard &occupied) {
-  const auto &entry = magics::kBishopMagics[square];
-  const auto magic_index = (occupied & entry.mask) * entry.magic >> entry.shift;
-  return magics::attacks::kBishopAttacks[square][magic_index.AsU64()];
+BitBoard BishopMoves(Square square, const BitBoard& occupied) {
+  const auto &index = magics::attacks::GetBishopAttackIndex(square, occupied);
+  return magics::attacks::kBishopAttacks[square][index];
 }
 
-BitBoard RookMoves(Square square, const BitBoard &occupied) {
-  const auto &entry = magics::kRookMagics[square];
-  const auto magic_index = (occupied & entry.mask) * entry.magic >> entry.shift;
-  return magics::attacks::kRookAttacks[square][magic_index.AsU64()];
+BitBoard RookMoves(Square square, const BitBoard& occupied) {
+  const auto &index = magics::attacks::GetRookAttackIndex(square, occupied);
+  return magics::attacks::kRookAttacks[square][index];
 }
 
 BitBoard QueenMoves(Square square, const BitBoard &occupied) {

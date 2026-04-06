@@ -306,7 +306,7 @@ void Board::MakeNullMove() {
   CalculateThreats();
 }
 
-U64 Board::PredictKeyAfter(Move move) {
+U64 Board::PredictKeyAfter(Move move) const {
   auto key = state_.zobrist_key ^ zobrist::turn;
   if (move == Move::NullMove()) {
     return key ^ zobrist::fifty_move[state_.fifty_moves_clock + 1];
@@ -359,7 +359,7 @@ U64 Board::PredictKeyAfter(Move move) {
   return key;
 }
 
-bool Board::HasUpcomingRepetition(U16 ply) {
+bool Board::HasUpcomingRepetition(U16 ply) const {
   const int max_dist = std::min<int>(state_.fifty_moves_clock, history_.Size());
   if (max_dist < 3) {
     return false;
@@ -410,7 +410,7 @@ bool Board::HasUpcomingRepetition(U16 ply) {
   return false;
 }
 
-bool Board::IsDraw(U16 ply) {
+bool Board::IsRepetition(U16 ply) const {
   if (state_.fifty_moves_clock >= 100 &&
       (!state_.InCheck() || !GetLegalMoves().Empty())) {
     return true;
@@ -427,7 +427,10 @@ bool Board::IsDraw(U16 ply) {
     }
   }
 
-  // Insufficient material detection
+  return false;
+}
+
+bool Board::IsInsufficientMaterial() const {
   const Color us = state_.turn, them = FlipColor(us);
 
   // Check for queens, rooks, or pawns on the board
@@ -459,8 +462,24 @@ bool Board::IsDraw(U16 ply) {
     return true;
   }
 
-  // Any other combination of pieces not covered by the above is not a draw
   return false;
+}
+
+bool Board::MoveGivesDirectCheck(Move move) const {
+  const auto from = move.GetFrom(), to = move.GetTo();
+  const auto moving_piece_type =
+      move.GetType() == MoveType::kPromotion
+          ? static_cast<int>(move.GetPromotionType()) + 1
+          : state_.GetPieceType(from);
+  if (moving_piece_type == PieceType::kKing) {
+    return false;
+  }
+
+  const auto relevant_check_zones =
+      moving_piece_type == PieceType::kQueen
+          ? state_.check_zones[kBishop] | state_.check_zones[kRook]
+          : state_.check_zones[moving_piece_type];
+  return relevant_check_zones.IsSet(to);
 }
 
 void Board::HandleCastling(Move move) {
@@ -561,6 +580,16 @@ void Board::CalculateKingThreats() {
       state_.pinned[us] |= pinned;
     }
   }
+
+  // Calculate enemy king superpiece squares that a piece of that type could
+  // give check by moving to
+  const Square their_king_square = state_.King(them).GetLsb();
+  state_.check_zones[kPawn] = move_gen::PawnAttacks(their_king_square, them);
+  state_.check_zones[kKnight] = move_gen::KnightMoves(their_king_square);
+  state_.check_zones[kBishop] =
+      move_gen::BishopMoves(their_king_square, state_.Occupied());
+  state_.check_zones[kRook] =
+      move_gen::RookMoves(their_king_square, state_.Occupied());
 }
 
 BitBoard Board::GetOpponentWinningCaptures() const {

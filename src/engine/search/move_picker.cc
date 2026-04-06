@@ -2,13 +2,13 @@
 
 namespace search {
 
-TUNABLE(kSeeNoisyHistoryDiv, 105, 32, 250, false);
+TUNABLE(kSeeNoisyHistoryDiv, 92, 32, 250, false);
 
-TUNABLE(kPawnScore, 101, 50, 150, false);
-TUNABLE(kKnightScore, 304, 200, 400, false);
-TUNABLE(kBishopScore, 289, 200, 400, false);
-TUNABLE(kRookScore, 528, 400, 600, false);
-TUNABLE(kQueenScore, 917, 700, 1100, false);
+TUNABLE(kPawnScore, 102, 50, 150, false);
+TUNABLE(kKnightScore, 301, 200, 400, false);
+TUNABLE(kBishopScore, 281, 200, 400, false);
+TUNABLE(kRookScore, 523, 400, 600, false);
+TUNABLE(kQueenScore, 889, 700, 1100, false);
 TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
 
@@ -24,19 +24,20 @@ inline std::array kPieceScores = {
 };
 // clang-format on
 
-TUNABLE(kQueenRookThreatScorePos, 20418, 10000, 30000, false);
-TUNABLE(kQueenRookThreatScoreNeg, 18561, 10000, 30000, false);
-TUNABLE(kRookMinorThreatScorePos, 12930, 5000, 20000, false);
-TUNABLE(kRookMinorThreatScoreNeg, 12720, 5000, 20000, false);
-TUNABLE(kMinorPawnThreatScorePos, 8063, 3000, 12000, false);
-TUNABLE(kMinorPawnThreatScoreNeg, 8355, 3000, 12000, false);
+TUNABLE(kQueenRookThreatScorePos, 19451, 10000, 30000, false);
+TUNABLE(kQueenRookThreatScoreNeg, 17612, 10000, 30000, false);
+TUNABLE(kRookMinorThreatScorePos, 13177, 5000, 20000, false);
+TUNABLE(kRookMinorThreatScoreNeg, 13758, 5000, 20000, false);
+TUNABLE(kMinorPawnThreatScorePos, 7852, 3000, 12000, false);
+TUNABLE(kMinorPawnThreatScoreNeg, 8475, 3000, 12000, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
                        history::History &history,
                        StackEntry *stack,
-                       int see_threshold)
+                       int see_threshold,
+                       bool force_evasions)
     : board_(board),
       tt_move_(tt_move),
       type_(type),
@@ -44,7 +45,8 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      see_threshold_(see_threshold) {}
+      see_threshold_(see_threshold),
+      force_evasions_(force_evasions) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
@@ -54,7 +56,7 @@ Move MovePicker::Next() {
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
-          tt_move_.IsNoisy(state)) {
+          tt_move_.IsNoisy(state) || force_evasions_) {
         return tt_move_;
       }
     }
@@ -82,7 +84,7 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck() && !force_evasions_) {
       return Move::NullMove();
     }
 
@@ -234,6 +236,8 @@ int MovePicker::ScoreMove(Move &move) {
     default:
       break;
   }
+
+  threat_score += 2048 * board_.MoveGivesDirectCheck(move);
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
