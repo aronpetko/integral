@@ -11,6 +11,7 @@ TUNABLE_STEP(kPawnCorrectionWeight, 42, 0, 125, false, 3);
 TUNABLE_STEP(kNonPawnCorrectionWeight, 40, 0, 125, false, 3);
 TUNABLE_STEP(kMajorCorrectionWeight, 37, 0, 125, false, 3);
 TUNABLE_STEP(kContinuationCorrectionWeight, 52, 0, 125, false, 3);
+constexpr std::size_t kCorrectionHistorySize = 32768;
 
 class CorrectionHistory {
  public:
@@ -127,22 +128,23 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] int GetPawnTableIndex(const BoardState &state) const {
-    return state.pawn_key & 16383;
+    return state.pawn_key & (kCorrectionHistorySize - 1);
   }
 
   [[nodiscard]] int GetMajorTableIndex(const BoardState &state) const {
-    return state.major_key & 16383;
+    return state.major_key & (kCorrectionHistorySize - 1);
   }
 
   [[nodiscard]] int GetNonPawnTableIndex(const BoardState &state,
                                          Color color) const {
-    return state.non_pawn_keys[color] & 16383;
+    return state.non_pawn_keys[color] & (kCorrectionHistorySize - 1);
   }
 
  private:
-  MultiArray<I16, 16384, kNumColors> pawn_table_;
-  MultiArray<I16, 16384, kNumColors> major_table_;
-  MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
+  MultiArray<I16, kCorrectionHistorySize, kNumColors> pawn_table_;
+  MultiArray<I16, kCorrectionHistorySize, kNumColors> major_table_;
+  MultiArray<I16, kCorrectionHistorySize, kNumColors, kNumColors>
+      non_pawn_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };
