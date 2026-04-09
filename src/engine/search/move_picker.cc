@@ -84,7 +84,8 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck() && !force_evasions_) {
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck() &&
+        !force_evasions_) {
       return Move::NullMove();
     }
 
@@ -239,10 +240,26 @@ int MovePicker::ScoreMove(Move &move) {
 
   threat_score += 2048 * board_.MoveGivesDirectCheck(move);
 
+  int history_score = 0;
+  history_score +=
+      history_.quiet_history->GetScore(state, move, stack_->threats) * 2048;
+  history_score +=
+      history_.continuation_history->GetScore(state, move, stack_ - 1) *
+      history::kFirstContinuationHistoryWeight;
+  history_score +=
+      history_.continuation_history->GetScore(state, move, stack_ - 2) *
+      history::kSecondContinuationHistoryWeight;
+  history_score +=
+      history_.continuation_history->GetScore(state, move, stack_ - 4) *
+      history::kFourthContinuationHistoryWeight;
+  history_score += history_.pawn_history->GetScore(state, move) *
+                   history::kPawnHistoryWeight;
+  history_score /= history::kHistoryWeightScale;
+
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
+  return threat_score + history_score;
 }
 
 }  // namespace search
