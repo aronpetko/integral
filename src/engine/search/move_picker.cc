@@ -242,7 +242,7 @@ int MovePicker::ScoreMove(Move &move) {
 
   int history_score = 0;
   history_score +=
-      history_.quiet_history->GetScore(state, move, stack_->threats) * 2048;
+      history_.quiet_history->GetScore(state, move, stack_->threats) * history::kQuietHistoryWeight;
   history_score +=
       history_.continuation_history->GetScore(state, move, stack_ - 1) *
       history::kFirstContinuationHistoryWeight;
@@ -252,6 +252,9 @@ int MovePicker::ScoreMove(Move &move) {
   history_score +=
       history_.continuation_history->GetScore(state, move, stack_ - 4) *
       history::kFourthContinuationHistoryWeight;
+  history_score +=
+      history_.continuation_history->GetScore(state, move, stack_ - 6) *
+      512;
   history_score += history_.pawn_history->GetScore(state, move) *
                    history::kPawnHistoryWeight;
   history_score /= history::kHistoryWeightScale;
