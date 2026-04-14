@@ -1019,6 +1019,10 @@ Score Searcher::PVSearch(Thread &thread,
       else if (tt_move_excluded_score >= beta &&
                std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
         return tt_move_excluded_score;
+      } else if (tt_move_excluded_score > tt_entry->score &&
+                 !stack->move.IsNull()) {
+        move_picker.SetStage(MovePicker::Stage::kTTMove);
+        tt_move = stack->move;
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.

@@ -49,6 +49,10 @@ class MovePicker {
     return stage_;
   }
 
+  void SetStage(Stage stage) {
+    stage_ = stage;
+  }
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 
