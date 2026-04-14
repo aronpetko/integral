@@ -53,6 +53,10 @@ class MovePicker {
     stage_ = stage;
   }
 
+  void SetTtMove(Move tt_move) {
+    tt_move_ = tt_move;
+  }
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 

@@ -882,6 +882,7 @@ Score Searcher::PVSearch(Thread &thread,
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
+  bool did_se = false;
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -983,7 +984,7 @@ Score Searcher::PVSearch(Thread &thread,
     // the TT move excluded to see if any other moves can beat it.
     int extensions = 0;
     if (!in_root && depth >= kSeDepth && move == tt_move &&
-        tt_entry->depth + 3 >= depth &&
+        tt_entry->depth + 3 >= depth && !did_se &&
         tt_entry->flag != TranspositionTableEntry::kUpperBound &&
         std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         stack->ply < thread.root_depth * 2) {
@@ -991,9 +992,11 @@ Score Searcher::PVSearch(Thread &thread,
       const Score new_beta = tt_entry->score - kSeBetaMargin * depth / 16;
 
       stack->excluded_tt_move = tt_move;
+      stack->move = Move::NullMove();
       const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
           thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
       stack->excluded_tt_move = Move::NullMove();
+      did_se = true;
 
       if (ShouldQuit()) {
         return 0;
@@ -1022,7 +1025,8 @@ Score Searcher::PVSearch(Thread &thread,
       } else if (tt_move_excluded_score > tt_entry->score &&
                  !stack->move.IsNull()) {
         move_picker.SetStage(MovePicker::Stage::kTTMove);
-        tt_move = stack->move;
+        move_picker.SetTtMove(stack->move);
+        continue;
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.

@@ -11,7 +11,7 @@ TUNABLE_STEP(kPawnCorrectionWeight, 42, 0, 125, false, 3);
 TUNABLE_STEP(kNonPawnCorrectionWeight, 40, 0, 125, false, 3);
 TUNABLE_STEP(kMajorCorrectionWeight, 37, 0, 125, false, 3);
 TUNABLE_STEP(kContinuationCorrectionWeight, 52, 0, 125, false, 3);
-constexpr std::size_t kCorrectionHistorySize = 32768;
+constexpr std::size_t kCorrectionHistorySize = 16384;
 
 class CorrectionHistory {
  public:
