@@ -1242,14 +1242,19 @@ Score Searcher::PVSearch(Thread &thread,
   // move will already be given a history bonus by the parent node in the beta
   // cutoff. However, we also give a history bonus in the event of a fail low to
   // allow history tweaks to occur in PVS re-searches
-  if (!best_move && prev_stack->move && !prev_stack->capture_move &&
+  if (!best_move && prev_stack->move &&
       prev_stack->move.GetType() != MoveType::kPromotion) {
-    const auto history_bonus = history::HistoryBonus(depth);
-    const auto past_turn = FlipColor(state.turn);
-    history.quiet_history->UpdateMoveScore(
-        past_turn, prev_stack->move, prev_stack->threats, history_bonus);
-    history.pawn_history->UpdateMoveScore(
-        board.GetStateHistory().Back(), prev_stack->move, history_bonus / 2);
+    if (prev_stack->capture_move) {
+      history.capture_history->UpdateScore(
+          board.GetStateHistory().Back(), prev_stack->move, depth);
+    } else {
+      const auto history_bonus = history::HistoryBonus(depth);
+      const auto past_turn = FlipColor(state.turn);
+      history.quiet_history->UpdateMoveScore(
+          past_turn, prev_stack->move, prev_stack->threats, history_bonus);
+      history.pawn_history->UpdateMoveScore(
+          board.GetStateHistory().Back(), prev_stack->move, history_bonus / 2);
+    }
   }
 
   if (syzygy::enabled) {
