@@ -1116,8 +1116,10 @@ Score Searcher::PVSearch(Thread &thread,
         // reduced-depth search indicates a promising score
         const bool do_deeper_search = score > (best_score + kDoDeeperBase +
                                                kDoDeeperMult * new_depth / 16);
+        const bool do_even_deeper_search = score > best_score + 400;
         const bool do_shallower_search = score < best_score + kDoShallowerBase;
-        new_depth += do_deeper_search - do_shallower_search;
+        new_depth +=
+            do_deeper_search + do_even_deeper_search - do_shallower_search;
       }
     } else {
       // If we didn't perform late move reduction, then we search this move at
