@@ -1098,6 +1098,11 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrKillerMoves;
       }
 
+      // Reduce more if we have an exact TT score
+      if (tt_entry && tt_entry->flag == TranspositionTableEntry::kExact) {
+        reduction += 512;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
