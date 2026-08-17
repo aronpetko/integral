@@ -7,54 +7,64 @@
 
 namespace move_gen {
 
-bool IsSquareAttacked(Square square, Color attacker, const BoardState &state);
+[[nodiscard]] bool IsSquareAttacked(Square square,
+                                    Color attacker,
+                                    const BoardState &state);
 
-BitBoard PawnAttacks(BitBoard pawns, Color side);
+[[nodiscard]] BitBoard PawnAttacks(BitBoard pawns, Color side);
 
-BitBoard PawnAttacks(Square square, Color side);
+[[nodiscard]] BitBoard PawnAttacks(Square square, Color side);
 
-BitBoard PawnPushes(BitBoard pawns, Color side);
+[[nodiscard]] BitBoard PawnPushes(BitBoard pawns, Color side);
 
-BitBoard PawnPushMoves(Square square, const BoardState &state);
+[[nodiscard]] BitBoard PawnPushMoves(Square square, const BoardState &state);
 
-BitBoard KnightMoves(Square square);
+[[nodiscard]] BitBoard KnightMoves(Square square);
 
-BitBoard BishopMoves(Square square, const BitBoard &occupied);
+[[nodiscard]] BitBoard BishopMoves(Square square, const BitBoard &occupied);
 
-BitBoard RookMoves(Square square, const BitBoard &occupied);
+[[nodiscard]] BitBoard RookMoves(Square square, const BitBoard &occupied);
 
-BitBoard QueenMoves(Square square, const BitBoard &occupied);
+[[nodiscard]] BitBoard QueenMoves(Square square, const BitBoard &occupied);
 
-BitBoard KingMoves(Square square, const BoardState &state);
+[[nodiscard]] BitBoard KingMoves(Square square, const BoardState &state);
 
-BitBoard KingAttacks(Square square);
+[[nodiscard]] BitBoard KingAttacks(Square square);
 
-BitBoard CastlingMoves(Color which, const BoardState &state);
+[[nodiscard]] BitBoard CastlingMoves(Color which, const BoardState &state);
 
-BitBoard GetAttackedSquares(const BoardState &state, Color attacker);
+[[nodiscard]] BitBoard GetAttackedSquares(const BoardState &state,
+                                          Color attacker);
 
-BitBoard GetAttackersTo(const BoardState &state, Square square, Color attacker);
+[[nodiscard]] BitBoard GetAttackersTo(const BoardState &state,
+                                      Square square,
+                                      Color attacker);
 
-BitBoard GetAttackersTo(const BoardState &state,
-                        Square square,
-                        const BitBoard &occupied,
-                        Color attacker);
+[[nodiscard]] BitBoard GetAttackersTo(const BoardState &state,
+                                      Square square,
+                                      const BitBoard &occupied,
+                                      Color attacker);
 
-BitBoard GetSlidingAttackersTo(const BoardState &state,
-                               Square square,
-                               const BitBoard &occupied,
-                               Color attacker);
+[[nodiscard]] BitBoard GetSlidingAttackersTo(const BoardState &state,
+                                             Square square,
+                                             const BitBoard &occupied,
+                                             Color attacker);
+
+[[nodiscard]] BitBoard GetPieceAttacks(Square square,
+                                       PieceType piece_type,
+                                       Color side,
+                                       BitBoard occupied);
 
 // Returns a bitboard with the set bits being sliding attacks between the two
 // squares
-BitBoard RayBetween(Square first, Square second);
+[[nodiscard]] BitBoard RayBetween(Square first, Square second);
 
 // Returns a bitboard with the set bits being the ray that the two squares lie
 // on
-BitBoard RayIntersecting(Square first, Square second);
+[[nodiscard]] BitBoard RayIntersecting(Square first, Square second);
 
 template <MoveGenType move_type>
-MoveList GenerateMoves(const Board &board);
+[[nodiscard]] MoveList GenerateMoves(const Board &board);
 
 }  // namespace move_gen
 

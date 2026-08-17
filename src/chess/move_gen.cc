@@ -173,12 +173,12 @@ BitBoard KnightMoves(Square square) {
   return kKnightMasks[square];
 }
 
-BitBoard BishopMoves(Square square, const BitBoard& occupied) {
+BitBoard BishopMoves(Square square, const BitBoard &occupied) {
   const auto &index = magics::attacks::GetBishopAttackIndex(square, occupied);
   return magics::attacks::kBishopAttacks[square][index];
 }
 
-BitBoard RookMoves(Square square, const BitBoard& occupied) {
+BitBoard RookMoves(Square square, const BitBoard &occupied) {
   const auto &index = magics::attacks::GetRookAttackIndex(square, occupied);
   return magics::attacks::kRookAttacks[square][index];
 }
@@ -273,6 +273,28 @@ BitBoard GetSlidingAttackersTo(const BoardState &state,
   attackers |= RookMoves(square, occupied) & (state.Rooks() | queens);
 
   return attackers & state.Occupied(attacker);
+}
+
+BitBoard GetPieceAttacks(Square square,
+                         PieceType piece_type,
+                         Color side,
+                         BitBoard occupied) {
+  switch (piece_type) {
+    case PieceType::kPawn:
+      return PawnAttacks(square, side);
+    case PieceType::kKnight:
+      return KnightMoves(square);
+    case PieceType::kBishop:
+      return BishopMoves(square, occupied);
+    case PieceType::kRook:
+      return RookMoves(square, occupied);
+    case PieceType::kQueen:
+      return QueenMoves(square, occupied);
+    case PieceType::kKing:
+      return KingAttacks(square);
+    default:
+      return 0;
+  }
 }
 
 BitBoard RayBetween(Square first, Square second) {

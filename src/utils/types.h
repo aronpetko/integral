@@ -29,7 +29,7 @@ enum PieceType : U8 {
   kQueen,
   kKing,
   kNone,
-  kNumPieceTypes = kNone
+  kNumPieceTypes = 6
 };
 
 enum class PromotionType : U8 {
