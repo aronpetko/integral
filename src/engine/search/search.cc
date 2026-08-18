@@ -518,11 +518,18 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   thread.sel_depth = std::max<U16>(thread.sel_depth, stack->ply);
+  stack->in_check = state.InCheck();
 
   // If the position has a move that causes a repetition, and we are losing,
   // then we can cut off early since we can secure a draw
   if (!in_root && alpha < kDrawScore &&
       board.HasUpcomingRepetition(stack->ply)) {
+    if (!stack->in_check) {
+      stack->static_eval =
+          AdjustStaticEval(eval::Evaluate(board), thread, stack);
+      history.correction_history->UpdateScore(
+          state, stack, kDrawScore, TranspositionTableEntry::kExact, depth);
+    }
     if ((alpha = kDrawScore) >= beta) {
       return alpha;
     }
@@ -533,8 +540,6 @@ Score Searcher::PVSearch(Thread &thread,
   if (depth == 0) {
     return QuiescentSearch<node_type>(thread, alpha, beta, stack);
   }
-
-  stack->in_check = state.InCheck();
 
   if (!in_root) {
     if (board.IsRepetition(stack->ply)) {
@@ -637,9 +642,8 @@ Score Searcher::PVSearch(Thread &thread,
     }
   }
 
-  Score raw_static_eval;
-
   // Approximate the current evaluation at this node
+  Score raw_static_eval;
   if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
     stack->eval_complexity = 0;
