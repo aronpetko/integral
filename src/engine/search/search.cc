@@ -675,8 +675,8 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   const auto &prev_stack = stack - 1;
-  if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
-      !prev_stack->in_check && !stack->in_check) {
+  if ((depth <= 6 || !tt_entry) && stack->ply > 1 && prev_stack->move &&
+      !prev_stack->capture_move && !prev_stack->in_check && !stack->in_check) {
     const I32 their_loss =
         stack->static_eval + prev_stack->static_eval - kEvalHistUpdateBias;
     const I32 bonus = std::clamp<I32>(-kEvalHistUpdateMult * their_loss / 10,
