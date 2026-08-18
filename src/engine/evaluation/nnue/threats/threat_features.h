@@ -3,10 +3,10 @@
 
 #include <vector>
 
-#include "../../../../shared/multi_array.h"
-#include "../../../chess/move_gen.h"
-#include "../../../shared/nnue/definitions.h"
-#include "../../../utils/types.h"
+#include "../../../../../shared/multi_array.h"
+#include "../../../../../shared/nnue/definitions.h"
+#include "../../../../chess/move_gen.h"
+#include "../../../../utils/types.h"
 
 namespace nnue::threats {
 

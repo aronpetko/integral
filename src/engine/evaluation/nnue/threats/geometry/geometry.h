@@ -3,7 +3,7 @@
 
 #include <array>
 
-#include "../../../utils/types.h"
+#include "../../../../../utils/types.h"
 
 namespace nnue::geometry {
 
