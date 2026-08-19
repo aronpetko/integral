@@ -195,7 +195,7 @@ include_directories(third-party/fmt/include)
 add_definitions(-DFMT_HEADER_ONLY)
 
 # Collect all source files
-file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cc" "src/*.h")
 
 # Create the executable
 add_executable(integral ${SOURCES}

@@ -212,7 +212,7 @@ void Board::MakeMove(Move move) {
   const auto move_type = move.GetType();
 
   // Initialize accumulator change
-  nnue::AccumulatorChange accum_change{};
+  nnue::PsqtAccumulatorChange accum_change{};
   accum_change.sub_0 = {from, piece, us};
   accum_change.add_0 = {to, piece, us};
 
@@ -223,15 +223,15 @@ void Board::MakeMove(Move move) {
     const Square pawn_square =
         state_.en_passant - (us == Color::kWhite ? 8 : -8);
     state_.RemovePiece(pawn_square, them);
-    accum_change.type = nnue::AccumulatorChange::kCapture;
+    accum_change.type = nnue::PsqtAccumulatorChange::kCapture;
     accum_change.sub_1 = {pawn_square, PieceType::kPawn, them};
   } else if (captured != PieceType::kNone) {
     state_.RemovePiece(to, them);
     new_fifty_move_clock = 0;
-    accum_change.type = nnue::AccumulatorChange::kCapture;
+    accum_change.type = nnue::PsqtAccumulatorChange::kCapture;
     accum_change.sub_1 = {to, captured, them};
   } else {
-    accum_change.type = nnue::AccumulatorChange::kNormal;
+    accum_change.type = nnue::PsqtAccumulatorChange::kNormal;
   }
 
   // Xor out en passant if it exists
@@ -251,7 +251,7 @@ void Board::MakeMove(Move move) {
   auto new_piece = piece;
   if (move_type == MoveType::kCastle) {
     HandleCastling(move);
-    accum_change.type = nnue::AccumulatorChange::kCastle;
+    accum_change.type = nnue::PsqtAccumulatorChange::kCastle;
     const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
     const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
     accum_change.add_1 = {rook_to, PieceType::kRook, us};

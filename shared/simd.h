@@ -379,6 +379,9 @@ constexpr int kPackusOrder[2] = {0, 1};
 #endif
 }
 
+// Two dot products fused into one widening step. The emulated paths sum two
+// maddubs results before widening, which can exceed I16; the saturating add
+// clamps instead of wrapping. Only the VNNI path is exact.
 [[nodiscard]] inline Vepi32 DpbusdEpi32x2(
     Vepi32 sum, Vepu8 u1, Vepi8 i1, Vepu8 u2, Vepi8 i2) {
 #if BUILD_HAS_AVX512VNNI
@@ -388,22 +391,22 @@ constexpr int kPackusOrder[2] = {0, 1};
                                        std::bit_cast<__m512i>(i1));
   const auto p2 = _mm512_maddubs_epi16(std::bit_cast<__m512i>(u2),
                                        std::bit_cast<__m512i>(i2));
-  return sum + std::bit_cast<Vepi32>(_mm512_madd_epi16(_mm512_add_epi16(p1, p2),
-                                                       _mm512_set1_epi16(1)));
+  return sum + std::bit_cast<Vepi32>(_mm512_madd_epi16(
+                   _mm512_adds_epi16(p1, p2), _mm512_set1_epi16(1)));
 #elif BUILD_HAS_AVX2
   const auto p1 = _mm256_maddubs_epi16(std::bit_cast<__m256i>(u1),
                                        std::bit_cast<__m256i>(i1));
   const auto p2 = _mm256_maddubs_epi16(std::bit_cast<__m256i>(u2),
                                        std::bit_cast<__m256i>(i2));
-  return sum + std::bit_cast<Vepi32>(_mm256_madd_epi16(_mm256_add_epi16(p1, p2),
-                                                       _mm256_set1_epi16(1)));
+  return sum + std::bit_cast<Vepi32>(_mm256_madd_epi16(
+                   _mm256_adds_epi16(p1, p2), _mm256_set1_epi16(1)));
 #elif BUILD_HAS_SSE41
   const auto p1 =
       _mm_maddubs_epi16(std::bit_cast<__m128i>(u1), std::bit_cast<__m128i>(i1));
   const auto p2 =
       _mm_maddubs_epi16(std::bit_cast<__m128i>(u2), std::bit_cast<__m128i>(i2));
   return sum + std::bit_cast<Vepi32>(
-                   _mm_madd_epi16(_mm_add_epi16(p1, p2), _mm_set1_epi16(1)));
+                   _mm_madd_epi16(_mm_adds_epi16(p1, p2), _mm_set1_epi16(1)));
 #else
   return DpbusdEpi32(DpbusdEpi32(sum, u1, i1), u2, i2);
 #endif
