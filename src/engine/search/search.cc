@@ -886,6 +886,7 @@ Score Searcher::PVSearch(Thread &thread,
   int moves_seen = 0;
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
+  int alpha_raises = 0;
 
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
@@ -926,6 +927,8 @@ Score Searcher::PVSearch(Thread &thread,
       if (!improving) {
         reduction += kLmrDepthNotImproving;
       }
+
+      reduction += alpha_raises * 512;
 
       const int lmr_fractional_depth =
           std::max(depth * kLmrDepthScale - reduction, 0);
@@ -1187,7 +1190,7 @@ Score Searcher::PVSearch(Thread &thread,
       best_score = score;
 
       if (score > alpha) {
-        best_move = move;
+        ++alpha_raises, best_move = move;
 
         if (in_pv_node && !in_root) {
           stack->pv.Clear();
