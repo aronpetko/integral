@@ -2,7 +2,8 @@
 
 namespace nnue {
 
-std::span<I16, PsqtFeaturePolicy::kWidth> PsqtFeaturePolicy::FeatureRow(
+std::span<PsqtFeaturePolicy::Weight, PsqtFeaturePolicy::kWidth>
+PsqtFeaturePolicy::FeatureRow(
     Square square,
     Square king_square,
     PieceType piece,
@@ -21,11 +22,12 @@ std::span<I16, PsqtFeaturePolicy::kWidth> PsqtFeaturePolicy::FeatureRow(
       .as_array();
 }
 
-I16 const* PsqtPerspectiveAccumulator::GetFeaturePointer(Square square,
-                                                         Square king_square,
-                                                         PieceType piece,
-                                                         Color piece_color,
-                                                         Color perspective) {
+PsqtPerspectiveAccumulator::Weight const*
+PsqtPerspectiveAccumulator::GetFeaturePointer(Square square,
+                                              Square king_square,
+                                              PieceType piece,
+                                              Color piece_color,
+                                              Color perspective) {
   return PsqtFeaturePolicy::FeatureRow(
              square, king_square, piece, piece_color, perspective)
       .data();

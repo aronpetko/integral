@@ -17,12 +17,13 @@ struct PsqtAccumulatorChange {
 struct PsqtFeaturePolicy {
   static constexpr int kWidth = arch::kL1Size;
   using Value = I16;
+  using Weight = I16;
 
   static Value Bias(int i) {
     return network->feature_biases[i];
   }
 
-  static std::span<Value, kWidth> FeatureRow(Square square,
+  static std::span<Weight, kWidth> FeatureRow(Square square,
                                            Square king_square,
                                            PieceType piece,
                                            Color piece_color,
@@ -50,7 +51,7 @@ struct PsqtFeaturePolicy {
 class PsqtPerspectiveAccumulator
     : public PerspectiveAccumulator<PsqtFeaturePolicy> {
  public:
-  I16 const* GetFeaturePointer(Square square,
+  Weight const* GetFeaturePointer(Square square,
                                Square king_square,
                                PieceType piece,
                                Color piece_color,

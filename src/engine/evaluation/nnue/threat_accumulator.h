@@ -28,20 +28,21 @@ struct ThreatAccumulatorChange {
 struct ThreatFeaturePolicy {
   static constexpr int kWidth = arch::kL1Size;
   using Value = I16;
+  using Weight = I8;
 
   // Biases are handled by the PSQT accumulator
   static Value Bias(int) {
     return 0;
   }
-  static std::optional<std::span<Value, ThreatFeaturePolicy::kWidth>>
-  FeatureRow(Color perspective,
-             Square king_square,
-             PieceType attacker,
-             Color attacker_color,
-             PieceType victim,
-             Color victim_color,
-             Square from,
-             Square to);
+  static std::optional<std::span<Weight, kWidth>> FeatureRow(
+      Color perspective,
+      Square king_square,
+      PieceType attacker,
+      Color attacker_color,
+      PieceType victim,
+      Color victim_color,
+      Square from,
+      Square to);
 
   template <typename Emit>
   static void ForEachActiveFeature(const BoardState& state,
@@ -50,7 +51,7 @@ struct ThreatFeaturePolicy {
                                    Emit&& emit) {
     const auto occupied = state.Occupied();
     const auto kings = state.Kings();
-    for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
+    for (int piece = PieceType::kPawn; piece <= PieceType::kQueen; ++piece) {
       for (Square from : state.piece_bbs[piece]) {
         const auto attacker_type = static_cast<PieceType>(piece);
         const auto attacker_color = state.GetPieceColor(from);

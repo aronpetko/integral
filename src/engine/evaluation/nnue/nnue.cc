@@ -77,9 +77,13 @@ Score Evaluate(Board &board) {
 
       // Clip second accumulator values
       const auto accumulator_value1 =
-          simd::Load<I16>(&stm_accumulator.psqt[i + kI16Lanes]);
-      const auto pair_accumulator_value1 = simd::Load<I16>(
-          &stm_accumulator.psqt[i + arch::kL1Size / 2 + kI16Lanes]);
+          simd::Load<I16>(&stm_accumulator.psqt[i + kI16Lanes]) +
+          simd::Load<I16>(&stm_accumulator.threat[i + kI16Lanes]);
+      const auto pair_accumulator_value1 =
+          simd::Load<I16>(
+              &stm_accumulator.psqt[i + arch::kL1Size / 2 + kI16Lanes]) +
+          simd::Load<I16>(
+              &stm_accumulator.threat[i + arch::kL1Size / 2 + kI16Lanes]);
       const auto clipped_value1 =
           simd::Clip(accumulator_value1, arch::kFtQuantization);
       const auto clipped_pair_value1 =

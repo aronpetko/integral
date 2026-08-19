@@ -38,7 +38,10 @@ template <typename FeaturePolicy>
 class PerspectiveAccumulator {
  public:
   static constexpr int kWidth = FeaturePolicy::kWidth;
+  // The accumulator's storage type and the feature weights' type are
+  // independent: threat rows are I8 while the running sum stays I16.
   using Value = typename FeaturePolicy::Value;
+  using Weight = typename FeaturePolicy::Weight;
 
   PerspectiveAccumulator() : values_({}) {}
 
@@ -51,7 +54,7 @@ class PerspectiveAccumulator {
   void Refresh(const BoardState& state, Color perspective, Square king_square) {
     Reset();
     FeaturePolicy::ForEachActiveFeature(
-        state, perspective, king_square, [&](Value const* row) {
+        state, perspective, king_square, [&](Weight const* row) {
           for (int i = 0; i < kWidth; ++i) {
             values_[i] += row[i];
           }
@@ -59,9 +62,9 @@ class PerspectiveAccumulator {
   }
 
   void ApplyDeltas(const PerspectiveAccumulator& previous,
-                   Value const* const* adds,
+                   Weight const* const* adds,
                    int num_adds,
-                   Value const* const* subs,
+                   Weight const* const* subs,
                    int num_subs) {
     if (this != &previous) {
       for (int i = 0; i < kWidth; ++i) {

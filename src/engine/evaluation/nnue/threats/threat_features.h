@@ -1,14 +1,96 @@
 #ifndef INTEGRAL_THREAT_FEATURES_H
 #define INTEGRAL_THREAT_FEATURES_H
 
+#include <optional>
+#include <utility>
 #include <vector>
 
 #include "../../../../../shared/multi_array.h"
 #include "../../../../../shared/nnue/definitions.h"
-#include "../../../../chess/move_gen.h"
+#include "../../../../chess/bitboard.h"
 #include "../../../../utils/types.h"
 
 namespace nnue::threats {
+
+// Empty-board attack sets, generated here rather than through move_gen so that
+// the tables below can be constexpr. move_gen's slider attacks read the magic
+// tables, which are dynamically initialised in another translation unit; using
+// them here would make these tables depend on static initialisation order and
+// silently leave the slider entries zeroed.
+namespace detail {
+
+constexpr std::array<std::pair<int, int>, 8> kKnightDeltas = {
+    {{1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}}};
+constexpr std::array<std::pair<int, int>, 4> kDiagonalDeltas = {
+    {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}}};
+constexpr std::array<std::pair<int, int>, 4> kOrthogonalDeltas = {
+    {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}};
+
+[[nodiscard]] constexpr BitBoard AttacksOnEmptyBoard(Square square,
+                                                     PieceType piece_type,
+                                                     Color side) {
+  const int rank = square.Rank(), file = square.File();
+  BitBoard attacks;
+
+  const auto step = [&](int rank_delta, int file_delta) {
+    const int to_rank = rank + rank_delta, to_file = file + file_delta;
+    if (to_rank >= 0 && to_rank < 8 && to_file >= 0 && to_file < 8) {
+      attacks.SetBit(to_rank * 8 + to_file);
+    }
+  };
+  const auto ray = [&](int rank_delta, int file_delta) {
+    for (int to_rank = rank + rank_delta, to_file = file + file_delta;
+         to_rank >= 0 && to_rank < 8 && to_file >= 0 && to_file < 8;
+         to_rank += rank_delta, to_file += file_delta) {
+      attacks.SetBit(to_rank * 8 + to_file);
+    }
+  };
+
+  switch (piece_type) {
+    case PieceType::kPawn: {
+      const int forward = side == Color::kWhite ? 1 : -1;
+      step(forward, -1), step(forward, 1);
+      break;
+    }
+    case PieceType::kKnight:
+      for (const auto [rank_delta, file_delta] : kKnightDeltas) {
+        step(rank_delta, file_delta);
+      }
+      break;
+    case PieceType::kBishop:
+      for (const auto [rank_delta, file_delta] : kDiagonalDeltas) {
+        ray(rank_delta, file_delta);
+      }
+      break;
+    case PieceType::kRook:
+      for (const auto [rank_delta, file_delta] : kOrthogonalDeltas) {
+        ray(rank_delta, file_delta);
+      }
+      break;
+    case PieceType::kQueen:
+      for (const auto [rank_delta, file_delta] : kDiagonalDeltas) {
+        ray(rank_delta, file_delta);
+      }
+      for (const auto [rank_delta, file_delta] : kOrthogonalDeltas) {
+        ray(rank_delta, file_delta);
+      }
+      break;
+    case PieceType::kKing:
+      for (const auto [rank_delta, file_delta] : kDiagonalDeltas) {
+        step(rank_delta, file_delta);
+      }
+      for (const auto [rank_delta, file_delta] : kOrthogonalDeltas) {
+        step(rank_delta, file_delta);
+      }
+      break;
+    default:
+      break;
+  }
+
+  return attacks;
+}
+
+}  // namespace detail
 
 // The index of each (attacker x victim) into the threat features
 // Some pieces are excluded from each other to avoid duplicates (a value of -1),
@@ -36,7 +118,7 @@ constexpr auto kPieceTypeTargetCount = ([]() {
   return piece_target_count;
 })();
 
-const auto kPieceIndex = ([]() {
+inline constexpr auto kPieceIndex = ([]() {
   MultiArray<U8,
              PieceType::kNumPieceTypes,
              Color::kNumColors,
@@ -46,8 +128,8 @@ const auto kPieceIndex = ([]() {
   for (Color side : {Color::kWhite, Color::kBlack}) {
     for (int piece_idx = 0; piece_idx < 6; piece_idx++) {
       for (int from = 0; from < 64; ++from) {
-        const BitBoard attack_bb = move_gen::GetPieceAttacks(
-            from, static_cast<PieceType>(piece_idx), side, 0);
+        const BitBoard attack_bb = detail::AttacksOnEmptyBoard(
+            from, static_cast<PieceType>(piece_idx), side);
         for (int to = 0; to < 64; ++to) {
           const BitBoard to_backward_bb = BitBoard::FromSquare(to) - 1;
           const U8 num_backward_attacks =
@@ -70,7 +152,7 @@ struct PieceOffsets {
       offsets;
 };
 
-const auto kPieceOffsets = ([]() {
+inline constexpr auto kPieceOffsets = ([]() {
   PieceOffsets piece_offsets{};
   U32 offset = 0;
   for (const auto side : {Color::kWhite, Color::kBlack}) {
@@ -86,7 +168,7 @@ const auto kPieceOffsets = ([]() {
         if (piece_type != PieceType::kPawn ||
             (square.Rank() != Rank::kRank1 && square.Rank() != Rank::kRank8)) {
           cur_piece_offset +=
-              move_gen::GetPieceAttacks(square, piece_type, side, 0).PopCount();
+              detail::AttacksOnEmptyBoard(square, piece_type, side).PopCount();
         }
       }
 
@@ -102,7 +184,7 @@ const auto kPieceOffsets = ([]() {
   return piece_offsets;
 })();
 
-const auto kAttackTable = ([]() {
+inline constexpr auto kAttackTable = ([]() {
   MultiArray<U32, 6, 2, 6, 2, 2> attack_table;
   attack_table.fill(nnue::arch::kThreatFeatureCount);
   for (const auto attacker_side : {Color::kWhite, Color::kBlack}) {

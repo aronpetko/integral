@@ -4,7 +4,8 @@
 
 namespace nnue {
 
-std::optional<std::span<I8, ThreatFeaturePolicy::kWidth>>
+std::optional<std::span<ThreatFeaturePolicy::Weight,
+                         ThreatFeaturePolicy::kWidth>>
 ThreatFeaturePolicy::FeatureRow(Color perspective,
                                 Square king_square,
                                 PieceType attacker,
@@ -39,9 +40,9 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     const ThreatAccumulatorChange& change,
     Color perspective,
     Square king_square) {
-  std::array<Value const*, ThreatAccumulatorChange::kMaxThreatRows> add_rows;
+  std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> add_rows;
   U16 num_add = 0;
-  std::array<Value const*, ThreatAccumulatorChange::kMaxThreatRows> sub_rows;
+  std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> sub_rows;
   U16 num_sub = 0;
 
   for (int i = 0; i < change.adds.Size(); ++i) {

@@ -111,6 +111,7 @@ void Accumulator::PushChanges(const BoardState& state,
 }
 
 void Accumulator::ApplyChanges() {
+  EnsureThreatsFresh();
   for (Color perspective : {Color::kWhite, Color::kBlack}) {
     if (stack_[head_idx_].updated[perspective]) {
       continue;
