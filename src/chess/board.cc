@@ -211,7 +211,7 @@ void Board::MakeMove(Move move) {
              captured = state_.GetPieceType(to);
   const auto move_type = move.GetType();
 
-  // Initialize accumulator change
+  // Initialize PSQT accumulator change
   nnue::PsqtAccumulatorChange accum_change{};
   accum_change.sub_0 = {from, piece, us};
   accum_change.add_0 = {to, piece, us};

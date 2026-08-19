@@ -9,15 +9,16 @@ namespace nnue {
 
 struct AccumulatorEntry {
   alignas(simd::kAlignment)
-      std::array<PsqtPerspectiveAccumulator, 2> perspectives;
+      std::array<PsqtPerspectiveAccumulator, 2> psqt_perspectives;
   alignas(simd::kAlignment)
       std::array<ThreatPerspectiveAccumulator, 2> threat_perspectives;
-  PsqtAccumulatorChange change;
+  PsqtAccumulatorChange psqt_change;
   std::array<Square, 2> kings;
   std::array<bool, 2> updated;
-  // Threats have no delta chain to walk, so they get their own flag and are
-  // refreshed on first read rather than propagated forward.
-  std::array<bool, 2> threat_valid;
+  // The squares the move into this node changed the occupant of. The threat
+  // rows are rebuilt from this and the two surrounding states when the node is
+  // applied, rather than stored, since one node can hold dozens of rows.
+  BitBoard threat_updated_squares;
   BoardState state;
 };
 
@@ -29,7 +30,9 @@ struct BucketCacheEntry {
   MultiArray<BitBoard, 2, kNumPieceTypes> piece_bbs{};
   MultiArray<BitBoard, 2, kNumColors> side_bbs{};
 
-  BucketCacheEntry() { Reset(); }
+  BucketCacheEntry() {
+    Reset();
+  }
 
   void Reset();
 };
@@ -41,7 +44,9 @@ struct PerspectiveView {
 
 class Accumulator {
  public:
-  Accumulator() : head_idx_(0) { stack_.resize(512); }
+  Accumulator() : head_idx_(0) {
+    stack_.resize(512);
+  }
 
   void SetFromState(const BoardState& state);
   void RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
@@ -49,23 +54,26 @@ class Accumulator {
                           Color perspective,
                           bool reset = false);
 
-  void PushChanges(const BoardState& state, PsqtAccumulatorChange& change);
+  void PushChanges(const BoardState& state, PsqtAccumulatorChange& psqt_change);
   void ApplyChanges();
-
-  void EnsureThreatsFresh();
 
   [[nodiscard]] bool NeedRefresh(Color perspective,
                                  Square old_king,
                                  Square new_king) const;
+  // Threat rows are only keyed on whether the king is mirrored, so a king
+  // bucket change on its own doesn't invalidate them.
+  [[nodiscard]] static bool NeedThreatRefresh(Square old_king, Square new_king);
 
   void IncrementHead();
-  void UndoMove() { --head_idx_; }
+  void UndoMove() {
+    --head_idx_;
+  }
 
   [[nodiscard]] int GetOutputBucket(const BoardState& state) const;
 
   [[nodiscard]] PerspectiveView operator[](int perspective) {
     auto& entry = stack_[head_idx_];
-    return {entry.perspectives[perspective],
+    return {entry.psqt_perspectives[perspective],
             entry.threat_perspectives[perspective]};
   }
 

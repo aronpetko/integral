@@ -17,6 +17,23 @@ struct ThreatAccumulatorChange {
     Color victim_color;
   };
 
+  template <bool kAddChange>
+  void PushChangeInfo(ThreatChangeInfo info);
+
+  template <bool kAddChange>
+  void UpdateThreatsForPiece(const BoardState& state,
+                             PieceType piece_type,
+                             Color piece_color,
+                             Square square,
+                             BitBoard exclude = 0);
+  template <bool kAddChange>
+  void UpdateDiscoveredThreats(const BoardState& state,
+                               Square square,
+                               BitBoard exclude = 0);
+  template <bool kAddChange>
+  void UpdateThreatsForSquares(const BoardState& state,
+                               BitBoard updated_squares);
+
   List<ThreatChangeInfo, kMaxThreatRows> adds;
   List<ThreatChangeInfo, kMaxThreatRows> subs;
 

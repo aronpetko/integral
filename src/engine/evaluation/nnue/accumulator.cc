@@ -3,8 +3,8 @@
 namespace nnue {
 
 void BucketCacheEntry::Reset() {
-  accumulator.perspectives[Color::kWhite].Reset();
-  accumulator.perspectives[Color::kBlack].Reset();
+  accumulator.psqt_perspectives[Color::kWhite].Reset();
+  accumulator.psqt_perspectives[Color::kBlack].Reset();
   accumulator.threat_perspectives[Color::kWhite].Reset();
   accumulator.threat_perspectives[Color::kBlack].Reset();
   piece_bbs = {};
@@ -18,8 +18,9 @@ void Accumulator::SetFromState(const BoardState& state) {
     RefreshPerspective(accumulator, state, color, true);
     accumulator.updated[color] = true;
     accumulator.kings[color] = state.King(color).GetLsb();
-    // Threats are refreshed lazily, at eval entry.
-    accumulator.threat_valid[color] = false;
+    accumulator.threat_perspectives[color].Refresh(
+        state, color, accumulator.kings[color]);
+    accumulator.threat_updated_squares = 0;
     accumulator.state = state;
   }
 }
@@ -33,7 +34,6 @@ void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
   const auto mirrored = king_square.File() >= kFileE;
 
   auto& cached = input_bucket_cache_[mirrored][king_bucket];
-
   if (reset) {
     cached.Reset();
   }
@@ -45,7 +45,8 @@ void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
   std::array<I16 const*, 32> subs;
   int num_subs = 0;
 
-  auto& perspective_accumulator = cached.accumulator.perspectives[perspective];
+  auto& psqt_perspective_accumulator =
+      cached.accumulator.psqt_perspectives[perspective];
 
   for (const Color color : {Color::kBlack, Color::kWhite}) {
     for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
@@ -56,7 +57,7 @@ void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
 
       const BitBoard to_remove = ~new_pieces & old_pieces;
       for (Square square : to_remove) {
-        subs[num_subs++] = perspective_accumulator.GetFeaturePointer(
+        subs[num_subs++] = psqt_perspective_accumulator.GetFeaturePointer(
             square,
             king_square,
             static_cast<PieceType>(piece),
@@ -66,7 +67,7 @@ void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
 
       const BitBoard to_add = new_pieces & ~old_pieces;
       for (Square square : to_add) {
-        adds[num_adds++] = perspective_accumulator.GetFeaturePointer(
+        adds[num_adds++] = psqt_perspective_accumulator.GetFeaturePointer(
             square,
             king_square,
             static_cast<PieceType>(piece),
@@ -76,103 +77,128 @@ void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
     }
   }
 
-  perspective_accumulator.ApplyDeltas(
-      perspective_accumulator, adds.data(), num_adds, subs.data(), num_subs);
+  psqt_perspective_accumulator.ApplyDeltas(psqt_perspective_accumulator,
+                                           adds.data(),
+                                           num_adds,
+                                           subs.data(),
+                                           num_subs);
 
   cached.side_bbs[perspective] = state.side_bbs;
   cached.piece_bbs[perspective] = state.piece_bbs;
 
-  accumulator.perspectives[perspective] =
-      cached.accumulator.perspectives[perspective];
+  accumulator.psqt_perspectives[perspective] =
+      cached.accumulator.psqt_perspectives[perspective];
 }
 
 void Accumulator::PushChanges(const BoardState& state,
-                              PsqtAccumulatorChange& change) {
+                              PsqtAccumulatorChange& psqt_change) {
   IncrementHead();
 
   auto& entry = stack_[head_idx_];
-  entry.change = change;
+  entry.psqt_change = psqt_change;
   entry.updated[Color::kBlack] = false;
   entry.updated[Color::kWhite] = false;
-  // Threats are not propagated forward; the new node refreshes at eval entry.
-  entry.threat_valid[Color::kBlack] = false;
-  entry.threat_valid[Color::kWhite] = false;
+  entry.threat_updated_squares = psqt_change.UpdatedSquares();
   entry.state = state;
 
-  if (change.sub_0.piece == PieceType::kKing) {
-    entry.kings[change.sub_0.color] = change.add_0.square;
+  // Update king positions if necessary
+  if (psqt_change.sub_0.piece == PieceType::kKing) {
+    entry.kings[psqt_change.sub_0.color] = psqt_change.add_0.square;
   } else {
-    entry.kings[change.sub_0.color] =
-        stack_[head_idx_ - 1].kings[change.sub_0.color];
+    entry.kings[psqt_change.sub_0.color] =
+        stack_[head_idx_ - 1].kings[psqt_change.sub_0.color];
   }
-
-  entry.kings[FlipColor(change.sub_0.color)] =
-      stack_[head_idx_ - 1].kings[FlipColor(change.sub_0.color)];
+  // The opponent's king doesn't move, so we can copy it from the previous entry
+  entry.kings[FlipColor(psqt_change.sub_0.color)] =
+      stack_[head_idx_ - 1].kings[FlipColor(psqt_change.sub_0.color)];
 }
 
 void Accumulator::ApplyChanges() {
-  EnsureThreatsFresh();
-  for (Color perspective : {Color::kWhite, Color::kBlack}) {
-    if (stack_[head_idx_].updated[perspective]) {
-      continue;
-    }
-
-    int iter = head_idx_;
-    while (true) {
-      --iter;
-
-      // We've found the earliest updated accumulator
-      if (stack_[iter].updated[perspective]) {
-        int last_updated = iter;
-
-        // Apply all updates from the earliest updated accumulator to now
-        while (last_updated != head_idx_) {
-          auto& dirty_accumulator = stack_[last_updated + 1];
-          const auto& clean_accumulator = stack_[last_updated];
-
-          // If the accumulator needs a refresh, we skip applying updates and
-          // just refresh it
-          if (NeedRefresh(perspective,
-                          clean_accumulator.kings[perspective],
-                          dirty_accumulator.kings[perspective])) {
-            RefreshPerspective(
-                dirty_accumulator, dirty_accumulator.state, perspective);
-          } else {
-            dirty_accumulator.perspectives[perspective].ApplyChange(
-                clean_accumulator.perspectives[perspective],
-                dirty_accumulator.change,
-                perspective,
-                dirty_accumulator.kings[perspective]);
-          }
-          // Mark the accumulator as having been updated
-          stack_[++last_updated].updated[perspective] = true;
-        }
-        break;
-      }
-    }
-  }
-}
-
-void Accumulator::EnsureThreatsFresh() {
-  auto& entry = stack_[head_idx_];
+  // Find the most recent up-to-date accumulator for each perspective
+  std::array<int, 2> last_updated{};
   for (const Color perspective : {Color::kWhite, Color::kBlack}) {
-    if (entry.threat_valid[perspective]) {
-      continue;
+    int iter = head_idx_;
+    while (!stack_[iter].updated[perspective]) {
+      --iter;
     }
-    entry.threat_perspectives[perspective].Refresh(
-        entry.state, perspective, entry.kings[perspective]);
-    entry.threat_valid[perspective] = true;
+    last_updated[perspective] = iter;
+  }
+
+  // Walk the nodes only once, so that the threat rows of a node shared by both
+  // perspectives are only built once
+  ThreatAccumulatorChange threat_change;
+  const auto earliest =
+      std::min(last_updated[Color::kWhite], last_updated[Color::kBlack]);
+
+  for (int iter = earliest; iter != head_idx_; ++iter) {
+    auto& dirty_accumulator = stack_[iter + 1];
+    const auto& clean_accumulator = stack_[iter];
+    bool threat_changes_accumulated = false;
+
+    for (const Color perspective : {Color::kWhite, Color::kBlack}) {
+      // This perspective was already up to date at this point in the stack
+      if (iter < last_updated[perspective]) {
+        continue;
+      }
+
+      const auto clean_king = clean_accumulator.kings[perspective];
+      const auto dirty_king = dirty_accumulator.kings[perspective];
+
+      // If the accumulator needs a refresh, we skip applying updates and just
+      // refresh it
+      if (NeedRefresh(perspective, clean_king, dirty_king)) {
+        RefreshPerspective(
+            dirty_accumulator, dirty_accumulator.state, perspective);
+      } else {
+        dirty_accumulator.psqt_perspectives[perspective].ApplyChange(
+            clean_accumulator.psqt_perspectives[perspective],
+            dirty_accumulator.psqt_change,
+            perspective,
+            dirty_accumulator.kings[perspective]);
+      }
+
+      // If king crosses the E-file, refresh the threat features
+      if (NeedThreatRefresh(clean_king, dirty_king)) {
+        dirty_accumulator.threat_perspectives[perspective].Refresh(
+            dirty_accumulator.state, perspective, dirty_king);
+      } else {
+        // Accumulate the changes in threats only once per "move", not per
+        // perspective
+        if (!threat_changes_accumulated) {
+          threat_changes_accumulated = true;
+          threat_change.Clear();
+          threat_change.UpdateThreatsForSquares<false>(
+              clean_accumulator.state,
+              dirty_accumulator.threat_updated_squares);
+          threat_change.UpdateThreatsForSquares<true>(
+              dirty_accumulator.state,
+              dirty_accumulator.threat_updated_squares);
+        }
+        dirty_accumulator.threat_perspectives[perspective].ApplyChange(
+            clean_accumulator.threat_perspectives[perspective],
+            threat_change,
+            perspective,
+            dirty_king);
+      }
+
+      // Mark the accumulator as having been updated
+      dirty_accumulator.updated[perspective] = true;
+    }
   }
 }
 
 bool Accumulator::NeedRefresh(Color perspective,
                               Square old_king,
                               Square new_king) const {
-  if ((old_king.File() >= kFileE) != (new_king.File() >= kFileE)) {
+  if (NeedThreatRefresh(old_king, new_king)) {
     return true;
   }
   return GetKingBucket(old_king, perspective) !=
          GetKingBucket(new_king, perspective);
+}
+
+bool Accumulator::NeedThreatRefresh(Square old_king, Square new_king) {
+  return (old_king.File() >= kFileE) != (new_king.File() >= kFileE);
 }
 
 void Accumulator::IncrementHead() {

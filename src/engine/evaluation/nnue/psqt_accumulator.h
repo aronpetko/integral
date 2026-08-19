@@ -12,6 +12,21 @@ struct PsqtAccumulatorChange {
     kCapture,
     kCastle
   } type;
+
+  // The squares this move changed the occupant of, which is all the threat
+  // features need to be brought up to date. sub_1 covers both the captured
+  // piece (including the en passant pawn) and the castling rook's origin.
+  [[nodiscard]] BitBoard UpdatedSquares() const {
+    auto squares =
+        BitBoard::FromSquare(sub_0.square) | BitBoard::FromSquare(add_0.square);
+    if (type != kNormal) {
+      squares |= BitBoard::FromSquare(sub_1.square);
+      if (type == kCastle) {
+        squares |= BitBoard::FromSquare(add_1.square);
+      }
+    }
+    return squares;
+  }
 };
 
 struct PsqtFeaturePolicy {
@@ -24,10 +39,10 @@ struct PsqtFeaturePolicy {
   }
 
   static std::span<Weight, kWidth> FeatureRow(Square square,
-                                           Square king_square,
-                                           PieceType piece,
-                                           Color piece_color,
-                                           Color perspective);
+                                              Square king_square,
+                                              PieceType piece,
+                                              Color piece_color,
+                                              Color perspective);
 
   template <typename Emit>
   static void ForEachActiveFeature(const BoardState& state,
@@ -52,10 +67,10 @@ class PsqtPerspectiveAccumulator
     : public PerspectiveAccumulator<PsqtFeaturePolicy> {
  public:
   Weight const* GetFeaturePointer(Square square,
-                               Square king_square,
-                               PieceType piece,
-                               Color piece_color,
-                               Color perspective);
+                                  Square king_square,
+                                  PieceType piece,
+                                  Color piece_color,
+                                  Color perspective);
 
   template <FusedOperation... ops,
             typename... Ts,
