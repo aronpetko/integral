@@ -97,7 +97,7 @@ struct BoardState {
         checkers(0ULL),
         pinned({}),
         half_moves(0) {
-    piece_on_square.fill(PieceType::kNone);
+    piece_on_square.fill(Piece::kNoPiece);
   }
 
   template <bool update_key = true>
@@ -105,7 +105,7 @@ struct BoardState {
     // Add the piece to the bitboards and mailbox
     piece_bbs[piece_type].SetBit(square);
     side_bbs[color].SetBit(square);
-    piece_on_square[square] = piece_type;
+    piece_on_square[square] = MakePiece(piece_type, color);
 
     // Insert the piece to the hash
     if constexpr (update_key) {
@@ -133,7 +133,8 @@ struct BoardState {
 
   template <bool update_key = true>
   void RemovePiece(Square square, Color color) {
-    auto &piece_type = piece_on_square[square];
+    auto &piece = piece_on_square[square];
+    const auto piece_type = TypeOf(piece);
 
     // Remove the piece from the hash
     if constexpr (update_key) {
@@ -163,22 +164,19 @@ struct BoardState {
     piece_bbs[piece_type].ClearBit(square);
     side_bbs[color].ClearBit(square);
 
-    piece_type = PieceType::kNone;
+    piece = Piece::kNoPiece;
   }
 
-  [[nodiscard]] constexpr Color GetPieceColor(U8 square) const {
-    if (side_bbs[Color::kWhite].IsSet(square)) return Color::kWhite;
-    if (side_bbs[Color::kBlack].IsSet(square)) return Color::kBlack;
-    return Color::kNoColor;
-  }
-
-  [[nodiscard]] constexpr PieceType GetPieceType(U8 square) const {
+  [[nodiscard]] constexpr Piece GetPiece(U8 square) const {
     return piece_on_square[square];
   }
 
-  [[nodiscard]] constexpr int GetPieceAndColor(U8 square) const {
-    const auto piece = GetPieceType(square);
-    return piece != PieceType::kNone ? piece * 2 + GetPieceColor(square) : -1;
+  [[nodiscard]] constexpr Color GetPieceColor(U8 square) const {
+    return ColorOf(piece_on_square[square]);
+  }
+
+  [[nodiscard]] constexpr PieceType GetPieceType(U8 square) const {
+    return TypeOf(piece_on_square[square]);
   }
 
   [[nodiscard]] constexpr bool PieceExists(Square square) const {
@@ -262,7 +260,7 @@ struct BoardState {
 
   std::array<BitBoard, kNumPieceTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
-  std::array<PieceType, kSquareCount> piece_on_square;
+  std::array<Piece, kSquareCount> piece_on_square;
   Color turn;
   U16 fifty_moves_clock;
   U16 half_moves;

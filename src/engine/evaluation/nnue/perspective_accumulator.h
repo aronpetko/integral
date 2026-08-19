@@ -43,6 +43,23 @@ class PerspectiveAccumulator {
   using Value = typename FeaturePolicy::Value;
   using Weight = typename FeaturePolicy::Weight;
 
+  // Vector tiling used when rows are folded into the accumulator. A tile is
+  // the slice of the accumulator kept in registers while rows stream over it.
+  static constexpr std::size_t kChunk = simd::kNativeLanes<Value>;
+  static constexpr std::size_t kChunks = kWidth / kChunk;
+#if BUILD_HAS_AVX512
+  static constexpr std::size_t kTileTarget = 32;
+#else
+  static constexpr std::size_t kTileTarget = 8;
+#endif
+  static constexpr std::size_t kTile =
+      kChunks < kTileTarget ? kChunks : kTileTarget;
+
+  using ValueVector = simd::Vector<Value, kChunk>;
+
+  static_assert(kWidth % kChunk == 0);
+  static_assert(kChunks % kTile == 0);
+
   PerspectiveAccumulator() : values_({}) {}
 
   void Reset() {
@@ -52,13 +69,64 @@ class PerspectiveAccumulator {
   }
 
   void Refresh(const BoardState& state, Color perspective, Square king_square) {
+    // A refresh can carry far more rows than a delta, so they're gathered and
+    // folded in a batch at a time instead of walking the whole accumulator once
+    // per row. The batch size bounds the stack use.
+    static constexpr int kBatchSize = 64;
+    std::array<Weight const*, kBatchSize> rows;
+    int num_rows = 0;
+
     Reset();
     FeaturePolicy::ForEachActiveFeature(
         state, perspective, king_square, [&](Weight const* row) {
-          for (int i = 0; i < kWidth; ++i) {
-            values_[i] += row[i];
+          rows[num_rows++] = row;
+          if (num_rows == kBatchSize) {
+            ApplyRows(*this, rows.data(), num_rows, nullptr, 0);
+            num_rows = 0;
           }
         });
+
+    if (num_rows > 0) {
+      ApplyRows(*this, rows.data(), num_rows, nullptr, 0);
+    }
+  }
+
+  // Folds every row in on a single pass: one tile of the accumulator is held in
+  // registers while all the sub and add rows stream over that tile, so the
+  // accumulator is loaded and stored exactly once no matter how many rows the
+  // change carries.
+  void ApplyRows(const PerspectiveAccumulator& previous,
+                 Weight const* const* adds,
+                 int num_adds,
+                 Weight const* const* subs,
+                 int num_subs) {
+    for (std::size_t base = 0; base < kChunks; base += kTile) {
+      std::array<ValueVector, kTile> values;
+
+      for (std::size_t tile = 0; tile < kTile; ++tile) {
+        values[tile] =
+            simd::Load<Value, kChunk>(&previous.values_[(base + tile) * kChunk]);
+      }
+
+      for (int sub = 0; sub < num_subs; ++sub) {
+        for (std::size_t tile = 0; tile < kTile; ++tile) {
+          values[tile] -= simd::Convert<Value>(
+              simd::Load<Weight, kChunk>(&subs[sub][(base + tile) * kChunk]));
+        }
+      }
+
+      for (int add = 0; add < num_adds; ++add) {
+        for (std::size_t tile = 0; tile < kTile; ++tile) {
+          values[tile] += simd::Convert<Value>(
+              simd::Load<Weight, kChunk>(&adds[add][(base + tile) * kChunk]));
+        }
+      }
+
+      for (std::size_t tile = 0; tile < kTile; ++tile) {
+        simd::Store<Value, kChunk>(&values_[(base + tile) * kChunk],
+                                   values[tile]);
+      }
+    }
   }
 
   void ApplyDeltas(const PerspectiveAccumulator& previous,
@@ -66,33 +134,7 @@ class PerspectiveAccumulator {
                    int num_adds,
                    Weight const* const* subs,
                    int num_subs) {
-    if (this != &previous) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] = previous.values_[i];
-      }
-    }
-    for (; num_adds >= 4; num_adds -= 4) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] += adds[num_adds - 4][i] + adds[num_adds - 3][i] +
-                      adds[num_adds - 2][i] + adds[num_adds - 1][i];
-      }
-    }
-    for (; num_adds >= 1; num_adds -= 1) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] += adds[num_adds - 1][i];
-      }
-    }
-    for (; num_subs >= 4; num_subs -= 4) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] -= subs[num_subs - 4][i] + subs[num_subs - 3][i] +
-                      subs[num_subs - 2][i] + subs[num_subs - 1][i];
-      }
-    }
-    for (; num_subs >= 1; num_subs -= 1) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] -= subs[num_subs - 1][i];
-      }
-    }
+    ApplyRows(previous, adds, num_adds, subs, num_subs);
   }
 
   Value& operator[](int idx) {

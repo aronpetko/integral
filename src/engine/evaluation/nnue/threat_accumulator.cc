@@ -15,10 +15,11 @@ void ThreatAccumulatorChange::PushChangeInfo(ThreatChangeInfo info) {
 
 template <bool kAddChange>
 void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
-                                                    PieceType piece_type,
-                                                    Color piece_color,
+                                                    Piece piece,
                                                     Square square,
                                                     BitBoard exclude) {
+  const auto piece_type = TypeOf(piece);
+
   // Kings are neither valid attackers nor valid victims, so they only ever
   // affect the threat features by blocking rays.
   if (piece_type == PieceType::kKing) {
@@ -30,17 +31,13 @@ void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
 
   // Push all outgoing threats
   const auto threatened_pieces =
-      move_gen::GetPieceAttacks(square, piece_type, piece_color, occupied) &
+      move_gen::GetPieceAttacks(square, piece_type, ColorOf(piece), occupied) &
       candidates;
   for (const Square attacked_sq : threatened_pieces) {
-    const auto victim_type = state.GetPieceType(attacked_sq);
-    const auto victim_color = state.GetPieceColor(attacked_sq);
     PushChangeInfo<kAddChange>({.attacker_square = square,
-                                .attacker_type = piece_type,
-                                .attacker_color = piece_color,
                                 .victim_square = attacked_sq,
-                                .victim_type = victim_type,
-                                .victim_color = victim_color});
+                                .attacker_piece = piece,
+                                .victim_piece = state.GetPiece(attacked_sq)});
   }
 
   // Push all incoming threats
@@ -58,14 +55,10 @@ void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
   incoming_threats |= (rooks & rook_attacks) | (bishops & bishop_attacks);
 
   for (const Square attacker_sq : incoming_threats & ~exclude) {
-    const auto attacker_type = state.GetPieceType(attacker_sq);
-    const auto attacker_color = state.GetPieceColor(attacker_sq);
     PushChangeInfo<kAddChange>({.attacker_square = attacker_sq,
-                                .attacker_type = attacker_type,
-                                .attacker_color = attacker_color,
                                 .victim_square = square,
-                                .victim_type = piece_type,
-                                .victim_color = piece_color});
+                                .attacker_piece = state.GetPiece(attacker_sq),
+                                .victim_piece = piece});
   }
 }
 
@@ -95,15 +88,10 @@ void ThreatAccumulatorChange::UpdateDiscoveredThreats(const BoardState& state,
       }
 
       const Square victim_sq = behind.GetLsb();
-      const auto attacker_type = state.GetPieceType(attacker_sq);
-      const auto attacker_color = state.GetPieceColor(attacker_sq);
-      PushChangeInfo<kAddChange>(
-          {.attacker_square = attacker_sq,
-           .attacker_type = attacker_type,
-           .attacker_color = attacker_color,
-           .victim_square = victim_sq,
-           .victim_type = state.GetPieceType(victim_sq),
-           .victim_color = state.GetPieceColor(victim_sq)});
+      PushChangeInfo<kAddChange>({.attacker_square = attacker_sq,
+                                  .victim_square = victim_sq,
+                                  .attacker_piece = state.GetPiece(attacker_sq),
+                                  .victim_piece = state.GetPiece(victim_sq)});
     }
   };
 
@@ -116,29 +104,20 @@ void ThreatAccumulatorChange::UpdateThreatsForSquares(
     const BoardState& state, BitBoard updated_squares) {
   BitBoard seen;
   for (const Square square : updated_squares) {
-    const auto piece_type = state.GetPieceType(square);
-    if (piece_type == PieceType::kNone) {
+    const auto piece = state.GetPiece(square);
+    if (piece == Piece::kNoPiece) {
       UpdateDiscoveredThreats<kAddChange>(state, square, updated_squares);
     } else {
-      UpdateThreatsForPiece<kAddChange>(
-          state, piece_type, state.GetPieceColor(square), square, seen);
+      UpdateThreatsForPiece<kAddChange>(state, piece, square, seen);
     }
     seen |= BitBoard::FromSquare(square);
   }
 }
 
 template void ThreatAccumulatorChange::UpdateThreatsForPiece<false>(
-    const BoardState& state,
-    PieceType piece_type,
-    Color piece_color,
-    Square square,
-    BitBoard exclude);
+    const BoardState& state, Piece piece, Square square, BitBoard exclude);
 template void ThreatAccumulatorChange::UpdateThreatsForPiece<true>(
-    const BoardState& state,
-    PieceType piece_type,
-    Color piece_color,
-    Square square,
-    BitBoard exclude);
+    const BoardState& state, Piece piece, Square square, BitBoard exclude);
 template void ThreatAccumulatorChange::UpdateDiscoveredThreats<false>(
     const BoardState& state, Square square, BitBoard exclude);
 template void ThreatAccumulatorChange::UpdateDiscoveredThreats<true>(
@@ -148,36 +127,30 @@ template void ThreatAccumulatorChange::UpdateThreatsForSquares<false>(
 template void ThreatAccumulatorChange::UpdateThreatsForSquares<true>(
     const BoardState& state, BitBoard updated_squares);
 
-std::optional<
-    std::span<ThreatFeaturePolicy::Weight, ThreatFeaturePolicy::kWidth>>
-ThreatFeaturePolicy::FeatureRow(Color perspective,
-                                Square king_square,
-                                PieceType attacker,
-                                Color attacker_color,
-                                PieceType victim,
-                                Color victim_color,
-                                Square from,
-                                Square to) {
-  if (perspective == Color::kBlack) {
-    attacker_color = FlipColor(attacker_color);
-    victim_color = FlipColor(victim_color);
-    from = from ^ 0b111000;
-    to = to ^ 0b111000;
-  }
+namespace {
 
-  // Horizontal mirroring
-  if (king_square.File() >= kFileE) {
-    from = from ^ 0b111;
-    to = to ^ 0b111;
+U16 CollectRows(const List<ThreatAccumulatorChange::ThreatChangeInfo,
+                           ThreatAccumulatorChange::kMaxThreatRows>& infos,
+                Color perspective,
+                Square king_square,
+                ThreatFeaturePolicy::Weight const** rows) {
+  U16 count = 0;
+  for (int i = 0; i < infos.Size(); ++i) {
+    const auto& info = infos[i];
+    const auto feature_index =
+        ThreatFeaturePolicy::FeatureIndex(perspective,
+                                          king_square,
+                                          info.attacker_piece,
+                                          info.victim_piece,
+                                          info.attacker_square,
+                                          info.victim_square);
+    rows[count] = ThreatFeaturePolicy::FeatureRow(feature_index);
+    count += ThreatFeaturePolicy::IsValidFeature(feature_index);
   }
-
-  const auto feature_idx = threats::get_threat_feature_index(
-      attacker, attacker_color, victim, victim_color, from, to);
-  if (!feature_idx) {
-    return std::nullopt;
-  }
-  return network->threat_weights[feature_idx.value()].as_array();
+  return count;
 }
+
+}  // namespace
 
 void ThreatPerspectiveAccumulator::ApplyChange(
     const ThreatPerspectiveAccumulator& previous,
@@ -185,40 +158,75 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     Color perspective,
     Square king_square) {
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> add_rows;
-  U16 num_add = 0;
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> sub_rows;
-  U16 num_sub = 0;
 
-  for (int i = 0; i < change.adds.Size(); ++i) {
-    const auto& add = change.adds[i];
-    const auto row = ThreatFeaturePolicy::FeatureRow(perspective,
-                                                     king_square,
-                                                     add.attacker_type,
-                                                     add.attacker_color,
-                                                     add.victim_type,
-                                                     add.victim_color,
-                                                     add.attacker_square,
-                                                     add.victim_square);
-    if (row) {
-      add_rows[num_add++] = row.value().data();
-    }
-  }
-  for (int i = 0; i < change.subs.Size(); ++i) {
-    const auto& sub = change.subs[i];
-    const auto row = ThreatFeaturePolicy::FeatureRow(perspective,
-                                                     king_square,
-                                                     sub.attacker_type,
-                                                     sub.attacker_color,
-                                                     sub.victim_type,
-                                                     sub.victim_color,
-                                                     sub.attacker_square,
-                                                     sub.victim_square);
-    if (row) {
-      sub_rows[num_sub++] = row.value().data();
-    }
-  }
+  const auto num_add =
+      CollectRows(change.adds, perspective, king_square, add_rows.data());
+  const auto num_sub =
+      CollectRows(change.subs, perspective, king_square, sub_rows.data());
 
   ApplyDeltas(previous, add_rows.data(), num_add, sub_rows.data(), num_sub);
+}
+
+void ThreatPerspectiveAccumulator::ApplyChangeBothPerspectives(
+    std::array<ThreatPerspectiveAccumulator, 2>& accumulators,
+    const std::array<ThreatPerspectiveAccumulator, 2>& previous,
+    const ThreatAccumulatorChange& change,
+    const std::array<Square, 2>& king_squares) {
+  constexpr int kMaxRows = ThreatAccumulatorChange::kMaxThreatRows;
+  std::array<std::array<Weight const*, kMaxRows>, 2> add_rows;
+  std::array<std::array<Weight const*, kMaxRows>, 2> sub_rows;
+  std::array<U16, 2> num_adds{}, num_subs{};
+
+  for (const Color perspective : {Color::kWhite, Color::kBlack}) {
+    num_adds[perspective] = CollectRows(change.adds,
+                                        perspective,
+                                        king_squares[perspective],
+                                        add_rows[perspective].data());
+    num_subs[perspective] = CollectRows(change.subs,
+                                        perspective,
+                                        king_squares[perspective],
+                                        sub_rows[perspective].data());
+  }
+
+  constexpr std::size_t kFusedTile = kTile > 1 ? kTile / 2 : 1;
+  static_assert(kChunks % kFusedTile == 0);
+
+  for (std::size_t base = 0; base < kChunks; base += kFusedTile) {
+    std::array<std::array<ValueVector, kFusedTile>, 2> values;
+
+    for (const Color perspective : {Color::kWhite, Color::kBlack}) {
+      for (std::size_t tile = 0; tile < kFusedTile; ++tile) {
+        values[perspective][tile] = simd::Load<Value, kChunk>(
+            &previous[perspective].values_[(base + tile) * kChunk]);
+      }
+    }
+
+    for (const Color perspective : {Color::kWhite, Color::kBlack}) {
+      for (U16 sub = 0; sub < num_subs[perspective]; ++sub) {
+        Weight const* row = sub_rows[perspective][sub];
+        for (std::size_t tile = 0; tile < kFusedTile; ++tile) {
+          values[perspective][tile] -= simd::Convert<Value>(
+              simd::Load<Weight, kChunk>(&row[(base + tile) * kChunk]));
+        }
+      }
+      for (U16 add = 0; add < num_adds[perspective]; ++add) {
+        Weight const* row = add_rows[perspective][add];
+        for (std::size_t tile = 0; tile < kFusedTile; ++tile) {
+          values[perspective][tile] += simd::Convert<Value>(
+              simd::Load<Weight, kChunk>(&row[(base + tile) * kChunk]));
+        }
+      }
+    }
+
+    for (const Color perspective : {Color::kWhite, Color::kBlack}) {
+      for (std::size_t tile = 0; tile < kFusedTile; ++tile) {
+        simd::Store<Value, kChunk>(
+            &accumulators[perspective].values_[(base + tile) * kChunk],
+            values[perspective][tile]);
+      }
+    }
+  }
 }
 
 }  // namespace nnue

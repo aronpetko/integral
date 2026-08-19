@@ -15,9 +15,6 @@ struct AccumulatorEntry {
   PsqtAccumulatorChange psqt_change;
   std::array<Square, 2> kings;
   std::array<bool, 2> updated;
-  // The squares the move into this node changed the occupant of. The threat
-  // rows are rebuilt from this and the two surrounding states when the node is
-  // applied, rather than stored, since one node can hold dozens of rows.
   BitBoard threat_updated_squares;
   BoardState state;
 };
@@ -60,8 +57,6 @@ class Accumulator {
   [[nodiscard]] bool NeedRefresh(Color perspective,
                                  Square old_king,
                                  Square new_king) const;
-  // Threat rows are only keyed on whether the king is mirrored, so a king
-  // bucket change on its own doesn't invalidate them.
   [[nodiscard]] static bool NeedThreatRefresh(Square old_king, Square new_king);
 
   void IncrementHead();
@@ -82,7 +77,6 @@ class Accumulator {
 
   int head_idx_;
   std::vector<AccumulatorEntry> stack_;
-  // Finny tables: [mirrored][king bucket].
   MultiArray<BucketCacheEntry, 2, arch::kInputBucketCount> input_bucket_cache_;
 };
 

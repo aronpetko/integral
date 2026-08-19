@@ -177,8 +177,8 @@ if (LTO_SUPPORTED)
 endif ()
 
 # Add Clang-specific flags
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++ -fconstexpr-steps=100000000")
 endif ()
 
 # Static linking on Windows

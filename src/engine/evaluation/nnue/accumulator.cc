@@ -133,7 +133,9 @@ void Accumulator::ApplyChanges() {
   for (int iter = earliest; iter != head_idx_; ++iter) {
     auto& dirty_accumulator = stack_[iter + 1];
     const auto& clean_accumulator = stack_[iter];
-    bool threat_changes_accumulated = false;
+    // The perspectives whose threats carry over from the previous node, and so
+    // can be folded in together on one pass
+    List<Color, 2> threat_deltas;
 
     for (const Color perspective : {Color::kWhite, Color::kBlack}) {
       // This perspective was already up to date at this point in the stack
@@ -162,27 +164,38 @@ void Accumulator::ApplyChanges() {
         dirty_accumulator.threat_perspectives[perspective].Refresh(
             dirty_accumulator.state, perspective, dirty_king);
       } else {
-        // Accumulate the changes in threats only once per "move", not per
-        // perspective
-        if (!threat_changes_accumulated) {
-          threat_changes_accumulated = true;
-          threat_change.Clear();
-          threat_change.UpdateThreatsForSquares<false>(
-              clean_accumulator.state,
-              dirty_accumulator.threat_updated_squares);
-          threat_change.UpdateThreatsForSquares<true>(
-              dirty_accumulator.state,
-              dirty_accumulator.threat_updated_squares);
-        }
-        dirty_accumulator.threat_perspectives[perspective].ApplyChange(
-            clean_accumulator.threat_perspectives[perspective],
-            threat_change,
-            perspective,
-            dirty_king);
+        threat_deltas.Push(perspective);
       }
 
       // Mark the accumulator as having been updated
       dirty_accumulator.updated[perspective] = true;
+    }
+
+    if (threat_deltas.Empty()) {
+      continue;
+    }
+
+    // Accumulate the changes in threats only once per "move", not per
+    // perspective
+    threat_change.Clear();
+    threat_change.UpdateThreatsForSquares<false>(
+        clean_accumulator.state, dirty_accumulator.threat_updated_squares);
+    threat_change.UpdateThreatsForSquares<true>(
+        dirty_accumulator.state, dirty_accumulator.threat_updated_squares);
+
+    if (threat_deltas.Size() == 2) {
+      ThreatPerspectiveAccumulator::ApplyChangeBothPerspectives(
+          dirty_accumulator.threat_perspectives,
+          clean_accumulator.threat_perspectives,
+          threat_change,
+          dirty_accumulator.kings);
+    } else {
+      const auto perspective = threat_deltas[0];
+      dirty_accumulator.threat_perspectives[perspective].ApplyChange(
+          clean_accumulator.threat_perspectives[perspective],
+          threat_change,
+          perspective,
+          dirty_accumulator.kings[perspective]);
     }
   }
 }

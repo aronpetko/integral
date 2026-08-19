@@ -119,24 +119,18 @@ constexpr auto kPieceTypeTargetCount = ([]() {
 })();
 
 inline constexpr auto kPieceIndex = ([]() {
-  MultiArray<U8,
-             PieceType::kNumPieceTypes,
-             Color::kNumColors,
-             Squares::kSquareCount,
-             Squares::kSquareCount>
+  MultiArray<U8, kNumPieces, Squares::kSquareCount, Squares::kSquareCount>
       piece_indices{};
-  for (Color side : {Color::kWhite, Color::kBlack}) {
-    for (int piece_idx = 0; piece_idx < 6; piece_idx++) {
-      for (int from = 0; from < 64; ++from) {
-        const BitBoard attack_bb = detail::AttacksOnEmptyBoard(
-            from, static_cast<PieceType>(piece_idx), side);
-        for (int to = 0; to < 64; ++to) {
-          const BitBoard to_backward_bb = BitBoard::FromSquare(to) - 1;
-          const U8 num_backward_attacks =
-              (attack_bb & to_backward_bb).PopCount();
-          piece_indices[piece_idx][static_cast<int>(side)][from][to] =
-              num_backward_attacks;
-        }
+  for (int piece = 0; piece < kNumPieces; ++piece) {
+    const auto piece_type = TypeOf(static_cast<Piece>(piece));
+    const auto side = ColorOf(static_cast<Piece>(piece));
+    for (int from = 0; from < 64; ++from) {
+      const BitBoard attack_bb =
+          detail::AttacksOnEmptyBoard(from, piece_type, side);
+      for (int to = 0; to < 64; ++to) {
+        const BitBoard to_backward_bb = BitBoard::FromSquare(to) - 1;
+        const U8 num_backward_attacks = (attack_bb & to_backward_bb).PopCount();
+        piece_indices[piece][from][to] = num_backward_attacks;
       }
     }
   }
@@ -144,12 +138,8 @@ inline constexpr auto kPieceIndex = ([]() {
 })();
 
 struct PieceOffsets {
-  MultiArray<U32, PieceType::kNumPieceTypes, Color::kNumColors, 2> indices;
-  MultiArray<U32,
-             PieceType::kNumPieceTypes,
-             Color::kNumColors,
-             Squares::kSquareCount>
-      offsets;
+  MultiArray<U32, kNumPieces, 2> indices;
+  MultiArray<U32, kNumPieces, Squares::kSquareCount> offsets;
 };
 
 inline constexpr auto kPieceOffsets = ([]() {
@@ -163,7 +153,8 @@ inline constexpr auto kPieceOffsets = ([]() {
       // offset into the threat features of each attacking piece.
       U32 cur_piece_offset = 0;
       for (Square square = 0; square < 64; ++square) {
-        piece_offsets.offsets[piece_type][side][square] = cur_piece_offset;
+        piece_offsets.offsets[MakePiece(piece_type, side)][square] =
+            cur_piece_offset;
         // Exclude pawns on first/last rank
         if (piece_type != PieceType::kPawn ||
             (square.Rank() != Rank::kRank1 && square.Rank() != Rank::kRank8)) {
@@ -174,7 +165,8 @@ inline constexpr auto kPieceOffsets = ([]() {
 
       // At this point, 'cur_piece_offset' is the sum of all attacks from all
       // squares for this colored piece.
-      piece_offsets.indices[piece_idx][side] = {cur_piece_offset, offset};
+      piece_offsets.indices[MakePiece(piece_type, side)] = {cur_piece_offset,
+                                                            offset};
       // 'offset' is a global index into the threat features array, based on
       // the number of allowed (attacker x victim) combinations multiplied by
       // the summed attacking squares.
@@ -185,40 +177,33 @@ inline constexpr auto kPieceOffsets = ([]() {
 })();
 
 inline constexpr auto kAttackTable = ([]() {
-  MultiArray<U32, 6, 2, 6, 2, 2> attack_table;
+  MultiArray<U32, kNumPieces, kNumPieces, 2> attack_table;
   attack_table.fill(nnue::arch::kThreatFeatureCount);
-  for (const auto attacker_side : {Color::kWhite, Color::kBlack}) {
-    for (int attacker_piece_idx = 0;
-         attacker_piece_idx < PieceType::kNumPieceTypes;
-         ++attacker_piece_idx) {
-      for (const auto victim_side : {Color::kWhite, Color::kBlack}) {
-        for (int victim_piece_idx = 0;
-             victim_piece_idx < PieceType::kNumPieceTypes;
-             ++victim_piece_idx) {
-          const bool is_opposed = attacker_side != victim_side;
-          const auto target_map =
-              kPieceTypeTargetMap[attacker_piece_idx][victim_piece_idx];
-          const bool is_semi_excluded =
-              attacker_piece_idx == victim_piece_idx &&
-              (is_opposed || attacker_piece_idx != PieceType::kPawn);
-          const bool is_fully_excluded = target_map == -1;
+  for (int attacker = 0; attacker < kNumPieces; ++attacker) {
+    const auto attacker_piece_idx = TypeOf(static_cast<Piece>(attacker));
+    const auto attacker_side = ColorOf(static_cast<Piece>(attacker));
+    for (int victim = 0; victim < kNumPieces; ++victim) {
+      const auto victim_piece_idx = TypeOf(static_cast<Piece>(victim));
+      const auto victim_side = ColorOf(static_cast<Piece>(victim));
 
-          const auto [piece_offset, offset] =
-              kPieceOffsets.indices[attacker_piece_idx][attacker_side]
-                  .as_array();
-          const auto color_stride =
-              kPieceTypeTargetCount[attacker_piece_idx] / 2 * victim_side;
+      const bool is_opposed = attacker_side != victim_side;
+      const auto target_map =
+          kPieceTypeTargetMap[attacker_piece_idx][victim_piece_idx];
+      const bool is_semi_excluded =
+          attacker_piece_idx == victim_piece_idx &&
+          (is_opposed || attacker_piece_idx != PieceType::kPawn);
+      const bool is_fully_excluded = target_map == -1;
 
-          const auto feature =
-              offset + (color_stride + target_map) * piece_offset;
-          if (!is_fully_excluded) {
-            attack_table[attacker_piece_idx][attacker_side][victim_piece_idx]
-                        [victim_side][0] = feature;
-            if (!is_semi_excluded) {
-              attack_table[attacker_piece_idx][attacker_side][victim_piece_idx]
-                          [victim_side][1] = feature;
-            }
-          }
+      const auto [piece_offset, offset] =
+          kPieceOffsets.indices[attacker].as_array();
+      const auto color_stride =
+          kPieceTypeTargetCount[attacker_piece_idx] / 2 * victim_side;
+
+      const auto feature = offset + (color_stride + target_map) * piece_offset;
+      if (!is_fully_excluded) {
+        attack_table[attacker][victim][0] = feature;
+        if (!is_semi_excluded) {
+          attack_table[attacker][victim][1] = feature;
         }
       }
     }
@@ -226,12 +211,19 @@ inline constexpr auto kAttackTable = ([]() {
   return attack_table;
 })();
 
-[[nodiscard]] std::optional<U32> get_threat_feature_index(PieceType attacker,
-                                                          Color attacker_color,
-                                                          PieceType victim,
-                                                          Color victim_color,
-                                                          Square from,
-                                                          Square to);
+// The row this threat maps to. A pair with no feature lands at or above
+// kThreatFeatureCount rather than reporting failure separately, so callers can
+// test the result instead of branching inside the lookup.
+[[nodiscard]] inline U32 get_threat_feature_index(Piece attacker,
+                                                  Piece victim,
+                                                  Square from,
+                                                  Square to) {
+  const bool is_forward_move = from < to;
+  const auto attack_index = kAttackTable[attacker][victim][is_forward_move];
+  const auto offset = kPieceOffsets.offsets[attacker][from];
+  const auto piece_idx = kPieceIndex[attacker][from][to];
+  return attack_index + offset + piece_idx;
+}
 
 }  // namespace nnue::threats
 

@@ -1,6 +1,7 @@
 #ifndef INTEGRAL_TYPES_H_
 #define INTEGRAL_TYPES_H_
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -54,6 +55,92 @@ enum Color : U8 {
 
 constexpr Color FlipColor(Color color) {
   return Color(!color);
+}
+
+// A piece and its color in a single value: white's six pieces, then black's.
+// The network's threat features are laid out in that same order, so a colored
+// piece indexes those tables directly instead of being taken apart and put back
+// together at every lookup.
+enum Piece : U8 {
+  kWhitePawn,
+  kWhiteKnight,
+  kWhiteBishop,
+  kWhiteRook,
+  kWhiteQueen,
+  kWhiteKing,
+  kBlackPawn,
+  kBlackKnight,
+  kBlackBishop,
+  kBlackRook,
+  kBlackQueen,
+  kBlackKing,
+  kNoPiece,
+  kNumPieces = 12
+};
+
+constexpr Piece MakePiece(PieceType piece_type, Color color) {
+  return static_cast<Piece>(color * PieceType::kNumPieceTypes + piece_type);
+}
+
+constexpr PieceType TypeOf(Piece piece) {
+  constexpr std::array<PieceType, kNumPieces + 1> kPieceTypes = {kPawn,
+                                                                 kKnight,
+                                                                 kBishop,
+                                                                 kRook,
+                                                                 kQueen,
+                                                                 kKing,
+                                                                 kPawn,
+                                                                 kKnight,
+                                                                 kBishop,
+                                                                 kRook,
+                                                                 kQueen,
+                                                                 kKing,
+                                                                 kNone};
+  return kPieceTypes[piece];
+}
+
+constexpr Color ColorOf(Piece piece) {
+  constexpr std::array<Color, kNumPieces + 1> kPieceColors = {kWhite,
+                                                              kWhite,
+                                                              kWhite,
+                                                              kWhite,
+                                                              kWhite,
+                                                              kWhite,
+                                                              kBlack,
+                                                              kBlack,
+                                                              kBlack,
+                                                              kBlack,
+                                                              kBlack,
+                                                              kBlack,
+                                                              kNoColor};
+  return kPieceColors[piece];
+}
+
+constexpr Piece FlipPieceColor(Piece piece) {
+  if (piece == kNoPiece) {
+    return kNoPiece;
+  }
+  return static_cast<Piece>(piece < PieceType::kNumPieceTypes
+                                ? piece + PieceType::kNumPieceTypes
+                                : piece - PieceType::kNumPieceTypes);
+}
+
+// Color-flipped for black
+inline constexpr auto kPerspectivePieces = ([]() {
+  std::array<std::array<Piece, kNumPieces + 1>, Color::kNumColors> pieces{};
+  for (int perspective = 0; perspective < Color::kNumColors; ++perspective) {
+    for (int piece = 0; piece <= kNumPieces; ++piece) {
+      pieces[perspective][piece] =
+          perspective == Color::kWhite
+              ? static_cast<Piece>(piece)
+              : FlipPieceColor(static_cast<Piece>(piece));
+    }
+  }
+  return pieces;
+})();
+
+constexpr Piece PerspectivePiece(Piece piece, Color perspective) {
+  return kPerspectivePieces[perspective][piece];
 }
 
 enum CastleRightMasks : U8 {
