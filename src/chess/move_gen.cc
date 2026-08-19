@@ -275,22 +275,26 @@ BitBoard GetSlidingAttackersTo(const BoardState &state,
   return attackers & state.Occupied(attacker);
 }
 
-BitBoard GetPieceAttacks(Square square,
-                         PieceType piece_type,
-                         Color side,
-                         BitBoard occupied) {
-  switch (piece_type) {
-    case PieceType::kPawn:
-      return PawnAttacks(square, side);
-    case PieceType::kKnight:
+BitBoard GetPieceAttacks(Square square, Piece piece, BitBoard occupied) {
+  switch (piece) {
+    case Piece::kWhitePawn:
+      return PawnAttacks(square, Color::kWhite);
+    case Piece::kBlackPawn:
+      return PawnAttacks(square, Color::kBlack);
+    case Piece::kWhiteKnight:
+    case Piece::kBlackKnight:
       return KnightMoves(square);
-    case PieceType::kBishop:
+    case Piece::kWhiteBishop:
+    case Piece::kBlackBishop:
       return BishopMoves(square, occupied);
-    case PieceType::kRook:
+    case Piece::kWhiteRook:
+    case Piece::kBlackRook:
       return RookMoves(square, occupied);
-    case PieceType::kQueen:
+    case Piece::kWhiteQueen:
+    case Piece::kBlackQueen:
       return QueenMoves(square, occupied);
-    case PieceType::kKing:
+    case Piece::kWhiteKing:
+    case Piece::kBlackKing:
       return KingAttacks(square);
     default:
       return 0;

@@ -18,11 +18,9 @@ void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
                                                     Piece piece,
                                                     Square square,
                                                     BitBoard exclude) {
-  const auto piece_type = TypeOf(piece);
-
   // Kings are neither valid attackers nor valid victims, so they only ever
   // affect the threat features by blocking rays.
-  if (piece_type == PieceType::kKing) {
+  if (TypeOf(piece) == PieceType::kKing) {
     return;
   }
 
@@ -31,8 +29,7 @@ void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
 
   // Push all outgoing threats
   const auto threatened_pieces =
-      move_gen::GetPieceAttacks(square, piece_type, ColorOf(piece), occupied) &
-      candidates;
+      move_gen::GetPieceAttacks(square, piece, occupied) & candidates;
   for (const Square attacked_sq : threatened_pieces) {
     PushChangeInfo<kAddChange>({.attacker_square = square,
                                 .victim_square = attacked_sq,

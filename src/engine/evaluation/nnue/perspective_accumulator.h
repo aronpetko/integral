@@ -1,6 +1,8 @@
 #ifndef INTEGRAL_PERSPECTIVE_ACCUMULATOR_H
 #define INTEGRAL_PERSPECTIVE_ACCUMULATOR_H
 
+#include <span>
+
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
 #include "../../../chess/board.h"
@@ -8,7 +10,6 @@
 #include "../../../utils/fused.h"
 #include "../../../utils/list.h"
 #include "nnue.h"
-#include <span>
 
 namespace nnue {
 
@@ -69,9 +70,6 @@ class PerspectiveAccumulator {
   }
 
   void Refresh(const BoardState& state, Color perspective, Square king_square) {
-    // A refresh can carry far more rows than a delta, so they're gathered and
-    // folded in a batch at a time instead of walking the whole accumulator once
-    // per row. The batch size bounds the stack use.
     static constexpr int kBatchSize = 64;
     std::array<Weight const*, kBatchSize> rows;
     int num_rows = 0;
@@ -91,10 +89,6 @@ class PerspectiveAccumulator {
     }
   }
 
-  // Folds every row in on a single pass: one tile of the accumulator is held in
-  // registers while all the sub and add rows stream over that tile, so the
-  // accumulator is loaded and stored exactly once no matter how many rows the
-  // change carries.
   void ApplyRows(const PerspectiveAccumulator& previous,
                  Weight const* const* adds,
                  int num_adds,
@@ -104,8 +98,8 @@ class PerspectiveAccumulator {
       std::array<ValueVector, kTile> values;
 
       for (std::size_t tile = 0; tile < kTile; ++tile) {
-        values[tile] =
-            simd::Load<Value, kChunk>(&previous.values_[(base + tile) * kChunk]);
+        values[tile] = simd::Load<Value, kChunk>(
+            &previous.values_[(base + tile) * kChunk]);
       }
 
       for (int sub = 0; sub < num_subs; ++sub) {

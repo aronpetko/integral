@@ -69,8 +69,6 @@ struct ThreatFeaturePolicy {
     return feature_index < arch::kThreatFeatureCount;
   }
 
-  // Clamped, so that a row destined to be discarded still addresses inside the
-  // weights. The caller drops it by not counting it rather than by branching.
   static Weight const* FeatureRow(U32 feature_index) {
     return network
         ->threat_weights[IsValidFeature(feature_index) ? feature_index : 0]
@@ -85,11 +83,12 @@ struct ThreatFeaturePolicy {
                                    Emit&& emit) {
     const auto occupied = state.Occupied();
     const auto victims = occupied & ~state.Kings();
-    for (int piece = PieceType::kPawn; piece <= PieceType::kQueen; ++piece) {
-      for (Square from : state.piece_bbs[piece]) {
+    for (int piece_type = PieceType::kPawn; piece_type <= PieceType::kQueen;
+         ++piece_type) {
+      for (Square from : state.piece_bbs[piece_type]) {
         const auto attacker = state.GetPiece(from);
-        const auto attacks = move_gen::GetPieceAttacks(
-            from, static_cast<PieceType>(piece), ColorOf(attacker), occupied);
+        const auto attacks =
+            move_gen::GetPieceAttacks(from, attacker, occupied);
         for (const Square to : attacks& victims) {
           const auto feature_index = FeatureIndex(
               perspective, king_square, attacker, state.GetPiece(to), from, to);

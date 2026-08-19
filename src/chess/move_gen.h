@@ -51,8 +51,7 @@ namespace move_gen {
                                              Color attacker);
 
 [[nodiscard]] BitBoard GetPieceAttacks(Square square,
-                                       PieceType piece_type,
-                                       Color side,
+                                       Piece piece,
                                        BitBoard occupied);
 
 // Returns a bitboard with the set bits being sliding attacks between the two
