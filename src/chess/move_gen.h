@@ -31,8 +31,6 @@ BitBoard KingAttacks(Square square);
 
 BitBoard CastlingMoves(Color which, const BoardState &state);
 
-BitBoard GetAttackedSquares(const BoardState &state, Color attacker);
-
 BitBoard GetAttackersTo(const BoardState &state, Square square, Color attacker);
 
 BitBoard GetAttackersTo(const BoardState &state,
@@ -48,6 +46,10 @@ BitBoard GetSlidingAttackersTo(const BoardState &state,
 // Returns a bitboard with the set bits being sliding attacks between the two
 // squares
 BitBoard RayBetween(Square first, Square second);
+
+// Returns a bitboard with the set bits being sliding attacks between the two
+// squares, including the source squares
+BitBoard RayIncluding(Square first, Square second);
 
 // Returns a bitboard with the set bits being the ray that the two squares lie
 // on
