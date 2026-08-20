@@ -84,9 +84,8 @@ struct ThreatFeaturePolicy {
                                                               victim_color,
                                                               from,
                                                               to);
-          if (valid) {
-            emit(threat_feature_row);
-          }
+          __builtin_prefetch(threat_feature_row);
+          emit(threat_feature_row, valid);
         }
       }
     }

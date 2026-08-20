@@ -194,6 +194,7 @@ void ThreatPerspectiveAccumulator::ApplyChange(
         add.victim_color,
         add.attacker_square,
         add.victim_square);
+    __builtin_prefetch(row);
     add_rows[num_add] = row;
     num_add += valid;
   }
@@ -208,6 +209,7 @@ void ThreatPerspectiveAccumulator::ApplyChange(
         sub.victim_color,
         sub.attacker_square,
         sub.victim_square);
+    __builtin_prefetch(row);
     sub_rows[num_sub] = row;
     num_sub += valid;
   }
