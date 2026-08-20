@@ -100,10 +100,6 @@
 
 namespace simd {
 
-// ---------------------------------------------------------------------------
-// Vector width
-// ---------------------------------------------------------------------------
-
 #if BUILD_HAS_AVX512
 constexpr std::size_t kVectorBytes = 64;
 #elif BUILD_HAS_AVX2
@@ -156,6 +152,8 @@ using Vepf32 = Native<float>;
 
 template <typename T, std::size_t N = kNativeLanes<T>>
 [[nodiscard]] inline Vector<T, N> Load(const T* ptr) {
+  ptr = static_cast<const T*>(
+      __builtin_assume_aligned(ptr, alignof(Vector<T, N>)));
   Vector<T, N> v;
   std::memcpy(&v, ptr, sizeof(v));
   return v;
@@ -165,14 +163,13 @@ template <typename T,
           std::size_t N = kNativeLanes<T>,
           typename V = Vector<T, N>>
 inline void Store(T* ptr, V v) {
+  ptr = static_cast<T*>(__builtin_assume_aligned(ptr, alignof(Vector<T, N>)));
   std::memcpy(ptr, &v, sizeof(v));
 }
 
 template <typename T, std::size_t N = kNativeLanes<T>>
 [[nodiscard]] inline Vector<T, N> Set(T value) {
-  Vector<T, N> v;
-  for (std::size_t i = 0; i < N; ++i) v[i] = value;
-  return v;
+  return Vector<T, N>{} + value;
 }
 
 template <typename T, std::size_t N = kNativeLanes<T>>
