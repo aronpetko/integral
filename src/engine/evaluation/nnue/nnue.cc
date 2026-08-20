@@ -32,7 +32,7 @@ namespace nnue {
 
 void LoadFromIncBin() {
   // Load raw network from binary data
-  network = reinterpret_cast<Network*>(const_cast<unsigned char*>(gEVALData));
+  network = reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
 }
 
 Score Evaluate(Board &board) {
@@ -45,27 +45,28 @@ Score Evaluate(Board &board) {
   constexpr int kFtShift = 9;
 
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  constexpr int kI32ChunkSize = sizeof(simd::Vepi16) / sizeof(I32);
-  constexpr int kI16ChunkSize = sizeof(simd::Vepi16) / sizeof(I16);
-  constexpr int kI8ChunkSize = sizeof(simd::Vepi16) / sizeof(I8);
-  constexpr int kF32ChunkSize = sizeof(simd::Vepi16) / sizeof(float);
+  constexpr int kI32Lanes = simd::kNativeLanes<I32>;
+  constexpr int kI16Lanes = simd::kNativeLanes<I16>;
+  constexpr int kI8Lanes = simd::kNativeLanes<I8>;
+  constexpr int kF32Lanes = simd::kNativeLanes<float>;
 
-  const auto quantise_vector = simd::SetEpi16(arch::kFtQuantization);
+  const auto quantise_vector = simd::Set<I16>(arch::kFtQuantization);
 
   std::array<U16, arch::kL1Size / 4> nnz_indices{};
   int nnz_count = 0;
-  auto nnz_base = _mm_setzero_si128();
-  const auto lookup_increment = _mm_set1_epi16(8);
+  auto nnz_base = simd::Zero<U16, 8>();
+  const auto lookup_increment = simd::Set<U16, 8>(8);
 
   // Activate the feature layer neurons
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output{};
   for (int them = 0; them <= 1; them++) {
     const auto &stm_accumulator = accumulator[state.turn ^ them];
-    for (int i = 0; i < arch::kL1Size / 2; i += kI8ChunkSize) {
+    for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
       // Clip first accumulator values
-      const auto accumulator_value = simd::LoadEpi16(&stm_accumulator[i]);
+      const auto accumulator_value = simd::Load<I16>(&stm_accumulator[i]);
       const auto pair_accumulator_value =
-          simd::LoadEpi16(&stm_accumulator[i + arch::kL1Size / 2]);
+          simd::Load<I16>(&stm_accumulator[i + arch::kL1Size / 2]);
+
       const auto clipped_value =
           simd::Clip(accumulator_value, arch::kFtQuantization);
       const auto clipped_pair_value =
@@ -73,9 +74,9 @@ Score Evaluate(Board &board) {
 
       // Clip second accumulator values
       const auto accumulator_value1 =
-          simd::LoadEpi16(&stm_accumulator[i + kI16ChunkSize]);
-      const auto pair_accumulator_value1 = simd::LoadEpi16(
-          &stm_accumulator[i + arch::kL1Size / 2 + kI16ChunkSize]);
+          simd::Load<I16>(&stm_accumulator[i + kI16Lanes]);
+      const auto pair_accumulator_value1 =
+          simd::Load<I16>(&stm_accumulator[i + arch::kL1Size / 2 + kI16Lanes]);
       const auto clipped_value1 =
           simd::Clip(accumulator_value1, arch::kFtQuantization);
       const auto clipped_pair_value1 =
@@ -84,15 +85,15 @@ Score Evaluate(Board &board) {
       // Perform a left-shift on them and multiply the products using the
       // higher 16 bits
       const auto first_product = simd::MulhiEpi16(
-          simd::SlliEpi16(clipped_value, 16 - kFtShift), clipped_pair_value);
+          clipped_value << (16 - kFtShift), clipped_pair_value);
       const auto second_product = simd::MulhiEpi16(
-          simd::SlliEpi16(clipped_value1, 16 - kFtShift), clipped_pair_value1);
+          clipped_value1 << (16 - kFtShift), clipped_pair_value1);
 
-      // Pack the two I16 vectors into an I8 vector, which will clamp negative
+      // Pack the two I16 vectors into a U8 vector, which will clamp negative
       // values to 0 because of unsigned saturation. This is why we didn't clamp
       // the pair values to 0 earlier, effectively saving us an operation
-      auto &features = *reinterpret_cast<simd::Vepi8 *>(
-          &feature_output[i + them * arch::kL1Size / 2]);
+      auto &features =
+          simd::AsVector<U8>(&feature_output[i + them * arch::kL1Size / 2]);
       features = simd::PackusEpi16(first_product, second_product);
 
       // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
@@ -102,25 +103,24 @@ Score Evaluate(Board &board) {
       // Get a mask of all positive, non-zero elements
       // Each bit in `nnz_mask` corresponds to whether a specific feature is
       // positive (1) or zero (0)
-      const auto nnz_mask = simd::GetNnzMask(features);
+      const auto nnz_mask = simd::NonZeroMask(simd::Cast<I32>(features));
       // Loop through 8-bit (U8) slices of this 16-bit mask
-      for (int chunk = 0; chunk < kI32ChunkSize; chunk += 8) {
+      for (int chunk = 0; chunk < kI32Lanes; chunk += 8) {
         // Extract the 8-bit slice from the mask
-        const U8 slice = (nnz_mask >> chunk) & 0xFF;
+        const U8 slice = (nnz_mask >> chunk) & 0b11111111;
         // Lookup the relative indices for each set bit in the mask, essentially
         // retrieving the indices for each positive element as an 8-element
         // vector of I16s
-        const auto indices = _mm_loadu_si128(reinterpret_cast<const __m128i *>(
-            &sparse::nnz_table[slice].indices));
+        const auto indices =
+            simd::Load<U16, 8>(sparse::nnz_table[slice].indices.data());
         // Store these absolute indices into our table. We account for the fact
         // that they are relative indices (to this slice) by adding `nnz_base`,
         // which will reflect the position each element is in the entire table
-        _mm_storeu_si128(reinterpret_cast<__m128i *>(&nnz_indices[nnz_count]),
-                         _mm_add_epi16(nnz_base, indices));
+        simd::Store<U16, 8>(&nnz_indices[nnz_count], nnz_base + indices);
         // Update to reflect the total number of non-zero features processed
         nnz_count += BitBoard(slice).PopCount();
         // Increment to reflect the starting index of the next slice
-        nnz_base = _mm_add_epi16(nnz_base, lookup_increment);
+        nnz_base += lookup_increment;
       }
     }
   }
@@ -135,16 +135,16 @@ Score Evaluate(Board &board) {
     int i = 0;
     for (; i < nnz_count - 1; i += 2) {
       const int idx = nnz_indices[i] * 4, idx_two = nnz_indices[i + 1] * 4;
-      const auto feature_vector =
-          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx]));
-      const auto feature_vector_two =
-          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx_two]));
-      for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
-        const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
-            &network->l1_weights[bucket][idx + j / 4]);
-        const auto weight_vector_two = *reinterpret_cast<simd::Vepi8 *>(
-            &network->l1_weights[bucket][idx_two + j / 4]);
-        auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
+      const auto feature_vector = simd::Cast<U8>(
+          simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx])));
+      const auto feature_vector_two = simd::Cast<U8>(
+          simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx_two])));
+      for (int j = 0; j < arch::kL2Size; j += kI32Lanes) {
+        const auto weight_vector =
+            simd::AsVector<I8>(&network->l1_weights[bucket][idx + j / 4][0]);
+        const auto weight_vector_two = simd::AsVector<I8>(
+            &network->l1_weights[bucket][idx_two + j / 4][0]);
+        auto &features = simd::AsVector<I32>(&l1_sums[j]);
         features = simd::DpbusdEpi32x2(features,
                                        feature_vector,
                                        weight_vector,
@@ -156,12 +156,12 @@ Score Evaluate(Board &board) {
     // Handle the remaining features
     for (; i < nnz_count; i++) {
       const int idx = nnz_indices[i] * 4;
-      const auto feature_vector =
-          simd::SetEpi32(*reinterpret_cast<I32 *>(&feature_output[idx]));
-      for (int j = 0; j < arch::kL2Size; j += kI32ChunkSize) {
-        const auto weight_vector = *reinterpret_cast<simd::Vepi8 *>(
-            &network->l1_weights[bucket][idx + j / 4]);
-        auto &features = *reinterpret_cast<simd::Vepi32 *>(&l1_sums[j]);
+      const auto feature_vector = simd::Cast<U8>(
+          simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx])));
+      for (int j = 0; j < arch::kL2Size; j += kI32Lanes) {
+        const auto weight_vector =
+            simd::AsVector<I8>(&network->l1_weights[bucket][idx + j / 4][0]);
+        auto &features = simd::AsVector<I32>(&l1_sums[j]);
         features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
       }
     }
@@ -172,67 +172,56 @@ Score Evaluate(Board &board) {
       static_cast<float>(1 << kFtShift) /
       static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
                          arch::kL1Quantization);
-  const auto l1_multiplier_vector = simd::SetPs(kL1Normalization);
-  const auto zero_float_vector = simd::ZeroPs(),
-             one_float_vector = simd::SetPs(1.0f);
+  const auto l1_multiplier_vector = simd::Set<float>(kL1Normalization);
 
   alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output{};
-  for (int i = 0; i < arch::kL2Size; i += kF32ChunkSize) {
+  for (int i = 0; i < arch::kL2Size; i += kF32Lanes) {
     const auto bias_vector =
-        *reinterpret_cast<simd::Vepf32 *>(&network->l1_biases[bucket][i]);
+        simd::AsVector<float>(&network->l1_biases[bucket][i]);
     const auto float_vector =
-        simd::ConvertEpi32ToPs(*reinterpret_cast<simd::Vepi32 *>(&l1_sums[i]));
+        simd::Convert<float>(simd::AsVector<I32>(&l1_sums[i]));
     const auto casted_sum =
-        simd::MultiplyAddPs(float_vector, l1_multiplier_vector, bias_vector);
-    auto &features = *reinterpret_cast<simd::Vepf32 *>(&l1_output[i]);
-    features = simd::MinPs(simd::MaxPs(casted_sum, zero_float_vector),
-                           one_float_vector);
+        simd::MultiplyAdd(float_vector, l1_multiplier_vector, bias_vector);
+    simd::AsVector<float>(&l1_output[i]) = simd::Clamp(casted_sum, 0.0f, 1.0f);
   }
 
   // Forward the feature layer neurons to the 2nd layer
   alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_sums;
   std::memcpy(
       l2_sums.data(), network->l2_biases[bucket].data(), sizeof(l2_sums));
-
   for (int i = 0; i < arch::kL2Size; i++) {
-    const auto l1_vector = simd::SetPs(l1_output[i]);
-    for (int j = 0; j < arch::kL3Size; j += kF32ChunkSize) {
+    const auto l1_vector = simd::Set<float>(l1_output[i]);
+    for (int j = 0; j < arch::kL3Size; j += kF32Lanes) {
       const auto weight_vector =
-          *reinterpret_cast<simd::Vepf32 *>(&network->l2_weights[bucket][i][j]);
-      auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[j]);
-      features = simd::MultiplyAddPs(weight_vector, l1_vector, features);
+          simd::AsVector<float>(&network->l2_weights[bucket][i][j]);
+      auto &features = simd::AsVector<float>(&l2_sums[j]);
+      features = simd::MultiplyAdd(weight_vector, l1_vector, features);
     }
   }
 
   alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output;
-  for (int i = 0; i < arch::kL3Size; i += kF32ChunkSize) {
-    const auto &sum_vector = *reinterpret_cast<simd::Vepf32 *>(&l2_sums[i]);
-    auto &features = *reinterpret_cast<simd::Vepf32 *>(&l2_output[i]);
-    features = simd::MinPs(simd::MaxPs(sum_vector, zero_float_vector),
-                           one_float_vector);
+  for (int i = 0; i < arch::kL3Size; i += kF32Lanes) {
+    simd::AsVector<float>(&l2_output[i]) =
+        simd::Clamp(simd::AsVector<float>(&l2_sums[i]), 0.0f, 1.0f);
   }
 
   // Forward the feature layer neurons to the 3rd (final) layer
   constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
-  const auto zero_ps = simd::SetPs(0.0f);
-
-  alignas(simd::kAlignment) std::array<simd::Vepf32, kResultChunks> result_sums;
-  result_sums.fill(zero_ps);
-
-  for (int i = 0; i < arch::kL3Size / kF32ChunkSize; i += kResultChunks) {
+  std::array<simd::Vepf32, kResultChunks> result_sums;
+  result_sums.fill(simd::Zero<float>());
+  for (int i = 0; i < arch::kL3Size / kF32Lanes; i += kResultChunks) {
     for (int chunk = 0; chunk < kResultChunks; chunk++) {
-      const auto weight_vector = *reinterpret_cast<simd::Vepf32 *>(
-          &network->l3_weights[bucket][(i + chunk) * kF32ChunkSize]);
-      const auto &l2_vector = *reinterpret_cast<simd::Vepf32 *>(
-          &l2_output[(i + chunk) * kF32ChunkSize]);
+      const auto weight_vector = simd::AsVector<float>(
+          &network->l3_weights[bucket][(i + chunk) * kF32Lanes]);
+      const auto l2_vector =
+          simd::AsVector<float>(&l2_output[(i + chunk) * kF32Lanes]);
       result_sums[chunk] =
-          simd::MultiplyAddPs(l2_vector, weight_vector, result_sums[chunk]);
+          simd::MultiplyAdd(l2_vector, weight_vector, result_sums[chunk]);
     }
   }
 
   const auto l3_output =
-      simd::ReduceAddPs(result_sums.data()) + network->l3_biases[bucket];
-
+      simd::ReduceAdd(result_sums) + network->l3_biases[bucket];
   return static_cast<Score>(l3_output * arch::kEvalScale);
 
 #else
