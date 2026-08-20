@@ -126,13 +126,14 @@ void Accumulator::ApplyChanges() {
 
   // Walk the nodes only once, so that the threat rows of a node shared by both
   // perspectives are only built once
-  ThreatAccumulatorChange threat_change;
   const auto earliest =
       std::min(last_updated[Color::kWhite], last_updated[Color::kBlack]);
 
   for (int iter = earliest; iter != head_idx_; ++iter) {
     auto& dirty_accumulator = stack_[iter + 1];
     const auto& clean_accumulator = stack_[iter];
+
+    ThreatAccumulatorChange threat_change;
     bool threat_changes_accumulated = false;
 
     for (const Color perspective : {Color::kWhite, Color::kBlack}) {
@@ -167,12 +168,9 @@ void Accumulator::ApplyChanges() {
         if (!threat_changes_accumulated) {
           threat_changes_accumulated = true;
           threat_change.Clear();
-          threat_change.UpdateThreatsForSquares<false>(
-              clean_accumulator.state,
-              dirty_accumulator.threat_updated_squares);
-          threat_change.UpdateThreatsForSquares<true>(
-              dirty_accumulator.state,
-              dirty_accumulator.threat_updated_squares);
+          threat_change.Update(clean_accumulator.state,
+                               dirty_accumulator.state,
+                               dirty_accumulator.threat_updated_squares);
         }
         dirty_accumulator.threat_perspectives[perspective].ApplyChange(
             clean_accumulator.threat_perspectives[perspective],

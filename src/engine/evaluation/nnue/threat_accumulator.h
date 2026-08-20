@@ -20,6 +20,10 @@ struct ThreatAccumulatorChange {
   template <bool kAddChange>
   void PushChangeInfo(ThreatChangeInfo info);
 
+  void Update(const BoardState& previous,
+              const BoardState& current,
+              BitBoard changed_squares);
+
   template <bool kAddChange>
   void UpdateThreatsForPiece(const BoardState& state,
                              PieceType piece_type,
@@ -27,12 +31,10 @@ struct ThreatAccumulatorChange {
                              Square square,
                              BitBoard exclude = 0);
   template <bool kAddChange>
-  void UpdateDiscoveredThreats(const BoardState& state,
-                               Square square,
-                               BitBoard exclude = 0);
-  template <bool kAddChange>
-  void UpdateThreatsForSquares(const BoardState& state,
-                               BitBoard updated_squares);
+  void UpdateChangedSquares(const BoardState& state, BitBoard changed_squares);
+  void UpdateSliderDeltas(const BoardState& previous,
+                          const BoardState& current,
+                          BitBoard changed_squares);
 
   List<ThreatChangeInfo, kMaxThreatRows> adds;
   List<ThreatChangeInfo, kMaxThreatRows> subs;

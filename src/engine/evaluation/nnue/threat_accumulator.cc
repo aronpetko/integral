@@ -13,6 +13,14 @@ void ThreatAccumulatorChange::PushChangeInfo(ThreatChangeInfo info) {
   }
 }
 
+void ThreatAccumulatorChange::Update(const BoardState& previous,
+                                     const BoardState& current,
+                                     BitBoard changed_squares) {
+  UpdateChangedSquares<false>(previous, changed_squares);
+  UpdateChangedSquares<true>(current, changed_squares);
+  UpdateSliderDeltas(previous, current, changed_squares);
+}
+
 template <bool kAddChange>
 void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
                                                     PieceType piece_type,
@@ -70,60 +78,102 @@ void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
 }
 
 template <bool kAddChange>
-void ThreatAccumulatorChange::UpdateDiscoveredThreats(const BoardState& state,
-                                                      Square square,
-                                                      BitBoard exclude) {
-  const auto occupied = state.Occupied();
-  const auto candidates = occupied & ~state.Kings() & ~exclude;
-
-  const auto rook_attacks = move_gen::RookMoves(square, occupied);
-  const auto bishop_attacks = move_gen::BishopMoves(square, occupied);
-  const auto queens = state.Queens();
-
-  const auto push_discoveries = [&](BitBoard sliders, BitBoard attacks) {
-    for (const Square attacker_sq : sliders & ~exclude) {
-      // Ignore if the ray already passed an updated square on its way here
-      if (move_gen::RayBetween(attacker_sq, square) & exclude) {
-        continue;
-      }
-
-      const auto line = move_gen::RayIntersecting(attacker_sq, square);
-      const auto behind =
-          attacks & candidates & line & ~BitBoard::FromSquare(attacker_sq);
-      if (!behind) {
-        continue;
-      }
-
-      const Square victim_sq = behind.GetLsb();
-      const auto attacker_type = state.GetPieceType(attacker_sq);
-      const auto attacker_color = state.GetPieceColor(attacker_sq);
-      PushChangeInfo<kAddChange>(
-          {.attacker_square = attacker_sq,
-           .attacker_type = attacker_type,
-           .attacker_color = attacker_color,
-           .victim_square = victim_sq,
-           .victim_type = state.GetPieceType(victim_sq),
-           .victim_color = state.GetPieceColor(victim_sq)});
-    }
-  };
-
-  push_discoveries((queens | state.Rooks()) & rook_attacks, rook_attacks);
-  push_discoveries((queens | state.Bishops()) & bishop_attacks, bishop_attacks);
-}
-
-template <bool kAddChange>
-void ThreatAccumulatorChange::UpdateThreatsForSquares(
-    const BoardState& state, BitBoard updated_squares) {
-  BitBoard seen;
-  for (const Square square : updated_squares) {
-    const auto piece_type = state.GetPieceType(square);
-    if (piece_type == PieceType::kNone) {
-      UpdateDiscoveredThreats<kAddChange>(state, square, updated_squares);
-    } else {
+void ThreatAccumulatorChange::UpdateChangedSquares(const BoardState& state,
+                                                   BitBoard changed_squares) {
+  BitBoard seen = 0;
+  for (const Square square : changed_squares) {
+    const PieceType piece_type = state.GetPieceType(square);
+    // Empty square in this state has no threat feature of its own
+    if (piece_type != PieceType::kNone) {
       UpdateThreatsForPiece<kAddChange>(
           state, piece_type, state.GetPieceColor(square), square, seen);
     }
+    // Prevent relationships between two changed squares from being emitted
+    // twice.
     seen |= BitBoard::FromSquare(square);
+  }
+}
+
+void ThreatAccumulatorChange::UpdateSliderDeltas(const BoardState& previous,
+                                                 const BoardState& current,
+                                                 BitBoard changed_squares) {
+  const BitBoard previous_occ = previous.Occupied();
+  const BitBoard current_occ = current.Occupied();
+
+  const BitBoard previous_bishop_sliders =
+      previous.Bishops() | previous.Queens();
+  const BitBoard previous_rook_sliders = previous.Rooks() | previous.Queens();
+
+  const BitBoard current_bishop_sliders = current.Bishops() | current.Queens();
+  const BitBoard current_rook_sliders = current.Rooks() | current.Queens();
+
+  // Find unchanged sliders whose rays pass through a changed square
+  BitBoard affected_sliders = 0;
+  for (const Square square : changed_squares) {
+    affected_sliders |=
+        move_gen::BishopMoves(square, previous_occ) & previous_bishop_sliders;
+
+    affected_sliders |=
+        move_gen::RookMoves(square, previous_occ) & previous_rook_sliders;
+
+    affected_sliders |=
+        move_gen::BishopMoves(square, current_occ) & current_bishop_sliders;
+
+    affected_sliders |=
+        move_gen::RookMoves(square, current_occ) & current_rook_sliders;
+  }
+  affected_sliders &= ~changed_squares;
+
+  const BitBoard previous_candidates =
+      previous_occ & ~previous.Kings() & ~changed_squares;
+
+  const BitBoard current_candidates =
+      current_occ & ~current.Kings() & ~changed_squares;
+
+  for (const Square attacker_square : affected_sliders) {
+    const PieceType attacker_type = current.GetPieceType(attacker_square);
+    const Color attacker_color = current.GetPieceColor(attacker_square);
+    assert(attacker_type == PieceType::kBishop ||
+           attacker_type == PieceType::kRook ||
+           attacker_type == PieceType::kQueen);
+
+    const BitBoard previous_attacks =
+        move_gen::GetPieceAttacks(
+            attacker_square, attacker_type, attacker_color, previous_occ) &
+        previous_candidates;
+
+    const BitBoard current_attacks =
+        move_gen::GetPieceAttacks(
+            attacker_square, attacker_type, attacker_color, current_occ) &
+        current_candidates;
+
+    const BitBoard dropped = previous_attacks & ~current_attacks;
+
+    const BitBoard gained = current_attacks & ~previous_attacks;
+
+    // Threats that existed before but no longer exist
+    for (const Square victim_square : dropped) {
+      PushChangeInfo<false>({
+          .attacker_square = attacker_square,
+          .attacker_type = attacker_type,
+          .attacker_color = attacker_color,
+          .victim_square = victim_square,
+          .victim_type = previous.GetPieceType(victim_square),
+          .victim_color = previous.GetPieceColor(victim_square),
+      });
+    }
+
+    // Newly created threats
+    for (const Square victim_square : gained) {
+      PushChangeInfo<true>({
+          .attacker_square = attacker_square,
+          .attacker_type = attacker_type,
+          .attacker_color = attacker_color,
+          .victim_square = victim_square,
+          .victim_type = current.GetPieceType(victim_square),
+          .victim_color = current.GetPieceColor(victim_square),
+      });
+    }
   }
 }
 
@@ -139,14 +189,10 @@ template void ThreatAccumulatorChange::UpdateThreatsForPiece<true>(
     Color piece_color,
     Square square,
     BitBoard exclude);
-template void ThreatAccumulatorChange::UpdateDiscoveredThreats<false>(
-    const BoardState& state, Square square, BitBoard exclude);
-template void ThreatAccumulatorChange::UpdateDiscoveredThreats<true>(
-    const BoardState& state, Square square, BitBoard exclude);
-template void ThreatAccumulatorChange::UpdateThreatsForSquares<false>(
-    const BoardState& state, BitBoard updated_squares);
-template void ThreatAccumulatorChange::UpdateThreatsForSquares<true>(
-    const BoardState& state, BitBoard updated_squares);
+template void ThreatAccumulatorChange::UpdateChangedSquares<false>(
+    const BoardState& state, BitBoard changed_squares);
+template void ThreatAccumulatorChange::UpdateChangedSquares<true>(
+    const BoardState& state, BitBoard changed_squares);
 
 std::optional<
     std::span<ThreatFeaturePolicy::Weight, ThreatFeaturePolicy::kWidth>>
