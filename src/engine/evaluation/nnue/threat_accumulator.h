@@ -67,18 +67,15 @@ struct ThreatFeaturePolicy {
                                    Square king_square,
                                    Emit&& emit) {
     const auto occupied = state.Occupied();
-    const auto kings = state.Kings();
+    const auto targets = state.KinglessOccupied();
     for (int piece = PieceType::kPawn; piece <= PieceType::kQueen; ++piece) {
       for (Square from : state.piece_bbs[piece]) {
         const auto attacker_type = static_cast<PieceType>(piece);
         const auto attacker_color = state.GetPieceColor(from);
         const auto attacks = move_gen::GetPieceAttacks(
             from, attacker_type, attacker_color, occupied);
-        for (const Square to : attacks & ~kings) {
+        for (const Square to : attacks & targets) {
           const auto victim = state.GetPieceType(to);
-          if (victim == PieceType::kNone) {
-            continue;
-          }
           const auto victim_color = state.GetPieceColor(to);
           if (const auto threat_feature_row = FeatureRow(perspective,
                                                          king_square,
