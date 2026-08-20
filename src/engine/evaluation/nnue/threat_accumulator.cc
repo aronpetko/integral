@@ -231,28 +231,29 @@ void ThreatPerspectiveAccumulator::ApplyChange(
   using ValueVector = simd::Vector<Value, kChunk>;
 
   for (std::size_t base = 0; base < kChunks; base += kTile) {
+    const std::size_t tiles_this_block = std::min(kTile, kChunks - base);
     std::array<ValueVector, kTile> values;
 
-    for (std::size_t tile = 0; tile < kTile; ++tile) {
-      values[tile] = simd::Load<Value, kChunk>(
-          &previous.values_[(base + tile) * kChunk]);
+    for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
+      values[tile] =
+          simd::Load<Value, kChunk>(&previous.values_[(base + tile) * kChunk]);
     }
 
     for (int sub = 0; sub < num_subs; ++sub) {
-      for (std::size_t tile = 0; tile < kTile; ++tile) {
+      for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
         values[tile] -= simd::Convert<Value>(
             simd::Load<Weight, kChunk>(&sub_rows[sub][(base + tile) * kChunk]));
       }
     }
 
     for (int add = 0; add < num_adds; ++add) {
-      for (std::size_t tile = 0; tile < kTile; ++tile) {
+      for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
         values[tile] += simd::Convert<Value>(
             simd::Load<Weight, kChunk>(&add_rows[add][(base + tile) * kChunk]));
       }
     }
 
-    for (std::size_t tile = 0; tile < kTile; ++tile) {
+    for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
       simd::Store<Value, kChunk>(&values_[(base + tile) * kChunk],
                                  values[tile]);
     }
