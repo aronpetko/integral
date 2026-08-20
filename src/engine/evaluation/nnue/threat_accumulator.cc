@@ -4,6 +4,33 @@
 
 namespace nnue {
 
+namespace {
+
+// Resolves the feature row a single threat change maps to from `perspective`,
+// or nullptr if the (attacker, victim) pair carries no feature at all.
+inline ThreatFeaturePolicy::Weight const* ResolveRow(
+    const ThreatAccumulatorChange::ThreatChangeInfo& info,
+    Color perspective,
+    Square king_square) {
+  const auto row = ThreatFeaturePolicy::FeatureRow(perspective,
+                                                   king_square,
+                                                   info.attacker_type,
+                                                   info.attacker_color,
+                                                   info.victim_type,
+                                                   info.victim_color,
+                                                   info.attacker_square,
+                                                   info.victim_square);
+  if (!row) {
+    return nullptr;
+  }
+  // The threat weights are far too large to stay resident, so start the fetch
+  // now rather than when the tile loop first reaches this row.
+  __builtin_prefetch(row->data());
+  return row->data();
+}
+
+}  // namespace
+
 template <bool kAddChange>
 void ThreatAccumulatorChange::PushChangeInfo(ThreatChangeInfo info) {
   if constexpr (kAddChange) {
@@ -185,40 +212,86 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     Color perspective,
     Square king_square) {
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> add_rows;
-  U16 num_add = 0;
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> sub_rows;
-  U16 num_sub = 0;
+  int num_add = 0, num_sub = 0;
 
   for (int i = 0; i < change.adds.Size(); ++i) {
-    const auto& add = change.adds[i];
-    const auto row = ThreatFeaturePolicy::FeatureRow(perspective,
-                                                     king_square,
-                                                     add.attacker_type,
-                                                     add.attacker_color,
-                                                     add.victim_type,
-                                                     add.victim_color,
-                                                     add.attacker_square,
-                                                     add.victim_square);
-    if (row) {
-      add_rows[num_add++] = row.value().data();
+    if (const auto row = ResolveRow(change.adds[i], perspective, king_square)) {
+      add_rows[num_add++] = row;
     }
   }
   for (int i = 0; i < change.subs.Size(); ++i) {
-    const auto& sub = change.subs[i];
-    const auto row = ThreatFeaturePolicy::FeatureRow(perspective,
-                                                     king_square,
-                                                     sub.attacker_type,
-                                                     sub.attacker_color,
-                                                     sub.victim_type,
-                                                     sub.victim_color,
-                                                     sub.attacker_square,
-                                                     sub.victim_square);
-    if (row) {
-      sub_rows[num_sub++] = row.value().data();
+    if (const auto row = ResolveRow(change.subs[i], perspective, king_square)) {
+      sub_rows[num_sub++] = row;
     }
   }
 
   ApplyDeltas(previous, add_rows.data(), num_add, sub_rows.data(), num_sub);
+}
+
+void ThreatPerspectiveAccumulator::ApplyChangeBothPerspectives(
+    std::array<ThreatPerspectiveAccumulator, 2>& accumulators,
+    const std::array<ThreatPerspectiveAccumulator, 2>& previous,
+    const ThreatAccumulatorChange& change,
+    const std::array<Square, 2>& king_squares) {
+  constexpr int kMaxRows = ThreatAccumulatorChange::kMaxThreatRows;
+
+  std::array<std::array<Weight const*, kMaxRows>, 2> add_rows, sub_rows;
+  std::array<int, 2> num_add{}, num_sub{};
+
+  // A change entry is perspective independent, so resolve both of its rows
+  // while the entry is hot instead of walking the list once per perspective.
+  const auto collect = [&](const auto& list, auto& rows, auto& counts) {
+    for (int i = 0; i < list.Size(); ++i) {
+      const auto info = list[i];
+      for (const Color perspective : {Color::kWhite, Color::kBlack}) {
+        if (const auto row =
+                ResolveRow(info, perspective, king_squares[perspective])) {
+          rows[perspective][counts[perspective]++] = row;
+        }
+      }
+    }
+  };
+  collect(change.adds, add_rows, num_add);
+  collect(change.subs, sub_rows, num_sub);
+
+  // Sweep the accumulator once with both perspectives' tiles live, so every
+  // chunk of L1 is loaded and stored a single time for the whole update
+  // instead of once per perspective.
+  for (int base = 0; base < kWidth; base += kPairedTileWidth) {
+    ValueVector tiles[2][kPairedTileVectors];
+    for (int perspective = 0; perspective < 2; ++perspective) {
+      for (int vec = 0; vec < kPairedTileVectors; ++vec) {
+        tiles[perspective][vec] = simd::Load<Value, kLanes>(
+            &previous[perspective].values_[base + vec * kLanes]);
+      }
+    }
+
+    for (int perspective = 0; perspective < 2; ++perspective) {
+      for (int i = 0; i < num_add[perspective]; ++i) {
+        Weight const* row = add_rows[perspective][i] + base;
+        for (int vec = 0; vec < kPairedTileVectors; ++vec) {
+          tiles[perspective][vec] += simd::Convert<Value>(
+              simd::Load<Weight, kLanes>(row + vec * kLanes));
+        }
+      }
+      for (int i = 0; i < num_sub[perspective]; ++i) {
+        Weight const* row = sub_rows[perspective][i] + base;
+        for (int vec = 0; vec < kPairedTileVectors; ++vec) {
+          tiles[perspective][vec] -= simd::Convert<Value>(
+              simd::Load<Weight, kLanes>(row + vec * kLanes));
+        }
+      }
+    }
+
+    for (int perspective = 0; perspective < 2; ++perspective) {
+      for (int vec = 0; vec < kPairedTileVectors; ++vec) {
+        simd::Store<Value, kLanes>(
+            &accumulators[perspective].values_[base + vec * kLanes],
+            tiles[perspective][vec]);
+      }
+    }
+  }
 }
 
 }  // namespace nnue

@@ -34,6 +34,27 @@ struct FeatureData {
   Color color = Color::kNoColor;
 };
 
+// How many accumulator vectors a tile keeps live at once. A tile stays in
+// registers while every feature row is applied to it, so it has to leave room
+// for the widened row loads it is accumulating; half the register file is a
+// safe budget.
+#if BUILD_HAS_AVX512
+constexpr int kMaxTileVectors = 12;
+#else
+constexpr int kMaxTileVectors = 8;
+#endif
+
+// The largest tile that still divides the accumulator width evenly, so the
+// tile loop never needs a scalar tail.
+constexpr int ComputeTileVectors(int width, int lanes, int max_vectors) {
+  for (int vectors = max_vectors; vectors > 1; --vectors) {
+    if (width % (vectors * lanes) == 0) {
+      return vectors;
+    }
+  }
+  return 1;
+}
+
 template <typename FeaturePolicy>
 class PerspectiveAccumulator {
  public:
@@ -42,6 +63,23 @@ class PerspectiveAccumulator {
   // independent: threat rows are I8 while the running sum stays I16.
   using Value = typename FeaturePolicy::Value;
   using Weight = typename FeaturePolicy::Weight;
+
+  static constexpr int kLanes = simd::kNativeLanes<Value>;
+  static constexpr int kTileVectors =
+      ComputeTileVectors(kWidth, kLanes, kMaxTileVectors);
+  static constexpr int kTileWidth = kTileVectors * kLanes;
+  static_assert(kWidth % kTileWidth == 0);
+
+  // A sweep that carries both perspectives at once holds two tiles live, so
+  // each one gets half of the register budget.
+  static constexpr int kPairedTileVectors =
+      ComputeTileVectors(kWidth, kLanes, kMaxTileVectors / 2);
+  static constexpr int kPairedTileWidth = kPairedTileVectors * kLanes;
+  static_assert(kWidth % kPairedTileWidth == 0);
+
+  static constexpr int kRefreshBatchSize = 64;
+
+  using ValueVector = simd::Vector<Value, kLanes>;
 
   PerspectiveAccumulator() : values_({}) {}
 
@@ -53,12 +91,20 @@ class PerspectiveAccumulator {
 
   void Refresh(const BoardState& state, Color perspective, Square king_square) {
     Reset();
+
+    std::array<Weight const*, kRefreshBatchSize> rows;
+    int num_rows = 0;
     FeaturePolicy::ForEachActiveFeature(
         state, perspective, king_square, [&](Weight const* row) {
-          for (int i = 0; i < kWidth; ++i) {
-            values_[i] += row[i];
+          rows[num_rows++] = row;
+          if (num_rows == kRefreshBatchSize) {
+            ApplyDeltas(*this, rows.data(), num_rows, nullptr, 0);
+            num_rows = 0;
           }
         });
+    if (num_rows > 0) {
+      ApplyDeltas(*this, rows.data(), num_rows, nullptr, 0);
+    }
   }
 
   void ApplyDeltas(const PerspectiveAccumulator& previous,
@@ -66,31 +112,30 @@ class PerspectiveAccumulator {
                    int num_adds,
                    Weight const* const* subs,
                    int num_subs) {
-    if (this != &previous) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] = previous.values_[i];
+    for (int base = 0; base < kWidth; base += kTileWidth) {
+      ValueVector tile[kTileVectors];
+      for (int vec = 0; vec < kTileVectors; ++vec) {
+        tile[vec] =
+            simd::Load<Value, kLanes>(&previous.values_[base + vec * kLanes]);
       }
-    }
-    for (; num_adds >= 4; num_adds -= 4) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] += adds[num_adds - 4][i] + adds[num_adds - 3][i] +
-                      adds[num_adds - 2][i] + adds[num_adds - 1][i];
+
+      for (int i = 0; i < num_adds; ++i) {
+        Weight const* row = adds[i] + base;
+        for (int vec = 0; vec < kTileVectors; ++vec) {
+          tile[vec] += simd::Convert<Value>(
+              simd::Load<Weight, kLanes>(row + vec * kLanes));
+        }
       }
-    }
-    for (; num_adds >= 1; num_adds -= 1) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] += adds[num_adds - 1][i];
+      for (int i = 0; i < num_subs; ++i) {
+        Weight const* row = subs[i] + base;
+        for (int vec = 0; vec < kTileVectors; ++vec) {
+          tile[vec] -= simd::Convert<Value>(
+              simd::Load<Weight, kLanes>(row + vec * kLanes));
+        }
       }
-    }
-    for (; num_subs >= 4; num_subs -= 4) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] -= subs[num_subs - 4][i] + subs[num_subs - 3][i] +
-                      subs[num_subs - 2][i] + subs[num_subs - 1][i];
-      }
-    }
-    for (; num_subs >= 1; num_subs -= 1) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] -= subs[num_subs - 1][i];
+
+      for (int vec = 0; vec < kTileVectors; ++vec) {
+        simd::Store<Value, kLanes>(&values_[base + vec * kLanes], tile[vec]);
       }
     }
   }

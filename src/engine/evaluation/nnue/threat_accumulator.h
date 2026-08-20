@@ -67,28 +67,30 @@ struct ThreatFeaturePolicy {
                                    Square king_square,
                                    Emit&& emit) {
     const auto occupied = state.Occupied();
-    const auto kings = state.Kings();
-    for (int piece = PieceType::kPawn; piece <= PieceType::kQueen; ++piece) {
-      for (Square from : state.piece_bbs[piece]) {
+    // Only an occupied, non-king square can carry a threat, so mask the attack
+    // set down before walking it rather than testing every empty square it
+    // covers -- a queen typically attacks far more empty squares than pieces.
+    const auto candidates = occupied & ~state.Kings();
+    for (const Color attacker_color : {Color::kWhite, Color::kBlack}) {
+      const auto side_occupancy = state.Occupied(attacker_color);
+      for (int piece = PieceType::kPawn; piece <= PieceType::kQueen; ++piece) {
         const auto attacker_type = static_cast<PieceType>(piece);
-        const auto attacker_color = state.GetPieceColor(from);
-        const auto attacks = move_gen::GetPieceAttacks(
-            from, attacker_type, attacker_color, occupied);
-        for (const Square to : attacks & ~kings) {
-          const auto victim = state.GetPieceType(to);
-          if (victim == PieceType::kNone) {
-            continue;
-          }
-          const auto victim_color = state.GetPieceColor(to);
-          if (const auto threat_feature_row = FeatureRow(perspective,
-                                                         king_square,
-                                                         attacker_type,
-                                                         attacker_color,
-                                                         victim,
-                                                         victim_color,
-                                                         from,
-                                                         to)) {
-            emit(threat_feature_row.value().data());
+        for (Square from : state.piece_bbs[piece] & side_occupancy) {
+          const auto attacks = move_gen::GetPieceAttacks(
+              from, attacker_type, attacker_color, occupied);
+          for (const Square to : attacks & candidates) {
+            const auto victim = state.GetPieceType(to);
+            const auto victim_color = state.GetPieceColor(to);
+            if (const auto threat_feature_row = FeatureRow(perspective,
+                                                           king_square,
+                                                           attacker_type,
+                                                           attacker_color,
+                                                           victim,
+                                                           victim_color,
+                                                           from,
+                                                           to)) {
+              emit(threat_feature_row.value().data());
+            }
           }
         }
       }
@@ -99,6 +101,12 @@ struct ThreatFeaturePolicy {
 class ThreatPerspectiveAccumulator
     : public PerspectiveAccumulator<ThreatFeaturePolicy> {
  public:
+  static void ApplyChangeBothPerspectives(
+      std::array<ThreatPerspectiveAccumulator, 2>& accumulators,
+      const std::array<ThreatPerspectiveAccumulator, 2>& previous,
+      const ThreatAccumulatorChange& change,
+      const std::array<Square, 2>& king_squares);
+
   void ApplyChange(const ThreatPerspectiveAccumulator& previous,
                    const ThreatAccumulatorChange& change,
                    Color perspective,
