@@ -185,9 +185,9 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     Color perspective,
     Square king_square) {
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> add_rows;
-  U16 num_add = 0;
+  U16 num_adds = 0;
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> sub_rows;
-  U16 num_sub = 0;
+  U16 num_subs = 0;
 
   for (int i = 0; i < change.adds.Size(); ++i) {
     const auto& add = change.adds[i];
@@ -200,7 +200,7 @@ void ThreatPerspectiveAccumulator::ApplyChange(
                                                      add.attacker_square,
                                                      add.victim_square);
     if (row) {
-      add_rows[num_add++] = row.value().data();
+      add_rows[num_adds++] = row.value().data();
     }
   }
   for (int i = 0; i < change.subs.Size(); ++i) {
@@ -214,11 +214,51 @@ void ThreatPerspectiveAccumulator::ApplyChange(
                                                      sub.attacker_square,
                                                      sub.victim_square);
     if (row) {
-      sub_rows[num_sub++] = row.value().data();
+      sub_rows[num_subs++] = row.value().data();
     }
   }
 
-  ApplyDeltas(previous, add_rows.data(), num_add, sub_rows.data(), num_sub);
+  static constexpr std::size_t kChunk = simd::kNativeLanes<Value>;
+  static constexpr std::size_t kChunks = kWidth / kChunk;
+#if BUILD_HAS_AVX512
+  static constexpr std::size_t kTileTarget = 32;
+#else
+  static constexpr std::size_t kTileTarget = 8;
+#endif
+  static constexpr std::size_t kTile =
+      kChunks < kTileTarget ? kChunks : kTileTarget;
+
+  using ValueVector = simd::Vector<Value, kChunk>;
+
+  for (std::size_t base = 0; base < kChunks; base += kTile) {
+    std::array<ValueVector, kTile> values;
+
+    for (std::size_t tile = 0; tile < kTile; ++tile) {
+      values[tile] = simd::Load<Value, kChunk>(
+          &previous.values_[(base + tile) * kChunk]);
+    }
+
+    for (int sub = 0; sub < num_subs; ++sub) {
+      for (std::size_t tile = 0; tile < kTile; ++tile) {
+        values[tile] -= simd::Convert<Value>(
+            simd::Load<Weight, kChunk>(&sub_rows[sub][(base + tile) * kChunk]));
+      }
+    }
+
+    for (int add = 0; add < num_adds; ++add) {
+      for (std::size_t tile = 0; tile < kTile; ++tile) {
+        values[tile] += simd::Convert<Value>(
+            simd::Load<Weight, kChunk>(&add_rows[add][(base + tile) * kChunk]));
+      }
+    }
+
+    for (std::size_t tile = 0; tile < kTile; ++tile) {
+      simd::Store<Value, kChunk>(&values_[(base + tile) * kChunk],
+                                 values[tile]);
+    }
+  }
+
+  // ApplyDeltas(previous, add_rows.data(), num_add, sub_rows.data(), num_sub);
 }
 
 }  // namespace nnue
