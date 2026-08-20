@@ -51,15 +51,14 @@ struct ThreatFeaturePolicy {
   static Value Bias(int) {
     return 0;
   }
-  static std::optional<std::span<Weight, kWidth>> FeatureRow(
-      Color perspective,
-      Square king_square,
-      PieceType attacker,
-      Color attacker_color,
-      PieceType victim,
-      Color victim_color,
-      Square from,
-      Square to);
+  static std::pair<Weight const*, bool> FeatureRow(Color perspective,
+                                                   Square king_square,
+                                                   PieceType attacker,
+                                                   Color attacker_color,
+                                                   PieceType victim,
+                                                   Color victim_color,
+                                                   Square from,
+                                                   Square to);
 
   template <typename Emit>
   static void ForEachActiveFeature(const BoardState& state,
@@ -77,15 +76,16 @@ struct ThreatFeaturePolicy {
         for (const Square to : attacks & targets) {
           const auto victim = state.GetPieceType(to);
           const auto victim_color = state.GetPieceColor(to);
-          if (const auto threat_feature_row = FeatureRow(perspective,
-                                                         king_square,
-                                                         attacker_type,
-                                                         attacker_color,
-                                                         victim,
-                                                         victim_color,
-                                                         from,
-                                                         to)) {
-            emit(threat_feature_row.value().data());
+          const auto [threat_feature_row, valid] = FeatureRow(perspective,
+                                                              king_square,
+                                                              attacker_type,
+                                                              attacker_color,
+                                                              victim,
+                                                              victim_color,
+                                                              from,
+                                                              to);
+          if (valid) {
+            emit(threat_feature_row);
           }
         }
       }
