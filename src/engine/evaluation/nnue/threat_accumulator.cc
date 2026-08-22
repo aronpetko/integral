@@ -185,71 +185,68 @@ void ThreatPerspectiveAccumulator::ApplyChange(
 
   for (int i = 0; i < change.adds.Size(); ++i) {
     const auto& add = change.adds[i];
-    const auto [row, valid] = ThreatFeaturePolicy::FeatureRow(
-        perspective,
-        king_square,
-        add.attacker_type,
-        add.attacker_color,
-        add.victim_type,
-        add.victim_color,
-        add.attacker_square,
-        add.victim_square);
+    const auto [row, valid] =
+        ThreatFeaturePolicy::FeatureRow(perspective,
+                                        king_square,
+                                        add.attacker_type,
+                                        add.attacker_color,
+                                        add.victim_type,
+                                        add.victim_color,
+                                        add.attacker_square,
+                                        add.victim_square);
     __builtin_prefetch(row);
     add_rows[num_add] = row;
     num_add += valid;
   }
   for (int i = 0; i < change.subs.Size(); ++i) {
     const auto& sub = change.subs[i];
-    const auto [row, valid] = ThreatFeaturePolicy::FeatureRow(
-        perspective,
-        king_square,
-        sub.attacker_type,
-        sub.attacker_color,
-        sub.victim_type,
-        sub.victim_color,
-        sub.attacker_square,
-        sub.victim_square);
+    const auto [row, valid] =
+        ThreatFeaturePolicy::FeatureRow(perspective,
+                                        king_square,
+                                        sub.attacker_type,
+                                        sub.attacker_color,
+                                        sub.victim_type,
+                                        sub.victim_color,
+                                        sub.attacker_square,
+                                        sub.victim_square);
     __builtin_prefetch(row);
     sub_rows[num_sub] = row;
     num_sub += valid;
   }
-
   static constexpr std::size_t kChunk = simd::kNativeLanes<Value>;
   static constexpr std::size_t kChunks = kWidth / kChunk;
 #if BUILD_HAS_AVX512
-  static constexpr std::size_t kTileTarget = 32;
+  static constexpr std::size_t kTile = 16;  // was 32
 #else
-  static constexpr std::size_t kTileTarget = 8;
+  static constexpr std::size_t kTile = 8;
 #endif
-  static constexpr std::size_t kTile =
-      kChunks < kTileTarget ? kChunks : kTileTarget;
+  static_assert(kChunks % kTile == 0,
+                "kTile must evenly divide kChunks -- pick a kTile that "
+                "divides kWidth / kNativeLanes<Value> for every ISA, or "
+                "this needs remainder handling (std::min clamp) again.");
 
   using ValueVector = simd::Vector<Value, kChunk>;
 
   for (std::size_t base = 0; base < kChunks; base += kTile) {
-    const std::size_t tiles_this_block = std::min(kTile, kChunks - base);
     std::array<ValueVector, kTile> values;
 
-    for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
+    for (std::size_t tile = 0; tile < kTile; ++tile) {
       values[tile] =
           simd::Load<Value, kChunk>(&previous.values_[(base + tile) * kChunk]);
     }
-
     for (int sub = 0; sub < num_sub; ++sub) {
-      for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
+      for (std::size_t tile = 0; tile < kTile; ++tile) {
         values[tile] -= simd::Convert<Value>(
             simd::Load<Weight, kChunk>(&sub_rows[sub][(base + tile) * kChunk]));
       }
     }
-
     for (int add = 0; add < num_add; ++add) {
-      for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
+      for (std::size_t tile = 0; tile < kTile; ++tile) {
         values[tile] += simd::Convert<Value>(
             simd::Load<Weight, kChunk>(&add_rows[add][(base + tile) * kChunk]));
       }
     }
-
-    for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
+    for (std::size_t tile = 0; tile < kTile; ++tile) {
       simd::Store<Value, kChunk>(&values_[(base + tile) * kChunk],
                                  values[tile]);
     }
