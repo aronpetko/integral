@@ -152,16 +152,14 @@ using Vepf32 = Native<float>;
 
 template <typename T, std::size_t N = kNativeLanes<T>>
 [[nodiscard]] inline Vector<T, N> Load(const T* ptr) {
-  Vector<T, N> v;
-  std::memcpy(&v, ptr, sizeof(v));
-  return v;
+  return *reinterpret_cast<const Vector<T, N>*>(ptr);
 }
 
 template <typename T,
           std::size_t N = kNativeLanes<T>,
           typename V = Vector<T, N>>
 inline void Store(T* ptr, V v) {
-  std::memcpy(ptr, &v, sizeof(v));
+  *reinterpret_cast<Vector<T, N>*>(ptr) = v;
 }
 
 template <typename T, std::size_t N = kNativeLanes<T>>
