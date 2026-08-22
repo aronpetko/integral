@@ -152,14 +152,16 @@ using Vepf32 = Native<float>;
 
 template <typename T, std::size_t N = kNativeLanes<T>>
 [[nodiscard]] inline Vector<T, N> Load(const T* ptr) {
-  return *reinterpret_cast<const Vector<T, N>*>(ptr);
+  struct __attribute__((packed, may_alias)) Unaligned { Vector<T, N> v; };
+  return reinterpret_cast<const Unaligned*>(ptr)->v;
 }
 
 template <typename T,
           std::size_t N = kNativeLanes<T>,
           typename V = Vector<T, N>>
 inline void Store(T* ptr, V v) {
-  *reinterpret_cast<Vector<T, N>*>(ptr) = v;
+  struct __attribute__((packed, may_alias)) Unaligned { Vector<T, N> v; };
+  reinterpret_cast<Unaligned*>(ptr)->v = v;
 }
 
 template <typename T, std::size_t N = kNativeLanes<T>>
