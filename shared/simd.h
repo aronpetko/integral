@@ -166,6 +166,16 @@ inline void Store(T* ptr, V v) {
 
 template <typename T, std::size_t N = kNativeLanes<T>>
 [[nodiscard]] inline Vector<T, N> Set(T value) {
+  if constexpr (std::is_floating_point_v<T>) {
+#if BUILD_HAS_AVX512
+    if constexpr (N == 16) return std::bit_cast<Vector<T, N>>(_mm512_set1_ps(value));
+#elif BUILD_HAS_AVX2
+    if constexpr (N == 8)  return std::bit_cast<Vector<T, N>>(_mm256_set1_ps(value));
+#elif BUILD_HAS_SSE41
+    if constexpr (N == 4)  return std::bit_cast<Vector<T, N>>(_mm_set1_ps(value));
+#endif
+  }
+  // 0 + x is exact for integers
   return Vector<T, N>{} + value;
 }
 
@@ -263,6 +273,45 @@ template <typename V>
   }
   if constexpr (std::is_same_v<E, float> && kLanes == 16) {
     return _mm512_reduce_add_ps(std::bit_cast<__m512>(v));
+  }
+#elif BUILD_HAS_AVX2
+  if constexpr (std::is_same_v<E, I32> && kLanes == 8) {
+    const __m256i vv = std::bit_cast<__m256i>(v);
+    const __m128i lower128 = _mm256_castsi256_si128(vv);
+    const __m128i upper128 = _mm256_extracti128_si256(vv, 1);
+    const __m128i sum128 = _mm_add_epi32(lower128, upper128);
+    const __m128i upper64 = _mm_unpackhi_epi64(sum128, sum128);
+    const __m128i sum64 = _mm_add_epi32(upper64, sum128);
+    const __m128i upper32 = _mm_shuffle_epi32(sum64, 1);
+    const __m128i sum32 = _mm_add_epi32(upper32, sum64);
+    return _mm_cvtsi128_si32(sum32);
+  }
+  if constexpr (std::is_same_v<E, float> && kLanes == 8) {
+    const __m256 vv = std::bit_cast<__m256>(v);
+    const __m128 sum128 =
+        _mm_add_ps(_mm256_castps256_ps128(vv), _mm256_extractf128_ps(vv, 1));
+    const __m128 upper64 = _mm_movehl_ps(sum128, sum128);
+    const __m128 sum64 = _mm_add_ps(sum128, upper64);
+    const __m128 upper32 = _mm_shuffle_ps(sum64, sum64, 1);
+    const __m128 sum32 = _mm_add_ss(sum64, upper32);
+    return _mm_cvtss_f32(sum32);
+  }
+#elif BUILD_HAS_SSE41
+  if constexpr (std::is_same_v<E, I32> && kLanes == 4) {
+    const __m128i vv = std::bit_cast<__m128i>(v);
+    const __m128i upper64 = _mm_unpackhi_epi64(vv, vv);
+    const __m128i sum64 = _mm_add_epi32(upper64, vv);
+    const __m128i upper32 = _mm_shuffle_epi32(sum64, 1);
+    const __m128i sum32 = _mm_add_epi32(upper32, sum64);
+    return _mm_cvtsi128_si32(sum32);
+  }
+  if constexpr (std::is_same_v<E, float> && kLanes == 4) {
+    const __m128 vv = std::bit_cast<__m128>(v);
+    const __m128 upper64 = _mm_movehl_ps(vv, vv);
+    const __m128 sum64 = _mm_add_ps(vv, upper64);
+    const __m128 upper32 = _mm_shuffle_ps(sum64, sum64, 1);
+    const __m128 sum32 = _mm_add_ss(sum64, upper32);
+    return _mm_cvtss_f32(sum32);
   }
 #endif
   E lanes[kLanes];
