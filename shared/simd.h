@@ -196,20 +196,36 @@ template <typename T, std::size_t N = kNativeLanes<T>>
 
 template <typename V>
 [[nodiscard]] inline V Min(V a, V b) {
-#if defined(__clang__)
-  return __builtin_elementwise_min(a, b);
-#else
-  return a < b ? a : b;
+  if constexpr (std::is_same_v<ElementOf<V>, float>) {
+#if BUILD_HAS_AVX512
+    if constexpr (kLanesOf<V> == 16) return std::bit_cast<V>(_mm512_min_ps(std::bit_cast<__m512>(a), std::bit_cast<__m512>(b)));
+#elif BUILD_HAS_AVX2
+    if constexpr (kLanesOf<V> == 8) return std::bit_cast<V>(_mm256_min_ps(std::bit_cast<__m256>(a), std::bit_cast<__m256>(b)));
+#elif BUILD_HAS_SSE41
+    if constexpr (kLanesOf<V> == 4) return std::bit_cast<V>(_mm_min_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
 #endif
+  }
+#if defined(__clang__)
+  if constexpr (std::is_integral_v<ElementOf<V>>) return __builtin_elementwise_min(a, b);
+#endif
+  return a < b ? a : b;
 }
 
 template <typename V>
 [[nodiscard]] inline V Max(V a, V b) {
-#if defined(__clang__)
-  return __builtin_elementwise_max(a, b);
-#else
-  return a > b ? a : b;
+  if constexpr (std::is_same_v<ElementOf<V>, float>) {
+#if BUILD_HAS_AVX512
+    if constexpr (kLanesOf<V> == 16) return std::bit_cast<V>(_mm512_max_ps(std::bit_cast<__m512>(a), std::bit_cast<__m512>(b)));
+#elif BUILD_HAS_AVX2
+    if constexpr (kLanesOf<V> == 8) return std::bit_cast<V>(_mm256_max_ps(std::bit_cast<__m256>(a), std::bit_cast<__m256>(b)));
+#elif BUILD_HAS_SSE41
+    if constexpr (kLanesOf<V> == 4) return std::bit_cast<V>(_mm_max_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
 #endif
+  }
+#if defined(__clang__)
+  if constexpr (std::is_integral_v<ElementOf<V>>) return __builtin_elementwise_max(a, b);
+#endif
+  return a > b ? a : b;
 }
 
 template <typename V>
