@@ -226,12 +226,13 @@ inline constexpr auto kAttackTable = ([]() {
   return attack_table;
 })();
 
-[[nodiscard]] std::optional<U32> get_threat_feature_index(PieceType attacker,
-                                                          Color attacker_color,
-                                                          PieceType victim,
-                                                          Color victim_color,
-                                                          Square from,
-                                                          Square to);
+[[nodiscard]] std::pair<U32, bool> get_threat_feature_index(
+    PieceType attacker,
+    Color attacker_color,
+    PieceType victim,
+    Color victim_color,
+    Square from,
+    Square to);
 
 }  // namespace nnue::threats
 

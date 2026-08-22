@@ -53,12 +53,14 @@ class PerspectiveAccumulator {
 
   void Refresh(const BoardState& state, Color perspective, Square king_square) {
     Reset();
+    Weight const* rows[512];
+    int num_rows = 0;
     FeaturePolicy::ForEachActiveFeature(
-        state, perspective, king_square, [&](Weight const* row) {
-          for (int i = 0; i < kWidth; ++i) {
-            values_[i] += row[i];
-          }
+        state, perspective, king_square, [&](Weight const* row, bool valid) {
+          rows[num_rows] = row;
+          num_rows += valid;
         });
+    ApplyDeltas(*this, rows, num_rows, nullptr, 0);
   }
 
   void ApplyDeltas(const PerspectiveAccumulator& previous,

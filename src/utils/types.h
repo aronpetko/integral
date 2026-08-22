@@ -56,6 +56,10 @@ constexpr Color FlipColor(Color color) {
   return Color(!color);
 }
 
+constexpr Color RelativeColor(Color color, Color perspective) {
+  return Color(color ^ perspective);
+}
+
 enum CastleRightMasks : U8 {
   kWhiteKingside = 0b0001,
   kWhiteQueenside = 0b0010,

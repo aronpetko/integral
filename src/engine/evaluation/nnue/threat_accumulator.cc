@@ -148,8 +148,7 @@ template void ThreatAccumulatorChange::UpdateThreatsForSquares<false>(
 template void ThreatAccumulatorChange::UpdateThreatsForSquares<true>(
     const BoardState& state, BitBoard updated_squares);
 
-std::optional<
-    std::span<ThreatFeaturePolicy::Weight, ThreatFeaturePolicy::kWidth>>
+std::pair<ThreatFeaturePolicy::Weight const*, bool>
 ThreatFeaturePolicy::FeatureRow(Color perspective,
                                 Square king_square,
                                 PieceType attacker,
@@ -158,25 +157,20 @@ ThreatFeaturePolicy::FeatureRow(Color perspective,
                                 Color victim_color,
                                 Square from,
                                 Square to) {
-  if (perspective == Color::kBlack) {
-    attacker_color = FlipColor(attacker_color);
-    victim_color = FlipColor(victim_color);
-    from = from ^ 0b111000;
-    to = to ^ 0b111000;
-  }
+  attacker_color = RelativeColor(attacker_color, perspective);
+  victim_color = RelativeColor(victim_color, perspective);
 
   // Horizontal mirroring
-  if (king_square.File() >= kFileE) {
-    from = from ^ 0b111;
-    to = to ^ 0b111;
-  }
+  const U8 square_flip =
+      (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
+  from = from ^ square_flip;
+  to = to ^ square_flip;
 
-  const auto feature_idx = threats::get_threat_feature_index(
+  const auto [feature_idx, valid] = threats::get_threat_feature_index(
       attacker, attacker_color, victim, victim_color, from, to);
-  if (!feature_idx) {
-    return std::nullopt;
-  }
-  return network->threat_weights[feature_idx.value()].as_array();
+  return {network->threat_weights.front().as_array().data() +
+              static_cast<std::size_t>(feature_idx) * kWidth,
+          valid};
 }
 
 void ThreatPerspectiveAccumulator::ApplyChange(
@@ -185,37 +179,39 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     Color perspective,
     Square king_square) {
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> add_rows;
-  U16 num_adds = 0;
+  U16 num_add = 0;
   std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> sub_rows;
-  U16 num_subs = 0;
+  U16 num_sub = 0;
 
   for (int i = 0; i < change.adds.Size(); ++i) {
     const auto& add = change.adds[i];
-    const auto row = ThreatFeaturePolicy::FeatureRow(perspective,
-                                                     king_square,
-                                                     add.attacker_type,
-                                                     add.attacker_color,
-                                                     add.victim_type,
-                                                     add.victim_color,
-                                                     add.attacker_square,
-                                                     add.victim_square);
-    if (row) {
-      add_rows[num_adds++] = row.value().data();
-    }
+    const auto [row, valid] = ThreatFeaturePolicy::FeatureRow(
+        perspective,
+        king_square,
+        add.attacker_type,
+        add.attacker_color,
+        add.victim_type,
+        add.victim_color,
+        add.attacker_square,
+        add.victim_square);
+    __builtin_prefetch(row);
+    add_rows[num_add] = row;
+    num_add += valid;
   }
   for (int i = 0; i < change.subs.Size(); ++i) {
     const auto& sub = change.subs[i];
-    const auto row = ThreatFeaturePolicy::FeatureRow(perspective,
-                                                     king_square,
-                                                     sub.attacker_type,
-                                                     sub.attacker_color,
-                                                     sub.victim_type,
-                                                     sub.victim_color,
-                                                     sub.attacker_square,
-                                                     sub.victim_square);
-    if (row) {
-      sub_rows[num_subs++] = row.value().data();
-    }
+    const auto [row, valid] = ThreatFeaturePolicy::FeatureRow(
+        perspective,
+        king_square,
+        sub.attacker_type,
+        sub.attacker_color,
+        sub.victim_type,
+        sub.victim_color,
+        sub.attacker_square,
+        sub.victim_square);
+    __builtin_prefetch(row);
+    sub_rows[num_sub] = row;
+    num_sub += valid;
   }
 
   static constexpr std::size_t kChunk = simd::kNativeLanes<Value>;
@@ -239,14 +235,14 @@ void ThreatPerspectiveAccumulator::ApplyChange(
           simd::Load<Value, kChunk>(&previous.values_[(base + tile) * kChunk]);
     }
 
-    for (int sub = 0; sub < num_subs; ++sub) {
+    for (int sub = 0; sub < num_sub; ++sub) {
       for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
         values[tile] -= simd::Convert<Value>(
             simd::Load<Weight, kChunk>(&sub_rows[sub][(base + tile) * kChunk]));
       }
     }
 
-    for (int add = 0; add < num_adds; ++add) {
+    for (int add = 0; add < num_add; ++add) {
       for (std::size_t tile = 0; tile < tiles_this_block; ++tile) {
         values[tile] += simd::Convert<Value>(
             simd::Load<Weight, kChunk>(&add_rows[add][(base + tile) * kChunk]));
@@ -258,8 +254,6 @@ void ThreatPerspectiveAccumulator::ApplyChange(
                                  values[tile]);
     }
   }
-
-  // ApplyDeltas(previous, add_rows.data(), num_add, sub_rows.data(), num_sub);
 }
 
 }  // namespace nnue
