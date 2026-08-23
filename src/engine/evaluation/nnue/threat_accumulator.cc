@@ -216,14 +216,11 @@ void ThreatPerspectiveAccumulator::ApplyChange(
   static constexpr std::size_t kChunk = simd::kNativeLanes<Value>;
   static constexpr std::size_t kChunks = kWidth / kChunk;
 #if BUILD_HAS_AVX512
-  static constexpr std::size_t kTile = 16;  // was 32
+  static constexpr std::size_t kTile = 12;
 #else
   static constexpr std::size_t kTile = 8;
 #endif
-  static_assert(kChunks % kTile == 0,
-                "kTile must evenly divide kChunks -- pick a kTile that "
-                "divides kWidth / kNativeLanes<Value> for every ISA, or "
-                "this needs remainder handling (std::min clamp) again.");
+  static_assert(kChunks % kTile == 0, "kTile must evenly divide kChunks");
 
   using ValueVector = simd::Vector<Value, kChunk>;
 
