@@ -152,7 +152,9 @@ using Vepf32 = Native<float>;
 
 template <typename T, std::size_t N = kNativeLanes<T>>
 [[nodiscard]] inline Vector<T, N> Load(const T* ptr) {
-  struct __attribute__((packed, may_alias)) Unaligned { Vector<T, N> v; };
+  struct __attribute__((packed, may_alias)) Unaligned {
+    Vector<T, N> v;
+  };
   return reinterpret_cast<const Unaligned*>(ptr)->v;
 }
 
@@ -160,7 +162,9 @@ template <typename T,
           std::size_t N = kNativeLanes<T>,
           typename V = Vector<T, N>>
 inline void Store(T* ptr, V v) {
-  struct __attribute__((packed, may_alias)) Unaligned { Vector<T, N> v; };
+  struct __attribute__((packed, may_alias)) Unaligned {
+    Vector<T, N> v;
+  };
   reinterpret_cast<Unaligned*>(ptr)->v = v;
 }
 
@@ -168,11 +172,14 @@ template <typename T, std::size_t N = kNativeLanes<T>>
 [[nodiscard]] inline Vector<T, N> Set(T value) {
   if constexpr (std::is_floating_point_v<T>) {
 #if BUILD_HAS_AVX512
-    if constexpr (N == 16) return std::bit_cast<Vector<T, N>>(_mm512_set1_ps(value));
+    if constexpr (N == 16)
+      return std::bit_cast<Vector<T, N>>(_mm512_set1_ps(value));
 #elif BUILD_HAS_AVX2
-    if constexpr (N == 8)  return std::bit_cast<Vector<T, N>>(_mm256_set1_ps(value));
+    if constexpr (N == 8)
+      return std::bit_cast<Vector<T, N>>(_mm256_set1_ps(value));
 #elif BUILD_HAS_SSE41
-    if constexpr (N == 4)  return std::bit_cast<Vector<T, N>>(_mm_set1_ps(value));
+    if constexpr (N == 4)
+      return std::bit_cast<Vector<T, N>>(_mm_set1_ps(value));
 #endif
   }
   // 0 + x is exact for integers
@@ -198,15 +205,22 @@ template <typename V>
 [[nodiscard]] inline V Min(V a, V b) {
   if constexpr (std::is_same_v<ElementOf<V>, float>) {
 #if BUILD_HAS_AVX512
-    if constexpr (kLanesOf<V> == 16) return std::bit_cast<V>(_mm512_min_ps(std::bit_cast<__m512>(a), std::bit_cast<__m512>(b)));
+    if constexpr (kLanesOf<V> == 16)
+      return std::bit_cast<V>(
+          _mm512_min_ps(std::bit_cast<__m512>(a), std::bit_cast<__m512>(b)));
 #elif BUILD_HAS_AVX2
-    if constexpr (kLanesOf<V> == 8) return std::bit_cast<V>(_mm256_min_ps(std::bit_cast<__m256>(a), std::bit_cast<__m256>(b)));
+    if constexpr (kLanesOf<V> == 8)
+      return std::bit_cast<V>(
+          _mm256_min_ps(std::bit_cast<__m256>(a), std::bit_cast<__m256>(b)));
 #elif BUILD_HAS_SSE41
-    if constexpr (kLanesOf<V> == 4) return std::bit_cast<V>(_mm_min_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
+    if constexpr (kLanesOf<V> == 4)
+      return std::bit_cast<V>(
+          _mm_min_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
 #endif
   }
 #if defined(__clang__)
-  if constexpr (std::is_integral_v<ElementOf<V>>) return __builtin_elementwise_min(a, b);
+  if constexpr (std::is_integral_v<ElementOf<V>>)
+    return __builtin_elementwise_min(a, b);
 #endif
   return a < b ? a : b;
 }
@@ -215,15 +229,22 @@ template <typename V>
 [[nodiscard]] inline V Max(V a, V b) {
   if constexpr (std::is_same_v<ElementOf<V>, float>) {
 #if BUILD_HAS_AVX512
-    if constexpr (kLanesOf<V> == 16) return std::bit_cast<V>(_mm512_max_ps(std::bit_cast<__m512>(a), std::bit_cast<__m512>(b)));
+    if constexpr (kLanesOf<V> == 16)
+      return std::bit_cast<V>(
+          _mm512_max_ps(std::bit_cast<__m512>(a), std::bit_cast<__m512>(b)));
 #elif BUILD_HAS_AVX2
-    if constexpr (kLanesOf<V> == 8) return std::bit_cast<V>(_mm256_max_ps(std::bit_cast<__m256>(a), std::bit_cast<__m256>(b)));
+    if constexpr (kLanesOf<V> == 8)
+      return std::bit_cast<V>(
+          _mm256_max_ps(std::bit_cast<__m256>(a), std::bit_cast<__m256>(b)));
 #elif BUILD_HAS_SSE41
-    if constexpr (kLanesOf<V> == 4) return std::bit_cast<V>(_mm_max_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
+    if constexpr (kLanesOf<V> == 4)
+      return std::bit_cast<V>(
+          _mm_max_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
 #endif
   }
 #if defined(__clang__)
-  if constexpr (std::is_integral_v<ElementOf<V>>) return __builtin_elementwise_max(a, b);
+  if constexpr (std::is_integral_v<ElementOf<V>>)
+    return __builtin_elementwise_max(a, b);
 #endif
   return a > b ? a : b;
 }
@@ -246,6 +267,25 @@ template <typename V>
 
 template <typename To, typename V>
 [[nodiscard]] inline auto Convert(V v) {
+  using From = ElementOf<V>;
+  if constexpr (std::is_same_v<From, I8> && std::is_same_v<To, I16>) {
+#if BUILD_HAS_AVX512
+    if constexpr (kLanesOf<V> == 32) {
+      return std::bit_cast<Vector<To, 32>>(
+          _mm512_cvtepi8_epi16(std::bit_cast<__m256i>(v)));
+    }
+#elif BUILD_HAS_AVX2
+    if constexpr (kLanesOf<V> == 16) {
+      return std::bit_cast<Vector<To, 16>>(
+          _mm256_cvtepi8_epi16(std::bit_cast<__m128i>(v)));
+    }
+#elif BUILD_HAS_SSE41
+    if constexpr (kLanesOf<V> == 8) {
+      return std::bit_cast<Vector<To, 8>>(
+          _mm_cvtepi8_epi16(std::bit_cast<__m128i>(v)));
+    }
+#endif
+  }
   return __builtin_convertvector(v, Vector<To, kLanesOf<V>>);
 }
 
