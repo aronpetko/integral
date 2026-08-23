@@ -268,25 +268,42 @@ template <typename V>
 template <typename To, typename V>
 [[nodiscard]] inline auto Convert(V v) {
   using From = ElementOf<V>;
+  constexpr std::size_t N = kLanesOf<V>;
   if constexpr (std::is_same_v<From, I8> && std::is_same_v<To, I16>) {
 #if BUILD_HAS_AVX512
-    if constexpr (kLanesOf<V> == 32) {
-      return std::bit_cast<Vector<To, 32>>(
+    if constexpr (N == 32)
+      return std::bit_cast<Vector<I16, 32>>(
           _mm512_cvtepi8_epi16(std::bit_cast<__m256i>(v)));
-    }
 #elif BUILD_HAS_AVX2
-    if constexpr (kLanesOf<V> == 16) {
-      return std::bit_cast<Vector<To, 16>>(
+    if constexpr (N == 16)
+      return std::bit_cast<Vector<I16, 16>>(
           _mm256_cvtepi8_epi16(std::bit_cast<__m128i>(v)));
-    }
 #elif BUILD_HAS_SSE41
-    if constexpr (kLanesOf<V> == 8) {
-      return std::bit_cast<Vector<To, 8>>(
-          _mm_cvtepi8_epi16(std::bit_cast<__m128i>(v)));
+    if constexpr (N == 8) {
+      __m128i wide;
+      std::memcpy(&wide, &v, sizeof(v));
+      return std::bit_cast<Vector<I16, 8>>(_mm_cvtepi8_epi16(wide));
     }
 #endif
   }
-  return __builtin_convertvector(v, Vector<To, kLanesOf<V>>);
+  if constexpr (std::is_same_v<From, I16> && std::is_same_v<To, I32>) {
+#if BUILD_HAS_AVX512
+    if constexpr (N == 16)
+      return std::bit_cast<Vector<I32, 16>>(
+          _mm512_cvtepi16_epi32(std::bit_cast<__m256i>(v)));
+#elif BUILD_HAS_AVX2
+    if constexpr (N == 8)
+      return std::bit_cast<Vector<I32, 8>>(
+          _mm256_cvtepi16_epi32(std::bit_cast<__m128i>(v)));
+#elif BUILD_HAS_SSE41
+    if constexpr (N == 4) {
+      __m128i wide;
+      std::memcpy(&wide, &v, sizeof(v));
+      return std::bit_cast<Vector<I32, 4>>(_mm_cvtepi16_epi32(wide));
+    }
+#endif
+  }
+  return __builtin_convertvector(v, Vector<To, N>);
 }
 
 template <typename To, typename V>
