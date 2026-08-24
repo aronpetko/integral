@@ -301,12 +301,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
-  // Keep track of the original alpha for bound determination when updating
-  // the transposition table
-  const int original_alpha = alpha;
-
   int moves_seen = 0;
-  Score best_score = kScoreNone;
+  Score best_score = stack->eval = kScoreNone;
   Score raw_static_eval = kScoreNone;
 
   if (!stack->in_check) {
@@ -316,7 +312,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
       raw_static_eval = eval::Evaluate(board);
     }
 
-    stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->eval = stack->static_eval =
+        AdjustStaticEval(raw_static_eval, thread, stack);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -361,9 +358,16 @@ Score Searcher::QuiescentSearch(Thread &thread,
       !in_pv_node && tt_move &&
       tt_entry->flag != TranspositionTableEntry::kUpperBound &&
       !tt_move.IsNoisy(state);
+  const auto see_threshold =
+      stack->eval != kScoreNone ? (alpha - stack->eval) / 8 : 0;
 
-  MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack, (alpha - best_score) / 8, evasions);
+  MovePicker move_picker(MovePickerType::kQuiescence,
+                         board,
+                         tt_move,
+                         history,
+                         stack,
+                         see_threshold,
+                         evasions);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
