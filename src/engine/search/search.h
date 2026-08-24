@@ -139,6 +139,11 @@ struct alignas(64) Thread {
     tb_hits = 0;
   }
 
+  U64 MakeMove(StackEntry *stack, Move move, U32 move_count);
+  void UndoMove();
+  void MakeNullMove(StackEntry *stack);
+  void UndoNullMove();
+
   U32 id;
   Board board;
   history::History history;
@@ -210,7 +215,8 @@ class Searcher {
   Board &board_;
   TimeManagement time_mgmt_;
   std::atomic_bool stop_, quit_;
-  Barrier stop_barrier_, start_barrier_, search_end_barrier_, thread_init_barrier_;
+  Barrier stop_barrier_, start_barrier_, search_end_barrier_,
+      thread_init_barrier_;
   std::mutex stop_mutex_, thread_stopped_mutex_;
   std::atomic_int searching_threads_;
   std::condition_variable thread_stopped_signal_;

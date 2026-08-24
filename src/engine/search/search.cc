@@ -392,21 +392,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    stack->move = move;
-    stack->moved_piece = state.GetPieceType(move.GetFrom());
-    stack->capture_move = is_capture;
-    stack->continuation_entry =
-        history.continuation_history->GetEntry(state, move);
-    stack->continuation_correction_entry =
-        history.correction_history->GetContEntry(state, move);
-    stack->history_score = history.GetMoveScore(state, move, stack);
-
-    thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
-
-    board.MakeMove(move);
+    thread.MakeMove(stack, move, moves_seen);
     const Score score =
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
-    board.UndoMove();
+    thread.UndoMove();
 
     moves_seen++;
 
@@ -760,24 +749,18 @@ Score Searcher::PVSearch(Thread &thread,
       const BitBoard non_pawn_king_pieces =
           state.KinglessOccupied(state.turn) & ~state.Pawns(state.turn);
       if (non_pawn_king_pieces) {
-        // Set the currently searched move in the stack for continuation
-        // history
-        stack->move = Move::NullMove();
-        stack->capture_move = false;
-        stack->moved_piece = kNone;
-        stack->continuation_entry = nullptr;
-        stack->continuation_correction_entry = nullptr;
-
         const int eval_reduction =
             std::min(2, (stack->eval - beta) / kNmpEvalDiv);
         int reduction =
             depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
         reduction = std::clamp(reduction, 0, depth);
 
-        board.MakeNullMove();
+        // Set the currently searched move in the stack for continuation
+        // history
+        thread.MakeNullMove(stack);
         const Score score = -PVSearch<NodeType::kNonPV>(
             thread, depth - reduction, -beta, -beta + 1, stack + 1, !cut_node);
-        board.UndoNullMove();
+        thread.UndoNullMove();
 
         if (ShouldQuit()) {
           return 0;
@@ -822,21 +805,9 @@ Score Searcher::PVSearch(Thread &thread,
             continue;
           }
 
-          ++moves_seen;
-
-          stack->move = move;
-          stack->moved_piece = state.GetPieceType(move.GetFrom());
-          stack->capture_move = move.IsCapture(state);
-          stack->continuation_entry =
-              history.continuation_history->GetEntry(state, move);
-          stack->continuation_correction_entry =
-              history.correction_history->GetContEntry(state, move);
-          stack->history_score = history.GetMoveScore(state, move, stack);
-
           const int probcut_depth = depth - 3;
-          thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
-          board.MakeMove(move);
+          thread.MakeMove(stack, move, moves_seen);
 
           Score score = -QuiescentSearch<node_type>(
               thread, -pc_beta, -pc_beta + 1, stack + 1);
@@ -850,7 +821,9 @@ Score Searcher::PVSearch(Thread &thread,
                                          !cut_node);
           }
 
-          board.UndoMove();
+          thread.UndoMove();
+
+          ++moves_seen;
 
           if (score >= pc_beta) {
             const TranspositionTableEntry new_tt_entry(
@@ -1033,19 +1006,9 @@ Score Searcher::PVSearch(Thread &thread,
       }
     }
 
-    stack->move = move;
-    stack->moved_piece = state.GetPieceType(move.GetFrom());
-    stack->capture_move = is_capture;
-    stack->continuation_entry =
-        history.continuation_history->GetEntry(state, move);
-    stack->continuation_correction_entry =
-        history.correction_history->GetContEntry(state, move);
-
-    board.MakeMove(move);
+    const U64 prev_nodes_searched = thread.MakeMove(stack, move, moves_seen);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched =
-        thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -1151,7 +1114,7 @@ Score Searcher::PVSearch(Thread &thread,
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
 
-    board.UndoMove();
+    thread.UndoMove();
 
     if (ShouldQuit()) {
       return 0;
@@ -1471,6 +1434,42 @@ U64 Searcher::GetTbHits() const {
 void Searcher::ResizeHash(U64 size) {
   transposition_table_.Resize(size);
   transposition_table_.Clear(std::max<int>(1, threads_.size()));
+}
+
+U64 Thread::MakeMove(StackEntry *stack_entry, Move move, U32 move_count) {
+  const auto &state = board.GetState();
+  stack_entry->move = move;
+  stack_entry->moved_piece = state.GetPieceType(move.GetFrom());
+  stack_entry->capture_move = move.IsCapture(state);
+  stack_entry->continuation_entry =
+      history.continuation_history->GetEntry(state, move);
+  stack_entry->continuation_correction_entry =
+      history.correction_history->GetContEntry(state, move);
+  stack_entry->history_score = history.GetMoveScore(state, move, stack_entry);
+
+  const U64 prev_nodes_searched =
+      nodes_searched.fetch_add(1, std::memory_order_relaxed);
+
+  board.MakeMove(move);
+  return prev_nodes_searched;
+}
+
+void Thread::UndoMove() {
+  board.UndoMove();
+}
+
+void Thread::MakeNullMove(StackEntry *stack_entry) {
+  stack_entry->move = Move::NullMove();
+  stack_entry->moved_piece = kNone;
+  stack_entry->capture_move = false;
+  stack_entry->continuation_entry = nullptr;
+  stack_entry->continuation_correction_entry = nullptr;
+
+  board.MakeNullMove();
+}
+
+void Thread::UndoNullMove() {
+  board.UndoNullMove();
 }
 
 }  // namespace search
