@@ -392,7 +392,9 @@ Score Searcher::QuiescentSearch(Thread &thread,
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
 
-    thread.MakeMove(stack, move, moves_seen);
+    stack->history_score = history.GetMoveScore(state, move, stack);
+
+    thread.MakeMove(stack, move, 0);
     const Score score =
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     thread.UndoMove();
@@ -807,7 +809,8 @@ Score Searcher::PVSearch(Thread &thread,
 
           const int probcut_depth = depth - 3;
 
-          thread.MakeMove(stack, move, moves_seen);
+          stack->history_score = history.GetMoveScore(state, move, stack);
+          thread.MakeMove(stack, move, 0);
 
           Score score = -QuiescentSearch<node_type>(
               thread, -pc_beta, -pc_beta + 1, stack + 1);
@@ -1026,6 +1029,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
         reduction += kLmrNonPvNode;
+        reduction -= 96 - 32 * stack->laterality;
       }
 
       // Reduce less if we have seen this node in the PV before
@@ -1445,7 +1449,9 @@ U64 Thread::MakeMove(StackEntry *stack_entry, Move move, U32 move_count) {
       history.continuation_history->GetEntry(state, move);
   stack_entry->continuation_correction_entry =
       history.correction_history->GetContEntry(state, move);
-  stack_entry->history_score = history.GetMoveScore(state, move, stack_entry);
+  stack_entry->laterality =
+      (stack_entry->ply > 0 ? (stack_entry - 1)->laterality : 0) +
+      (move_count > 0 ? std::max(std::bit_width(move_count) - 1, 0) : 0);
 
   const U64 prev_nodes_searched =
       nodes_searched.fetch_add(1, std::memory_order_relaxed);
