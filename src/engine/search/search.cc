@@ -1029,7 +1029,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
         reduction += kLmrNonPvNode;
-        reduction -= 96 - 32 * stack->laterality;
+        reduction -= 64 - 64 * stack->laterality;
       }
 
       // Reduce less if we have seen this node in the PV before
@@ -1451,7 +1451,9 @@ U64 Thread::MakeMove(StackEntry *stack_entry, Move move, U32 move_count) {
       history.correction_history->GetContEntry(state, move);
   stack_entry->laterality =
       (stack_entry->ply > 0 ? (stack_entry - 1)->laterality : 0) +
-      (move_count > 0 ? std::max(std::bit_width(move_count) - 1U, 0U) : 0);
+      (move_count > 0
+           ? std::max(static_cast<I32>(std::bit_width(move_count)) - 1, 0)
+           : 0);
 
   const U64 prev_nodes_searched =
       nodes_searched.fetch_add(1, std::memory_order_relaxed);
@@ -1470,6 +1472,7 @@ void Thread::MakeNullMove(StackEntry *stack_entry) {
   stack_entry->capture_move = false;
   stack_entry->continuation_entry = nullptr;
   stack_entry->continuation_correction_entry = nullptr;
+  stack_entry->laterality = 0;
 
   board.MakeNullMove();
 }
