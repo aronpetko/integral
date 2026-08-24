@@ -1451,7 +1451,7 @@ U64 Thread::MakeMove(StackEntry *stack_entry, Move move, U32 move_count) {
       history.correction_history->GetContEntry(state, move);
   stack_entry->laterality =
       (stack_entry->ply > 0 ? (stack_entry - 1)->laterality : 0) +
-      (move_count > 0 ? std::max(std::bit_width(move_count) - 1, 0) : 0);
+      (move_count > 0 ? std::max(std::bit_width(move_count) - 1U, 0U) : 0);
 
   const U64 prev_nodes_searched =
       nodes_searched.fetch_add(1, std::memory_order_relaxed);
