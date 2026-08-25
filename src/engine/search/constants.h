@@ -50,7 +50,10 @@ TUNABLE_STEP(kLmrDepthHistQuiet, 1374, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthNotImproving, 1302, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthRoundingCutoff, 675, 512, 2048, false, 100);
 
-TUNABLE(kLmpBase, 5, 1, 10, true);
+TUNABLE_STEP(kLmpBase, 5120, 1024, 10240, false, 256);
+TUNABLE_STEP(kLmpDepthMult, 1024, 512, 2048, false, 100);
+TUNABLE_STEP(kLmpDiv, 3072, 2048, 4608, false, 150);
+TUNABLE_STEP(kLmpImprovingDiv, 2048, 1024, 3584, false, 150);
 
 TUNABLE(kFutPruneDepth, 8, 6, 12, true);
 TUNABLE_STEP(kFutMarginBase, 128, 100, 250, false, 20);
