@@ -1,7 +1,0 @@
-/mnt/d/Coding/integral/build/CMakeFiles/run_preprocess.dir
-/mnt/d/Coding/integral/build/CMakeFiles/integral.dir
-/mnt/d/Coding/integral/build/CMakeFiles/edit_cache.dir
-/mnt/d/Coding/integral/build/CMakeFiles/rebuild_cache.dir
-/mnt/d/Coding/integral/build/preprocess/CMakeFiles/preprocess.dir
-/mnt/d/Coding/integral/build/preprocess/CMakeFiles/edit_cache.dir
-/mnt/d/Coding/integral/build/preprocess/CMakeFiles/rebuild_cache.dir

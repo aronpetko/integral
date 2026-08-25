@@ -1,4 +1,0 @@
-/mnt/d/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir
-/mnt/d/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir
-/mnt/d/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/edit_cache.dir
-/mnt/d/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/rebuild_cache.dir
