@@ -12,6 +12,6 @@ using ContinuationEntry =
 using ContinuationCorrectionEntry =
     MultiArray<I16, kNumColors, kNumPieceTypes, kSquareCount>;
 
-}
+}  // namespace search::history
 
 #endif  // INTEGRAL_CONTINUATION_ENTRIES_H

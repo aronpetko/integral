@@ -11,7 +11,7 @@
 namespace search::history {
 
 TUNABLE(kQuietHistoryWeight, 1055, 0, 2048, false);
-TUNABLE(kFirstContinuationHistoryWeight,  1275, 0, 2048, false);
+TUNABLE(kFirstContinuationHistoryWeight, 1275, 0, 2048, false);
 TUNABLE(kSecondContinuationHistoryWeight, 974, 0, 2048, false);
 TUNABLE(kFourthContinuationHistoryWeight, 910, 0, 2048, false);
 TUNABLE(kPawnHistoryWeight, 1036, 0, 2048, false);

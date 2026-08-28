@@ -24,7 +24,9 @@ Board::Board() : history_({}) {}
 Board::Board(const BoardState &state) : history_({}), state_(state) {}
 
 Board::Board(const Board &other)
-    : state_(other.state_), history_(other.history_) {}
+    : state_(other.state_),
+      history_(other.history_),
+      key_history_(other.key_history_) {}
 
 Board &Board::operator=(const Board &other) {
   if (this == &other) {
@@ -33,6 +35,7 @@ Board &Board::operator=(const Board &other) {
 
   state_ = other.state_;
   history_ = other.history_;
+  key_history_ = other.key_history_;
   accumulator_ = std::make_shared<nnue::Accumulator>();
   return *this;
 }
@@ -44,6 +47,7 @@ void Board::SetFromFen(std::string_view fen_str) {
   accumulator_->SetFromState(state_);
 
   history_.Clear();
+  key_history_.Clear();
 
   CalculateThreats();
 }
@@ -203,6 +207,7 @@ bool Board::IsMoveLegal(Move move) const {
 
 void Board::MakeMove(Move move) {
   history_.Push(state_);
+  key_history_.Push(state_.zobrist_key);
 
   const Color us = state_.turn, them = FlipColor(us);
 
@@ -276,21 +281,24 @@ void Board::MakeMove(Move move) {
 
   CalculateThreats();
 
-  // Push the accumulator change
-  accumulator_->PushChanges(state_, accum_change);
+  // Push the accumulator change, pointing at the pre-move state in history
+  accumulator_->PushChanges(history_.Back(), accum_change);
 }
 
 void Board::UndoMove() {
   state_ = history_.PopBack();
+  key_history_.PopBack();
   accumulator_->UndoMove();
 }
 
 void Board::UndoNullMove() {
   state_ = history_.PopBack();
+  key_history_.PopBack();
 }
 
 void Board::MakeNullMove() {
   history_.Push(state_);
+  key_history_.Push(state_.zobrist_key);
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {
@@ -366,7 +374,7 @@ bool Board::HasUpcomingRepetition(U16 ply) const {
   }
 
   const auto keys_back = [this](int dist) {
-    return history_[history_.Size() - dist].zobrist_key;
+    return key_history_[key_history_.Size() - dist];
   };
 
   const auto occupied = state_.Occupied();
@@ -420,7 +428,7 @@ bool Board::IsRepetition(U16 ply) const {
 
   bool hit_before_root = false;
   for (int i = 4; i <= max_dist; i += 2) {
-    if (state_.zobrist_key == history_[history_.Size() - i].zobrist_key) {
+    if (state_.zobrist_key == key_history_[key_history_.Size() - i]) {
       if (ply >= i) return true;
       if (hit_before_root) return true;
       hit_before_root = true;

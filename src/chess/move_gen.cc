@@ -173,12 +173,12 @@ BitBoard KnightMoves(Square square) {
   return kKnightMasks[square];
 }
 
-BitBoard BishopMoves(Square square, const BitBoard& occupied) {
+BitBoard BishopMoves(Square square, const BitBoard &occupied) {
   const auto &index = magics::attacks::GetBishopAttackIndex(square, occupied);
   return magics::attacks::kBishopAttacks[square][index];
 }
 
-BitBoard RookMoves(Square square, const BitBoard& occupied) {
+BitBoard RookMoves(Square square, const BitBoard &occupied) {
   const auto &index = magics::attacks::GetRookAttackIndex(square, occupied);
   return magics::attacks::kRookAttacks[square][index];
 }
