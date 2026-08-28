@@ -25,9 +25,9 @@ BitBoard GenerateBishopMask(Square square);
 
 BitBoard GenerateRookMask(Square square);
 
-BitBoard GenerateBishopMoves(Square square, const BitBoard &occupied);
+BitBoard GenerateBishopMoves(Square square, const BitBoard& occupied);
 
-BitBoard GenerateRookMoves(Square square, const BitBoard &occupied);
+BitBoard GenerateRookMoves(Square square, const BitBoard& occupied);
 
 std::vector<BitBoard> CreateBlockers(BitBoard moves);
 

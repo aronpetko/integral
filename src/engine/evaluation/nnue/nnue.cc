@@ -32,14 +32,14 @@ namespace nnue {
 
 void LoadFromIncBin() {
   // Load raw network from binary data
-  network = reinterpret_cast<Network*>(const_cast<unsigned char*>(gEVALData));
+  network = reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
 }
 
 Score Evaluate(Board &board) {
   auto &state = board.GetState();
   auto &accumulator = *board.GetAccumulator();
 
-  accumulator.ApplyChanges();
+  accumulator.ApplyChanges(state);
   const auto bucket = accumulator.GetOutputBucket(state);
 
   constexpr int kFtShift = 9;
@@ -52,13 +52,13 @@ Score Evaluate(Board &board) {
 
   const auto quantise_vector = simd::SetEpi16(arch::kFtQuantization);
 
-  std::array<U16, arch::kL1Size / 4> nnz_indices{};
+  std::array<U16, arch::kL1Size / 4> nnz_indices;
   int nnz_count = 0;
   auto nnz_base = _mm_setzero_si128();
   const auto lookup_increment = _mm_set1_epi16(8);
 
   // Activate the feature layer neurons
-  alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output{};
+  alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
   for (int them = 0; them <= 1; them++) {
     const auto &stm_accumulator = accumulator[state.turn ^ them];
     for (int i = 0; i < arch::kL1Size / 2; i += kI8ChunkSize) {
@@ -176,7 +176,7 @@ Score Evaluate(Board &board) {
   const auto zero_float_vector = simd::ZeroPs(),
              one_float_vector = simd::SetPs(1.0f);
 
-  alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output{};
+  alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output;
   for (int i = 0; i < arch::kL2Size; i += kF32ChunkSize) {
     const auto bias_vector =
         *reinterpret_cast<simd::Vepf32 *>(&network->l1_biases[bucket][i]);

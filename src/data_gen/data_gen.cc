@@ -139,7 +139,7 @@ std::mutex display_mutex;
 void PrintProgress(const Config &config, U64 completed, U64 written) {
   std::lock_guard lock(display_mutex);
 
-  auto current_time = GetCurrentTime();
+  auto current_time = GetCurrentTimeMilliseconds();
   auto elapsed_time = current_time - start_time;
   auto games_left = config.num_games - completed;
   auto time_per_game = elapsed_time / std::max<U64>(1, completed);
@@ -212,7 +212,7 @@ void GameLoop(const Config &config,
               int thread_id,
               std::ostream &output_stream,
               const std::vector<std::string> &fens) {
-  RandomSeed(thread_id, GetCurrentTime());
+  RandomSeed(thread_id, GetCurrentTimeMilliseconds());
 
   constexpr int kWinThreshold = 2500;
   constexpr int kWinPliesThreshold = 5;
@@ -288,7 +288,8 @@ void GameLoop(const Config &config,
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root
-      if (thread->board.IsRepetition(0) || thread->board.IsInsufficientMaterial()) {
+      if (thread->board.IsRepetition(0) ||
+          thread->board.IsInsufficientMaterial()) {
         wdl_outcome = 0.5;
         break;
       }
@@ -340,7 +341,7 @@ void Generate(Config config) {
   buffer << std::put_time(&tm, "%d-%m-%Y");
 
   const auto path = config.output_file + "-" + buffer.str();
-  start_time = GetCurrentTime();
+  start_time = GetCurrentTimeMilliseconds();
 
   std::vector<std::thread> threads;
   threads.reserve(config.num_threads);

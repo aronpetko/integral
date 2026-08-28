@@ -179,7 +179,8 @@ struct AccumulatorEntry {
   AccumulatorChange change;
   std::array<Square, 2> kings;
   std::array<bool, 2> updated;
-  BoardState state;
+  // The board state this entry's move was made from
+  const BoardState* previous_state;
 };
 
 struct BucketCacheEntry {
@@ -207,6 +208,7 @@ class Accumulator {
 
   void SetFromState(const BoardState& state) {
     head_idx_ = 0;
+    stack_[head_idx_].previous_state = nullptr;
     for (const Color color : {Color::kBlack, Color::kWhite}) {
       auto& accumulator = stack_[head_idx_];
       RefreshPerspective(accumulator, state, color, true);
@@ -268,8 +270,17 @@ class Accumulator {
         }
       }
     }
+    for (; num_adds >= 4 && num_subs >= 4; num_adds -= 4, num_subs -= 4) {
+      for (int i = 0; i < arch::kL1Size; ++i) {
+        perspective_accumulator[i] +=
+            adds[num_adds - 4][i] + adds[num_adds - 3][i] +
+            adds[num_adds - 2][i] + adds[num_adds - 1][i] -
+            subs[num_subs - 4][i] - subs[num_subs - 3][i] -
+            subs[num_subs - 2][i] - subs[num_subs - 1][i];
+      }
+    }
 
-    // Perform all add operations
+    // Perform the remaining add operations
     for (; num_adds >= 4; num_adds -= 4) {
       for (int i = 0; i < arch::kL1Size; ++i) {
         perspective_accumulator[i] +=
@@ -283,7 +294,7 @@ class Accumulator {
       }
     }
 
-    // Perform all sub operations
+    // Perform the remaining sub operations
     for (; num_subs >= 4; num_subs -= 4) {
       for (int i = 0; i < arch::kL1Size; ++i) {
         perspective_accumulator[i] -=
@@ -304,14 +315,15 @@ class Accumulator {
         cached.accumulator.perspectives[perspective];
   }
 
-  void PushChanges(const BoardState& state, AccumulatorChange& change) {
+  void PushChanges(const BoardState& previous_state,
+                   AccumulatorChange& change) {
     IncrementHead();
 
     auto& entry = stack_[head_idx_];
     entry.change = change;
     entry.updated[Color::kBlack] = false;
     entry.updated[Color::kWhite] = false;
-    entry.state = state;
+    entry.previous_state = &previous_state;
 
     // Update king positions if necessary
     if (change.sub_0.piece == PieceType::kKing) {
@@ -326,7 +338,7 @@ class Accumulator {
         stack_[head_idx_ - 1].kings[FlipColor(change.sub_0.color)];
   }
 
-  void ApplyChanges() {
+  void ApplyChanges(const BoardState& current_state) {
     for (Color perspective : {Color::kWhite, Color::kBlack}) {
       if (stack_[head_idx_].updated[perspective]) {
         continue;
@@ -342,7 +354,8 @@ class Accumulator {
 
           // Apply all updates from the earliest updated accumulator to now
           while (last_updated != head_idx_) {
-            auto& dirty_accumulator = stack_[last_updated + 1];
+            const int dirty_idx = last_updated + 1;
+            auto& dirty_accumulator = stack_[dirty_idx];
             const auto& clean_accumulator = stack_[last_updated];
 
             // If the accumulator needs a refresh, we skip applying updates and
@@ -350,8 +363,13 @@ class Accumulator {
             if (NeedRefresh(perspective,
                             clean_accumulator.kings[perspective],
                             dirty_accumulator.kings[perspective])) {
-              RefreshPerspective(
-                  dirty_accumulator, dirty_accumulator.state, perspective);
+              // The post-move placement of this entry is the pre-move state of
+              // the entry above it, or the live board state at the head
+              const BoardState& dirty_state =
+                  dirty_idx == head_idx_
+                      ? current_state
+                      : *stack_[dirty_idx + 1].previous_state;
+              RefreshPerspective(dirty_accumulator, dirty_state, perspective);
             } else {
               dirty_accumulator.perspectives[perspective].ApplyChange(
                   clean_accumulator.perspectives[perspective],

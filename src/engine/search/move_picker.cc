@@ -84,7 +84,8 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck() && !force_evasions_) {
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck() &&
+        !force_evasions_) {
       return Move::NullMove();
     }
 
