@@ -323,7 +323,7 @@ class Board {
 
   [[nodiscard]] U64 PredictKeyAfter(Move move) const;
 
-  [[nodiscard]] bool HasUpcomingRepetition(U16 ply) const ;
+  [[nodiscard]] bool HasUpcomingRepetition(U16 ply) const;
 
   [[nodiscard]] bool IsRepetition(U16 ply) const;
 
@@ -345,6 +345,7 @@ class Board {
  private:
   BoardState state_;
   List<BoardState, 2048> history_;
+  List<U64, 2048> key_history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;
 };
 

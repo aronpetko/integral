@@ -3,6 +3,7 @@
 
 #include <string>
 #include <type_traits>
+
 #include "../engine/uci/uci.h"
 
 // #define SPSA_TUNE
@@ -10,14 +11,15 @@
 
 #ifdef SPSA_TUNE
 #define TUNABLE(name, value, min, max, disabled) \
-  inline Tunable<decltype(value)> name(#name, value, min, max, (max - min) / 20, disabled)
+  inline Tunable<decltype(value)> name(          \
+      #name, value, min, max, (max - min) / 20, disabled)
 
 #define TUNABLE_STEP(name, value, min, max, disabled, step) \
   inline Tunable<decltype(value)> name(#name, value, min, max, step, disabled)
 
 constexpr double kLearningRate = 0.002;
 
-template<typename T>
+template <typename T>
 class Tunable {
  public:
   explicit Tunable(std::string_view name,
@@ -26,9 +28,7 @@ class Tunable {
                    T max,
                    T step = T{},
                    bool disabled = false)
-      : value_(value),
-        step_(step),
-        learning_rate_(kLearningRate) {
+      : value_(value), step_(step), learning_rate_(kLearningRate) {
 #ifdef SPSA_TUNE
     if (disabled) return;
 
@@ -38,7 +38,13 @@ class Tunable {
             value_ = option.GetValue<int>();
           });
 #ifdef PRINT_SPSA_INPUTS
-      fmt::println("{}, int, {}, {}, {}, {}, {}", name, value, min, max, step_, learning_rate_);
+      fmt::println("{}, int, {}, {}, {}, {}, {}",
+                   name,
+                   value,
+                   min,
+                   max,
+                   step_,
+                   learning_rate_);
 #endif
     } else if constexpr (std::is_same_v<T, double>) {
       uci::listener.AddOption<uci::OptionVisibility::kPublic>(
@@ -46,7 +52,13 @@ class Tunable {
             value_ = std::stod(option.GetValue<std::string>());
           });
 #ifdef PRINT_SPSA_INPUTS
-      fmt::println("{}, float, {}, {}, {}, {}, {}", name, value, min, max, step_, learning_rate_);
+      fmt::println("{}, float, {}, {}, {}, {}, {}",
+                   name,
+                   value,
+                   min,
+                   max,
+                   step_,
+                   learning_rate_);
 #endif
     }
 #endif
@@ -80,7 +92,7 @@ class Tunable {
 #define TUNABLE_STEP(name, value, min, max, disabled, step) \
   static constexpr auto name = value
 
-template<typename T>
+template <typename T>
 using Tunable = T;
 #endif
 

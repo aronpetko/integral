@@ -15,16 +15,12 @@ struct AccumulatorEntry {
   PsqtAccumulatorChange psqt_change;
   std::array<Square, 2> kings;
   std::array<bool, 2> updated;
-  // The squares the move into this node changed the occupant of. The threat
-  // rows are rebuilt from this and the two surrounding states when the node is
-  // applied, rather than stored, since one node can hold dozens of rows.
+  // The squares the move into this node changed the occupant of
   BitBoard threat_updated_squares;
-  BoardState state;
+  // The board state this entry's move was made from
+  const BoardState* previous_state;
 };
 
-// Finny table entry: the cached accumulator for one (mirrored, king bucket)
-// pair, plus the piece layout it was built from, so a refresh can diff against
-// it instead of rebuilding from an empty board.
 struct BucketCacheEntry {
   AccumulatorEntry accumulator;
   MultiArray<BitBoard, 2, kNumPieceTypes> piece_bbs{};
@@ -54,8 +50,9 @@ class Accumulator {
                           Color perspective,
                           bool reset = false);
 
-  void PushChanges(const BoardState& state, PsqtAccumulatorChange& psqt_change);
-  void ApplyChanges();
+  void PushChanges(const BoardState& previous_state,
+                   PsqtAccumulatorChange& psqt_change);
+  void ApplyChanges(const BoardState& current_state);
 
   [[nodiscard]] bool NeedRefresh(Color perspective,
                                  Square old_king,

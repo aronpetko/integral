@@ -39,7 +39,7 @@ Score Evaluate(Board &board) {
   auto &state = board.GetState();
   auto &accumulator = *board.GetAccumulator();
 
-  accumulator.ApplyChanges();
+  accumulator.ApplyChanges(state);
   const auto bucket = accumulator.GetOutputBucket(state);
 
   constexpr int kFtShift = 9;
@@ -52,13 +52,13 @@ Score Evaluate(Board &board) {
 
   const auto quantise_vector = simd::Set<I16>(arch::kFtQuantization);
 
-  std::array<U16, arch::kL1Size / 4> nnz_indices{};
+  std::array<U16, arch::kL1Size / 4> nnz_indices;
   int nnz_count = 0;
   auto nnz_base = simd::Zero<U16, 8>();
   const auto lookup_increment = simd::Set<U16, 8>(8);
 
   // Activate the feature layer neurons
-  alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output{};
+  alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
   for (int them = 0; them <= 1; them++) {
     const auto &stm_accumulator = accumulator[state.turn ^ them];
     for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
@@ -181,7 +181,7 @@ Score Evaluate(Board &board) {
                          arch::kL1Quantization);
   const auto l1_multiplier_vector = simd::Set<float>(kL1Normalization);
 
-  alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output{};
+  alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output;
   for (int i = 0; i < arch::kL2Size; i += kF32Lanes) {
     const auto bias_vector =
         simd::AsVector<float>(&network->l1_biases[bucket][i]);

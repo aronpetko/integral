@@ -73,6 +73,16 @@ class PerspectiveAccumulator {
         values_[i] = previous.values_[i];
       }
     }
+    // Pair up adds and subs while both are available, so the accumulator is
+    // only read and written back once per group of eight rows
+    for (; num_adds >= 4 && num_subs >= 4; num_adds -= 4, num_subs -= 4) {
+      for (int i = 0; i < kWidth; ++i) {
+        values_[i] += adds[num_adds - 4][i] + adds[num_adds - 3][i] +
+                      adds[num_adds - 2][i] + adds[num_adds - 1][i] -
+                      subs[num_subs - 4][i] - subs[num_subs - 3][i] -
+                      subs[num_subs - 2][i] - subs[num_subs - 1][i];
+      }
+    }
     for (; num_adds >= 4; num_adds -= 4) {
       for (int i = 0; i < kWidth; ++i) {
         values_[i] += adds[num_adds - 4][i] + adds[num_adds - 3][i] +
