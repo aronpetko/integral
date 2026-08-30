@@ -1,7 +1,8 @@
+#include <fmt/format.h>
+
 #include <fstream>
 
 #include "../shared/nnue/definitions.h"
-#include <fmt/format.h>
 
 std::unique_ptr<nnue::Network> ProcessNetwork(
     const std::unique_ptr<nnue::RawNetwork>& raw_network) {
@@ -10,6 +11,7 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
   network->feature_biases = raw_network->feature_biases;
+  network->threat_weights = raw_network->threat_weights;
 
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
@@ -33,6 +35,17 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
 
     for (int j = 0; j < kNumRegs; j++)
       biases[i + j] = regs[simd::kPackusOrder[j]];
+  }
+
+  // Same 8-element granularity as the FT weights, but I8 rows -> 8-byte blocks.
+  auto threats = reinterpret_cast<U64*>(&network->threat_weights);
+  std::array<U64, kNumRegs> threat_regs;
+  for (std::size_t i = 0; i < nnue::arch::kThreatFeatureCount *
+                                  nnue::arch::kL1Size / kWeightsPerBlock;
+       i += kNumRegs) {
+    for (int j = 0; j < kNumRegs; j++) threat_regs[j] = threats[i + j];
+    for (int j = 0; j < kNumRegs; j++)
+      threats[i + j] = threat_regs[simd::kPackusOrder[j]];
   }
 #endif
 

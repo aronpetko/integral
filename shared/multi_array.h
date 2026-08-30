@@ -149,7 +149,7 @@ class MultiArray {
   }
 
   template <typename U>
-  void fill(const U& v) {
+  constexpr void fill(const U& v) {
     for (auto& ele : data_) {
       if constexpr (sizeof...(Sizes) == 0)
         ele = v;

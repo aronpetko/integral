@@ -21,7 +21,7 @@ option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
-set(NETWORK_NAME zekrom-v7)
+set(NETWORK_NAME vaporeon)
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/releases/download/${NETWORK_NAME}/${NETWORK_NAME}.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/${NETWORK_NAME}.nnue")
@@ -195,7 +195,7 @@ include_directories(third-party/fmt/include)
 add_definitions(-DFMT_HEADER_ONLY)
 
 # Collect all source files
-file(GLOB_RECURSE SOURCES "src/*.cc" "src/*.h")
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cc" "src/*.h")
 
 # Create the executable
 add_executable(integral ${SOURCES}

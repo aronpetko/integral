@@ -29,7 +29,7 @@ enum PieceType : U8 {
   kQueen,
   kKing,
   kNone,
-  kNumPieceTypes = kNone
+  kNumPieceTypes = 6
 };
 
 enum class PromotionType : U8 {
@@ -54,6 +54,10 @@ enum Color : U8 {
 
 constexpr Color FlipColor(Color color) {
   return Color(!color);
+}
+
+constexpr Color RelativeColor(Color color, Color perspective) {
+  return Color(color ^ perspective);
 }
 
 enum CastleRightMasks : U8 {
