@@ -31,6 +31,8 @@ TUNABLE(kRookMinorThreatScoreNeg, 13758, 5000, 20000, false);
 TUNABLE(kMinorPawnThreatScorePos, 7852, 3000, 12000, false);
 TUNABLE(kMinorPawnThreatScoreNeg, 8475, 3000, 12000, false);
 
+TUNABLE(kDirectCheckBonus, 2048, 512, 6144, false);
+
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -238,7 +240,7 @@ int MovePicker::ScoreMove(Move &move) {
       break;
   }
 
-  threat_score += 2048 * board_.MoveGivesDirectCheck(move);
+  threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will

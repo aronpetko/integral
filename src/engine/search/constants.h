@@ -25,9 +25,12 @@ TUNABLE(kEvalHistUpdateMin, 68, 5, 500, false);
 TUNABLE(kEvalHistUpdateMax, 108, 5, 500, false);
 TUNABLE_STEP(kEvalHistUpdateBias, 1, 0, 50, false, 5);
 
+TUNABLE_STEP(kHindsightDepthReduction, 4096, 2048, 6144, false, 512);
+
 TUNABLE(kRevFutDepth, 11, 4, 10, true);
 TUNABLE_STEP(kRevFutMargin, 50, 50, 150, false, 5);
 TUNABLE_STEP(kRevFutImprovingMargin, 94, 20, 150, false, 5);
+TUNABLE_STEP(kRevFutOppEasyCaptureMargin, 94, 20, 150, false, 5);
 TUNABLE_STEP(kRevFutOppWorseningMargin, 25, 5, 70, false, 4);
 TUNABLE_STEP(kRevFutMinMargin, 13, 5, 100, false, 10);
 TUNABLE_STEP(kRevFutComplexityMargin, 12, 1, 64, false, 10);
@@ -36,6 +39,7 @@ TUNABLE(kRevFutHistoryDiv, 586, 200, 800, false);
 
 TUNABLE(kRazoringDepth, 4, 1, 8, true);
 TUNABLE_STEP(kRazoringMult, 393, 200, 600, false, 20);
+TUNABLE_STEP(kRazoringNotImproving, 393, 200, 600, false, 20);
 
 TUNABLE_STEP(kNmpBetaBase, 146, 50, 200, false, 15);
 TUNABLE_STEP(kNmpBetaMult, 7, 5, 50, false, 5);
@@ -50,7 +54,10 @@ TUNABLE_STEP(kLmrDepthHistQuiet, 1374, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthNotImproving, 1302, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrDepthRoundingCutoff, 675, 512, 2048, false, 100);
 
-TUNABLE(kLmpBase, 5, 1, 10, true);
+TUNABLE_STEP(kLmpBase, 5120, 1024, 10240, false, 256);
+TUNABLE_STEP(kLmpDepthMult, 1024, 512, 2048, false, 64);
+TUNABLE_STEP(kLmpDiv, 3072, 2048, 4608, false, 128);
+TUNABLE_STEP(kLmpImprovingDiv, 2048, 1024, 3584, false, 128);
 
 TUNABLE(kFutPruneDepth, 8, 6, 12, true);
 TUNABLE_STEP(kFutMarginBase, 128, 100, 250, false, 20);
@@ -91,13 +98,17 @@ TUNABLE_STEP(kLmrHistQuiet, 522, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrHistCapture, 1229, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrNotImproving, 949, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrComplexity, 778, 512, 2048, false, 150);
-TUNABLE_STEP(kLmrKillerMoves, 886, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrFirstKillerMove, 886, 512, 2048, false, 150);
+TUNABLE_STEP(kLmrSecondKillerMove, 886, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrRoundingCutoff, 698, 512, 2048, false, 120);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 213, 50, 300, false);
 
 TUNABLE_STEP(kHistoryBonusMargin, 44, 5, 120, false, 10);
+
+TUNABLE_STEP(kPcmQuietHistoryWeight, 1024, 512, 2048, false, 128);
+TUNABLE_STEP(kPcmPawnHistoryWeight, 512, 64, 2048, false, 64);
 
 TUNABLE_STEP(kMaterialScaleBase, 27600, 10000, 32768, false, 500);
 
