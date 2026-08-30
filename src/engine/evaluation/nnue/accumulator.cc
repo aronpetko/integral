@@ -140,9 +140,9 @@ void Accumulator::ApplyChanges(const BoardState& current_state) {
     // after a move is read off the entry above it, or the live board state at
     // the head of the stack
     const BoardState& clean_state = *dirty_accumulator.previous_state;
-    const BoardState& dirty_state =
-        dirty_idx == head_idx_ ? current_state
-                               : *stack_[dirty_idx + 1].previous_state;
+    const BoardState& dirty_state = dirty_idx == head_idx_
+                                      ? current_state
+                                      : *stack_[dirty_idx + 1].previous_state;
 
     for (const Color perspective : {Color::kWhite, Color::kBlack}) {
       // This perspective was already up to date at this point in the stack

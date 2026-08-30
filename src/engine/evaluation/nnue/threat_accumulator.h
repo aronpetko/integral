@@ -73,7 +73,7 @@ struct ThreatFeaturePolicy {
         const auto attacker_color = state.GetPieceColor(from);
         const auto attacks = move_gen::GetPieceAttacks(
             from, attacker_type, attacker_color, occupied);
-        for (const Square to : attacks & targets) {
+        for (const Square to : attacks& targets) {
           const auto victim = state.GetPieceType(to);
           const auto victim_color = state.GetPieceColor(to);
           const auto [threat_feature_row, valid] = FeatureRow(perspective,

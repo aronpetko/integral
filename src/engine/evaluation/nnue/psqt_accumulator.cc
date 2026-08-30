@@ -3,12 +3,11 @@
 namespace nnue {
 
 std::span<PsqtFeaturePolicy::Weight, PsqtFeaturePolicy::kWidth>
-PsqtFeaturePolicy::FeatureRow(
-    Square square,
-    Square king_square,
-    PieceType piece,
-    Color piece_color,
-    Color perspective) {
+PsqtFeaturePolicy::FeatureRow(Square square,
+                              Square king_square,
+                              PieceType piece,
+                              Color piece_color,
+                              Color perspective) {
   if (king_square.File() >= kFileE) {
     square = square ^ 0b111;
   }

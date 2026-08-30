@@ -1,6 +1,8 @@
 #ifndef INTEGRAL_PERSPECTIVE_ACCUMULATOR_H
 #define INTEGRAL_PERSPECTIVE_ACCUMULATOR_H
 
+#include <span>
+
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
 #include "../../../chess/board.h"
@@ -8,7 +10,6 @@
 #include "../../../utils/fused.h"
 #include "../../../utils/list.h"
 #include "nnue.h"
-#include <span>
 
 namespace nnue {
 

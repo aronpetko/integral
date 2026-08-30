@@ -185,30 +185,30 @@ void ThreatPerspectiveAccumulator::ApplyChange(
 
   for (int i = 0; i < change.adds.Size(); ++i) {
     const auto& add = change.adds[i];
-    const auto [row, valid] = ThreatFeaturePolicy::FeatureRow(
-        perspective,
-        king_square,
-        add.attacker_type,
-        add.attacker_color,
-        add.victim_type,
-        add.victim_color,
-        add.attacker_square,
-        add.victim_square);
+    const auto [row, valid] =
+        ThreatFeaturePolicy::FeatureRow(perspective,
+                                        king_square,
+                                        add.attacker_type,
+                                        add.attacker_color,
+                                        add.victim_type,
+                                        add.victim_color,
+                                        add.attacker_square,
+                                        add.victim_square);
     __builtin_prefetch(row);
     add_rows[num_add] = row;
     num_add += valid;
   }
   for (int i = 0; i < change.subs.Size(); ++i) {
     const auto& sub = change.subs[i];
-    const auto [row, valid] = ThreatFeaturePolicy::FeatureRow(
-        perspective,
-        king_square,
-        sub.attacker_type,
-        sub.attacker_color,
-        sub.victim_type,
-        sub.victim_color,
-        sub.attacker_square,
-        sub.victim_square);
+    const auto [row, valid] =
+        ThreatFeaturePolicy::FeatureRow(perspective,
+                                        king_square,
+                                        sub.attacker_type,
+                                        sub.attacker_color,
+                                        sub.victim_type,
+                                        sub.victim_color,
+                                        sub.attacker_square,
+                                        sub.victim_square);
     __builtin_prefetch(row);
     sub_rows[num_sub] = row;
     num_sub += valid;
