@@ -6,24 +6,42 @@
 
 namespace search {
 
-[[nodiscard]] TranspositionTableEntry *TranspositionTable::Probe(
-    const U64 &key) {
-  auto &cluster = (*this)[key];
-  // Default to replacing the first entry (if it's available)
+[[nodiscard]] TranspositionTableEntry *TranspositionTable::Probe(const U64 &key,
+                                                                 bool &hit) {
+  const auto [idx, fragment] =
+      TranspositionTableCluster::SplitHash(table_size_, key);
+  auto &cluster = table_[idx];
+
+  // The key fragments are stored in the cluster itself, so a matching fragment
+  // is all that's needed to consider this a hit
+  if (const std::size_t entry_idx = cluster.LookupFragment(fragment);
+      entry_idx < kTTClusterSize) {
+    hit = true;
+    return &cluster.entries[entry_idx];
+  }
+
+  hit = false;
+
+  // Nothing matched, so default to replacing the first entry (if it's
+  // available)
   auto replace_entry = &cluster.entries[0];
   // Find another entry if the first one is already taken
-  if (replace_entry->key != 0 && !replace_entry->CompareKey(key)) {
-    for (int i = 1; i < kTTClusterSize; i++) {
+  if (replace_entry->flag != TranspositionTableEntry::kNone) {
+    int lowest_quality =
+        replace_entry->depth - 8 * static_cast<int>(GetAgeDelta(replace_entry));
+
+    for (std::size_t i = 1; i < kTTClusterSize; i++) {
       const auto entry = &cluster.entries[i];
-      // If this entry is available, we can attempt to write to it
-      if (entry->key == 0 || entry->CompareKey(key)) {
+      // Entries that were never written to, or that only hold a static eval,
+      // are always free to take
+      if (entry->flag == TranspositionTableEntry::kNone) {
         return entry;
       }
       // Always prefer the lowest quality entry
-      const int lowest_quality =
-          replace_entry->depth - 8 * GetAgeDelta(replace_entry);
-      const int current_quality = entry->depth - 8 * GetAgeDelta(entry);
-      if (lowest_quality > current_quality) {
+      const int quality =
+          entry->depth - 8 * static_cast<int>(GetAgeDelta(entry));
+      if (quality < lowest_quality) {
+        lowest_quality = quality;
         replace_entry = entry;
       }
     }
@@ -37,24 +55,35 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               const U64 &key,
                               I32 ply,
                               bool in_pv) {
-  if (new_entry.move || !old_entry->CompareKey(key)) {
+  const auto [idx, fragment] =
+      TranspositionTableCluster::SplitHash(table_size_, key);
+  auto &cluster = table_[idx];
+
+  // The entry being written to was handed out by Probe for this same key, so
+  // it always lives in this key's cluster
+  const auto entry_idx =
+      static_cast<std::size_t>(old_entry - cluster.entries.data());
+  assert(entry_idx < kTTClusterSize);
+
+  // Either Probe matched this key's fragment, or it picked this entry for
+  // replacement
+  const bool matched = cluster.GetFragment(entry_idx) == fragment;
+
+  if (new_entry.move || !matched) {
     old_entry->move = new_entry.move;
   }
 
-  if (!old_entry->CompareKey(key) ||
-      new_entry.flag == TranspositionTableEntry::kExact ||
+  if (!matched || new_entry.flag == TranspositionTableEntry::kExact ||
       new_entry.depth + 3 + 2 * in_pv >= old_entry->depth ||
       old_entry->age != age_) {
     new_entry.age = age_;
-
-    old_entry->key = static_cast<U16>(key);
-    old_entry->score =
+    // Keep the move that was just resolved above
+    new_entry.move = old_entry->move;
+    new_entry.score =
         TranspositionTableEntry::CorrectScore(new_entry.score, -ply);
-    old_entry->depth = new_entry.depth;
-    old_entry->age = new_entry.age;
-    old_entry->flag = new_entry.flag;
-    old_entry->was_in_pv = new_entry.was_in_pv;
-    old_entry->static_eval = new_entry.static_eval;
+
+    *old_entry = new_entry;
+    cluster.SetFragment(entry_idx, fragment);
   }
 }
 
@@ -72,11 +101,11 @@ int TranspositionTable::HashFull() const {
   for (int i = 0; i < 1000; i++) {
     count +=
         std::ranges::count_if(table_[i].entries, [this](const auto &entry) {
-          return entry.age == age_ && entry.key != 0 &&
-                 entry.score != kScoreNone;
+          return entry.age == age_ &&
+                 entry.flag != TranspositionTableEntry::kNone;
         });
   }
-  return count / kTTClusterSize;
+  return count / static_cast<int>(kTTClusterSize);
 }
 
 void TranspositionTable::Clear(int num_threads) {

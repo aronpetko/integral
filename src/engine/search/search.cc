@@ -279,8 +279,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
 
   const int tt_depth = state.InCheck();
-  const auto tt_entry = transposition_table_.Probe(zobrist_key);
-  const bool tt_hit = tt_entry->CompareKey(zobrist_key);
+  bool tt_hit;
+  const auto tt_entry = transposition_table_.Probe(zobrist_key, tt_hit);
 
   auto tt_move = Move::NullMove();
   bool tt_was_in_pv = in_pv_node;
@@ -331,7 +331,6 @@ Score Searcher::QuiescentSearch(Thread &thread,
       // Save the static eval in the TT if we have nothing yet
       if (!tt_hit) {
         const TranspositionTableEntry new_tt_entry(
-            zobrist_key,
             tt_depth,
             TranspositionTableEntry::kNone,
             kScoreNone,
@@ -467,8 +466,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
 
   // Always updating the transposition table a depth 0 limits these TT entries
   // to the quiescent search only
-  const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                             tt_depth,
+  const TranspositionTableEntry new_tt_entry(tt_depth,
                                              tt_flag,
                                              best_score,
                                              raw_static_eval,
@@ -566,8 +564,7 @@ Score Searcher::PVSearch(Thread &thread,
   const U64 zobrist_key =
       state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
 
-  const auto &tt_entry = transposition_table_.Probe(zobrist_key);
-  tt_hit = tt_entry->CompareKey(zobrist_key);
+  const auto tt_entry = transposition_table_.Probe(zobrist_key, tt_hit);
 
   // Use the TT entry's evaluation if possible
   if (tt_hit) {
@@ -618,8 +615,7 @@ Score Searcher::PVSearch(Thread &thread,
           tt_flag == TranspositionTableEntry::kUpperBound && score <= alpha ||
           tt_flag == TranspositionTableEntry::kLowerBound && score >= beta) {
         // Save the table base score to the transposition table
-        const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                                   depth,
+        const TranspositionTableEntry new_tt_entry(depth,
                                                    tt_flag,
                                                    score,
                                                    tt_static_eval,
@@ -653,8 +649,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Save the static eval in the TT if we have nothing yet
     if (!tt_hit) {
-      const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                                 0,
+      const TranspositionTableEntry new_tt_entry(0,
                                                  TranspositionTableEntry::kNone,
                                                  kScoreNone,
                                                  raw_static_eval,
@@ -856,7 +851,6 @@ Score Searcher::PVSearch(Thread &thread,
 
           if (score >= pc_beta) {
             const TranspositionTableEntry new_tt_entry(
-                zobrist_key,
                 probcut_depth,
                 TranspositionTableEntry::kLowerBound,
                 score,
@@ -1285,13 +1279,8 @@ Score Searcher::PVSearch(Thread &thread,
     if (!in_root || thread.pv_move_idx == 0) {
       // Attempt to update the transposition table with the evaluation of this
       // position
-      const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                                 depth,
-                                                 tt_flag,
-                                                 best_score,
-                                                 raw_static_eval,
-                                                 best_move,
-                                                 tt_was_in_pv);
+      const TranspositionTableEntry new_tt_entry(
+          depth, tt_flag, best_score, raw_static_eval, best_move, tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }

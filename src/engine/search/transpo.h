@@ -2,8 +2,11 @@
 #define INTEGRAL_TRANSPO_H_
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cassert>
 #include <cstddef>
+#include <tuple>
 
 #include "../../chess/move.h"
 #include "../../utils/hash_table.h"
@@ -19,8 +22,7 @@ struct TranspositionTableEntry {
   };
 
   TranspositionTableEntry()
-      : key(0),
-        depth(0),
+      : depth(0),
         score(kScoreNone),
         static_eval(0),
         move(Move::NullMove()),
@@ -28,27 +30,19 @@ struct TranspositionTableEntry {
         was_in_pv(false),
         flag(kNone) {}
 
-  explicit TranspositionTableEntry(U64 key,
-                                   U8 depth,
+  explicit TranspositionTableEntry(U8 depth,
                                    Flag flag,
                                    Score score,
                                    Score static_eval,
                                    Move move,
                                    bool was_in_pv)
-      : key(static_cast<U16>(key)),
-        depth(depth),
+      : depth(depth),
         score(score),
         static_eval(static_eval),
         move(move),
         age(0),
         was_in_pv(was_in_pv),
         flag(flag) {}
-
-  // Keys are packed to maximize the number of entries the table can hold
-  // Therefore, we must down-cast when checking for key equality
-  [[nodiscard]] bool CompareKey(const U64 &test_key) const {
-    return static_cast<U16>(test_key) == key;
-  }
 
   // Check if the entry's score falls within the search window
   [[nodiscard]] bool CanUseScore(Score alpha, Score beta) const {
@@ -67,7 +61,6 @@ struct TranspositionTableEntry {
     return score;
   }
 
-  U16 key;
   I16 score, static_eval;
   Move move;
   U8 depth;
@@ -81,14 +74,50 @@ struct TranspositionTableEntry {
   };
 };
 
-static_assert(sizeof(TranspositionTableEntry) == 10);
+static_assert(sizeof(TranspositionTableEntry) == 8);
 
-constexpr int kTTClusterSize = 3;
+constexpr std::size_t kTTClusterSize = 3;
+constexpr std::size_t kFragmentWidth = 21;
+constexpr U64 kFragmentMask = (U64{1} << kFragmentWidth) - 1;
+static_assert(kTTClusterSize * kFragmentWidth < 64);
 
 struct TranspositionTableCluster {
   std::array<TranspositionTableEntry, kTTClusterSize> entries;
-  U16 padding;
+  U64 fragments;
+
+  [[nodiscard]] U64 GetFragment(std::size_t idx) const {
+    const std::size_t shift = idx * kFragmentWidth;
+    return (fragments >> shift) & kFragmentMask;
+  }
+
+  void SetFragment(std::size_t idx, U64 fragment) {
+    const std::size_t shift = idx * kFragmentWidth;
+    fragments &= ~(kFragmentMask << shift);
+    fragments |= fragment << shift;
+  }
+
+  [[nodiscard]] std::size_t LookupFragment(U64 fragment) const {
+    constexpr U64 bits = U64{1} | (U64{1} << kFragmentWidth) |
+                         (U64{1} << (kFragmentWidth * 2)) |
+                         (U64{1} << (kFragmentWidth * 3));
+    const U64 needle = bits * fragment;
+    const U64 zeros = fragments ^ needle;
+    const U64 matches =
+        (zeros - bits) & ~zeros & (bits << (kFragmentWidth - 1));
+    return static_cast<std::size_t>(std::countr_zero(matches) / kFragmentWidth);
+  }
+
+  constexpr static std::tuple<std::size_t, U64> SplitHash(std::size_t count,
+                                                          U64 hash) {
+    const U128 mul = static_cast<U128>(hash) * count;
+    const std::size_t index = static_cast<std::size_t>(mul >> 64);
+    const U64 fragment =
+        (static_cast<U64>(mul) >> (64 - kFragmentWidth)) & kFragmentMask;
+    return {index, fragment};
+  }
 };
+
+static_assert(sizeof(TranspositionTableCluster) == 32);
 
 constexpr int kMaxTTAge = 32;
 
@@ -99,7 +128,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
 
   TranspositionTable() : age_(0) {}
 
-  [[nodiscard]] TranspositionTableEntry *Probe(const U64 &key);
+  [[nodiscard]] TranspositionTableEntry *Probe(const U64 &key, bool &hit);
 
   void Save(TranspositionTableEntry *old_entry,
             TranspositionTableEntry new_entry,
