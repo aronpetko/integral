@@ -77,7 +77,7 @@ struct TranspositionTableEntry {
 static_assert(sizeof(TranspositionTableEntry) == 8);
 
 constexpr std::size_t kTTClusterSize = 3;
-constexpr std::size_t kFragmentWidth = 21;
+constexpr std::size_t kFragmentWidth = 16;
 constexpr U64 kFragmentMask = (U64{1} << kFragmentWidth) - 1;
 static_assert(kTTClusterSize * kFragmentWidth < 64);
 
