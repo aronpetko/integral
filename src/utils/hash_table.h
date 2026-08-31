@@ -134,15 +134,6 @@ class AlignedHashTable {
     std::fill_n(table_, table_size_, T{});
   }
 
-  T& operator[](const U64& key) {
-    return table_[Index(key)];
-  }
-
-  void Prefetch(const U64& key) {
-    auto& entry = (*this)[key];
-    __builtin_prefetch(&entry);
-  }
-
  private:
   [[nodiscard]] U64 Index(const U64& key) const {
     return (static_cast<U128>(key) * static_cast<U128>(table_size_)) >> 64;

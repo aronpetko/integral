@@ -77,7 +77,7 @@ struct TranspositionTableEntry {
 static_assert(sizeof(TranspositionTableEntry) == 8);
 
 constexpr std::size_t kTTClusterSize = 3;
-constexpr std::size_t kFragmentWidth = 21;
+constexpr std::size_t kFragmentWidth = 16;
 constexpr U64 kFragmentMask = (U64{1} << kFragmentWidth) - 1;
 static_assert(kTTClusterSize * kFragmentWidth < 64);
 
@@ -111,8 +111,9 @@ struct TranspositionTableCluster {
                                                           U64 hash) {
     const U128 mul = static_cast<U128>(hash) * count;
     const std::size_t index = static_cast<std::size_t>(mul >> 64);
-    const U64 fragment =
-        (static_cast<U64>(mul) >> (64 - kFragmentWidth)) & kFragmentMask;
+    // Fragments are packed to maximize the number of entries the table can
+    // hold, so we only keep the bottom bits of the hash
+    const U64 fragment = hash & kFragmentMask;
     return {index, fragment};
   }
 };
@@ -135,6 +136,8 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
             const U64 &key,
             I32 ply,
             bool in_pv);
+
+  void Prefetch(const U64 &key);
 
   void Age();
 

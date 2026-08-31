@@ -12,42 +12,34 @@ namespace search {
       TranspositionTableCluster::SplitHash(table_size_, key);
   auto &cluster = table_[idx];
 
-  // The key fragments are stored in the cluster itself, so a matching fragment
-  // is all that's needed to consider this a hit
-  if (const std::size_t entry_idx = cluster.LookupFragment(fragment);
-      entry_idx < kTTClusterSize) {
-    hit = true;
-    return &cluster.entries[entry_idx];
-  }
-
-  hit = false;
-
-  // Nothing matched, so default to replacing the first entry (if it's
-  // available)
-  auto replace_entry = &cluster.entries[0];
+  // Default to replacing the first entry (if it's available)
+  std::size_t entry_idx = 0;
   // Find another entry if the first one is already taken
-  if (replace_entry->flag != TranspositionTableEntry::kNone) {
-    int lowest_quality =
-        replace_entry->depth - 8 * static_cast<int>(GetAgeDelta(replace_entry));
+  const U64 first_fragment = cluster.GetFragment(0);
+  if (first_fragment != 0 && first_fragment != fragment) {
+    int lowest_quality = cluster.entries[0].depth -
+                         8 * static_cast<int>(GetAgeDelta(&cluster.entries[0]));
 
     for (std::size_t i = 1; i < kTTClusterSize; i++) {
-      const auto entry = &cluster.entries[i];
-      // Entries that were never written to, or that only hold a static eval,
-      // are always free to take
-      if (entry->flag == TranspositionTableEntry::kNone) {
-        return entry;
+      // If this entry is available, we can attempt to write to it
+      const U64 entry_fragment = cluster.GetFragment(i);
+      if (entry_fragment == 0 || entry_fragment == fragment) {
+        entry_idx = i;
+        break;
       }
       // Always prefer the lowest quality entry
+      const auto entry = &cluster.entries[i];
       const int quality =
           entry->depth - 8 * static_cast<int>(GetAgeDelta(entry));
       if (quality < lowest_quality) {
         lowest_quality = quality;
-        replace_entry = entry;
+        entry_idx = i;
       }
     }
   }
 
-  return replace_entry;
+  hit = cluster.GetFragment(entry_idx) == fragment;
+  return &cluster.entries[entry_idx];
 }
 
 void TranspositionTable::Save(TranspositionTableEntry *old_entry,
@@ -85,6 +77,13 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
     *old_entry = new_entry;
     cluster.SetFragment(entry_idx, fragment);
   }
+}
+
+void TranspositionTable::Prefetch(const U64 &key) {
+  const auto [idx, fragment] =
+      TranspositionTableCluster::SplitHash(table_size_, key);
+  const auto &cluster = table_[idx];
+  __builtin_prefetch(&cluster, 0, 2);
 }
 
 U32 TranspositionTable::GetAgeDelta(
