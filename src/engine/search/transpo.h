@@ -96,25 +96,40 @@ struct TranspositionTableCluster {
     fragments |= fragment << shift;
   }
 
+  // A 1 at the base of every fragment lane
+  static constexpr U64 kLaneBits = U64{1} | (U64{1} << kFragmentWidth) |
+                                   (U64{1} << (kFragmentWidth * 2)) |
+                                   (U64{1} << (kFragmentWidth * 3));
+
+  // Index of the lowest lane holding this fragment, or kTTClusterSize (or
+  // more) if there isn't one
   [[nodiscard]] std::size_t LookupFragment(U64 fragment) const {
-    constexpr U64 bits = U64{1} | (U64{1} << kFragmentWidth) |
-                         (U64{1} << (kFragmentWidth * 2)) |
-                         (U64{1} << (kFragmentWidth * 3));
-    const U64 needle = bits * fragment;
-    const U64 zeros = fragments ^ needle;
+    const U64 needle = kLaneBits * fragment;
+    return LowestZeroLane(fragments ^ needle);
+  }
+
+  // Index of the lowest lane never written to, or kTTClusterSize (or more)
+  [[nodiscard]] std::size_t LookupEmpty() const {
+    return LowestZeroLane(fragments);
+  }
+
+  [[nodiscard]] static std::size_t LowestZeroLane(U64 zeros) {
     const U64 matches =
-        (zeros - bits) & ~zeros & (bits << (kFragmentWidth - 1));
+        (zeros - kLaneBits) & ~zeros & (kLaneBits << (kFragmentWidth - 1));
     return static_cast<std::size_t>(std::countr_zero(matches) / kFragmentWidth);
+  }
+
+  // Fragments are packed to maximize the number of entries the table can
+  // hold, so we only keep the bottom bits of the hash
+  constexpr static U64 Fragment(U64 hash) {
+    return hash & kFragmentMask;
   }
 
   constexpr static std::tuple<std::size_t, U64> SplitHash(std::size_t count,
                                                           U64 hash) {
     const U128 mul = static_cast<U128>(hash) * count;
     const std::size_t index = static_cast<std::size_t>(mul >> 64);
-    // Fragments are packed to maximize the number of entries the table can
-    // hold, so we only keep the bottom bits of the hash
-    const U64 fragment = hash & kFragmentMask;
-    return {index, fragment};
+    return {index, Fragment(hash)};
   }
 };
 

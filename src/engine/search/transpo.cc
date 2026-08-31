@@ -1,5 +1,6 @@
 #include "transpo.h"
 
+#include <cstdint>
 #include <thread>
 
 #include "../evaluation/evaluation.h"
@@ -12,22 +13,18 @@ namespace search {
       TranspositionTableCluster::SplitHash(table_size_, key);
   auto &cluster = table_[idx];
 
-  // Default to replacing the first entry (if it's available)
-  std::size_t entry_idx = 0;
-  // Find another entry if the first one is already taken
-  const U64 first_fragment = cluster.GetFragment(0);
-  if (first_fragment != 0 && first_fragment != fragment) {
+  // Take the first entry that either matches this key or has never been
+  // written to, whichever comes first in the cluster
+  std::size_t entry_idx =
+      std::min(cluster.LookupFragment(fragment), cluster.LookupEmpty());
+
+  // Neither exists, so fall back to replacing the lowest quality entry
+  if (entry_idx >= kTTClusterSize) {
+    entry_idx = 0;
     int lowest_quality = cluster.entries[0].depth -
                          8 * static_cast<int>(GetAgeDelta(&cluster.entries[0]));
 
     for (std::size_t i = 1; i < kTTClusterSize; i++) {
-      // If this entry is available, we can attempt to write to it
-      const U64 entry_fragment = cluster.GetFragment(i);
-      if (entry_fragment == 0 || entry_fragment == fragment) {
-        entry_idx = i;
-        break;
-      }
-      // Always prefer the lowest quality entry
       const auto entry = &cluster.entries[i];
       const int quality =
           entry->depth - 8 * static_cast<int>(GetAgeDelta(entry));
@@ -47,15 +44,20 @@ void TranspositionTable::Save(TranspositionTableEntry *old_entry,
                               const U64 &key,
                               I32 ply,
                               bool in_pv) {
-  const auto [idx, fragment] =
-      TranspositionTableCluster::SplitHash(table_size_, key);
-  auto &cluster = table_[idx];
+  const U64 fragment = TranspositionTableCluster::Fragment(key);
 
-  // The entry being written to was handed out by Probe for this same key, so
-  // it always lives in this key's cluster
+  // Probe handed out this entry for this same key, so its cluster can be
+  // recovered from the pointer rather than hashing the key a second time
+  static_assert((sizeof(TranspositionTableCluster) &
+                 (sizeof(TranspositionTableCluster) - 1)) == 0);
+  auto &cluster = *reinterpret_cast<TranspositionTableCluster *>(
+      reinterpret_cast<std::uintptr_t>(old_entry) &
+      ~(sizeof(TranspositionTableCluster) - 1));
   const auto entry_idx =
       static_cast<std::size_t>(old_entry - cluster.entries.data());
   assert(entry_idx < kTTClusterSize);
+  assert(&cluster == &table_[std::get<0>(TranspositionTableCluster::SplitHash(
+                         table_size_, key))]);
 
   // Either Probe matched this key's fragment, or it picked this entry for
   // replacement
@@ -88,7 +90,8 @@ void TranspositionTable::Prefetch(const U64 &key) {
 
 U32 TranspositionTable::GetAgeDelta(
     const TranspositionTableEntry *entry) const {
-  return (kMaxTTAge + age_ - entry->age) % kMaxTTAge;
+  static_assert((kMaxTTAge & (kMaxTTAge - 1)) == 0);
+  return static_cast<U32>(kMaxTTAge + age_ - entry->age) & (kMaxTTAge - 1);
 }
 
 void TranspositionTable::Age() {
