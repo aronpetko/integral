@@ -41,6 +41,7 @@ Score Evaluate(Board &board) {
 
   accumulator.ApplyChanges(state);
   const auto bucket = accumulator.GetOutputBucket(state);
+  const int hmc_bucket = GetHmcBucket(state.fifty_moves_clock);
 
   constexpr int kFtShift = 9;
 
@@ -59,85 +60,92 @@ Score Evaluate(Board &board) {
 
   // Activate the feature layer neurons
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
-  for (int them = 0; them <= 1; them++) {
-    const auto perspective = static_cast<Color>(state.turn ^ them);
-    const auto &stm_accumulator = accumulator[perspective];
-    // The 50mr feature is a single row rather than an accumulated sum, so it's
-    // read here instead of being folded into the accumulator
-    const I16 *hmc = accumulator.HmcRow(perspective, state.fifty_moves_clock);
-    for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
-      // Clip first accumulator values
-      const auto accumulator_value =
-          simd::Load<I16>(&stm_accumulator.psqt[i]) +
-          simd::Load<I16>(&stm_accumulator.threat[i]) +
-          simd::Load<I16>(&hmc[i]);
-      const auto pair_accumulator_value =
-          simd::Load<I16>(&stm_accumulator.psqt[i + arch::kL1Size / 2]) +
-          simd::Load<I16>(&stm_accumulator.threat[i + arch::kL1Size / 2]) +
-          simd::Load<I16>(&hmc[i + arch::kL1Size / 2]);
+  const auto transform_features = [&]<bool kHasHmc>() {
+    for (int them = 0; them <= 1; them++) {
+      const auto perspective = static_cast<Color>(state.turn ^ them);
+      const auto &stm_accumulator = accumulator[perspective];
+      const auto hmc =
+          kHasHmc ? accumulator.HmcRow(perspective, hmc_bucket) : nullptr;
 
-      const auto clipped_value =
-          simd::Clip(accumulator_value, arch::kFtQuantization);
-      const auto clipped_pair_value =
-          simd::Min(pair_accumulator_value, quantise_vector);
+      const auto load_neurons = [&](int idx) {
+        auto value = simd::Load<I16>(&stm_accumulator.psqt[idx]) +
+                     simd::Load<I16>(&stm_accumulator.threat[idx]);
+        if constexpr (kHasHmc) {
+          value = value + simd::Load<I16>(&hmc[idx]);
+        }
+        return value;
+      };
 
-      // Clip second accumulator values
-      const auto accumulator_value1 =
-          simd::Load<I16>(&stm_accumulator.psqt[i + kI16Lanes]) +
-          simd::Load<I16>(&stm_accumulator.threat[i + kI16Lanes]) +
-          simd::Load<I16>(&hmc[i + kI16Lanes]);
-      const auto pair_accumulator_value1 =
-          simd::Load<I16>(
-              &stm_accumulator.psqt[i + arch::kL1Size / 2 + kI16Lanes]) +
-          simd::Load<I16>(
-              &stm_accumulator.threat[i + arch::kL1Size / 2 + kI16Lanes]) +
-          simd::Load<I16>(&hmc[i + arch::kL1Size / 2 + kI16Lanes]);
-      const auto clipped_value1 =
-          simd::Clip(accumulator_value1, arch::kFtQuantization);
-      const auto clipped_pair_value1 =
-          simd::Min(pair_accumulator_value1, quantise_vector);
+      for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
+        // Clip first accumulator values
+        const auto accumulator_value = load_neurons(i);
+        const auto pair_accumulator_value = load_neurons(i + arch::kL1Size / 2);
 
-      // Perform a left-shift on them and multiply the products using the
-      // higher 16 bits
-      const auto first_product = simd::MulhiEpi16(
-          clipped_value << (16 - kFtShift), clipped_pair_value);
-      const auto second_product = simd::MulhiEpi16(
-          clipped_value1 << (16 - kFtShift), clipped_pair_value1);
+        const auto clipped_value =
+            simd::Clip(accumulator_value, arch::kFtQuantization);
+        const auto clipped_pair_value =
+            simd::Min(pair_accumulator_value, quantise_vector);
 
-      // Pack the two I16 vectors into a U8 vector, which will clamp negative
-      // values to 0 because of unsigned saturation. This is why we didn't clamp
-      // the pair values to 0 earlier, effectively saving us an operation
-      auto &features =
-          simd::AsVector<U8>(&feature_output[i + them * arch::kL1Size / 2]);
-      features = simd::PackusEpi16(first_product, second_product);
+        // Clip second accumulator values
+        const auto accumulator_value1 = load_neurons(i + kI16Lanes);
+        const auto pair_accumulator_value1 =
+            load_neurons(i + arch::kL1Size / 2 + kI16Lanes);
+        const auto clipped_value1 =
+            simd::Clip(accumulator_value1, arch::kFtQuantization);
+        const auto clipped_pair_value1 =
+            simd::Min(pair_accumulator_value1, quantise_vector);
 
-      // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
-      // perform to minimize the amount of computation done by only mat-mulling
-      // the positive, non-zero activated features with the next layer's weights
-      // -----------------------------------------------------------------------
-      // Get a mask of all positive, non-zero elements
-      // Each bit in `nnz_mask` corresponds to whether a specific feature is
-      // positive (1) or zero (0)
-      const auto nnz_mask = simd::NonZeroMask(simd::Cast<I32>(features));
-      // Loop through 8-bit (U8) slices of this 16-bit mask
-      for (int chunk = 0; chunk < kI32Lanes; chunk += 8) {
-        // Extract the 8-bit slice from the mask
-        const U8 slice = (nnz_mask >> chunk) & 0b11111111;
-        // Lookup the relative indices for each set bit in the mask, essentially
-        // retrieving the indices for each positive element as an 8-element
-        // vector of I16s
-        const auto indices =
-            simd::Load<U16, 8>(sparse::nnz_table[slice].indices.data());
-        // Store these absolute indices into our table. We account for the fact
-        // that they are relative indices (to this slice) by adding `nnz_base`,
-        // which will reflect the position each element is in the entire table
-        simd::Store<U16, 8>(&nnz_indices[nnz_count], nnz_base + indices);
-        // Update to reflect the total number of non-zero features processed
-        nnz_count += BitBoard(slice).PopCount();
-        // Increment to reflect the starting index of the next slice
-        nnz_base += lookup_increment;
+        // Perform a left-shift on them and multiply the products using the
+        // higher 16 bits
+        const auto first_product = simd::MulhiEpi16(
+            clipped_value << (16 - kFtShift), clipped_pair_value);
+        const auto second_product = simd::MulhiEpi16(
+            clipped_value1 << (16 - kFtShift), clipped_pair_value1);
+
+        // Pack the two I16 vectors into a U8 vector, which will clamp negative
+        // values to 0 because of unsigned saturation. This is why we didn't
+        // clamp the pair values to 0 earlier, effectively saving us an
+        // operation
+        auto &features =
+            simd::AsVector<U8>(&feature_output[i + them * arch::kL1Size / 2]);
+        features = simd::PackusEpi16(first_product, second_product);
+
+        // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
+        // perform to minimize the amount of computation done by only
+        // mat-mulling the positive, non-zero activated features with the next
+        // layer's weights
+        // -----------------------------------------------------------------------
+        // Get a mask of all positive, non-zero elements
+        // Each bit in `nnz_mask` corresponds to whether a specific feature is
+        // positive (1) or zero (0)
+        const auto nnz_mask = simd::NonZeroMask(simd::Cast<I32>(features));
+        // Loop through 8-bit (U8) slices of this 16-bit mask
+        for (int chunk = 0; chunk < kI32Lanes; chunk += 8) {
+          // Extract the 8-bit slice from the mask
+          const U8 slice = (nnz_mask >> chunk) & 0b11111111;
+          // Lookup the relative indices for each set bit in the mask,
+          // essentially retrieving the indices for each positive element as an
+          // 8-element vector of I16s
+          const auto indices =
+              simd::Load<U16, 8>(sparse::nnz_table[slice].indices.data());
+          // Store these absolute indices into our table. We account for the
+          // fact that they are relative indices (to this slice) by adding
+          // `nnz_base`, which will reflect the position each element is in the
+          // entire table
+          simd::Store<U16, 8>(&nnz_indices[nnz_count], nnz_base + indices);
+          // Update to reflect the total number of non-zero features processed
+          nnz_count += BitBoard(slice).PopCount();
+          // Increment to reflect the starting index of the next slice
+          nnz_base += lookup_increment;
+        }
       }
     }
+  };
+
+  if (hmc_bucket == arch::kHmcBucketCount) {
+    transform_features.template operator()<false>();
+  } else {
+    transform_features.template operator()<true>();
   }
 
 #ifdef SPARSE_PERMUTE
@@ -245,7 +253,7 @@ Score Evaluate(Board &board) {
   for (int them = 0; them <= 1; them++) {
     const auto perspective = static_cast<Color>(state.turn ^ them);
     const auto &stm_accumulator = accumulator[perspective];
-    const I16 *hmc = accumulator.HmcRow(perspective, state.fifty_moves_clock);
+    const I16 *hmc = accumulator.HmcRow(perspective, hmc_bucket);
     for (int i = 0; i < arch::kL1Size / 2; i++) {
       const auto first_val = CReLU(static_cast<I16>(
           stm_accumulator.psqt[i] + stm_accumulator.threat[i] + hmc[i]));

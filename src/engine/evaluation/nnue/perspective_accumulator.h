@@ -26,13 +26,26 @@ constexpr std::array<int, 64> kKingBucketMap {
 };
 // clang-format on
 
-[[nodiscard]] constexpr int HmcBucket(U16 fifty_moves_clock) {
-  if (fifty_moves_clock < arch::kHmcBucketsStart) {
-    return -1;
+using HmcBucketTable = std::array<U8, 101>;
+
+constexpr HmcBucketTable GenerateHmcBucketTable() {
+  HmcBucketTable table{};
+  for (std::size_t clock = 0; clock < table.size(); ++clock) {
+    if (clock < arch::kHmcBucketsStart) {
+      table[clock] = arch::kHmcBucketCount;
+    } else {
+      const std::size_t idx =
+          (clock - arch::kHmcBucketsStart) / arch::kHmcBucketsStep;
+      table[clock] = static_cast<U8>(std::min(idx, arch::kHmcBucketCount - 1));
+    }
   }
-  const int idx =
-      (fifty_moves_clock - arch::kHmcBucketsStart) / arch::kHmcBucketsStep;
-  return std::min<int>(idx, arch::kHmcBucketCount - 1);
+  return table;
+}
+
+constexpr HmcBucketTable kHmcBucketTable = GenerateHmcBucketTable();
+
+[[nodiscard]] inline int GetHmcBucket(U16 fifty_moves_clock) {
+  return kHmcBucketTable[std::min<U16>(fifty_moves_clock, 100)];
 }
 
 constexpr U8 kBucketDivisor =

@@ -11,7 +11,9 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   // Copy over arrays that don't need transposing
   for (int b = 0; b < nnue::arch::kInputBucketCount; ++b) {
     network->feature_weights[b] = raw_network->input_buckets[b].feature_weights;
-    network->hmc_weights[b] = raw_network->input_buckets[b].hmc_weights;
+    for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
+      network->hmc_weights[b][h] = raw_network->input_buckets[b].hmc_weights[h];
+    }
   }
   network->feature_biases = raw_network->feature_biases;
   network->threat_weights = raw_network->threat_weights;
@@ -41,9 +43,8 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   }
 
   auto hmc = reinterpret_cast<__m128i*>(&network->hmc_weights);
-  for (int i = 0;
-       i < nnue::arch::kInputBucketCount * nnue::arch::kHmcBucketCount *
-               nnue::arch::kL1Size / kWeightsPerBlock;
+  for (int i = 0; i < nnue::arch::kInputBucketCount * nnue::arch::kHmcRowCount *
+                          nnue::arch::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) regs[j] = hmc[i + j];
 

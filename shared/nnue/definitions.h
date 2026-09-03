@@ -19,6 +19,9 @@ constexpr std::size_t kHmcBucketsStart = 14;
 constexpr std::size_t kHmcBucketsStep = 8;
 constexpr std::size_t kHmcBucketCount =
     (100 - kHmcBucketsStart + kHmcBucketsStep - 1) / kHmcBucketsStep;
+// The runtime network carries one extra, all-zero row that a bucket-0 HMC maps
+// to, so looking up the row is a table index with no branch
+constexpr std::size_t kHmcRowCount = kHmcBucketCount + 1;
 constexpr std::size_t kInputBucketCount = 12;
 constexpr std::size_t kOutputBucketCount = 8;
 
@@ -50,7 +53,7 @@ struct RawNetwork {
 
 struct alignas(simd::kAlignment) Network {
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
-  alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, arch::kHmcBucketCount, arch::kL1Size> hmc_weights;
+  alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, arch::kHmcRowCount, arch::kL1Size> hmc_weights;
   alignas(simd::kAlignment) MultiArray<I8, arch::kThreatFeatureCount, arch::kL1Size> threat_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
   union {
