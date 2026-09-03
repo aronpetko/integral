@@ -60,15 +60,21 @@ Score Evaluate(Board &board) {
   // Activate the feature layer neurons
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
   for (int them = 0; them <= 1; them++) {
-    const auto &stm_accumulator = accumulator[state.turn ^ them];
+    const auto perspective = static_cast<Color>(state.turn ^ them);
+    const auto &stm_accumulator = accumulator[perspective];
+    // The 50mr feature is a single row rather than an accumulated sum, so it's
+    // read here instead of being folded into the accumulator
+    const I16 *hmc = accumulator.HmcRow(perspective, state.fifty_moves_clock);
     for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
       // Clip first accumulator values
       const auto accumulator_value =
           simd::Load<I16>(&stm_accumulator.psqt[i]) +
-          simd::Load<I16>(&stm_accumulator.threat[i]);
+          simd::Load<I16>(&stm_accumulator.threat[i]) +
+          simd::Load<I16>(&hmc[i]);
       const auto pair_accumulator_value =
           simd::Load<I16>(&stm_accumulator.psqt[i + arch::kL1Size / 2]) +
-          simd::Load<I16>(&stm_accumulator.threat[i + arch::kL1Size / 2]);
+          simd::Load<I16>(&stm_accumulator.threat[i + arch::kL1Size / 2]) +
+          simd::Load<I16>(&hmc[i + arch::kL1Size / 2]);
 
       const auto clipped_value =
           simd::Clip(accumulator_value, arch::kFtQuantization);
@@ -78,12 +84,14 @@ Score Evaluate(Board &board) {
       // Clip second accumulator values
       const auto accumulator_value1 =
           simd::Load<I16>(&stm_accumulator.psqt[i + kI16Lanes]) +
-          simd::Load<I16>(&stm_accumulator.threat[i + kI16Lanes]);
+          simd::Load<I16>(&stm_accumulator.threat[i + kI16Lanes]) +
+          simd::Load<I16>(&hmc[i + kI16Lanes]);
       const auto pair_accumulator_value1 =
           simd::Load<I16>(
               &stm_accumulator.psqt[i + arch::kL1Size / 2 + kI16Lanes]) +
           simd::Load<I16>(
-              &stm_accumulator.threat[i + arch::kL1Size / 2 + kI16Lanes]);
+              &stm_accumulator.threat[i + arch::kL1Size / 2 + kI16Lanes]) +
+          simd::Load<I16>(&hmc[i + arch::kL1Size / 2 + kI16Lanes]);
       const auto clipped_value1 =
           simd::Clip(accumulator_value1, arch::kFtQuantization);
       const auto clipped_pair_value1 =
@@ -235,10 +243,16 @@ Score Evaluate(Board &board) {
   // Activate the feature layer via pair-wise CReLU multiplication
   std::array<U8, arch::kL1Size> feature_output{};
   for (int them = 0; them <= 1; them++) {
-    const auto &stm_accumulator = accumulator[state.turn ^ them];
+    const auto perspective = static_cast<Color>(state.turn ^ them);
+    const auto &stm_accumulator = accumulator[perspective];
+    const I16 *hmc = accumulator.HmcRow(perspective, state.fifty_moves_clock);
     for (int i = 0; i < arch::kL1Size / 2; i++) {
-      const auto first_val = CReLU(stm_accumulator[i]);
-      const auto second_val = CReLU(stm_accumulator[i + arch::kL1Size / 2]);
+      const auto first_val = CReLU(static_cast<I16>(
+          stm_accumulator.psqt[i] + stm_accumulator.threat[i] + hmc[i]));
+      const auto second_val =
+          CReLU(static_cast<I16>(stm_accumulator.psqt[i + arch::kL1Size / 2] +
+                                 stm_accumulator.threat[i + arch::kL1Size / 2] +
+                                 hmc[i + arch::kL1Size / 2]));
 
       const auto product = (first_val * second_val) >> 9;
       feature_output[i + them * arch::kL1Size / 2] = static_cast<U8>(product);
@@ -296,8 +310,7 @@ Score Evaluate(Board &board) {
   }
 
   const float l3_output =
-      network->l3_biases[bucket] +
-      simd::ReduceAddPsRecursive(result_sums.data(), kResultChunks);
+      network->l3_biases[bucket] + simd::ReduceAdd(result_sums);
 
   // Scale output
   return static_cast<Score>(l3_output * arch::kEvalScale);

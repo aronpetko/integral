@@ -14,6 +14,11 @@ constexpr std::size_t kThreatFeatureCount = 60144;
 constexpr std::size_t kL1Size = 768;
 constexpr std::size_t kL2Size = 16;
 constexpr std::size_t kL3Size = 32;
+
+constexpr std::size_t kHmcBucketsStart = 14;
+constexpr std::size_t kHmcBucketsStep = 8;
+constexpr std::size_t kHmcBucketCount =
+    (100 - kHmcBucketsStart + kHmcBucketsStep - 1) / kHmcBucketsStep;
 constexpr std::size_t kInputBucketCount = 12;
 constexpr std::size_t kOutputBucketCount = 8;
 
@@ -25,8 +30,16 @@ constexpr std::int32_t kEvalScale = 200;
 }  // namespace arch
 
 // clang-format off
+// The trainer writes l0/psqt as one matrix with a stride of (768 + kHmcBucketCount)
+// columns per king bucket, so the 50mr rows are interleaved into each bucket rather
+// than sitting in a block of their own. `preprocess` splits them back apart.
+struct RawInputBucket {
+  MultiArray<I16, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
+  MultiArray<I16, arch::kHmcBucketCount, arch::kL1Size> hmc_weights;
+};
+
 struct RawNetwork {
-  MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
+  std::array<RawInputBucket, arch::kInputBucketCount> input_buckets;
   MultiArray<I8, arch::kThreatFeatureCount, arch::kL1Size> threat_weights;
   MultiArray<I16, arch::kL1Size> feature_biases;
   MultiArray<I8, arch::kOutputBucketCount, arch::kL2Size, arch::kL1Size> l1_weights;
@@ -39,6 +52,7 @@ struct RawNetwork {
 
 struct alignas(simd::kAlignment) Network {
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
+  alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, arch::kHmcBucketCount, arch::kL1Size> hmc_weights;
   alignas(simd::kAlignment) MultiArray<I8, arch::kThreatFeatureCount, arch::kL1Size> threat_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
   union {

@@ -26,6 +26,15 @@ constexpr std::array<int, 64> kKingBucketMap {
 };
 // clang-format on
 
+[[nodiscard]] constexpr int HmcBucket(U16 fifty_moves_clock) {
+  if (fifty_moves_clock < arch::kHmcBucketsStart) {
+    return -1;
+  }
+  const int idx =
+      (fifty_moves_clock - arch::kHmcBucketsStart) / arch::kHmcBucketsStep;
+  return std::min<int>(idx, arch::kHmcBucketCount - 1);
+}
+
 constexpr U8 kBucketDivisor =
     (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;
 

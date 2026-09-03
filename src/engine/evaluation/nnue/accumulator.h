@@ -68,6 +68,21 @@ class Accumulator {
 
   [[nodiscard]] int GetOutputBucket(const BoardState& state) const;
 
+  [[nodiscard]] const I16* HmcRow(Color perspective, U16 clock) const {
+    alignas(simd::kAlignment) static constexpr std::array<I16, arch::kL1Size>
+        kZeroRow{};
+
+    const int hmc_bucket = HmcBucket(clock);
+    if (hmc_bucket < 0) {
+      return kZeroRow.data();
+    }
+
+    const auto king_square = stack_[head_idx_].kings[perspective];
+    return network
+        ->hmc_weights[GetKingBucket(king_square, perspective)][hmc_bucket]
+        .data();
+  }
+
   [[nodiscard]] PerspectiveView operator[](int perspective) {
     auto& entry = stack_[head_idx_];
     return {entry.psqt_perspectives[perspective],
