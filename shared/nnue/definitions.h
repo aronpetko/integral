@@ -30,9 +30,7 @@ constexpr std::int32_t kEvalScale = 200;
 }  // namespace arch
 
 // clang-format off
-// The trainer writes l0/psqt as one matrix with a stride of (768 + kHmcBucketCount)
-// columns per king bucket, so the 50mr rows are interleaved into each bucket rather
-// than sitting in a block of their own. `preprocess` splits them back apart.
+
 struct RawInputBucket {
   MultiArray<I16, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
   MultiArray<I16, arch::kHmcBucketCount, arch::kL1Size> hmc_weights;

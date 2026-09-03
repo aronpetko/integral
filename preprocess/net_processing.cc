@@ -8,9 +8,7 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
     const std::unique_ptr<nnue::RawNetwork>& raw_network) {
   auto network = std::make_unique<nnue::Network>();
 
-  // Copy over arrays that don't need transposing. The input buckets arrive
-  // interleaved (768 piece rows then kHmcBucketCount 50mr rows, per bucket), so
-  // they get split into the two arrays the engine indexes separately.
+  // Copy over arrays that don't need transposing
   for (int b = 0; b < nnue::arch::kInputBucketCount; ++b) {
     network->feature_weights[b] = raw_network->input_buckets[b].feature_weights;
     network->hmc_weights[b] = raw_network->input_buckets[b].hmc_weights;
@@ -42,12 +40,10 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
       biases[i + j] = regs[simd::kPackusOrder[j]];
   }
 
-  // The 50mr rows land in the same accumulator lanes as the FT weights, so they
-  // need the identical shuffle
   auto hmc = reinterpret_cast<__m128i*>(&network->hmc_weights);
-  for (int i = 0; i < nnue::arch::kInputBucketCount *
-                          nnue::arch::kHmcBucketCount * nnue::arch::kL1Size /
-                          kWeightsPerBlock;
+  for (int i = 0;
+       i < nnue::arch::kInputBucketCount * nnue::arch::kHmcBucketCount *
+               nnue::arch::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) regs[j] = hmc[i + j];
 
