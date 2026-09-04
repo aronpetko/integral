@@ -238,7 +238,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
 #ifndef DATAGEN
   // Adjust based on proximity to a fifty-move-rule draw
-  // static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
+  static_eval = static_eval * (220 - state.fifty_moves_clock) / 220;
 #endif
 
   return static_eval;
