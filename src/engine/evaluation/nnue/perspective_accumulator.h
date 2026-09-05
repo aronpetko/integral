@@ -69,15 +69,19 @@ class PerspectiveAccumulator {
                    int num_adds,
                    Weight const* const* subs,
                    int num_subs) {
-    using namespace simd;
-
+    // We process the accumulation of size kWidth elements, in chunks of
+    // kBlockVecs SIMD registers, to avoid unnecessary loads and stores
+    // from register spills.
     constexpr int kBlockVecs = 8;
-    constexpr int kElementsPerVec = kVectorBytes / sizeof(I16);
+    // Always accumulate in i16
+    constexpr int kElementsPerVec = simd::kVectorBytes / sizeof(I16);
     constexpr int kElementsPerBlock = kElementsPerVec * kBlockVecs;
     constexpr int kBlockCount = kWidth / kElementsPerBlock;
 
     static_assert(kWidth % kElementsPerBlock == 0, "must evenly divide");
 
+    // i = block index; K = element index of start of the block;
+    // j = vector index within block; k = element index
     for (int i = 0, K = 0; i < kBlockCount; ++i, K += kElementsPerBlock) {
       simd::Vepi16 vecs[kBlockVecs];
       for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
@@ -87,14 +91,20 @@ class PerspectiveAccumulator {
       for (int add_i = 0; add_i < num_adds; ++add_i) {
         const auto* feature = adds[add_i];
         for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
-          vecs[j] = vecs[j] + Convert<I16>(simd::Load<Weight, kElementsPerVec>(&feature[k]));
+          // Conversion is required from I8 weights and is a no-op for I16
+          // weights
+          vecs[j] =
+              vecs[j] + simd::Convert<I16>(
+                            simd::Load<Weight, kElementsPerVec>(&feature[k]));
         }
       }
 
       for (int sub_i = 0; sub_i < num_subs; ++sub_i) {
         const auto* feature = subs[sub_i];
         for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
-          vecs[j] = vecs[j] - Convert<I16>(simd::Load<Weight, kElementsPerVec>(&feature[k]));
+          vecs[j] =
+              vecs[j] - simd::Convert<I16>(
+                            simd::Load<Weight, kElementsPerVec>(&feature[k]));
         }
       }
 
