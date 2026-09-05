@@ -102,12 +102,20 @@ namespace simd {
 
 #if BUILD_HAS_AVX512
 constexpr std::size_t kVectorBytes = 64;
+constexpr std::size_t kVectorRegisters = 32;
 #elif BUILD_HAS_AVX2
 constexpr std::size_t kVectorBytes = 32;
+constexpr std::size_t kVectorRegisters = 16;
 #elif BUILD_HAS_SSE41 || BUILD_HAS_NEON
 constexpr std::size_t kVectorBytes = 16;
+#if BUILD_HAS_NEON
+constexpr std::size_t kVectorRegisters = 32;
+#else
+constexpr std::size_t kVectorRegisters = 16;
+#endif
 #else
 constexpr std::size_t kVectorBytes = 16;
+constexpr std::size_t kVectorRegisters = 16;
 #endif
 
 constexpr std::size_t kAlignment = kVectorBytes < 16 ? 16 : kVectorBytes;
