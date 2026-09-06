@@ -85,6 +85,13 @@ static void SavePermutedNetwork(std::string output) {
       }
     }
 
+    // HMC weights (shared across king buckets)
+    for (int h = 0; h < arch::kHmcBucketCount; ++h) {
+      permuted_network->hmc_weights[h][i] = network->hmc_weights[h][idx];
+      permuted_network->hmc_weights[h][i + arch::kL1Size / 2] =
+          network->hmc_weights[h][idx + arch::kL1Size / 2];
+    }
+
     // L1 Weights
     for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
       for (int j = 0; j < arch::kL2Size; ++j) {
@@ -98,7 +105,7 @@ static void SavePermutedNetwork(std::string output) {
 
   std::ofstream output_stream(output, std::ios::binary);
   output_stream.write(reinterpret_cast<char*>(permuted_network.get()),
-                      sizeof(Network));
+                      sizeof(RawNetwork));
   output_stream.close();
 
   fmt::println("Permuted network written to {}", output);
