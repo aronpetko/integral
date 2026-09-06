@@ -69,41 +69,47 @@ class PerspectiveAccumulator {
                    int num_adds,
                    Weight const* const* subs,
                    int num_subs) {
-    if (this != &previous) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] = previous.values_[i];
+    // We process the accumulation of size kWidth elements, in chunks of
+    // kBlockVecs SIMD registers, to avoid unnecessary loads and stores
+    // from register spills.
+    constexpr int kBlockVecs = 8;
+    // Always accumulate in i16
+    constexpr int kElementsPerVec = simd::kVectorBytes / sizeof(I16);
+    constexpr int kElementsPerBlock = kElementsPerVec * kBlockVecs;
+    constexpr int kBlockCount = kWidth / kElementsPerBlock;
+
+    static_assert(kWidth % kElementsPerBlock == 0, "must evenly divide");
+
+    // i = block index; K = element index of start of the block;
+    // j = vector index within block; k = element index
+    for (int i = 0, K = 0; i < kBlockCount; ++i, K += kElementsPerBlock) {
+      simd::Vepi16 vecs[kBlockVecs];
+      for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+        vecs[j] = simd::Load(&previous.values_[k]);
       }
-    }
-    // Pair up adds and subs while both are available, so the accumulator is
-    // only read and written back once per group of eight rows
-    for (; num_adds >= 4 && num_subs >= 4; num_adds -= 4, num_subs -= 4) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] += adds[num_adds - 4][i] + adds[num_adds - 3][i] +
-                      adds[num_adds - 2][i] + adds[num_adds - 1][i] -
-                      subs[num_subs - 4][i] - subs[num_subs - 3][i] -
-                      subs[num_subs - 2][i] - subs[num_subs - 1][i];
+
+      for (int add_i = 0; add_i < num_adds; ++add_i) {
+        const auto* feature = adds[add_i];
+        for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+          // Conversion is required from I8 weights and is a no-op for I16
+          // weights
+          vecs[j] =
+              vecs[j] + simd::Convert<I16>(
+                            simd::Load<Weight, kElementsPerVec>(&feature[k]));
+        }
       }
-    }
-    for (; num_adds >= 4; num_adds -= 4) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] += adds[num_adds - 4][i] + adds[num_adds - 3][i] +
-                      adds[num_adds - 2][i] + adds[num_adds - 1][i];
+
+      for (int sub_i = 0; sub_i < num_subs; ++sub_i) {
+        const auto* feature = subs[sub_i];
+        for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+          vecs[j] =
+              vecs[j] - simd::Convert<I16>(
+                            simd::Load<Weight, kElementsPerVec>(&feature[k]));
+        }
       }
-    }
-    for (; num_adds >= 1; num_adds -= 1) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] += adds[num_adds - 1][i];
-      }
-    }
-    for (; num_subs >= 4; num_subs -= 4) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] -= subs[num_subs - 4][i] + subs[num_subs - 3][i] +
-                      subs[num_subs - 2][i] + subs[num_subs - 1][i];
-      }
-    }
-    for (; num_subs >= 1; num_subs -= 1) {
-      for (int i = 0; i < kWidth; ++i) {
-        values_[i] -= subs[num_subs - 1][i];
+
+      for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+        simd::Store(&values_[k], vecs[j]);
       }
     }
   }
