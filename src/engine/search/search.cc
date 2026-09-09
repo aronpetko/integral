@@ -1369,6 +1369,8 @@ void Searcher::SetThreadCount(U16 count) {
   stop_barrier_.Reset(count + 1);
   start_barrier_.Reset(count + 1);
 
+  correction_history_ = std::make_unique<history::CorrectionHistory>(count);
+
   raw_threads_.clear();
   raw_threads_.shrink_to_fit();
   raw_threads_.reserve(count);
@@ -1378,7 +1380,7 @@ void Searcher::SetThreadCount(U16 count) {
 
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back([this, i]() {
-      threads_[i] = std::make_unique<Thread>(i);
+      threads_[i] = std::make_unique<Thread>(i, correction_history_.get());
       // Touch memory to enforce first-touch
       auto &thread = *threads_[i];
       thread.stack.Reset();
@@ -1455,6 +1457,11 @@ void Searcher::NewGame(bool clear_tables) {
   if (clear_tables) {
     transposition_table_.Clear(std::max<int>(1, threads_.size()));
     tables::kLateMoveReduction = tables::GenerateLateMoveReductionTable();
+  }
+
+  // Shared between every thread, so it's cleared once here
+  if (correction_history_) {
+    correction_history_->Clear();
   }
 
   for (auto &thread : threads_) {

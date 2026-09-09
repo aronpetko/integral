@@ -27,12 +27,12 @@ class History {
   void Initialize() {
     quiet_history = std::make_unique<QuietHistory>();
     continuation_history = std::make_unique<ContinuationHistory>();
-    correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
   }
 
-  // Reinitialize the history objects for quicker clearing
+  // Reinitialize the history objects for quicker clearing. Correction history
+  // is shared between threads, so it's owned and cleared elsewhere.
   void Clear() {
     Initialize();
   }
@@ -71,7 +71,8 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<PawnHistory> pawn_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
-  std::unique_ptr<CorrectionHistory> correction_history;
+  // Shared between all search threads
+  CorrectionHistory *correction_history = nullptr;
 };
 
 }  // namespace search::history

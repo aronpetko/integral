@@ -1,6 +1,10 @@
 #ifndef INTEGRAL_CORRECTION_HISTORY_H
 #define INTEGRAL_CORRECTION_HISTORY_H
 
+#include <atomic>
+#include <bit>
+#include <memory>
+
 #include "../../../../shared/multi_array.h"
 #include "../../../tuner/spsa.h"
 #include "../stack.h"
@@ -13,12 +17,32 @@ TUNABLE_STEP(kMajorCorrectionWeight, 37, 0, 125, false, 3);
 TUNABLE_STEP(kContinuationCorrectionWeight, 52, 0, 125, false, 3);
 
 class CorrectionHistory {
+  constexpr static U16 kDefaultHashSize = 16384;
+
  public:
-  CorrectionHistory()
-      : non_pawn_table_({}),
-        pawn_table_({}),
-        major_table_({}),
-        continuation_table_({}) {}
+  explicit CorrectionHistory(U16 num_threads) {
+    Resize(num_threads);
+  }
+
+  void Resize(U16 num_threads) {
+    // Round up to the next power of two so keys can be masked
+    hash_size_ =
+        std::bit_ceil<U64>(kDefaultHashSize * std::max<U16>(1, num_threads));
+
+    pawn_table_ = std::make_unique<std::atomic_int16_t[]>(PawnTableEntries());
+    major_table_ = std::make_unique<std::atomic_int16_t[]>(MajorTableEntries());
+    non_pawn_table_ =
+        std::make_unique<std::atomic_int16_t[]>(NonPawnTableEntries());
+
+    ClearContinuationTable();
+  }
+
+  void Clear() {
+    ClearTable(pawn_table_.get(), PawnTableEntries());
+    ClearTable(major_table_.get(), MajorTableEntries());
+    ClearTable(non_pawn_table_.get(), NonPawnTableEntries());
+    ClearContinuationTable();
+  }
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
@@ -33,16 +57,14 @@ class CorrectionHistory {
     const I16 bonus = CalculateBonus(stack->static_eval, search_score, depth);
 
     // Update pawn table score
-    UpdateTableScore(pawn_table_[GetPawnTableIndex(state)][state.turn], bonus);
+    UpdateTableScore(pawn_table_[GetPawnTableIndex(state)], bonus);
 
     // Update major piece table score
-    UpdateTableScore(major_table_[GetMajorTableIndex(state)][state.turn],
-                     bonus);
+    UpdateTableScore(major_table_[GetMajorTableIndex(state)], bonus);
 
     // Update non-pawn table scores for both colors
     for (Color color : {Color::kWhite, Color::kBlack}) {
-      UpdateTableScore(non_pawn_table_[GetNonPawnTableIndex(state, color)]
-                                      [state.turn][color],
+      UpdateTableScore(non_pawn_table_[GetNonPawnTableIndex(state, color)],
                        bonus);
     }
 
@@ -62,19 +84,15 @@ class CorrectionHistory {
                                         StackEntry *stack,
                                         Score static_eval) const {
     const Score pawn_correction =
-        pawn_table_[GetPawnTableIndex(state)][state.turn] *
-        kPawnCorrectionWeight;
+        pawn_table_[GetPawnTableIndex(state)] * kPawnCorrectionWeight;
     const I32 non_pawn_white_correction =
-        non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)][state.turn]
-                       [Color::kWhite] *
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kWhite)] *
         kNonPawnCorrectionWeight;
     const I32 non_pawn_black_correction =
-        non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)][state.turn]
-                       [Color::kBlack] *
+        non_pawn_table_[GetNonPawnTableIndex(state, Color::kBlack)] *
         kNonPawnCorrectionWeight;
     const I32 major_correction =
-        major_table_[GetMajorTableIndex(state)][state.turn] *
-        kMajorCorrectionWeight;
+        major_table_[GetMajorTableIndex(state)] * kMajorCorrectionWeight;
     const I32 continuation_correction = [&]() -> I32 {
       Score total = 0;
 
@@ -106,14 +124,43 @@ class CorrectionHistory {
   }
 
  private:
+  [[nodiscard]] U64 PawnTableEntries() const {
+    return hash_size_ * kNumColors;
+  }
+
+  [[nodiscard]] U64 MajorTableEntries() const {
+    return hash_size_ * kNumColors;
+  }
+
+  [[nodiscard]] U64 NonPawnTableEntries() const {
+    return hash_size_ * kNumColors * kNumColors;
+  }
+
+  static void ClearTable(std::atomic_int16_t *table, U64 entries) {
+    for (U64 i = 0; i < entries; i++) {
+      table[i].store(0, std::memory_order_relaxed);
+    }
+  }
+
+  void ClearContinuationTable() {
+    for (auto &by_color : continuation_table_) {
+      for (auto &by_piece : by_color) {
+        for (auto &entry : by_piece) {
+          entry.fill(I16{0});
+        }
+      }
+    }
+  }
+
   [[nodiscard]] I16 CalculateBonus(Score static_eval,
                                    Score search_score,
                                    int depth) {
     return std::clamp((search_score - static_eval) * depth / 8, -256, 256);
   }
 
-  void UpdateTableScore(I16 &current_score, Score bonus) {
-    current_score += ScaleBonus(current_score, bonus, 1024);
+  void UpdateTableScore(std::atomic_int16_t &entry, Score bonus) {
+    const I16 cur = entry.load(std::memory_order_relaxed);
+    entry.store(cur + ScaleBonus(cur, bonus, 1024), std::memory_order_relaxed);
   }
 
   [[nodiscard]] bool IsStaticEvalWithinBounds(
@@ -126,23 +173,25 @@ class CorrectionHistory {
            !(failed_low && static_eval < search_score);
   }
 
-  [[nodiscard]] int GetPawnTableIndex(const BoardState &state) const {
-    return state.pawn_key & 16383;
+  [[nodiscard]] U64 GetPawnTableIndex(const BoardState &state) const {
+    return (state.pawn_key & (hash_size_ - 1ULL)) * kNumColors + state.turn;
   }
 
-  [[nodiscard]] int GetMajorTableIndex(const BoardState &state) const {
-    return state.major_key & 16383;
+  [[nodiscard]] U64 GetMajorTableIndex(const BoardState &state) const {
+    return (state.major_key & (hash_size_ - 1ULL)) * kNumColors + state.turn;
   }
 
-  [[nodiscard]] int GetNonPawnTableIndex(const BoardState &state,
+  [[nodiscard]] U64 GetNonPawnTableIndex(const BoardState &state,
                                          Color color) const {
-    return state.non_pawn_keys[color] & 16383;
+    const U64 hash_index = state.non_pawn_keys[color] & (hash_size_ - 1ULL);
+    return (hash_index * kNumColors + state.turn) * kNumColors + color;
   }
 
  private:
-  MultiArray<I16, 16384, kNumColors> pawn_table_;
-  MultiArray<I16, 16384, kNumColors> major_table_;
-  MultiArray<I16, 16384, kNumColors, kNumColors> non_pawn_table_;
+  U64 hash_size_;
+  std::unique_ptr<std::atomic_int16_t[]> pawn_table_;
+  std::unique_ptr<std::atomic_int16_t[]> non_pawn_table_;
+  std::unique_ptr<std::atomic_int16_t[]> major_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };
