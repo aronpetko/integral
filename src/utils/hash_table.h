@@ -14,10 +14,7 @@
 #if defined(__linux__)
 #include <sys/mman.h>
 #elif defined(_WIN32)
-// Keep the Win32 surface minimal, and NOMINMAX is required so its min/max
-// macros don't shadow std::min/std::max in every file that reaches this header
 #define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
 #include <windows.h>
 
 namespace large_pages {
