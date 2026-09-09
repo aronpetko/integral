@@ -7,7 +7,7 @@
 
 namespace search::history {
 
-TUNABLE(kPawnHistFill, -951, -3000, 0, false);
+TUNABLE(kPawnHistFill, -970, -3000, 0, false);
 
 class PawnHistory {
  public:
