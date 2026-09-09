@@ -9,7 +9,12 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   auto network = std::make_unique<nnue::Network>();
 
   // Copy over arrays that don't need transposing
-  network->feature_weights = raw_network->feature_weights;
+  for (int b = 0; b < nnue::arch::kInputBucketCount; ++b) {
+    network->feature_weights[b] = raw_network->input_buckets[b].feature_weights;
+    for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
+      network->hmc_weights[b][h] = raw_network->input_buckets[b].hmc_weights[h];
+    }
+  }
   network->feature_biases = raw_network->feature_biases;
   network->threat_weights = raw_network->threat_weights;
 
@@ -35,6 +40,15 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
 
     for (int j = 0; j < kNumRegs; j++)
       biases[i + j] = regs[simd::kPackusOrder[j]];
+  }
+
+  auto hmc = reinterpret_cast<__m128i*>(&network->hmc_weights);
+  for (int i = 0; i < nnue::arch::kInputBucketCount * nnue::arch::kHmcRowCount *
+                          nnue::arch::kL1Size / kWeightsPerBlock;
+       i += kNumRegs) {
+    for (int j = 0; j < kNumRegs; j++) regs[j] = hmc[i + j];
+
+    for (int j = 0; j < kNumRegs; j++) hmc[i + j] = regs[simd::kPackusOrder[j]];
   }
 
   // Same 8-element granularity as the FT weights, but I8 rows -> 8-byte blocks.
