@@ -11,10 +11,10 @@
 
 namespace search::history {
 
-TUNABLE_STEP(kPawnCorrectionWeight, 42, 0, 125, false, 3);
-TUNABLE_STEP(kNonPawnCorrectionWeight, 40, 0, 125, false, 3);
+TUNABLE_STEP(kPawnCorrectionWeight, 45, 0, 125, false, 3);
+TUNABLE_STEP(kNonPawnCorrectionWeight, 42, 0, 125, false, 3);
 TUNABLE_STEP(kMajorCorrectionWeight, 37, 0, 125, false, 3);
-TUNABLE_STEP(kContinuationCorrectionWeight, 52, 0, 125, false, 3);
+TUNABLE_STEP(kContinuationCorrectionWeight, 53, 0, 125, false, 3);
 
 class CorrectionHistory {
   constexpr static U16 kDefaultHashSize = 16384;
