@@ -163,6 +163,11 @@ if (DATAGEN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDATAGEN")
 endif ()
 
+# PGO
+set(PGO "off" CACHE STRING "Profile-guided optimization stage (off, generate, use)")
+set_property(CACHE PGO PROPERTY STRINGS off generate use)
+set(PGO_DIR "${CMAKE_CURRENT_BINARY_DIR}/pgo" CACHE PATH "Directory holding the collected profile data")
+
 # Set common flags for release and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-pthread -O3 -funroll-loops -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-pthread -g -O0")
@@ -209,3 +214,57 @@ add_executable(integral ${SOURCES}
 
 # Make sure main build depends on this
 add_dependencies(integral run_preprocess)
+
+# Profile-guided optimization is applied to the engine alone, so that the
+# profile data isn't polluted by the preprocessing tool
+if (NOT PGO STREQUAL "off")
+    set(PGO_FLAGS "")
+
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        if (PGO STREQUAL "generate")
+            set(PGO_FLAGS -fprofile-generate=${PGO_DIR})
+        else ()
+            find_program(LLVM_PROFDATA NAMES llvm-profdata)
+            file(GLOB PGO_RAW_PROFILES "${PGO_DIR}/*.profraw")
+
+            if (NOT LLVM_PROFDATA)
+                message(WARNING "llvm-profdata was not found. Building without PGO")
+            elseif (NOT PGO_RAW_PROFILES)
+                message(WARNING "No profile data found in ${PGO_DIR}. Building without PGO")
+            else ()
+                set(PGO_PROFILE "${PGO_DIR}/integral.profdata")
+                execute_process(
+                        COMMAND ${LLVM_PROFDATA} merge -output=${PGO_PROFILE} ${PGO_RAW_PROFILES}
+                        RESULT_VARIABLE PGO_MERGE_RESULT
+                )
+                if (PGO_MERGE_RESULT EQUAL 0)
+                    set(PGO_FLAGS -fprofile-use=${PGO_PROFILE}
+                            -Wno-profile-instr-out-of-date
+                            -Wno-profile-instr-unprofiled)
+                else ()
+                    message(WARNING "Failed to merge profile data. Building without PGO")
+                endif ()
+            endif ()
+        endif ()
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        if (PGO STREQUAL "generate")
+            set(PGO_FLAGS -fprofile-generate=${PGO_DIR} -fprofile-update=atomic)
+        else ()
+            file(GLOB PGO_GCDA_PROFILES "${PGO_DIR}/*.gcda")
+
+            if (NOT PGO_GCDA_PROFILES)
+                message(WARNING "No profile data found in ${PGO_DIR}. Building without PGO")
+            else ()
+                set(PGO_FLAGS -fprofile-use=${PGO_DIR} -fprofile-correction -Wno-missing-profile)
+            endif ()
+        endif ()
+    else ()
+        message(WARNING "PGO is unsupported for ${CMAKE_CXX_COMPILER_ID}. Building without it")
+    endif ()
+
+    if (PGO_FLAGS)
+        message(STATUS "Building with PGO (stage: ${PGO}, profile data: ${PGO_DIR})")
+        target_compile_options(integral PRIVATE ${PGO_FLAGS})
+        target_link_options(integral PRIVATE ${PGO_FLAGS})
+    endif ()
+endif ()
