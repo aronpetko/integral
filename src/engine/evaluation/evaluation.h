@@ -28,7 +28,7 @@ inline std::array kSeePieceScores = {
 
 // Constants derived from WDL_model
 constexpr std::array kAs = {
-    86.66506958, -259.82299819, 205.33735813, 127.53923650};
+    -68.80447839, 169.28348984, -154.00729306, 235.96617727};
 
 [[nodiscard]] static Score NormalizeScore(Score score, int material_count) {
   if (score == 0 || std::abs(score) >= kTBWinInMaxPlyScore) return score;
