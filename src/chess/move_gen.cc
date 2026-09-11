@@ -194,14 +194,28 @@ BitBoard KingAttacks(Square square) {
 BitBoard CastlingMoves(Color side, const BoardState &state) {
   BitBoard moves;
 
-  if (state.castle_rights.CanKingsideCastle(side)) {
-    moves.SetBit(
-        state.castle_rights.CastleSquare(side, CastleRights::kKingside));
-  }
+  const Square king_square = state.King(side).GetLsb();
+  const BitBoard occupied = state.Occupied();
 
-  if (state.castle_rights.CanQueensideCastle(side)) {
-    moves.SetBit(
-        state.castle_rights.CastleSquare(side, CastleRights::kQueenside));
+  for (const auto castle_side :
+       {CastleRights::kKingside, CastleRights::kQueenside}) {
+    if (!state.castle_rights.CanCastle(side, castle_side)) {
+      continue;
+    }
+
+    const Square rook_square =
+        state.castle_rights.CastleRookSquare(side, castle_side);
+    const auto index = CastleRights::CastleIndex(side, castle_side);
+
+    const BitBoard travelled =
+        CastlePath(king_square, kKingCastleTargets[index]) |
+        CastlePath(rook_square, kRookCastleTargets[index]);
+    const BitBoard blockers = occupied & ~(BitBoard::FromSquare(king_square) |
+                                           BitBoard::FromSquare(rook_square));
+
+    if (!(travelled & blockers)) {
+      moves.SetBit(rook_square);
+    }
   }
 
   return moves;
@@ -272,6 +286,10 @@ BitBoard GetPieceAttacks(Square square,
     default:
       return 0;
   }
+}
+
+BitBoard CastlePath(Square from, Square to) {
+  return kRayBetweenMasks[from][to] | BitBoard::FromSquare(to);
 }
 
 BitBoard RayBetween(Square first, Square second) {

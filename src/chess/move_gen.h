@@ -31,6 +31,8 @@ namespace move_gen {
 
 [[nodiscard]] BitBoard CastlingMoves(Color which, const BoardState &state);
 
+[[nodiscard]] BitBoard CastlePath(Square from, Square to);
+
 [[nodiscard]] BitBoard GetAttackersTo(const BoardState &state,
                                       Square square,
                                       Color attacker);

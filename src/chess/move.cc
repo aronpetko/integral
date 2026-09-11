@@ -37,11 +37,10 @@ Move Move::FromStr(std::string_view str, const BoardState &state) {
       if (takes_own_rook) {
         flag = MoveType::kCastle;
       } else if (std::abs(from_file - to_file) == 2) {
-        const auto side = to > from ? CastleRights::kKingside
-                                    : CastleRights::kQueenside;
-        const Square rook_square = state.castle_rights.CastleSquare(state.turn, side);
-        if (rook_square != Squares::kNoSquare) {
-          to = rook_square;
+        const auto side =
+            to > from ? CastleRights::kKingside : CastleRights::kQueenside;
+        if (state.castle_rights.CanCastle(state.turn, side)) {
+          to = state.castle_rights.CastleRookSquare(state.turn, side);
           flag = MoveType::kCastle;
         }
       }
@@ -106,11 +105,11 @@ std::string Move::ToString() const {
   // Castling moves are stored as the king capturing its own rook, which is
   // only how they're written in Chess960
   if (GetType() == MoveType::kCastle && !chess960) {
-    const auto side =
-        GetTo() > GetFrom() ? CastleRights::kKingside : CastleRights::kQueenside;
+    const auto side = GetTo() > GetFrom() ? CastleRights::kKingside
+                                          : CastleRights::kQueenside;
     const Color color = GetFrom().Rank() == kRank1 ? kWhite : kBlack;
-    return res +
-           kKingCastleTargets[CastleRights::CastleIndex(color, side)].ToString();
+    return res + kKingCastleTargets[CastleRights::CastleIndex(color, side)]
+                     .ToString();
   }
 
   res += GetTo().ToString();

@@ -6,12 +6,23 @@
 #include "move.h"
 #include "move_gen.h"
 
-Board::Board() : history_({}) {}
+namespace {
 
-Board::Board(const BoardState &state) : history_({}), state_(state) {}
+constexpr U16 kAllCastleRights = 0xFFFF;
+
+}
+
+Board::Board() : history_({}) {
+  castle_masks_.fill(kAllCastleRights);
+}
+
+Board::Board(const BoardState &state) : history_({}), state_(state) {
+  BuildCastleMasks();
+}
 
 Board::Board(const Board &other)
     : state_(other.state_),
+      castle_masks_(other.castle_masks_),
       history_(other.history_),
       key_history_(other.key_history_) {}
 
@@ -21,6 +32,7 @@ Board &Board::operator=(const Board &other) {
   }
 
   state_ = other.state_;
+  castle_masks_ = other.castle_masks_;
   history_ = other.history_;
   key_history_ = other.key_history_;
   accumulator_ = std::make_shared<nnue::Accumulator>();
@@ -29,6 +41,8 @@ Board &Board::operator=(const Board &other) {
 
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
+
+  BuildCastleMasks();
 
   accumulator_ = std::make_shared<nnue::Accumulator>();
   accumulator_->SetFromState(state_);
@@ -68,7 +82,8 @@ bool Board::IsMovePseudoLegal(Move move) const {
     // Castling moves are encoded as the king capturing its own rook
     const auto side =
         to > from ? CastleRights::kKingside : CastleRights::kQueenside;
-    return state_.castle_rights.CastleSquare(us, side) == to;
+    return state_.castle_rights.CanCastle(us, side) &&
+           state_.castle_rights.CastleRookSquare(us, side) == to;
   }
 
   if (move_type == MoveType::kEnPassant) {
@@ -128,14 +143,13 @@ bool Board::IsMoveLegal(Move move) const {
           us, to > from ? CastleRights::kKingside : CastleRights::kQueenside);
       const BitBoard rook_mask = BitBoard::FromSquare(to);
       const BitBoard king_path =
-          move_gen::RayBetween(from, kKingCastleTargets[index]) |
-          BitBoard::FromSquare(kKingCastleTargets[index]);
+          move_gen::CastlePath(from, kKingCastleTargets[index]);
       const BitBoard rook_path =
-          move_gen::RayBetween(to, kRookCastleTargets[index]) |
-          BitBoard::FromSquare(kRookCastleTargets[index]);
+          move_gen::CastlePath(to, kRookCastleTargets[index]);
 
       // Only the castling king and rook may stand in either of their paths
-      if ((king_path | rook_path) & state_.Occupied() & ~(king_mask | rook_mask)) {
+      if ((king_path | rook_path) & state_.Occupied() &
+          ~(king_mask | rook_mask)) {
         return false;
       }
 
@@ -209,11 +223,10 @@ void Board::MakeMove(Move move) {
   // Initialize PSQT accumulator change
   nnue::PsqtAccumulatorChange accum_change{};
   accum_change.sub_0 = {from, piece, us};
-  accum_change.add_0 = {move_type == MoveType::kCastle
-                            ? kKingCastleTargets[castle_index]
-                            : to,
-                        piece,
-                        us};
+  accum_change.add_0 = {
+      move_type == MoveType::kCastle ? kKingCastleTargets[castle_index] : to,
+      piece,
+      us};
 
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
@@ -251,7 +264,8 @@ void Board::MakeMove(Move move) {
   if (move_type == MoveType::kCastle) {
     HandleCastling(move);
     accum_change.type = nnue::PsqtAccumulatorChange::kCastle;
-    accum_change.add_1 = {kRookCastleTargets[castle_index], PieceType::kRook, us};
+    accum_change.add_1 = {
+        kRookCastleTargets[castle_index], PieceType::kRook, us};
     accum_change.sub_1 = {to, PieceType::kRook, us};
   } else if (move_type == MoveType::kPromotion) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
@@ -265,17 +279,7 @@ void Board::MakeMove(Move move) {
 
   // Update the castling rights depending on the piece that moved
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
-
-  if (piece == PieceType::kKing) {
-    state_.castle_rights.UnsetBothRights(us);
-  } else if (piece == PieceType::kRook) {
-    RemoveCastleRight(us, from);
-  }
-
-  if (captured == PieceType::kRook) {
-    RemoveCastleRight(them, to);
-  }
-
+  state_.castle_rights &= castle_masks_[from] & castle_masks_[to];
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
 
   state_.turn = FlipColor(state_.turn);
@@ -495,6 +499,30 @@ bool Board::MoveGivesDirectCheck(Move move) const {
   return relevant_check_zones.IsSet(to);
 }
 
+void Board::BuildCastleMasks() {
+  castle_masks_.fill(kAllCastleRights);
+
+  for (const Color color : {Color::kWhite, Color::kBlack}) {
+    U16 both_rights = 0;
+
+    for (const auto side :
+         {CastleRights::kKingside, CastleRights::kQueenside}) {
+      if (!state_.castle_rights.CanCastle(color, side)) {
+        continue;
+      }
+
+      const U16 mask = CastleRights::Mask(color, side);
+      castle_masks_[state_.castle_rights.CastleRookSquare(color, side)] &=
+          ~mask;
+      both_rights |= mask;
+    }
+
+    if (both_rights) {
+      castle_masks_[state_.King(color).GetLsb()] &= ~both_rights;
+    }
+  }
+}
+
 void Board::HandleCastling(Move move) {
   const Color us = state_.turn;
   const auto from = move.GetFrom(), to = move.GetTo();
@@ -507,17 +535,6 @@ void Board::HandleCastling(Move move) {
   state_.RemovePiece(to, us);
   state_.PlacePiece(kKingCastleTargets[index], PieceType::kKing, us);
   state_.PlacePiece(kRookCastleTargets[index], PieceType::kRook, us);
-}
-
-void Board::RemoveCastleRight(Color color, Square rook_square) {
-  auto &rights = state_.castle_rights;
-
-  if (rights.CastleSquare(color, CastleRights::kKingside) == rook_square) {
-    rights.UnsetCastleSquare(color, CastleRights::kKingside);
-  } else if (rights.CastleSquare(color, CastleRights::kQueenside) ==
-             rook_square) {
-    rights.UnsetCastleSquare(color, CastleRights::kQueenside);
-  }
 }
 
 void Board::CalculateThreats() {

@@ -78,11 +78,11 @@ BoardState StringToBoard(std::string_view fen_str) {
       continue;
     }
 
-    state.castle_rights.SetCastleSquare(
-        color,
-        rook_square > state.King(color).GetLsb() ? CastleRights::kKingside
-                                                 : CastleRights::kQueenside,
-        rook_square);
+    state.castle_rights.SetCastleRook(color,
+                                      rook_square > state.King(color).GetLsb()
+                                          ? CastleRights::kKingside
+                                          : CastleRights::kQueenside,
+                                      rook_square);
   }
 
   state.zobrist_key ^= zobrist::castle_rights[state.castle_rights.AsU8()];
@@ -143,16 +143,17 @@ std::string BoardToString(const BoardState &state) {
   output.push_back(' ');
   std::string castling_rights;
   for (const Color color : {Color::kWhite, Color::kBlack}) {
-    for (const auto side : {CastleRights::kKingside, CastleRights::kQueenside}) {
-      const Square rook_square = state.castle_rights.CastleSquare(color, side);
-      if (rook_square == Squares::kNoSquare) {
+    for (const auto side :
+         {CastleRights::kKingside, CastleRights::kQueenside}) {
+      if (!state.castle_rights.CanCastle(color, side)) {
         continue;
       }
 
-      const char ch = chess960 ? 'a' + rook_square.File()
-                               : (side == CastleRights::kKingside ? 'k' : 'q');
-      castling_rights +=
-          color == Color::kWhite ? std::toupper(ch) : ch;
+      const char ch =
+          chess960
+              ? 'a' + state.castle_rights.CastleRookSquare(color, side).File()
+              : (side == CastleRights::kKingside ? 'k' : 'q');
+      castling_rights += color == Color::kWhite ? std::toupper(ch) : ch;
     }
   }
   output.append(castling_rights.empty() ? "-" : castling_rights);
