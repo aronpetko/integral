@@ -106,6 +106,10 @@ class BitBoard {
     return std::countr_zero(bitboard_);
   }
 
+  [[nodiscard]] constexpr U8 GetMsb() const {
+    return kSquareCount - 1 - std::countl_zero(bitboard_);
+  }
+
   constexpr U8 PopLsb() {
     const U8 lsb_pos = GetLsb();
     bitboard_ &= bitboard_ - 1;

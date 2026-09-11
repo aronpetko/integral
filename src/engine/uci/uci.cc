@@ -26,6 +26,9 @@ void Initialize(search::Searcher &searcher) {
   listener.AddOption<OptionVisibility::kPublic>("MultiPV", 1, 1, 6);
   listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
   listener.AddOption<OptionVisibility::kPublic>("Minimal", false);
+  listener.AddOption<OptionVisibility::kPublic>("UCI_Chess960", false, [](const Option &option) {
+    chess960 = option.GetValue<bool>();
+  });
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
     syzygy::SetPath(option.GetValue<std::string>());
   });

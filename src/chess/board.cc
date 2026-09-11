@@ -6,25 +6,23 @@
 #include "move.h"
 #include "move_gen.h"
 
-// clang-format off
-constexpr std::array<U8, 64> kCastlingRights = {
-  7, 15, 15, 15,  3, 15, 15, 11,
-  15, 15, 15, 15, 15, 15, 15, 15,
-  15, 15, 15, 15, 15, 15, 15, 15,
-  15, 15, 15, 15, 15, 15, 15, 15,
-  15, 15, 15, 15, 15, 15, 15, 15,
-  15, 15, 15, 15, 15, 15, 15, 15,
-  15, 15, 15, 15, 15, 15, 15, 15,
-  13, 15, 15, 15, 12, 15, 15, 14
-};
-// clang-format on
+namespace {
 
-Board::Board() : history_({}) {}
+constexpr U16 kAllCastleRights = 0xFFFF;
 
-Board::Board(const BoardState &state) : history_({}), state_(state) {}
+}
+
+Board::Board() : history_({}) {
+  castle_masks_.fill(kAllCastleRights);
+}
+
+Board::Board(const BoardState &state) : history_({}), state_(state) {
+  BuildCastleMasks();
+}
 
 Board::Board(const Board &other)
     : state_(other.state_),
+      castle_masks_(other.castle_masks_),
       history_(other.history_),
       key_history_(other.key_history_) {}
 
@@ -34,6 +32,7 @@ Board &Board::operator=(const Board &other) {
   }
 
   state_ = other.state_;
+  castle_masks_ = other.castle_masks_;
   history_ = other.history_;
   key_history_ = other.key_history_;
   accumulator_ = std::make_shared<nnue::Accumulator>();
@@ -42,6 +41,8 @@ Board &Board::operator=(const Board &other) {
 
 void Board::SetFromFen(std::string_view fen_str) {
   state_ = fen::StringToBoard(fen_str);
+
+  BuildCastleMasks();
 
   accumulator_ = std::make_shared<nnue::Accumulator>();
   accumulator_->SetFromState(state_);
@@ -53,11 +54,14 @@ void Board::SetFromFen(std::string_view fen_str) {
 }
 
 bool Board::IsMovePseudoLegal(Move move) const {
+  if (move.IsNull()) return false;
+
   const auto from = move.GetFrom(), to = move.GetTo();
   const Color us = state_.turn;
 
   const BitBoard &our_pieces = state_.Occupied(us);
-  if (!our_pieces.IsSet(from) || our_pieces.IsSet(to)) {
+  if (!our_pieces.IsSet(from) ||
+      (our_pieces.IsSet(to) && move.GetType() != MoveType::kCastle)) {
     return false;
   }
 
@@ -75,25 +79,11 @@ bool Board::IsMovePseudoLegal(Move move) const {
       return false;
     }
 
-    constexpr int kKingsideCastleDist = -2;
-    constexpr int kQueensideCastleDist = 2;
-    constexpr BitBoard kWhiteKingsideOccupancy = 0x60;
-    constexpr BitBoard kWhiteQueensideOccupancy = 0xe;
-    constexpr BitBoard kBlackKingsideOccupancy = 0x6000000000000000;
-    constexpr BitBoard kBlackQueensideOccupancy = 0xe00000000000000;
-
-    // Note: the only way move_dist is ever 2 or -2 is from
-    // move_gen::CastlingMoves allowing it
-    const int move_dist = static_cast<int>(from) - static_cast<int>(to);
-    if (move_dist == kKingsideCastleDist) {
-      return !state_.checkers && state_.castle_rights.CanKingsideCastle(us) &&
-             !(occupied & (us == Color::kWhite ? kWhiteKingsideOccupancy
-                                               : kBlackKingsideOccupancy));
-    } else if (move_dist == kQueensideCastleDist) {
-      return !state_.checkers && state_.castle_rights.CanQueensideCastle(us) &&
-             !(occupied & (us == Color::kWhite ? kWhiteQueensideOccupancy
-                                               : kBlackQueensideOccupancy));
-    }
+    // Castling moves are encoded as the king capturing its own rook
+    const auto side =
+        to > from ? CastleRights::kKingside : CastleRights::kQueenside;
+    return state_.castle_rights.CanCastle(us, side) &&
+           state_.castle_rights.CastleRookSquare(us, side) == to;
   }
 
   if (move_type == MoveType::kEnPassant) {
@@ -142,22 +132,29 @@ bool Board::IsMoveLegal(Move move) const {
 
   const auto piece_type = state_.GetPieceType(from);
   if (piece_type == PieceType::kKing) {
-    constexpr int kKingsideCastleDist = -2;
-    constexpr int kQueensideCastleDist = 2;
+    if (move.GetType() == MoveType::kCastle) {
+      // The rook being pinned only matters in Chess960, where it can be
+      // sitting between the king and an attacker
+      if (state_.InCheck() || state_.pinned[us].IsSet(to)) {
+        return false;
+      }
 
-    // Note: the only way move_dist is ever 2 or -2 is from
-    // move_gen::CastlingMoves allowing it
-    const int move_dist = static_cast<int>(from) - static_cast<int>(to);
-    if (move_dist == kKingsideCastleDist) {
-      return !move_gen::GetAttackersTo(
-                 state_, is_white ? Squares::kG1 : Squares::kG8, them) &&
-             !move_gen::GetAttackersTo(
-                 state_, is_white ? Squares::kF1 : Squares::kF8, them);
-    } else if (move_dist == kQueensideCastleDist) {
-      return !move_gen::GetAttackersTo(
-                 state_, is_white ? Squares::kC1 : Squares::kC8, them) &&
-             !move_gen::GetAttackersTo(
-                 state_, is_white ? Squares::kD1 : Squares::kD8, them);
+      const auto index = CastleRights::CastleIndex(
+          us, to > from ? CastleRights::kKingside : CastleRights::kQueenside);
+      const BitBoard rook_mask = BitBoard::FromSquare(to);
+      const BitBoard king_path =
+          move_gen::CastlePath(from, kKingCastleTargets[index]);
+      const BitBoard rook_path =
+          move_gen::CastlePath(to, kRookCastleTargets[index]);
+
+      // Only the castling king and rook may stand in either of their paths
+      if ((king_path | rook_path) & state_.Occupied() &
+          ~(king_mask | rook_mask)) {
+        return false;
+      }
+
+      // The king can't castle through an attacked square
+      return !(king_path & ~king_mask & state_.threats);
     }
 
     // Make sure the destination square isn't attacked
@@ -212,14 +209,24 @@ void Board::MakeMove(Move move) {
   const Color us = state_.turn, them = FlipColor(us);
 
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto piece = state_.GetPieceType(from),
-             captured = state_.GetPieceType(to);
   const auto move_type = move.GetType();
+  const auto piece = state_.GetPieceType(from);
+
+  // Castling moves capture nothing, since they're encoded as the king
+  // capturing its own rook
+  const auto captured = move_type == MoveType::kCastle
+                          ? PieceType::kNone
+                          : state_.GetPieceType(to);
+  const auto castle_index = CastleRights::CastleIndex(
+      us, to > from ? CastleRights::kKingside : CastleRights::kQueenside);
 
   // Initialize PSQT accumulator change
   nnue::PsqtAccumulatorChange accum_change{};
   accum_change.sub_0 = {from, piece, us};
-  accum_change.add_0 = {to, piece, us};
+  accum_change.add_0 = {
+      move_type == MoveType::kCastle ? kKingCastleTargets[castle_index] : to,
+      piece,
+      us};
 
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
@@ -257,20 +264,22 @@ void Board::MakeMove(Move move) {
   if (move_type == MoveType::kCastle) {
     HandleCastling(move);
     accum_change.type = nnue::PsqtAccumulatorChange::kCastle;
-    const Square rook_from = to > from ? Square(to + 1) : Square(to - 2);
-    const Square rook_to = to > from ? Square(to - 1) : Square(to + 1);
-    accum_change.add_1 = {rook_to, PieceType::kRook, us};
-    accum_change.sub_1 = {rook_from, PieceType::kRook, us};
+    accum_change.add_1 = {
+        kRookCastleTargets[castle_index], PieceType::kRook, us};
+    accum_change.sub_1 = {to, PieceType::kRook, us};
   } else if (move_type == MoveType::kPromotion) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
     accum_change.add_0.piece = new_piece;
   }
 
-  state_.PlacePiece(to, new_piece, state_.turn);
+  // The rook and king are placed by HandleCastling for castling moves
+  if (move_type != MoveType::kCastle) {
+    state_.PlacePiece(to, new_piece, state_.turn);
+  }
 
   // Update the castling rights depending on the piece that moved
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
-  state_.castle_rights &= kCastlingRights[from] & kCastlingRights[to];
+  state_.castle_rights &= castle_masks_[from] & castle_masks_[to];
   state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
 
   state_.turn = FlipColor(state_.turn);
@@ -490,30 +499,42 @@ bool Board::MoveGivesDirectCheck(Move move) const {
   return relevant_check_zones.IsSet(to);
 }
 
+void Board::BuildCastleMasks() {
+  castle_masks_.fill(kAllCastleRights);
+
+  for (const Color color : {Color::kWhite, Color::kBlack}) {
+    U16 both_rights = 0;
+
+    for (const auto side :
+         {CastleRights::kKingside, CastleRights::kQueenside}) {
+      if (!state_.castle_rights.CanCastle(color, side)) {
+        continue;
+      }
+
+      const U16 mask = CastleRights::Mask(color, side);
+      castle_masks_[state_.castle_rights.CastleRookSquare(color, side)] &=
+          ~mask;
+      both_rights |= mask;
+    }
+
+    if (both_rights) {
+      castle_masks_[state_.King(color).GetLsb()] &= ~both_rights;
+    }
+  }
+}
+
 void Board::HandleCastling(Move move) {
   const Color us = state_.turn;
-  const bool is_white = us == Color::kWhite;
-
   const auto from = move.GetFrom(), to = move.GetTo();
-  const auto move_rook_for_castling = [this, &us](Square rook_from,
-                                                  Square rook_to) {
-    state_.RemovePiece(rook_from, state_.turn);
-    state_.PlacePiece(rook_to, PieceType::kRook, state_.turn);
-  };
 
-  constexpr int kKingsideCastleDist = -2;
-  constexpr int kQueensideCastleDist = 2;
+  const auto index = CastleRights::CastleIndex(
+      us, to > from ? CastleRights::kKingside : CastleRights::kQueenside);
 
-  // Note: the only way move_dist is ever 2 or -2 is from
-  // move_gen::CastlingMoves allowing it
-  const int move_dist = static_cast<int>(from) - static_cast<int>(to);
-  if (move_dist == kKingsideCastleDist) {
-    move_rook_for_castling(is_white ? Squares::kH1 : Squares::kH8,
-                           is_white ? Squares::kF1 : Squares::kF8);
-  } else if (move_dist == kQueensideCastleDist) {
-    move_rook_for_castling(is_white ? Squares::kA1 : Squares::kA8,
-                           is_white ? Squares::kD1 : Squares::kD8);
-  }
+  // The king has already been removed from its square, and in Chess960 it can
+  // land on the square the rook is castling from
+  state_.RemovePiece(to, us);
+  state_.PlacePiece(kKingCastleTargets[index], PieceType::kKing, us);
+  state_.PlacePiece(kRookCastleTargets[index], PieceType::kRook, us);
 }
 
 void Board::CalculateThreats() {

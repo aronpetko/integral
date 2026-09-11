@@ -27,14 +27,11 @@ namespace move_gen {
 
 [[nodiscard]] BitBoard QueenMoves(Square square, const BitBoard &occupied);
 
-[[nodiscard]] BitBoard KingMoves(Square square, const BoardState &state);
-
 [[nodiscard]] BitBoard KingAttacks(Square square);
 
 [[nodiscard]] BitBoard CastlingMoves(Color which, const BoardState &state);
 
-[[nodiscard]] BitBoard GetAttackedSquares(const BoardState &state,
-                                          Color attacker);
+[[nodiscard]] BitBoard CastlePath(Square from, Square to);
 
 [[nodiscard]] BitBoard GetAttackersTo(const BoardState &state,
                                       Square square,

@@ -20,69 +20,82 @@ class Accumulator;
 
 }
 
+inline bool chess960 = false;
+
 class CastleRights {
  public:
-  static constexpr int kKingsideIndex = 0;
-  static constexpr int kQueensideIndex = 1;
+  enum CastleSide : U8 {
+    kKingside,
+    kQueenside
+  };
 
-  static constexpr std::array<std::array<U8, 2>, 2> kMasks = {
-      {{CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside},
-       {CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside}}};
+  static constexpr U8 CastleIndex(Color turn, CastleSide side) {
+    return turn * 2 + side;
+  }
 
-  CastleRights() : rights_(0) {}
+  static constexpr U16 Mask(Color turn, CastleSide side) {
+    return 1 << CastleIndex(turn, side);
+  }
 
   bool operator==(const CastleRights &other) const {
     return rights_ == other.rights_;
   }
 
+  constexpr void operator&=(U16 mask) {
+    rights_ &= mask;
+  }
+
+  [[nodiscard]] constexpr bool CanCastle(Color turn, CastleSide side) const {
+    return rights_ & Mask(turn, side);
+  }
+
   [[nodiscard]] constexpr bool CanKingsideCastle(Color turn) const {
-    return rights_ & kMasks[turn][kKingsideIndex];
+    return CanCastle(turn, kKingside);
   }
 
   [[nodiscard]] constexpr bool CanQueensideCastle(Color turn) const {
-    return rights_ & kMasks[turn][kQueensideIndex];
+    return CanCastle(turn, kQueenside);
   }
 
   [[nodiscard]] constexpr bool CanCastle(Color turn) const {
     return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
-  constexpr void SetCanCastle(Color turn, bool queenside) {
-    if (queenside) {
-      SetCanQueensideCastle(turn, true);
-    } else {
-      SetCanQueensideCastle(turn, false);
-    }
+  [[nodiscard]] constexpr Square CastleRookSquare(Color turn,
+                                                  CastleSide side) const {
+    const int shift = kFileShift + CastleIndex(turn, side) * kFileBits;
+    return Square::FromRankFile(turn == Color::kWhite ? kRank1 : kRank8,
+                                (rights_ >> shift) & kFileMask);
   }
 
-  constexpr void SetCanKingsideCastle(Color turn, bool value) {
-    const U8 mask = kMasks[turn][kKingsideIndex];
-    value ? rights_ |= mask : rights_ &= ~mask;
+  constexpr void SetCastleRook(Color turn, CastleSide side, Square square) {
+    const int shift = kFileShift + CastleIndex(turn, side) * kFileBits;
+    rights_ &= ~(kFileMask << shift);
+    rights_ |= square.File() << shift;
+    rights_ |= Mask(turn, side);
   }
 
-  constexpr void SetCanQueensideCastle(Color turn, bool value) {
-    const U8 mask = kMasks[turn][kQueensideIndex];
-    value ? rights_ |= mask : rights_ &= ~mask;
+  constexpr void Clear() {
+    rights_ = 0;
   }
 
-  constexpr void SetBothRights(Color turn, bool value) {
-    const U8 mask =
-        kMasks[turn][kKingsideIndex] | kMasks[turn][kQueensideIndex];
-    value ? rights_ |= mask : rights_ &= ~mask;
-  }
-
-  U8 operator&=(U8 mask) {
-    rights_ &= mask;
-    return rights_;
-  }
-
-  [[nodiscard]] U8 AsU8() const {
-    return rights_;
+  [[nodiscard]] constexpr U8 AsU8() const {
+    return rights_ & kRightsMask;
   }
 
  private:
-  U8 rights_;
+  static constexpr int kFileShift = 4, kFileBits = 3;
+  static constexpr U16 kFileMask = 0b111, kRightsMask = 0b1111;
+
+  U16 rights_ = 0;
 };
+
+// Where the king and rook land after castling, indexed by
+// CastleRights::CastleIndex
+constexpr std::array<Square, 4> kKingCastleTargets = {
+    Squares::kG1, Squares::kC1, Squares::kG8, Squares::kC8};
+constexpr std::array<Square, 4> kRookCastleTargets = {
+    Squares::kF1, Squares::kD1, Squares::kF8, Squares::kD8};
 
 struct BoardState {
   BoardState()
@@ -264,9 +277,9 @@ struct BoardState {
   std::array<BitBoard, 2> side_bbs;
   std::array<PieceType, kSquareCount> piece_on_square;
   Color turn;
+  Square en_passant;
   U16 fifty_moves_clock;
   U16 half_moves;
-  Square en_passant;
   CastleRights castle_rights;
   U64 zobrist_key, pawn_key, minor_key, major_key;
   std::array<U64, 2> non_pawn_keys;
@@ -342,8 +355,11 @@ class Board {
  private:
   void HandleCastling(Move move);
 
+  void BuildCastleMasks();
+
  private:
   BoardState state_;
+  std::array<U16, kSquareCount> castle_masks_;
   List<BoardState, 2048> history_;
   List<U64, 2048> key_history_;
   std::shared_ptr<nnue::Accumulator> accumulator_;

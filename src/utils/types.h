@@ -60,13 +60,6 @@ constexpr Color RelativeColor(Color color, Color perspective) {
   return Color(color ^ perspective);
 }
 
-enum CastleRightMasks : U8 {
-  kWhiteKingside = 0b0001,
-  kWhiteQueenside = 0b0010,
-  kBlackKingside = 0b0100,
-  kBlackQueenside = 0b1000,
-};
-
 enum class Direction : int {
   kNorth,
   kSouth,
@@ -186,6 +179,10 @@ class Square {
 
   constexpr Square operator*(int scalar) const {
     return square_ * scalar;
+  }
+
+  [[nodiscard]] std::string ToString() const {
+    return {static_cast<char>('a' + File()), static_cast<char>('1' + Rank())};
   }
 
  private:
