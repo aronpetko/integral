@@ -23,18 +23,30 @@ Move Move::FromStr(std::string_view str, const BoardState &state) {
     return Move::NullMove();
 
   const auto from = Square::FromRankFile(from_rank, from_file);
-  const auto to = Square::FromRankFile(to_rank, to_file);
+  auto to = Square::FromRankFile(to_rank, to_file);
 
   auto flag = MoveType::kNormal;
 
   if (str.length() < kMaxMoveLen) {
     const auto piece = state.GetPieceType(from);
-    if (piece == PieceType::kKing && std::abs(from_file - to_file) == 2) {
-      flag = MoveType::kCastle;
-    } else if (piece == PieceType::kPawn) {
-      if (state.en_passant && to == state.en_passant) {
-        flag = MoveType::kEnPassant;
+    if (piece == PieceType::kKing) {
+      // Castling is encoded as the king capturing its own rook, which is how
+      // Chess960 moves already arrive
+      const bool takes_own_rook = state.GetPieceType(to) == PieceType::kRook &&
+                                  state.GetPieceColor(to) == state.turn;
+      if (takes_own_rook) {
+        flag = MoveType::kCastle;
+      } else if (std::abs(from_file - to_file) == 2) {
+        const auto side = to > from ? CastleRights::kKingside
+                                    : CastleRights::kQueenside;
+        const Square rook_square = state.castle_rights.CastleSquare(state.turn, side);
+        if (rook_square != Squares::kNoSquare) {
+          to = rook_square;
+          flag = MoveType::kCastle;
+        }
       }
+    } else if (piece == PieceType::kPawn && to == state.en_passant) {
+      flag = MoveType::kEnPassant;
     }
 
     return Move(from, to, flag);
@@ -66,7 +78,9 @@ Move Move::FromStr(std::string_view str, const BoardState &state) {
 }
 
 bool Move::IsCapture(const BoardState &state) const {
-  return state.GetPieceType(GetTo()) != PieceType::kNone || IsEnPassant(state);
+  return (state.GetPieceType(GetTo()) != PieceType::kNone &&
+          GetType() != MoveType::kCastle) ||
+         IsEnPassant(state);
 }
 
 bool Move::IsNoisy(const BoardState &state) const {
@@ -87,12 +101,19 @@ bool Move::IsUnderPromotion() const {
 std::string Move::ToString() const {
   if (data_ == 0) return "null";
 
-  const auto from_rank = GetFrom().Rank(), from_file = GetFrom().File();
-  const auto to_rank = GetTo().Rank(), to_file = GetTo().File();
+  std::string res = GetFrom().ToString();
 
-  std::string res = std::string(1, 'a' + from_file) +
-                    std::to_string(from_rank + 1) +
-                    std::string(1, 'a' + to_file) + std::to_string(to_rank + 1);
+  // Castling moves are stored as the king capturing its own rook, which is
+  // only how they're written in Chess960
+  if (GetType() == MoveType::kCastle && !chess960) {
+    const auto side =
+        GetTo() > GetFrom() ? CastleRights::kKingside : CastleRights::kQueenside;
+    const Color color = GetFrom().Rank() == kRank1 ? kWhite : kBlack;
+    return res +
+           kKingCastleTargets[CastleRights::CastleIndex(color, side)].ToString();
+  }
+
+  res += GetTo().ToString();
 
   if (GetType() == MoveType::kPromotion) {
     switch (GetPromotionType()) {

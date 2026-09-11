@@ -20,69 +20,80 @@ class Accumulator;
 
 }
 
+inline bool chess960 = false;
+
 class CastleRights {
  public:
-  static constexpr int kKingsideIndex = 0;
-  static constexpr int kQueensideIndex = 1;
+  enum CastleSide : U8 {
+    kKingside,
+    kQueenside
+  };
 
-  static constexpr std::array<std::array<U8, 2>, 2> kMasks = {
-      {{CastleRightMasks::kBlackKingside, CastleRightMasks::kBlackQueenside},
-       {CastleRightMasks::kWhiteKingside, CastleRightMasks::kWhiteQueenside}}};
+  static constexpr U8 CastleIndex(Color turn, CastleSide side) {
+    return turn * 2 + side;
+  }
 
-  CastleRights() : rights_(0) {}
+  constexpr CastleRights() {
+    rights_.fill(Squares::kNoSquare);
+  }
 
   bool operator==(const CastleRights &other) const {
     return rights_ == other.rights_;
   }
 
+  [[nodiscard]] constexpr Square CastleSquare(Color turn,
+                                              CastleSide side) const {
+    return rights_[CastleIndex(turn, side)];
+  }
+
   [[nodiscard]] constexpr bool CanKingsideCastle(Color turn) const {
-    return rights_ & kMasks[turn][kKingsideIndex];
+    return CastleSquare(turn, kKingside) != Squares::kNoSquare;
   }
 
   [[nodiscard]] constexpr bool CanQueensideCastle(Color turn) const {
-    return rights_ & kMasks[turn][kQueensideIndex];
+    return CastleSquare(turn, kQueenside) != Squares::kNoSquare;
   }
 
   [[nodiscard]] constexpr bool CanCastle(Color turn) const {
     return CanKingsideCastle(turn) || CanQueensideCastle(turn);
   }
 
-  constexpr void SetCanCastle(Color turn, bool queenside) {
-    if (queenside) {
-      SetCanQueensideCastle(turn, true);
-    } else {
-      SetCanQueensideCastle(turn, false);
+  constexpr void SetCastleSquare(Color turn, CastleSide side, Square square) {
+    rights_[CastleIndex(turn, side)] = square;
+  }
+
+  constexpr void UnsetCastleSquare(Color turn, CastleSide side) {
+    SetCastleSquare(turn, side, Squares::kNoSquare);
+  }
+
+  constexpr void UnsetBothRights(Color turn) {
+    UnsetCastleSquare(turn, kKingside);
+    UnsetCastleSquare(turn, kQueenside);
+  }
+
+  constexpr void Clear() {
+    rights_.fill(Squares::kNoSquare);
+  }
+
+  [[nodiscard]] constexpr U8 AsU8() const {
+    U8 flags = 0;
+    for (size_t i = 0; i < rights_.size(); i++) {
+      flags |= static_cast<U8>(rights_[i] != Squares::kNoSquare) << i;
     }
-  }
-
-  constexpr void SetCanKingsideCastle(Color turn, bool value) {
-    const U8 mask = kMasks[turn][kKingsideIndex];
-    value ? rights_ |= mask : rights_ &= ~mask;
-  }
-
-  constexpr void SetCanQueensideCastle(Color turn, bool value) {
-    const U8 mask = kMasks[turn][kQueensideIndex];
-    value ? rights_ |= mask : rights_ &= ~mask;
-  }
-
-  constexpr void SetBothRights(Color turn, bool value) {
-    const U8 mask =
-        kMasks[turn][kKingsideIndex] | kMasks[turn][kQueensideIndex];
-    value ? rights_ |= mask : rights_ &= ~mask;
-  }
-
-  U8 operator&=(U8 mask) {
-    rights_ &= mask;
-    return rights_;
-  }
-
-  [[nodiscard]] U8 AsU8() const {
-    return rights_;
+    return flags;
   }
 
  private:
-  U8 rights_;
+  // The rook's square for each color and side, indexed by CastleIndex
+  std::array<Square, 4> rights_;
 };
+
+// Where the king and rook land after castling, indexed by
+// CastleRights::CastleIndex
+constexpr std::array<Square, 4> kKingCastleTargets = {
+    Squares::kG1, Squares::kC1, Squares::kG8, Squares::kC8};
+constexpr std::array<Square, 4> kRookCastleTargets = {
+    Squares::kF1, Squares::kD1, Squares::kF8, Squares::kD8};
 
 struct BoardState {
   BoardState()
@@ -341,6 +352,8 @@ class Board {
 
  private:
   void HandleCastling(Move move);
+
+  void RemoveCastleRight(Color color, Square rook_square);
 
  private:
   BoardState state_;
