@@ -77,6 +77,8 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
+  // Was this position a PV node (or stored in the TT as a PV node)?
+  bool tt_was_in_pv;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -100,7 +102,8 @@ struct StackEntry {
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
         continuation_entry(nullptr),
-        reduction(0) {
+        reduction(0),
+        tt_was_in_pv(false) {
     ClearKillerMoves();
   }
 

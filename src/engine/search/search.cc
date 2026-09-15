@@ -292,6 +292,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
     tt_static_eval = tt_entry->static_eval;
   }
 
+  stack->tt_was_in_pv = tt_was_in_pv;
+
   // Use the TT entry's evaluation if possible
   const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
 
@@ -776,7 +778,7 @@ Score Searcher::PVSearch(Thread &thread,
             std::min(2, (stack->eval - beta) / kNmpEvalDiv);
         int reduction =
             depth / kNmpRedDiv + kNmpRedBase + eval_reduction + improving;
-        reduction = std::clamp(reduction, 0, depth);
+        stack->reduction = 1024 * (reduction = std::clamp(reduction, 0, depth));
 
         board.MakeNullMove();
         const Score score = -PVSearch<NodeType::kNonPV>(
@@ -1287,13 +1289,15 @@ Score Searcher::PVSearch(Thread &thread,
     if (!in_root || thread.pv_move_idx == 0) {
       // Attempt to update the transposition table with the evaluation of this
       // position
-      const TranspositionTableEntry new_tt_entry(zobrist_key,
-                                                 depth,
-                                                 tt_flag,
-                                                 best_score,
-                                                 raw_static_eval,
-                                                 best_move,
-                                                 tt_was_in_pv);
+      const TranspositionTableEntry new_tt_entry(
+          zobrist_key,
+          depth + (prev_stack->tt_was_in_pv && prev_stack->reduction >= 1024 &&
+                   !!thread.nmp_min_ply),
+          tt_flag,
+          best_score,
+          raw_static_eval,
+          best_move,
+          tt_was_in_pv);
       transposition_table_.Save(
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
