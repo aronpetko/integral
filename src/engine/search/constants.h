@@ -43,7 +43,7 @@ TUNABLE_STEP(kRazoringNotImproving, 415, 200, 600, false, 20);
 
 TUNABLE_STEP(kNmpBetaBase, 152, 50, 200, false, 15);
 TUNABLE_STEP(kNmpBetaMult, 7, 5, 50, false, 5);
-TUNABLE(kNmpRedBase, 4, 1, 5, true);
+TUNABLE(kNmpRedBase, 5, 1, 5, true);
 TUNABLE(kNmpRedDiv, 3, 2, 8, true);
 TUNABLE(kNmpEvalDiv, 171, 100, 300, false);
 
