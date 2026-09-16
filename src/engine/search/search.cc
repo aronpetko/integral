@@ -718,6 +718,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
+  bool failed_prob_cut = false;
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (prev_stack->reduction >= kHindsightDepthReduction &&
         !stack->excluded_tt_move && !opponent_worsening) {
@@ -869,6 +870,7 @@ Score Searcher::PVSearch(Thread &thread,
                 tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
             return score;
           }
+          failed_prob_cut = true;
         }
       }
     }
@@ -1078,6 +1080,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce more if this node is expected to fail high
       if (cut_node) {
         reduction += kLmrCutNode;
+        reduction += 512 * failed_prob_cut;
       }
 
       // Reduce less if this move gives check
