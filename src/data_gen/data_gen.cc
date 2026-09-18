@@ -243,6 +243,7 @@ void PrintProgress(const Config &config, U64 completed, U64 written) {
 void GameLoop(const Config &config,
               int thread_id,
               std::ostream &output_stream,
+              std::mutex &output_mutex,
               const Book &book) {
   RandomSeed(thread_id, GetCurrentTimeMilliseconds());
 
@@ -335,8 +336,23 @@ void GameLoop(const Config &config,
     }
 
     if (wdl_outcome) {
-      const auto written = positions_written.fetch_add(
-          formatter.WriteOutcome(*wdl_outcome), std::memory_order_relaxed);
+      U64 written;
+      {
+        std::lock_guard lock(output_mutex);
+        if (!output_stream) {
+          break;
+        }
+        const auto positions = formatter.WriteOutcome(*wdl_outcome);
+        output_stream.flush();
+        if (!output_stream) {
+          fmt::println("Error: failed to write datagen output");
+          stop = true;
+          break;
+        }
+        written =
+            positions_written.fetch_add(positions, std::memory_order_relaxed) +
+            positions;
+      }
       const auto completed =
           games_completed.fetch_add(1, std::memory_order_relaxed) + 1;
 
@@ -395,83 +411,27 @@ void Generate(Config config) {
     return;
   }
 
-  std::vector<std::string> temp_files;
-
-  for (int i = 0; i < config.num_threads; i++) {
-    auto thread_path = path + fmt::format("_temp{}", i);
-    temp_files.push_back(thread_path);
-
-    threads.emplace_back(
-        [&config, thread_path = std::move(thread_path), i, &book]() {
-          std::ofstream output_stream(thread_path,
-                                      std::ios::binary | std::ios::app);
-          if (!output_stream) {
-            fmt::println(
-                "Error: Failed to open output file {} for thread {} '{}'",
-                thread_path,
-                i,
-                strerror(errno));
-            return;
-          }
-
-          GameLoop(config, i, output_stream, *book);
-
-          output_stream.close();
-          if (!output_stream.good()) {
-            fmt::println(
-                "Error: Thread {} encountered an issue while closing the file",
-                i);
-          }
-        });
+  std::ofstream output_stream(path, std::ios::binary | std::ios::app);
+  if (!output_stream) {
+    fmt::println("Error: cannot open datagen output {}", path);
+    return;
   }
-
+  std::mutex output_mutex;
+  for (int i = 0; i < config.num_threads; i++) {
+    threads.emplace_back([&config, i, &book, &output_stream, &output_mutex]() {
+      GameLoop(config, i, output_stream, output_mutex, *book);
+    });
+  }
   for (auto &thread : threads) {
     thread.join();
   }
 
-  // Add a small delay to ensure file system sync
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-
-  fmt::println("");
-
-  // Concatenate all temp files into one big file
-  std::ofstream final_output(path, std::ios::binary);
-  if (!final_output) {
-    fmt::println("Error: Failed to open final output file {}", path);
+  output_stream.close();
+  if (!output_stream.good()) {
+    fmt::println("Error: failed to close datagen output {}", path);
     return;
   }
-
-  int concatenated_files = 0;
-  for (const auto &temp_file : temp_files) {
-    std::ifstream input(temp_file, std::ios::binary);
-    if (input) {
-      final_output << input.rdbuf();
-      input.close();
-      // Delete the temp file
-      if (std::remove(temp_file.c_str()) == 0) {
-        concatenated_files++;
-        fmt::println("Successfully concatenated and removed temp file {}",
-                     temp_file);
-      } else {
-        fmt::println(
-            "Error: Failed to remove temp file {} after concatenation. Error: "
-            "{}",
-            temp_file,
-            strerror(errno));
-      }
-    } else {
-      fmt::println(
-          "Error: Failed to open temp file {} for concatenation. Error: {}",
-          temp_file,
-          strerror(errno));
-    }
-  }
-
-  final_output.close();
-
-  fmt::println("Concatenated {} out of {} expected temp files",
-               concatenated_files,
-               config.num_threads);
+  fmt::println("Wrote {} games to {}", games_completed.load(), path);
 }
 
 }  // namespace data_gen
