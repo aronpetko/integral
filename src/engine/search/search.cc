@@ -997,7 +997,7 @@ Score Searcher::PVSearch(Thread &thread,
         std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         stack->ply < thread.root_depth * 2) {
       const auto reduced_depth = kSeDepthReduction * (depth - 1) / 16;
-      const auto move_history = [&]() -> I32 {
+      const auto tt_move_history = [&]() -> I32 {
         if (tt_move.IsCapture(state)) {
           return history.capture_history->GetScore(state, tt_move);
         } else {
@@ -1013,7 +1013,7 @@ Score Searcher::PVSearch(Thread &thread,
       const auto new_beta =
           tt_entry->score -
           (beta_margin +
-           std::clamp(move_history / 1024, -beta_margin, beta_margin));
+           std::clamp(tt_move_history / 1024, -beta_margin, beta_margin));
 
       stack->excluded_tt_move = tt_move;
       const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
