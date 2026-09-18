@@ -718,15 +718,15 @@ Score Searcher::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
-    if (prev_stack->reduction >= kHindsightDepthReduction &&
+  if (!stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
+    if (!in_pv_node && prev_stack->reduction >= kHindsightDepthReduction &&
         !stack->excluded_tt_move && !opponent_worsening) {
       ++depth;
     }
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
-    if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
+    if (!in_pv_node && depth <= kRevFutDepth && !stack->excluded_tt_move &&
         stack->eval >= beta) {
       const bool opponent_easy_capture =
           board.GetOpponentWinningCaptures() != 0;
@@ -746,7 +746,8 @@ Score Searcher::PVSearch(Thread &thread,
     // do a quiescent search to determine if we should prune
     const int razoring_margin =
         kRazoringMult * depth - !improving * kRazoringNotImproving;
-    if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
+    if (!(in_pv_node || cut_node) && !stack->excluded_tt_move &&
+        depth <= kRazoringDepth && alpha < 2000 &&
         stack->static_eval + razoring_margin < alpha) {
       const Score razoring_score =
           QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
@@ -757,7 +758,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Null Move Pruning: Forfeit a move to our opponent and cutoff if we
     // still have the advantage
-    if (!(stack - 1)->move.IsNull() && stack->eval >= beta &&
+    if (!in_pv_node && !(stack - 1)->move.IsNull() && stack->eval >= beta &&
         stack->static_eval >= beta + kNmpBetaBase - kNmpBetaMult * depth &&
         !stack->excluded_tt_move && stack->ply >= thread.nmp_min_ply) {
       // Avoid null move pruning a position with high zugzwang potential
@@ -810,7 +811,8 @@ Score Searcher::PVSearch(Thread &thread,
       // cutoff, we attempt a shallower quiescent-like search and prune early
       // if possible
       const Score pc_beta = beta + kProbcutBetaDelta;
-      if (depth >= kProbcutDepth && std::abs(beta) < kTBWinInMaxPlyScore &&
+      if (!in_pv_node && depth >= kProbcutDepth &&
+          std::abs(beta) < kTBWinInMaxPlyScore &&
           (!tt_hit || tt_entry->depth + 3 < depth ||
            tt_entry->score >= pc_beta)) {
         const int pc_see = pc_beta - stack->eval;
