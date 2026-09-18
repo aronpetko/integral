@@ -1,0 +1,8 @@
+[package]
+name = "vf-hmc-reference"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+viriformat = "=2.0.1"
+rand = "0.9"

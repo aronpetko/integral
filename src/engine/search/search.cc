@@ -67,10 +67,18 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
   const auto root_stack = &thread.stack.Front();
   thread.root_moves = RootMoveList(thread.board);
+  if constexpr (!regular_search) {
+    if (thread.root_moves.Empty()) {
+      return;
+    }
+  }
 
-  const int multi_pv =
-      std::min(uci::listener.GetOption("MultiPV").GetValue<int>(),
-               thread.root_moves.Size());
+  const int multi_pv = std::min(
+      regular_search ? uci::listener.GetOption("MultiPV").GetValue<int>()
+                     : thread.multi_pv,
+      thread.root_moves.Size());
+  // Opening randomization must only sample fully searched MultiPV lines.
+  std::vector<RootMove> completed_moves;
   const bool minimal = uci::listener.GetOption("Minimal").GetValue<bool>();
 
   std::unique_ptr<uci::reporter::ReportInfo> report_info;
@@ -100,8 +108,13 @@ void Searcher::IterativeDeepening(Thread &thread) {
       int fail_high_count = 0;
 
       while (true) {
-        const Score score = PVSearch<NodeType::kPV>(
-            thread, depth - fail_high_count, alpha, beta, root_stack, false);
+        const Score score =
+            PVSearch<NodeType::kPV>(thread,
+                                    std::max(1, depth - fail_high_count),
+                                    alpha,
+                                    beta,
+                                    root_stack,
+                                    false);
 
         thread.root_moves.SortNextMove(thread.pv_move_idx);
 
@@ -141,6 +154,13 @@ void Searcher::IterativeDeepening(Thread &thread) {
     }
 
     thread.root_moves.SortNextMove(0);
+    if (!regular_search && thread.multi_pv > 1 && !ShouldQuit()) {
+      completed_moves.clear();
+      for (int i = 0; i < multi_pv; ++i) {
+        completed_moves.push_back(thread.root_moves[i]);
+      }
+      thread.completed_pvs = multi_pv;
+    }
     auto &best_move = thread.root_moves[0];
 
     thread.scores[depth] = best_move.score;
@@ -179,6 +199,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
     }
   }
 
+  for (int i = 0; i < completed_moves.size(); ++i) {
+    thread.root_moves[i] = completed_moves[i];
+  }
   const auto &best_move = thread.root_moves[0];
   thread.previous_score = best_move.score;
 

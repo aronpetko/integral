@@ -148,6 +148,7 @@ struct alignas(64) Thread {
     nodes_searched = 0;
     sel_depth = 0;
     tb_hits = 0;
+    completed_pvs = 0;
   }
 
   U32 id;
@@ -161,6 +162,7 @@ struct alignas(64) Thread {
   U16 root_depth, sel_depth;
   std::atomic<U64> tb_hits;
   int pv_move_idx;
+  int multi_pv = 1, completed_pvs = 0;
   RootMoveList root_moves;
   U16 nmp_min_ply;
 };

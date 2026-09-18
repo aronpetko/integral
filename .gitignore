@@ -4,6 +4,7 @@
 
 ## Eval File
 *.nnue
+tools/*
 
 # User-specific stuff
 .idea/**/workspace.xml

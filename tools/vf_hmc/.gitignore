@@ -1,0 +1,6 @@
+*.exe
+*.csv
+*.txt
+!CMakeLists.txt
+build/
+verify/target/

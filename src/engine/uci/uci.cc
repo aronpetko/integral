@@ -135,9 +135,10 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
     CreateArgument("book", ArgumentType::kOptional, LimitedInputProcessor<1>()),
   }, [](Command *cmd) {
     const auto book_file = cmd->ParseArgument<std::string>("book");
+    constexpr U64 kDefaultSoftNodeLimit = 10'000, kDefaultHardNodeLimit = 1'000'000;
     data_gen::Config config{
-      .soft_node_limit = *cmd->ParseArgument<U64>("soft_limit"),
-      .hard_node_limit = *cmd->ParseArgument<U64>("hard_limit"),
+      .soft_node_limit = cmd->ParseArgument<U64>("soft_limit").value_or(kDefaultSoftNodeLimit),
+      .hard_node_limit = cmd->ParseArgument<U64>("hard_limit").value_or(kDefaultHardNodeLimit),
       .num_games = *cmd->ParseArgument<U64>("games"),
       .num_threads = *cmd->ParseArgument<I32>("threads"),
       .min_move_plies = *cmd->ParseArgument<I32>("min_moves"),

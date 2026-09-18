@@ -4,8 +4,8 @@ namespace fen {
 
 // clang-format off
 constexpr std::array<std::array<char, kNumPieceTypes + 1>, 2> kPieceToChar = {{
-  {'p', 'n', 'b', 'r', 'q', 'k', 'x'},
-  {'P', 'N', 'B', 'R', 'Q', 'K', 'x'}
+  {'P', 'N', 'B', 'R', 'Q', 'K', 'x'},
+  {'p', 'n', 'b', 'r', 'q', 'k', 'x'}
 }};
 // clang-format on
 
@@ -171,7 +171,7 @@ std::string BoardToString(const BoardState &state) {
   output.push_back(' ');
   output.append(std::to_string(state.fifty_moves_clock));
   output.push_back(' ');
-  output.append(std::to_string((state.half_moves + 1) / 2));
+  output.append(std::to_string(state.half_moves / 2 + 1));
 
   return output;
 }
