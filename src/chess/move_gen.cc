@@ -174,29 +174,17 @@ BitBoard KnightMoves(Square square) {
 }
 
 BitBoard BishopMoves(Square square, const BitBoard &occupied) {
-  const auto &entry = magics::kBishopMagics[square];
-  const auto magic_index = (occupied & entry.mask) * entry.magic >> entry.shift;
-  return magics::attacks::kBishopAttacks[square][magic_index.AsU64()];
+  const auto &index = magics::attacks::GetBishopAttackIndex(square, occupied);
+  return magics::attacks::kBishopAttacks[square][index];
 }
 
 BitBoard RookMoves(Square square, const BitBoard &occupied) {
-  const auto &entry = magics::kRookMagics[square];
-  const auto magic_index = (occupied & entry.mask) * entry.magic >> entry.shift;
-  return magics::attacks::kRookAttacks[square][magic_index.AsU64()];
+  const auto &index = magics::attacks::GetRookAttackIndex(square, occupied);
+  return magics::attacks::kRookAttacks[square][index];
 }
 
 BitBoard QueenMoves(Square square, const BitBoard &occupied) {
   return BishopMoves(square, occupied) | RookMoves(square, occupied);
-}
-
-BitBoard KingMoves(Square square, const BoardState &state) {
-  BitBoard moves = KingAttacks(square);
-
-  const auto color = state.GetPieceColor(square);
-  if (state.castle_rights.CanCastle(state.turn) && !state.checkers)
-    moves |= CastlingMoves(color, state);
-
-  return moves;
 }
 
 BitBoard KingAttacks(Square square) {
@@ -204,28 +192,29 @@ BitBoard KingAttacks(Square square) {
 }
 
 BitBoard CastlingMoves(Color side, const BoardState &state) {
-  BitBoard moves, occupied = state.Occupied();
+  BitBoard moves;
 
-  constexpr BitBoard kWhiteKingsideOccupancy = 0x60;
-  constexpr BitBoard kWhiteQueensideOccupancy = 0xe;
-  constexpr BitBoard kBlackKingsideOccupancy = 0x6000000000000000;
-  constexpr BitBoard kBlackQueensideOccupancy = 0xe00000000000000;
+  const Square king_square = state.King(side).GetLsb();
+  const BitBoard occupied = state.Occupied();
 
-  if (side == Color::kWhite) {
-    if (state.castle_rights.CanKingsideCastle(Color::kWhite)) {
-      if (!(occupied & kWhiteKingsideOccupancy)) moves.SetBit(Squares::kG1);
+  for (const auto castle_side :
+       {CastleRights::kKingside, CastleRights::kQueenside}) {
+    if (!state.castle_rights.CanCastle(side, castle_side)) {
+      continue;
     }
 
-    if (state.castle_rights.CanQueensideCastle(Color::kWhite)) {
-      if (!(occupied & kWhiteQueensideOccupancy)) moves.SetBit(Squares::kC1);
-    }
-  } else {
-    if (state.castle_rights.CanKingsideCastle(Color::kBlack)) {
-      if (!(occupied & kBlackKingsideOccupancy)) moves.SetBit(Squares::kG8);
-    }
+    const Square rook_square =
+        state.castle_rights.CastleRookSquare(side, castle_side);
+    const auto index = CastleRights::CastleIndex(side, castle_side);
 
-    if (state.castle_rights.CanQueensideCastle(Color::kBlack)) {
-      if (!(occupied & kBlackQueensideOccupancy)) moves.SetBit(Squares::kC8);
+    const BitBoard travelled =
+        CastlePath(king_square, kKingCastleTargets[index]) |
+        CastlePath(rook_square, kRookCastleTargets[index]);
+    const BitBoard blockers = occupied & ~(BitBoard::FromSquare(king_square) |
+                                           BitBoard::FromSquare(rook_square));
+
+    if (!(travelled & blockers)) {
+      moves.SetBit(rook_square);
     }
   }
 
@@ -275,6 +264,32 @@ BitBoard GetSlidingAttackersTo(const BoardState &state,
   attackers |= RookMoves(square, occupied) & (state.Rooks() | queens);
 
   return attackers & state.Occupied(attacker);
+}
+
+BitBoard GetPieceAttacks(Square square,
+                         PieceType piece_type,
+                         Color side,
+                         BitBoard occupied) {
+  switch (piece_type) {
+    case PieceType::kPawn:
+      return PawnAttacks(square, side);
+    case PieceType::kKnight:
+      return KnightMoves(square);
+    case PieceType::kBishop:
+      return BishopMoves(square, occupied);
+    case PieceType::kRook:
+      return RookMoves(square, occupied);
+    case PieceType::kQueen:
+      return QueenMoves(square, occupied);
+    case PieceType::kKing:
+      return KingAttacks(square);
+    default:
+      return 0;
+  }
+}
+
+BitBoard CastlePath(Square from, Square to) {
+  return kRayBetweenMasks[from][to] | BitBoard::FromSquare(to);
 }
 
 BitBoard RayBetween(Square first, Square second) {
@@ -459,13 +474,11 @@ MoveList GenerateMoves(const Board &board) {
   if constexpr (move_type & MoveGenType::kQuiet) targets |= ~occupied;
   if constexpr (move_type & MoveGenType::kNoisy) targets |= their_pieces;
 
+  const Square king_square = state.King(state.turn).GetLsb();
   if (state.checkers.MoreThanOne()) {
     // Only king moves are legal if there's multiple pieces checking the king
-    const Square king_square = state.King(state.turn).GetLsb();
-    for (Square to : KingMoves(king_square, state) & targets) {
-      const bool is_castle = std::abs(to.File() - king_square.File()) == 2;
-      move_list.Push(Move(
-          king_square, to, is_castle ? MoveType::kCastle : MoveType::kNormal));
+    for (Square to : KingAttacks(king_square) & targets) {
+      move_list.Push(Move(king_square, to));
     }
     return move_list;
   }
@@ -473,7 +486,7 @@ MoveList GenerateMoves(const Board &board) {
   AddPawnMoves<move_type>(board, move_list);
 
   // Other piece moves
-  for (Square from : state.Knights(state.turn) & ~state.pinned) {
+  for (Square from : state.Knights(state.turn) & ~state.pinned[state.turn]) {
     for (Square to : KnightMoves(from) & targets) {
       move_list.Push(Move(from, to));
     }
@@ -497,11 +510,16 @@ MoveList GenerateMoves(const Board &board) {
     }
   }
 
-  const Square king_square = state.King(state.turn).GetLsb();
-  for (Square to : KingMoves(king_square, state) & targets) {
-    const bool is_castle = std::abs(to.File() - king_square.File()) == 2;
-    move_list.Push(Move(
-        king_square, to, is_castle ? MoveType::kCastle : MoveType::kNormal));
+  for (Square to : KingAttacks(king_square) & targets) {
+    move_list.Push(Move(king_square, to));
+  }
+
+  if constexpr (move_type & MoveGenType::kQuiet) {
+    if (!state.checkers) {
+      for (Square to : CastlingMoves(state.turn, state)) {
+        move_list.Push(Move(king_square, to, MoveType::kCastle));
+      }
+    }
   }
 
   return move_list;

@@ -1,0 +1,152 @@
+#ifndef INTEGRAL_PERSPECTIVE_ACCUMULATOR_H
+#define INTEGRAL_PERSPECTIVE_ACCUMULATOR_H
+
+#include <span>
+
+#include "../../../../shared/nnue/definitions.h"
+#include "../../../../shared/simd.h"
+#include "../../../chess/board.h"
+#include "../../../chess/move_gen.h"
+#include "../../../utils/fused.h"
+#include "../../../utils/list.h"
+#include "nnue.h"
+
+namespace nnue {
+
+// clang-format off
+constexpr std::array<int, 64> kKingBucketMap {
+  0,  1,  2,  3,  3,  2,  1,  0,
+  4,  5,  6,  7,  7,  6,  5,  4,
+  8,  8,  9,  9,  9,  9,  8,  8,
+  10, 10, 10, 10, 10, 10, 10, 10,
+  10, 10, 10, 10, 10, 10, 10, 10,
+  11, 11, 11, 11, 11, 11, 11, 11,
+  11, 11, 11, 11, 11, 11, 11, 11,
+  11, 11, 11, 11, 11, 11, 11, 11,
+};
+// clang-format on
+
+using HmcBucketTable = std::array<U8, 101>;
+
+constexpr HmcBucketTable GenerateHmcBucketTable() {
+  HmcBucketTable table{};
+  for (std::size_t clock = 0; clock < table.size(); ++clock) {
+    if (clock < arch::kHmcBucketsStart) {
+      table[clock] = arch::kHmcBucketCount;
+    } else {
+      const std::size_t idx =
+          (clock - arch::kHmcBucketsStart) / arch::kHmcBucketsStep;
+      table[clock] = static_cast<U8>(std::min(idx, arch::kHmcBucketCount - 1));
+    }
+  }
+  return table;
+}
+
+constexpr HmcBucketTable kHmcBucketTable = GenerateHmcBucketTable();
+
+[[nodiscard]] inline int GetHmcBucket(U16 fifty_moves_clock) {
+  return kHmcBucketTable[std::min<U16>(fifty_moves_clock, 100)];
+}
+
+constexpr U8 kBucketDivisor =
+    (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;
+
+struct FeatureData {
+  Square square = Squares::kNoSquare;
+  PieceType piece = PieceType::kNone;
+  Color color = Color::kNoColor;
+};
+
+template <typename FeaturePolicy>
+class PerspectiveAccumulator {
+ public:
+  static constexpr int kWidth = FeaturePolicy::kWidth;
+  // The accumulator's storage type and the feature weights' type are
+  // independent: threat rows are I8 while the running sum stays I16.
+  using Value = typename FeaturePolicy::Value;
+  using Weight = typename FeaturePolicy::Weight;
+
+  PerspectiveAccumulator() : values_({}) {}
+
+  void Reset() {
+    for (int i = 0; i < kWidth; ++i) {
+      values_[i] = FeaturePolicy::Bias(i);
+    }
+  }
+
+  void Refresh(const BoardState& state, Color perspective, Square king_square) {
+    Reset();
+    Weight const* rows[512];
+    int num_rows = 0;
+    FeaturePolicy::ForEachActiveFeature(
+        state, perspective, king_square, [&](Weight const* row, bool valid) {
+          rows[num_rows] = row;
+          num_rows += valid;
+        });
+    ApplyDeltas(*this, rows, num_rows, nullptr, 0);
+  }
+
+  void ApplyDeltas(const PerspectiveAccumulator& previous,
+                   Weight const* const* adds,
+                   int num_adds,
+                   Weight const* const* subs,
+                   int num_subs) {
+    // We process the accumulation of size kWidth elements, in chunks of
+    // kBlockVecs SIMD registers, to avoid unnecessary loads and stores
+    // from register spills.
+    constexpr int kBlockVecs = 8;
+    // Always accumulate in i16
+    constexpr int kElementsPerVec = simd::kVectorBytes / sizeof(I16);
+    constexpr int kElementsPerBlock = kElementsPerVec * kBlockVecs;
+    constexpr int kBlockCount = kWidth / kElementsPerBlock;
+
+    static_assert(kWidth % kElementsPerBlock == 0, "must evenly divide");
+
+    // i = block index; K = element index of start of the block;
+    // j = vector index within block; k = element index
+    for (int i = 0, K = 0; i < kBlockCount; ++i, K += kElementsPerBlock) {
+      simd::Vepi16 vecs[kBlockVecs];
+      for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+        vecs[j] = simd::Load(&previous.values_[k]);
+      }
+
+      for (int add_i = 0; add_i < num_adds; ++add_i) {
+        const auto* feature = adds[add_i];
+        for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+          // Conversion is required from I8 weights and is a no-op for I16
+          // weights
+          vecs[j] =
+              vecs[j] + simd::Convert<I16>(
+                            simd::Load<Weight, kElementsPerVec>(&feature[k]));
+        }
+      }
+
+      for (int sub_i = 0; sub_i < num_subs; ++sub_i) {
+        const auto* feature = subs[sub_i];
+        for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+          vecs[j] =
+              vecs[j] - simd::Convert<I16>(
+                            simd::Load<Weight, kElementsPerVec>(&feature[k]));
+        }
+      }
+
+      for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+        simd::Store(&values_[k], vecs[j]);
+      }
+    }
+  }
+
+  Value& operator[](int idx) {
+    return values_[idx];
+  }
+  const Value& operator[](int idx) const {
+    return values_[idx];
+  }
+
+ protected:
+  alignas(simd::kAlignment) std::array<Value, kWidth> values_;
+};
+
+}  // namespace nnue
+
+#endif  // INTEGRAL_PERSPECTIVE_ACCUMULATOR_H

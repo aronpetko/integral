@@ -1,14 +1,13 @@
 #ifndef INTEGRAL_SPARSE_H
 #define INTEGRAL_SPARSE_H
 
+#include <algorithm>
 #include <fstream>
 
+#include "../../../../shared/nnue/definitions.h"
 #include "../../../chess/bitboard.h"
 #include "../../../utils/types.h"
-#include "arch.h"
 #include "nnue.h"
-
-// #define SPARSE_PERMUTE
 
 // #if BUILD_HAS_SIMD
 namespace nnue::sparse {
@@ -16,15 +15,11 @@ namespace nnue::sparse {
 // We store the number and index of each set bit for every possible U8 number
 struct NnzEntry {
   std::array<U16, 8> indices;
-  int count;
 };
 
 [[nodiscard]] constexpr std::array<NnzEntry, 256> GenerateNnzTable() {
   std::array<NnzEntry, 256> table{};
   for (I16 i = 0; i < 256; i++) {
-    // Count the number of set bits for this number
-    table[i].count = BitBoard(i).PopCount();
-
     // Save the index of every set bit
     int num_bits = 0;
     BitBoard bits = i;
@@ -36,7 +31,7 @@ struct NnzEntry {
   return table;
 }
 
-constexpr auto nnz_table = GenerateNnzTable();
+alignas(simd::kAlignment) constexpr auto nnz_table = GenerateNnzTable();
 
 #ifdef SPARSE_PERMUTE
 //  This is the array where we keep track of the number of pair-wise activated
@@ -51,9 +46,26 @@ static void CountActivations(
   }
 }
 
-static void SavePermutedNetwork(std::string output) {
+// Moves neuron pair `order[i]` to slot `i` within one L1-wide row. The same
+// mapping works for the FT (where the halves are the two sides of each pair)
+// and for L1's inputs (where the halves are the stm and ntm pair outputs)
+template <typename T>
+static void PermuteRow(const T* src,
+                       T* dst,
+                       const std::array<int, arch::kL1Size / 2>& order) {
+  constexpr int kHalf = arch::kL1Size / 2;
+  for (int i = 0; i < kHalf; ++i) {
+    dst[i] = src[order[i]];
+    dst[i + kHalf] = src[order[i] + kHalf];
+  }
+}
+
+// In SPARSE_PERMUTE builds the preprocessor skips all SIMD reordering, so the
+// embedded network is in plain layout and the raw trainer layout can be
+// recovered from it by undoing the transposes. The output is a raw network, so
+// it can be passed back in as EVALFILE for a regular build
+static void SavePermutedNetwork(const std::string& output) {
   auto permuted_network = std::make_unique<RawNetwork>();
-  std::memcpy(permuted_network.get(), raw_network.get(), sizeof(RawNetwork));
 
   std::array<int, arch::kL1Size / 2> sorted_neurons;
   // Each neuron is at its own index initially (of course)
@@ -66,45 +78,74 @@ static void SavePermutedNetwork(std::string output) {
     return activations[a] > activations[b];
   });
 
-  // Permute all weight/biases for neuron pairs
-  for (int i = 0; i < sorted_neurons.size(); i++) {
-    const int idx = sorted_neurons[i];
+  // Feature weights and biases
+  constexpr std::size_t kFeatureRows = arch::kInputBucketCount * 768;
+  const auto* feature_weights =
+      reinterpret_cast<const I16*>(&network->feature_weights);
+  auto* permuted_feature_weights =
+      reinterpret_cast<I16*>(&permuted_network->feature_weights);
+  for (std::size_t row = 0; row < kFeatureRows; ++row) {
+    PermuteRow(feature_weights + row * arch::kL1Size,
+               permuted_feature_weights + row * arch::kL1Size,
+               sorted_neurons);
+  }
 
-    // Feature biases
-    permuted_network->feature_biases[i] = raw_network->feature_biases[idx];
-    permuted_network->feature_biases[i + arch::kL1Size / 2] =
-        raw_network->feature_biases[idx + arch::kL1Size / 2];
+  PermuteRow(network->feature_biases.data(),
+             permuted_network->feature_biases.data(),
+             sorted_neurons);
 
-    // Feature weights
-    for (int bucket = 0; bucket < arch::kInputBucketCount; ++bucket) {
-      for (int side = 0; side <= 1; ++side) {
-        for (int piece = 0; piece < kNumPieceTypes; ++piece) {
-          for (int square = 0; square < kSquareCount; ++square) {
-            permuted_network->feature_weights[bucket][side][piece][square][i] =
-                raw_network->feature_weights[bucket][side][piece][square][idx];
-            permuted_network->feature_weights[bucket][side][piece][square]
-                                             [i + arch::kL1Size / 2] =
-                raw_network->feature_weights[bucket][side][piece][square]
-                                            [idx + arch::kL1Size / 2];
-          }
-        }
-      }
+  // HMC weights, dropping the all-zero row the runtime network carries
+  for (int bucket = 0; bucket < arch::kInputBucketCount; ++bucket) {
+    for (int hmc = 0; hmc < arch::kHmcBucketCount; ++hmc) {
+      PermuteRow(network->hmc_weights[bucket][hmc].data(),
+                 permuted_network->hmc_weights[bucket][hmc].data(),
+                 sorted_neurons);
     }
+  }
 
-    // L1 Weights
-    for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
-      for (int j = 0; j < arch::kL2Size; ++j) {
-        permuted_network->l1_weights[bucket][j][i] =
-            raw_network->l1_weights[bucket][j][idx];
-        permuted_network->l1_weights[bucket][j][i + arch::kL1Size / 2] =
-            raw_network->l1_weights[bucket][j][idx + arch::kL1Size / 2];
+  // Threat weights
+  const auto* threat_weights =
+      reinterpret_cast<const I8*>(&network->threat_weights);
+  auto* permuted_threat_weights =
+      reinterpret_cast<I8*>(&permuted_network->threat_weights);
+  for (std::size_t row = 0; row < arch::kThreatFeatureCount; ++row) {
+    PermuteRow(threat_weights + row * arch::kL1Size,
+               permuted_threat_weights + row * arch::kL1Size,
+               sorted_neurons);
+  }
+
+  // L1 weights, transposed back from [b][l1][l2] to [b][l2][l1]
+  for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+    for (int j = 0; j < arch::kL2Size; ++j) {
+      std::array<I8, arch::kL1Size> column;
+      for (int i = 0; i < arch::kL1Size; ++i) {
+        column[i] = network->l1_weights[bucket][i][j];
+      }
+      PermuteRow(column.data(),
+                 permuted_network->l1_weights[bucket][j].data(),
+                 sorted_neurons);
+    }
+  }
+
+  // Everything past L1 is unaffected by the permutation
+  permuted_network->l1_biases = network->l1_biases;
+  permuted_network->l2_biases = network->l2_biases;
+  permuted_network->l3_weights = network->l3_weights;
+  permuted_network->l3_biases = network->l3_biases;
+
+  // L2 weights, transposed back from [b][l2][l3] to [b][l3][l2]
+  for (int bucket = 0; bucket < arch::kOutputBucketCount; ++bucket) {
+    for (int i = 0; i < arch::kL2Size; ++i) {
+      for (int j = 0; j < arch::kL3Size; ++j) {
+        permuted_network->l2_weights[bucket][j][i] =
+            network->l2_weights[bucket][i][j];
       }
     }
   }
 
   std::ofstream output_stream(output, std::ios::binary);
   output_stream.write(reinterpret_cast<char*>(permuted_network.get()),
-                      sizeof(Network));
+                      sizeof(RawNetwork));
   output_stream.close();
 
   fmt::println("Permuted network written to {}", output);

@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_MAGICS_ATTACKS_H_
 #define INTEGRAL_MAGICS_ATTACKS_H_
 
+#include "../../shared/multi_array.h"
 #include "../chess/bitboard.h"
-#include "../utils/multi_array.h"
 
 namespace magics::attacks {
 
@@ -17,13 +17,17 @@ using RookAttacksTable =
 extern BishopAttacksTable kBishopAttacks;
 extern RookAttacksTable kRookAttacks;
 
+U64 GetBishopAttackIndex(Square square, const BitBoard& occupied);
+
+U64 GetRookAttackIndex(Square square, const BitBoard& occupied);
+
 BitBoard GenerateBishopMask(Square square);
 
 BitBoard GenerateRookMask(Square square);
 
-BitBoard GenerateBishopMoves(Square square, const BitBoard &occupied);
+BitBoard GenerateBishopMoves(Square square, const BitBoard& occupied);
 
-BitBoard GenerateRookMoves(Square square, const BitBoard &occupied);
+BitBoard GenerateRookMoves(Square square, const BitBoard& occupied);
 
 std::vector<BitBoard> CreateBlockers(BitBoard moves);
 

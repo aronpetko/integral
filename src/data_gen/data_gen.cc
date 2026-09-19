@@ -52,7 +52,13 @@ Move SelectPreferredMove(MoveList &moves, Color stm) {
 void FindStartingPosition(Board &board,
                           const Config &config,
                           const std::vector<std::string> &fens) {
-  board.SetFromFen(fen::kStartFen);
+  if (!fens.empty()) {
+    const auto fen = fens[RandomU64(0, fens.size() - 1)];
+    // Choose a random FEN from the fens list
+    board.SetFromFen(fen);
+  } else {
+    board.SetFromFen(fen::kStartFen);
+  }
 
   I32 current_ply = 0;
   I32 target_plies = RandomU64(config.min_move_plies, config.max_move_plies);
@@ -61,19 +67,18 @@ void FindStartingPosition(Board &board,
     Move random_move;
 
     if (!fens.empty()) {
-      const auto fen = fens[RandomU64(0, fens.size() - 1)];
-      if (fen.empty()) {
-        current_ply = 0;
-        continue;
-      }
-      // Choose a random FEN from the fens list
-      board.SetFromFen(fen);
-
       auto legal_moves = board.GetLegalMoves();
 
       // If no legal moves are available, reset the board
       if (legal_moves.Empty()) {
         current_ply = 0;
+        const auto fen = fens[RandomU64(0, fens.size() - 1)];
+        if (fen.empty()) {
+          current_ply = 0;
+          continue;
+        }
+        // Choose a random FEN from the fens list
+        board.SetFromFen(fen);
         continue;
       }
 
@@ -94,8 +99,7 @@ void FindStartingPosition(Board &board,
       // Gather all moves that don't lose material and bucket them by piece type
       for (int i = 0; i < legal_moves.Size(); i++) {
         const auto move = legal_moves[i];
-        const auto moving_piece =
-            board.GetState().GetPieceType(move.GetFrom());
+        const auto moving_piece = board.GetState().GetPieceType(move.GetFrom());
         piece_moves[moving_piece].Push(move);
       }
 
@@ -135,7 +139,7 @@ std::mutex display_mutex;
 void PrintProgress(const Config &config, U64 completed, U64 written) {
   std::lock_guard lock(display_mutex);
 
-  auto current_time = search::GetCurrentTime();
+  auto current_time = GetCurrentTimeMilliseconds();
   auto elapsed_time = current_time - start_time;
   auto games_left = config.num_games - completed;
   auto time_per_game = elapsed_time / std::max<U64>(1, completed);
@@ -208,13 +212,13 @@ void GameLoop(const Config &config,
               int thread_id,
               std::ostream &output_stream,
               const std::vector<std::string> &fens) {
-  RandomSeed(thread_id, search::GetCurrentTime());
+  RandomSeed(thread_id, GetCurrentTimeMilliseconds());
 
   constexpr int kWinThreshold = 2500;
   constexpr int kWinPliesThreshold = 5;
   constexpr int kDrawThreshold = 2;
   constexpr int kDrawPliesThreshold = 8;
-  constexpr int kInitialScoreThreshold = 1000;
+  constexpr int kInitialScoreThreshold = 300;
 
   search::TimeConfig time_config{.nodes = config.hard_node_limit,
                                  .soft_nodes = config.soft_node_limit};
@@ -249,7 +253,8 @@ void GameLoop(const Config &config,
     std::optional<double> wdl_outcome;
     while (!stop) {
       // Score returned as white-relative
-      const auto [score, best_move] = searcher.DataGenStart(thread, time_config);
+      const auto [score, best_move] =
+          searcher.DataGenStart(thread, time_config);
 
       // The game has ended
       if (!best_move) {
@@ -283,7 +288,8 @@ void GameLoop(const Config &config,
 
       // Check for draw here since search doesn't terminate with an adjudicated
       // draw score at root
-      if (thread->board.IsDraw(0)) {
+      if (thread->board.IsRepetition(0) ||
+          thread->board.IsInsufficientMaterial()) {
         wdl_outcome = 0.5;
         break;
       }
@@ -335,7 +341,7 @@ void Generate(Config config) {
   buffer << std::put_time(&tm, "%d-%m-%Y");
 
   const auto path = config.output_file + "-" + buffer.str();
-  start_time = search::GetCurrentTime();
+  start_time = GetCurrentTimeMilliseconds();
 
   std::vector<std::thread> threads;
   threads.reserve(config.num_threads);

@@ -2,13 +2,13 @@
 
 namespace search {
 
-TUNABLE(kSeeNoisyHistoryDiv, 105, 32, 250, false);
+TUNABLE(kSeeNoisyHistoryDiv, 86, 32, 250, false);
 
-TUNABLE(kPawnScore, 101, 50, 150, false);
-TUNABLE(kKnightScore, 304, 200, 400, false);
-TUNABLE(kBishopScore, 289, 200, 400, false);
-TUNABLE(kRookScore, 528, 400, 600, false);
-TUNABLE(kQueenScore, 917, 700, 1100, false);
+TUNABLE(kPawnScore, 104, 50, 150, false);
+TUNABLE(kKnightScore, 299, 200, 400, false);
+TUNABLE(kBishopScore, 278, 200, 400, false);
+TUNABLE(kRookScore, 524, 400, 600, false);
+TUNABLE(kQueenScore, 886, 700, 1100, false);
 TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
 
@@ -24,19 +24,22 @@ inline std::array kPieceScores = {
 };
 // clang-format on
 
-TUNABLE(kQueenRookThreatScorePos, 20418, 10000, 30000, false);
-TUNABLE(kQueenRookThreatScoreNeg, 18561, 10000, 30000, false);
-TUNABLE(kRookMinorThreatScorePos, 12930, 5000, 20000, false);
-TUNABLE(kRookMinorThreatScoreNeg, 12720, 5000, 20000, false);
-TUNABLE(kMinorPawnThreatScorePos, 8063, 3000, 12000, false);
-TUNABLE(kMinorPawnThreatScoreNeg, 8355, 3000, 12000, false);
+TUNABLE(kQueenRookThreatScorePos, 19784, 10000, 30000, false);
+TUNABLE(kQueenRookThreatScoreNeg, 17201, 10000, 30000, false);
+TUNABLE(kRookMinorThreatScorePos, 13682, 5000, 20000, false);
+TUNABLE(kRookMinorThreatScoreNeg, 13432, 5000, 20000, false);
+TUNABLE(kMinorPawnThreatScorePos, 8031, 3000, 12000, false);
+TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
+
+TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
                        history::History &history,
                        StackEntry *stack,
-                       int see_threshold)
+                       int see_threshold,
+                       bool force_evasions)
     : board_(board),
       tt_move_(tt_move),
       type_(type),
@@ -44,7 +47,8 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      see_threshold_(see_threshold) {}
+      see_threshold_(see_threshold),
+      force_evasions_(force_evasions) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
@@ -54,7 +58,7 @@ Move MovePicker::Next() {
 
     if (tt_move_ && board_.IsMovePseudoLegal(tt_move_)) {
       if (type_ != MovePickerType::kQuiescence || state.InCheck() ||
-          tt_move_.IsNoisy(state)) {
+          tt_move_.IsNoisy(state) || force_evasions_) {
         return tt_move_;
       }
     }
@@ -82,7 +86,8 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck()) {
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck() &&
+        !force_evasions_) {
       return Move::NullMove();
     }
 
@@ -168,14 +173,17 @@ Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
 
 template <MoveGenType move_type>
 void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
-  const auto &killers = stack_->killer_moves;
   const auto &state = board_.GetState();
+
+  const auto &killers = stack_->killer_moves;
+  const bool killer_0_noisy = killers[0].IsNoisy(state),
+             killer_1_noisy = killers[1].IsNoisy(state);
 
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
-    if (move != tt_move_ && (killers[0] != move || killers[0].IsNoisy(state)) &&
-        (killers[1] != move || killers[1].IsNoisy(state))) {
+    if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
+        (killers[1] != move || killer_1_noisy)) {
       list.Push({move, ScoreMove(move)});
     }
   }
@@ -231,6 +239,8 @@ int MovePicker::ScoreMove(Move &move) {
     default:
       break;
   }
+
+  threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will

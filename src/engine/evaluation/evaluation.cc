@@ -4,23 +4,8 @@
 
 namespace eval {
 
-TUNABLE_STEP(kMaterialScaleBase, 26720, 10000, 32768, false, 500);
-
 Score Evaluate(Board &board) {
-  const auto network_eval = nnue::Evaluate(board);
-
-#if DATAGEN
-  return network_eval;
-#endif
-
-  const auto &state = board.GetState();
-  const auto material_phase =
-      *kSeePieceScores[kKnight] * state.Knights().PopCount() +
-      *kSeePieceScores[kBishop] * state.Bishops().PopCount() +
-      *kSeePieceScores[kRook] * state.Rooks().PopCount() +
-      *kSeePieceScores[kQueen] * state.Queens().PopCount();
-
-  return network_eval * (kMaterialScaleBase + material_phase) / 32768;
+  return nnue::Evaluate(board);
 }
 
 bool StaticExchange(Move move, int threshold, const BoardState &state) {
@@ -29,8 +14,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   const PieceType &from_piece = state.GetPieceType(from);
   // Ignore en passant captures and castling
-  if (move.IsEnPassant(state) ||
-      (from_piece == kKing && std::abs(static_cast<int>(from) - to) == 2)) {
+  if (move.IsEnPassant(state) || move.GetType() == MoveType::kCastle) {
     return threshold <= 0;
   }
 
@@ -84,12 +68,32 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
   Color turn = state.turn;
   Color winner = state.turn;
 
+  const auto white_pinned =
+      state.pinned[Color::kWhite] & state.Occupied(Color::kWhite);
+  const auto black_pinned =
+      state.pinned[Color::kBlack] & state.Occupied(Color::kBlack);
+
+  const auto white_king_ray =
+      move_gen::RayIntersecting(to, state.King(Color::kWhite).GetLsb());
+  const auto black_king_ray =
+      move_gen::RayIntersecting(to, state.King(Color::kBlack).GetLsb());
+
+  const auto white_pinned_aligned = white_king_ray & white_pinned;
+  const auto black_pinned_aligned = black_king_ray & black_pinned;
+
+  const auto pinned = white_pinned | black_pinned;
+  const auto pinned_aligned = white_pinned_aligned | black_pinned_aligned;
+
   // Loop through all pieces that attack the capture square
   while (true) {
     turn = FlipColor(turn);
     all_attackers &= occupied;
 
-    const BitBoard our_attackers = all_attackers & state.Occupied(turn);
+    BitBoard our_attackers = all_attackers & state.Occupied(turn);
+    if ((state.pinned[turn] & occupied)) {
+      our_attackers &= ~pinned | pinned_aligned;
+    }
+
     // If the current side to move has no attackers left, they lose
     if (!our_attackers) {
       break;

@@ -56,7 +56,7 @@ struct StackEntry {
   // Number of ply from root
   I32 ply;
   // Scores at this ply
-  Score static_eval, eval, score;
+  Score static_eval, eval, score, eval_complexity;
   I64 history_score;
   // Best moves following down this ply
   PVLine pv;
@@ -75,6 +75,8 @@ struct StackEntry {
   bool in_check;
   // Threats
   BitBoard threats;
+  // Reduction applied for this ply
+  int reduction;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
@@ -92,11 +94,13 @@ struct StackEntry {
       : ply(ply),
         static_eval(kScoreNone),
         eval(kScoreNone),
+        eval_complexity(0),
         history_score(0),
         move(Move::NullMove()),
         excluded_tt_move(Move::NullMove()),
         killer_moves({}),
-        continuation_entry(nullptr) {
+        continuation_entry(nullptr),
+        reduction(0) {
     ClearKillerMoves();
   }
 
@@ -105,7 +109,7 @@ struct StackEntry {
 
 class Stack {
  public:
-  static constexpr int kPadding = 4;
+  static constexpr int kPadding = 6;
 
   Stack() {
     Reset();

@@ -1,13 +1,13 @@
 #ifndef INTEGRAL_PAWN_HISTORY_H
 #define INTEGRAL_PAWN_HISTORY_H
 
-#include "../../../utils/multi_array.h"
+#include "../../../../shared/multi_array.h"
 #include "../stack.h"
 #include "bonus.h"
 
 namespace search::history {
 
-TUNABLE(kPawnHistFill, -982, -3000, 0, false);
+TUNABLE(kPawnHistFill, -967, -3000, 0, false);
 
 class PawnHistory {
  public:

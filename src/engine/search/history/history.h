@@ -10,6 +10,14 @@
 
 namespace search::history {
 
+TUNABLE(kQuietHistoryWeight, 1076, 0, 2048, false);
+TUNABLE(kFirstContinuationHistoryWeight, 1321, 0, 2048, false);
+TUNABLE(kSecondContinuationHistoryWeight, 1110, 0, 2048, false);
+TUNABLE(kFourthContinuationHistoryWeight, 1009, 0, 2048, false);
+TUNABLE(kPawnHistoryWeight, 1089, 0, 2048, false);
+
+constexpr int kHistoryWeightScale = 1024;
+
 class History {
  public:
   History() {
@@ -19,12 +27,12 @@ class History {
   void Initialize() {
     quiet_history = std::make_unique<QuietHistory>();
     continuation_history = std::make_unique<ContinuationHistory>();
-    correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
   }
 
-  // Reinitialize the history objects for quicker clearing
+  // Reinitialize the history objects for quicker clearing. Correction history
+  // is shared between threads, so it's owned and cleared elsewhere.
   void Clear() {
     Initialize();
   }
@@ -39,11 +47,18 @@ class History {
   [[nodiscard]] I32 GetQuietMoveScore(const BoardState &state,
                                       Move move,
                                       StackEntry *stack) const {
-    return quiet_history->GetScore(state, move, stack->threats) +
-           continuation_history->GetScore(state, move, stack - 1) +
-           continuation_history->GetScore(state, move, stack - 2) +
-           continuation_history->GetScore(state, move, stack - 4) +
-           pawn_history->GetScore(state, move) / 2;
+    I32 move_score = 0;
+    move_score += quiet_history->GetScore(state, move, stack->threats) *
+                  kQuietHistoryWeight;
+    move_score += continuation_history->GetScore(state, move, stack - 1) *
+                  kFirstContinuationHistoryWeight;
+    move_score += continuation_history->GetScore(state, move, stack - 2) *
+                  kSecondContinuationHistoryWeight;
+    move_score += continuation_history->GetScore(state, move, stack - 4) *
+                  kFourthContinuationHistoryWeight;
+    move_score += pawn_history->GetScore(state, move) * kPawnHistoryWeight;
+
+    return move_score / kHistoryWeightScale;
   }
 
   [[nodiscard]] I32 GetCaptureMoveScore(const BoardState &state,
@@ -56,7 +71,8 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<PawnHistory> pawn_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
-  std::unique_ptr<CorrectionHistory> correction_history;
+  // Shared between all search threads
+  CorrectionHistory *correction_history = nullptr;
 };
 
 }  // namespace search::history

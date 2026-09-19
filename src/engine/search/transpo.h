@@ -111,7 +111,7 @@ class TranspositionTable : public AlignedHashTable<TranspositionTableCluster> {
 
   [[nodiscard]] int HashFull() const;
 
-  virtual void Clear();
+  void Clear(int num_threads);
 
  private:
   [[nodiscard]] U32 GetAgeDelta(const TranspositionTableEntry *entry) const;

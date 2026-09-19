@@ -100,8 +100,9 @@ class RootMoveList {
   List<RootMove, 256> list_;
 };
 
-struct Thread {
-  explicit Thread(U32 id)
+struct alignas(64) Thread {
+  explicit Thread(
+      U32 id, history::CorrectionHistory *shared_correction_history = nullptr)
       : id(id),
         stack({}),
         previous_score(kScoreNone),
@@ -109,11 +110,21 @@ struct Thread {
         sel_depth(0),
         tb_hits(0),
         nmp_min_ply(0) {
+    if (shared_correction_history == nullptr) {
+      owned_correction_history =
+          std::make_unique<history::CorrectionHistory>(1);
+      shared_correction_history = owned_correction_history.get();
+    }
+    history.correction_history = shared_correction_history;
+
     NewGame();
   }
 
   void NewGame() {
     history.Clear();
+    if (owned_correction_history) {
+      owned_correction_history->Clear();
+    }
     stack.Reset();
     previous_score = kScoreNone;
   }
@@ -139,16 +150,16 @@ struct Thread {
     tb_hits = 0;
   }
 
-  std::thread raw_thread;
   U32 id;
   Board board;
   history::History history;
+  std::unique_ptr<history::CorrectionHistory> owned_correction_history;
   Stack stack;
-  U64 nodes_searched;
+  std::atomic<U64> nodes_searched;
   std::array<Score, kMaxSearchDepth + 1> scores;
   Score previous_score;
   U16 root_depth, sel_depth;
-  U64 tb_hits;
+  std::atomic<U64> tb_hits;
   int pv_move_idx;
   RootMoveList root_moves;
   U16 nmp_min_ply;
@@ -165,7 +176,7 @@ class Searcher {
   std::pair<Score, Move> DataGenStart(std::unique_ptr<Thread> &thread,
                                       TimeConfig time_config);
 
-  U64 Bench(int depth);
+  U64 Bench(std::unique_ptr<Thread> &thread, int depth);
 
   void Stop();
 
@@ -178,6 +189,8 @@ class Searcher {
   const TimeManagement &GetTimeManagement() const;
 
   [[nodiscard]] U64 GetNodesSearched() const;
+
+  [[nodiscard]] U64 GetTbHits() const;
 
   void ResizeHash(U64 size);
 
@@ -203,17 +216,20 @@ class Searcher {
                  StackEntry *stack,
                  bool cut_node);
 
-  [[nodiscard]] bool ShouldQuit(Thread &thread);
+  [[nodiscard]] bool ShouldQuit();
 
  private:
   Board &board_;
   TimeManagement time_mgmt_;
   std::atomic_bool stop_, quit_;
-  Barrier stop_barrier_, start_barrier_, search_end_barrier_;
+  Barrier stop_barrier_, start_barrier_, search_end_barrier_,
+      thread_init_barrier_;
   std::mutex stop_mutex_, thread_stopped_mutex_;
-  std::atomic_int searching_threads_, next_thread_id_;
+  std::atomic_int searching_threads_;
   std::condition_variable thread_stopped_signal_;
+  std::unique_ptr<history::CorrectionHistory> correction_history_;
   std::vector<std::unique_ptr<Thread>> threads_;
+  std::vector<std::thread> raw_threads_;
   TranspositionTable transposition_table_;
 };
 

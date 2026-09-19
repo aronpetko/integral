@@ -20,7 +20,6 @@ using I64 = std::int64_t;
 using U128 = unsigned __int128;
 
 constexpr int kMaxPlyFromRoot = 256;
-constexpr int kMaxGamePly = 512;
 
 enum PieceType : U8 {
   kPawn,
@@ -30,7 +29,7 @@ enum PieceType : U8 {
   kQueen,
   kKing,
   kNone,
-  kNumPieceTypes = kNone
+  kNumPieceTypes = 6
 };
 
 enum class PromotionType : U8 {
@@ -57,12 +56,9 @@ constexpr Color FlipColor(Color color) {
   return Color(!color);
 }
 
-enum CastleRightMasks : U8 {
-  kWhiteKingside = 0b0001,
-  kWhiteQueenside = 0b0010,
-  kBlackKingside = 0b0100,
-  kBlackQueenside = 0b1000,
-};
+constexpr Color RelativeColor(Color color, Color perspective) {
+  return Color(color ^ perspective);
+}
 
 enum class Direction : int {
   kNorth,
@@ -185,6 +181,10 @@ class Square {
     return square_ * scalar;
   }
 
+  [[nodiscard]] std::string ToString() const {
+    return {static_cast<char>('a' + File()), static_cast<char>('1' + Rank())};
+  }
+
  private:
   U8 square_;
 };
@@ -298,5 +298,13 @@ const Score kInfiniteScore = std::numeric_limits<I16>::max();
 const Score kTBWinScore = kMateScore - kMaxPlyFromRoot - 1;
 const Score kTBWinInMaxPlyScore = kTBWinScore - kMaxPlyFromRoot;
 const Score kScoreNone = -kInfiniteScore;
+
+template <typename T, typename... Ts>
+struct is_all_same {
+  static constexpr bool value = (std::is_same_v<T, Ts> && ...);
+};
+
+template <typename... Ts>
+constexpr auto is_all_same_v = is_all_same<Ts...>::value;
 
 #endif  // INTEGRAL_TYPES_H_

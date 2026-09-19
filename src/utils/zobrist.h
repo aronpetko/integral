@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_ZOBRIST_H_
 #define INTEGRAL_ZOBRIST_H_
 
+#include "../../shared/multi_array.h"
 #include "../chess/bitboard.h"
-#include "multi_array.h"
 #include "random.h"
 #include "types.h"
 
