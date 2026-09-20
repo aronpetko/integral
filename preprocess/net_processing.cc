@@ -9,10 +9,10 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   auto network = std::make_unique<nnue::Network>();
 
   // Copy over arrays that don't need transposing
+  network->feature_weights = raw_network->feature_weights;
   for (int b = 0; b < nnue::arch::kInputBucketCount; ++b) {
-    network->feature_weights[b] = raw_network->input_buckets[b].feature_weights;
     for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
-      network->hmc_weights[b][h] = raw_network->input_buckets[b].hmc_weights[h];
+      network->hmc_weights[b][h] = raw_network->hmc_weights[b][h];
     }
   }
   network->feature_biases = raw_network->feature_biases;
