@@ -35,16 +35,15 @@ constexpr std::array<BitBoard, 64> kAdjacentFileMasks = []() {
   return masks;
 }();
 
-using PawnId = U32;
+using PawnId = U8;
 
 [[nodiscard]] PawnId GetPawnId(Square pawn_square,
                                Color pawn_color,
-                               Color perspective,
-                               Square king_square);
+                               Color perspective);
 
-[[nodiscard]] std::size_t GetPawnIndex(PawnId first_pawn, PawnId second_pawn);
+[[nodiscard]] U16 GetPawnIndex(PawnId first_pawn, PawnId second_pawn);
 
-[[nodiscard]] std::size_t GetPawnPairIndex(Square first_pawn_square,
+[[nodiscard]] U16 GetPawnPairIndex(Square first_pawn_square,
                                            Color first_pawn_color,
                                            Square second_pawn_square,
                                            Color second_pawn_color,

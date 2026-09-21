@@ -20,10 +20,7 @@ struct ThreatAccumulatorChange {
   };
 
   struct PawnPairChangeInfo {
-    Square pawn_square;
-    Color pawn_color;
-    Square paired_pawn_square;
-    Color paired_pawn_color;
+    std::array<U16, 2> indices;
   };
 
   template <bool kAddChange>

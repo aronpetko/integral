@@ -148,11 +148,17 @@ void ThreatAccumulatorChange::UpdatePawnPairsForSquares(
     const auto pawn_color = state.GetPieceColor(pawn_square);
     for (const Square other :
          candidates& pawn_pair::kAdjacentFileMasks[pawn_square]) {
-      PushChangeInfo<kAddChange>(
-          {.pawn_square = pawn_square,
-           .pawn_color = pawn_color,
-           .paired_pawn_square = other,
-           .paired_pawn_color = state.GetPieceColor(other)});
+      PawnPairChangeInfo change;
+      for (const Color perspective : {kWhite, kBlack}) {
+        change.indices[perspective] =
+            pawn_pair::GetPawnPairIndex(pawn_square,
+                                        pawn_color,
+                                        other,
+                                        state.GetPieceColor(other),
+                                        perspective,
+                                        state.King(perspective).GetLsb());
+      }
+      PushChangeInfo<kAddChange>(change);
     }
   }
 }
@@ -203,9 +209,7 @@ ThreatFeaturePolicy::FeatureRow(Color perspective,
 
   const auto [feature_idx, valid] = threats::GetThreatFeatureIndex(
       attacker, attacker_color, victim, victim_color, from, to);
-  // Invalid threats must not form an out-of-bounds pointer, even when
-  // the caller ignores the row or only prefetches it.
-  const auto row = valid ? arch::kPawnPairFeatureCount + feature_idx : 0;
+  const auto row = arch::kPawnPairFeatureCount + feature_idx;
   return {network->threat_weights[row].as_array().data(), valid};
 }
 
@@ -265,24 +269,16 @@ void ThreatPerspectiveAccumulator::ApplyChange(
   }
 
   for (int i = 0; i < change.pawn_pair_adds.Size(); ++i) {
-    const auto pair = change.pawn_pair_adds[i];
-    const auto* row = ThreatFeaturePolicy::PawnPairRow(perspective,
-                                                       king_square,
-                                                       pair.pawn_square,
-                                                       pair.pawn_color,
-                                                       pair.paired_pawn_square,
-                                                       pair.paired_pawn_color);
+    const auto add = change.pawn_pair_adds[i];
+    const auto* row =
+        network->threat_weights[add.indices[perspective]].as_array().data();
     __builtin_prefetch(row);
     add_rows[num_add++] = row;
   }
   for (int i = 0; i < change.pawn_pair_subs.Size(); ++i) {
-    const auto pair = change.pawn_pair_subs[i];
-    const auto* row = ThreatFeaturePolicy::PawnPairRow(perspective,
-                                                       king_square,
-                                                       pair.pawn_square,
-                                                       pair.pawn_color,
-                                                       pair.paired_pawn_square,
-                                                       pair.paired_pawn_color);
+    const auto sub = change.pawn_pair_subs[i];
+    const auto* row =
+        network->threat_weights[sub.indices[perspective]].as_array().data();
     __builtin_prefetch(row);
     sub_rows[num_sub++] = row;
   }
