@@ -54,7 +54,7 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   // Same 8-element granularity as the FT weights, but I8 rows -> 8-byte blocks.
   auto threats = reinterpret_cast<U64*>(&network->threat_weights);
   std::array<U64, kNumRegs> threat_regs;
-  for (std::size_t i = 0; i < nnue::arch::kThreatFeatureCount *
+  for (std::size_t i = 0; i < nnue::arch::kThreatPawnPairFeatureCount *
                                   nnue::arch::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) threat_regs[j] = threats[i + j];
@@ -120,9 +120,27 @@ int main(int argc, char* argv[]) {
 
   auto raw_network = std::make_unique<nnue::RawNetwork>();
 
-  std::ifstream input_stream(input_path, std::ios::binary);
+  std::ifstream input_stream(input_path, std::ios::binary | std::ios::ate);
+  if (!input_stream) {
+    fmt::println("Failed to open network: {}", input_path);
+    return 1;
+  }
+  const auto input_size = input_stream.tellg();
+  constexpr std::size_t raw_size = sizeof(nnue::RawNetwork);
+  constexpr std::size_t padded_size = (raw_size + 63) / 64 * 64;
+  if (input_size != static_cast<std::streamoff>(raw_size) &&
+      input_size != static_cast<std::streamoff>(padded_size)) {
+    fmt::println("Invalid network size: {} bytes; expected {} or {} (Bullet padding)",
+                 static_cast<long long>(input_size), raw_size, padded_size);
+    return 1;
+  }
+  input_stream.seekg(0);
   input_stream.read(reinterpret_cast<char*>(raw_network.get()),
                     sizeof(nnue::RawNetwork));
+  if (!input_stream) {
+    fmt::println("Failed to read complete network: {}", input_path);
+    return 1;
+  }
 
   const auto processed_network = ProcessNetwork(raw_network);
 
@@ -130,8 +148,10 @@ int main(int argc, char* argv[]) {
   output_stream.write(reinterpret_cast<char*>(processed_network.get()),
                       sizeof(nnue::Network));
 
-  if (output_stream.bad()) {
+  output_stream.close();
+  if (!output_stream) {
     fmt::println("Failed to write processed network");
+    return 1;
   } else {
     fmt::println("Successfully wrote processed network to {}", output_path);
   }

@@ -96,7 +96,7 @@ constexpr std::array<std::pair<int, int>, 4> kOrthogonalDeltas = {
 // Some pieces are excluded from each other to avoid duplicates (a value of -1),
 // e.g. Queen x Rook
 constexpr std::array kPieceTypeTargetMap = {
-    std::array<I8, 6>{0, 1, -1, 2, -1, -1},
+    std::array<I8, 6>{-1, 0, -1, 1, -1, -1},
     std::array<I8, 6>{0, 1, 2, 3, 4, -1},
     std::array<I8, 6>{0, 1, 2, 3, -1, -1},
     std::array<I8, 6>{0, 1, 2, 3, -1, -1},
@@ -226,7 +226,7 @@ inline constexpr auto kAttackTable = ([]() {
   return attack_table;
 })();
 
-[[nodiscard]] std::pair<U32, bool> get_threat_feature_index(
+[[nodiscard]] std::pair<std::size_t, bool> GetThreatFeatureIndex(
     PieceType attacker,
     Color attacker_color,
     PieceType victim,

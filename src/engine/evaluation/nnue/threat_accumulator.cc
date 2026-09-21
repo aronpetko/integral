@@ -1,5 +1,6 @@
 #include "threat_accumulator.h"
 
+#include "pawn_pair/pawn_pair_features.h"
 #include "threats/threat_features.h"
 
 namespace nnue {
@@ -7,9 +8,18 @@ namespace nnue {
 template <bool kAddChange>
 void ThreatAccumulatorChange::PushChangeInfo(ThreatChangeInfo info) {
   if constexpr (kAddChange) {
-    adds.Push(info);
+    threat_adds.Push(info);
   } else {
-    subs.Push(info);
+    threat_subs.Push(info);
+  }
+}
+
+template <bool kAddChange>
+void ThreatAccumulatorChange::PushChangeInfo(PawnPairChangeInfo info) {
+  if constexpr (kAddChange) {
+    pawn_pair_adds.Push(info);
+  } else {
+    pawn_pair_subs.Push(info);
   }
 }
 
@@ -127,6 +137,31 @@ void ThreatAccumulatorChange::UpdateThreatsForSquares(
   }
 }
 
+template <bool kAddChange>
+void ThreatAccumulatorChange::UpdatePawnPairsForSquares(
+    const BoardState& state, BitBoard updated_squares) {
+  BitBoard candidates = state.Pawns();
+  // Remove processed pawns from candidates so captures and en passant emit each
+  // old pair only once
+  for (const Square pawn_square : updated_squares& candidates) {
+    candidates &= ~BitBoard::FromSquare(pawn_square);
+    const auto pawn_color = state.GetPieceColor(pawn_square);
+    for (const Square other :
+         candidates& pawn_pair::kAdjacentFileMasks[pawn_square]) {
+      PushChangeInfo<kAddChange>(
+          {.pawn_square = pawn_square,
+           .pawn_color = pawn_color,
+           .paired_pawn_square = other,
+           .paired_pawn_color = state.GetPieceColor(other)});
+    }
+  }
+}
+
+template void ThreatAccumulatorChange::UpdatePawnPairsForSquares<false>(
+    const BoardState& state, BitBoard updated_squares);
+template void ThreatAccumulatorChange::UpdatePawnPairsForSquares<true>(
+    const BoardState& state, BitBoard updated_squares);
+
 template void ThreatAccumulatorChange::UpdateThreatsForPiece<false>(
     const BoardState& state,
     PieceType piece_type,
@@ -166,11 +201,24 @@ ThreatFeaturePolicy::FeatureRow(Color perspective,
   from = from ^ square_flip;
   to = to ^ square_flip;
 
-  const auto [feature_idx, valid] = threats::get_threat_feature_index(
+  const auto [feature_idx, valid] = threats::GetThreatFeatureIndex(
       attacker, attacker_color, victim, victim_color, from, to);
-  return {network->threat_weights.front().as_array().data() +
-              static_cast<std::size_t>(feature_idx) * kWidth,
-          valid};
+  // Invalid threats must not form an out-of-bounds pointer, even when
+  // the caller ignores the row or only prefetches it.
+  const auto row = valid ? arch::kPawnPairFeatureCount + feature_idx : 0;
+  return {network->threat_weights[row].as_array().data(), valid};
+}
+
+ThreatFeaturePolicy::Weight const* ThreatFeaturePolicy::PawnPairRow(
+    Color perspective,
+    Square king_square,
+    Square first,
+    Color first_color,
+    Square second,
+    Color second_color) {
+  const auto index = pawn_pair::GetPawnPairIndex(
+      first, first_color, second, second_color, perspective, king_square);
+  return network->threat_weights[index].as_array().data();
 }
 
 void ThreatPerspectiveAccumulator::ApplyChange(
@@ -178,13 +226,15 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     const ThreatAccumulatorChange& change,
     Color perspective,
     Square king_square) {
-  std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> add_rows;
+  constexpr int kMaxRows = ThreatAccumulatorChange::kMaxThreatRows +
+                           ThreatAccumulatorChange::kMaxPawnPairRows;
+  std::array<Weight const*, kMaxRows> add_rows;
   U16 num_add = 0;
-  std::array<Weight const*, ThreatAccumulatorChange::kMaxThreatRows> sub_rows;
+  std::array<Weight const*, kMaxRows> sub_rows;
   U16 num_sub = 0;
 
-  for (int i = 0; i < change.adds.Size(); ++i) {
-    const auto& add = change.adds[i];
+  for (int i = 0; i < change.threat_adds.Size(); ++i) {
+    const auto& add = change.threat_adds[i];
     const auto [row, valid] =
         ThreatFeaturePolicy::FeatureRow(perspective,
                                         king_square,
@@ -198,8 +248,8 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     add_rows[num_add] = row;
     num_add += valid;
   }
-  for (int i = 0; i < change.subs.Size(); ++i) {
-    const auto& sub = change.subs[i];
+  for (int i = 0; i < change.threat_subs.Size(); ++i) {
+    const auto& sub = change.threat_subs[i];
     const auto [row, valid] =
         ThreatFeaturePolicy::FeatureRow(perspective,
                                         king_square,
@@ -212,6 +262,29 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     __builtin_prefetch(row);
     sub_rows[num_sub] = row;
     num_sub += valid;
+  }
+
+  for (int i = 0; i < change.pawn_pair_adds.Size(); ++i) {
+    const auto pair = change.pawn_pair_adds[i];
+    const auto* row = ThreatFeaturePolicy::PawnPairRow(perspective,
+                                                       king_square,
+                                                       pair.pawn_square,
+                                                       pair.pawn_color,
+                                                       pair.paired_pawn_square,
+                                                       pair.paired_pawn_color);
+    __builtin_prefetch(row);
+    add_rows[num_add++] = row;
+  }
+  for (int i = 0; i < change.pawn_pair_subs.Size(); ++i) {
+    const auto pair = change.pawn_pair_subs[i];
+    const auto* row = ThreatFeaturePolicy::PawnPairRow(perspective,
+                                                       king_square,
+                                                       pair.pawn_square,
+                                                       pair.pawn_color,
+                                                       pair.paired_pawn_square,
+                                                       pair.paired_pawn_color);
+    __builtin_prefetch(row);
+    sub_rows[num_sub++] = row;
   }
 
   ApplyDeltas(previous, add_rows.data(), num_add, sub_rows.data(), num_sub);

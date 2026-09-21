@@ -1,16 +1,56 @@
-//
-// Created by Aron on 9/20/2026.
-//
+#ifndef INTEGRAL_PAWN_PAIR_FEATURES_H
+#define INTEGRAL_PAWN_PAIR_FEATURES_H
 
-#ifndef SPRT_SH_PAWN_PAIR_FEATURES_H
-#define SPRT_SH_PAWN_PAIR_FEATURES_H
+#include "../../../../../shared/multi_array.h"
+#include "../../../../../shared/nnue/definitions.h"
+#include "../../../../chess/bitboard.h"
+#include "../../../../utils/types.h"
 
+namespace nnue::pawn_pair {
 
+// The first and last square a pawn can stand on
+constexpr Square kFirstPawnSquare = Squares::kA2;
+constexpr Square kLastPawnSquare = Squares::kH7;
+// The total number of possible squares a pawn can stand on
+constexpr std::size_t kTotalPawnSquares =
+    kLastPawnSquare - kFirstPawnSquare + 1;
+// Pawn Square x Pawn Color
+constexpr std::size_t kPawnIds = kTotalPawnSquares * Color::kNumColors;
 
-class pawn_pair_features {
+constexpr std::array<BitBoard, 64> kAdjacentFileMasks = []() {
+  std::array<BitBoard, 64> masks{};
+  for (Square sq = kFirstPawnSquare; sq <= kLastPawnSquare; ++sq) {
+    const auto file = sq.File();
+    BitBoard mask = kFileMasks[file];
+    // Adjacent left file
+    if (file > File::kFileA) {
+      mask |= kFileMasks[file - 1];
+    }
+    // Adjacent right file
+    if (file < File::kFileH) {
+      mask |= kFileMasks[file + 1];
+    }
+    masks[sq] = mask;
+  }
+  return masks;
+}();
 
-};
+using PawnId = U32;
 
+[[nodiscard]] PawnId GetPawnId(Square pawn_square,
+                               Color pawn_color,
+                               Color perspective,
+                               Square king_square);
 
+[[nodiscard]] std::size_t GetPawnIndex(PawnId first_pawn, PawnId second_pawn);
 
-#endif //SPRT_SH_PAWN_PAIR_FEATURES_H
+[[nodiscard]] std::size_t GetPawnPairIndex(Square first_pawn_square,
+                                           Color first_pawn_color,
+                                           Square second_pawn_square,
+                                           Color second_pawn_color,
+                                           Color perspective,
+                                           Square king_square);
+
+}  // namespace nnue::pawn_pair
+
+#endif  // INTEGRAL_PAWN_PAIR_FEATURES_H

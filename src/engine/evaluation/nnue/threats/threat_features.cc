@@ -2,12 +2,12 @@
 
 namespace nnue::threats {
 
-std::pair<U32, bool> get_threat_feature_index(PieceType attacker,
-                                              Color attacker_color,
-                                              PieceType victim,
-                                              Color victim_color,
-                                              Square from,
-                                              Square to) {
+std::pair<std::size_t, bool> GetThreatFeatureIndex(PieceType attacker,
+                                                   Color attacker_color,
+                                                   PieceType victim,
+                                                   Color victim_color,
+                                                   Square from,
+                                                   Square to) {
   const bool is_forward_move = from < to;
   const auto attack_index = kAttackTable[attacker][attacker_color][victim]
                                         [victim_color][is_forward_move];

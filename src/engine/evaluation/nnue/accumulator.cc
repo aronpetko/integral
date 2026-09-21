@@ -179,6 +179,10 @@ void Accumulator::ApplyChanges(const BoardState& current_state) {
               clean_state, dirty_accumulator.threat_updated_squares);
           threat_change.UpdateThreatsForSquares<true>(
               dirty_state, dirty_accumulator.threat_updated_squares);
+          threat_change.UpdatePawnPairsForSquares<false>(
+              clean_state, dirty_accumulator.threat_updated_squares);
+          threat_change.UpdatePawnPairsForSquares<true>(
+              dirty_state, dirty_accumulator.threat_updated_squares);
         }
         dirty_accumulator.threat_perspectives[perspective].ApplyChange(
             clean_accumulator.threat_perspectives[perspective],

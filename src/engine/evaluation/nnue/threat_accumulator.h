@@ -2,11 +2,13 @@
 #define INTEGRAL_THREAT_ACCUMULATOR_H
 
 #include "perspective_accumulator.h"
+#include "pawn_pair/pawn_pair_features.h"
 
 namespace nnue {
 
 struct ThreatAccumulatorChange {
   static constexpr int kMaxThreatRows = 256;
+  static constexpr int kMaxPawnPairRows = 16 * 15 / 2;
 
   struct ThreatChangeInfo {
     Square attacker_square;
@@ -17,8 +19,18 @@ struct ThreatAccumulatorChange {
     Color victim_color;
   };
 
+  struct PawnPairChangeInfo {
+    Square pawn_square;
+    Color pawn_color;
+    Square paired_pawn_square;
+    Color paired_pawn_color;
+  };
+
   template <bool kAddChange>
   void PushChangeInfo(ThreatChangeInfo info);
+
+  template <bool kAddChange>
+  void PushChangeInfo(PawnPairChangeInfo info);
 
   template <bool kAddChange>
   void UpdateThreatsForPiece(const BoardState& state,
@@ -34,11 +46,18 @@ struct ThreatAccumulatorChange {
   void UpdateThreatsForSquares(const BoardState& state,
                                BitBoard updated_squares);
 
-  List<ThreatChangeInfo, kMaxThreatRows> adds;
-  List<ThreatChangeInfo, kMaxThreatRows> subs;
+  template <bool kAddChange>
+  void UpdatePawnPairsForSquares(const BoardState& state,
+                                 BitBoard updated_squares);
+
+  List<ThreatChangeInfo, kMaxThreatRows> threat_adds;
+  List<ThreatChangeInfo, kMaxThreatRows> threat_subs;
+  List<PawnPairChangeInfo, kMaxPawnPairRows> pawn_pair_adds;
+  List<PawnPairChangeInfo, kMaxPawnPairRows> pawn_pair_subs;
 
   void Clear() {
-    adds.Clear(), subs.Clear();
+    threat_adds.Clear(), threat_subs.Clear();
+    pawn_pair_adds.Clear(), pawn_pair_subs.Clear();
   }
 };
 
@@ -89,7 +108,22 @@ struct ThreatFeaturePolicy {
         }
       }
     }
+    auto remaining = state.Pawns();
+    for (const Square first : state.Pawns()) {
+      remaining &= ~BitBoard::FromSquare(first);
+      const auto first_color = state.GetPieceColor(first);
+      for (const Square second : remaining & pawn_pair::kAdjacentFileMasks[first]) {
+        const auto* row = PawnPairRow(perspective, king_square, first,
+                                      first_color, second, state.GetPieceColor(second));
+        __builtin_prefetch(row);
+        emit(row, true);
+      }
+    }
   }
+
+  static Weight const* PawnPairRow(Color perspective, Square king_square,
+                                   Square first, Color first_color,
+                                   Square second, Color second_color);
 };
 
 class ThreatPerspectiveAccumulator
