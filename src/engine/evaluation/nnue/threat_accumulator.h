@@ -105,13 +105,18 @@ struct ThreatFeaturePolicy {
         }
       }
     }
+    const U8 square_flip =
+        (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
     auto remaining = state.Pawns();
     for (const Square first : state.Pawns()) {
       remaining &= ~BitBoard::FromSquare(first);
-      const auto first_color = state.GetPieceColor(first);
+      const auto first_id = pawn_pair::GetPawnId(
+          first ^ square_flip, state.GetPieceColor(first), perspective);
       for (const Square second : remaining & pawn_pair::kAdjacentFileMasks[first]) {
-        const auto* row = PawnPairRow(perspective, king_square, first,
-                                      first_color, second, state.GetPieceColor(second));
+        const auto second_id = pawn_pair::GetPawnId(
+            second ^ square_flip, state.GetPieceColor(second), perspective);
+        const auto index = pawn_pair::GetPawnIndex(first_id, second_id);
+        const auto* row = network->threat_weights[index].as_array().data();
         __builtin_prefetch(row);
         emit(row, true);
       }

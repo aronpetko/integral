@@ -141,22 +141,37 @@ template <bool kAddChange>
 void ThreatAccumulatorChange::UpdatePawnPairsForSquares(
     const BoardState& state, BitBoard updated_squares) {
   BitBoard candidates = state.Pawns();
+  const auto changed_pawns = updated_squares & candidates;
+  if (!changed_pawns) {
+    return;
+  }
+
+  std::array<U8, 2> square_flips;
+  for (const Color perspective : {kWhite, kBlack}) {
+    const Square king_square = state.King(perspective).GetLsb();
+    square_flips[perspective] =
+        (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
+  }
+
   // Remove processed pawns from candidates so captures and en passant emit each
-  // old pair only once
-  for (const Square pawn_square : updated_squares& candidates) {
+  // old pair only once.
+  for (const Square pawn_square : changed_pawns) {
     candidates &= ~BitBoard::FromSquare(pawn_square);
     const auto pawn_color = state.GetPieceColor(pawn_square);
+    std::array<pawn_pair::PawnId, 2> first_ids;
+    for (const Color perspective : {kWhite, kBlack}) {
+      first_ids[perspective] = pawn_pair::GetPawnId(
+          pawn_square ^ square_flips[perspective], pawn_color, perspective);
+    }
     for (const Square other :
-         candidates& pawn_pair::kAdjacentFileMasks[pawn_square]) {
+         candidates & pawn_pair::kAdjacentFileMasks[pawn_square]) {
+      const auto other_color = state.GetPieceColor(other);
       PawnPairChangeInfo change;
       for (const Color perspective : {kWhite, kBlack}) {
+        const auto second_id = pawn_pair::GetPawnId(
+            other ^ square_flips[perspective], other_color, perspective);
         change.indices[perspective] =
-            pawn_pair::GetPawnPairIndex(pawn_square,
-                                        pawn_color,
-                                        other,
-                                        state.GetPieceColor(other),
-                                        perspective,
-                                        state.King(perspective).GetLsb());
+            pawn_pair::GetPawnIndex(first_ids[perspective], second_id);
       }
       PushChangeInfo<kAddChange>(change);
     }
