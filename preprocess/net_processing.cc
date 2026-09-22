@@ -125,21 +125,24 @@ int main(int argc, char* argv[]) {
     fmt::println("Failed to open network: {}", input_path);
     return 1;
   }
-  const auto input_size = input_stream.tellg();
+
   constexpr std::size_t raw_size = sizeof(nnue::RawNetwork);
   constexpr std::size_t padded_size = (raw_size + 63) / 64 * 64;
+
+  const auto input_size = input_stream.tellg();
   if (input_size != static_cast<std::streamoff>(raw_size) &&
       input_size != static_cast<std::streamoff>(padded_size)) {
     fmt::println("Invalid network size: {} bytes; expected {} or {} (Bullet padding)",
                  static_cast<long long>(input_size), raw_size, padded_size);
-    return 1;
+    return EXIT_FAILURE;
   }
+
   input_stream.seekg(0);
   input_stream.read(reinterpret_cast<char*>(raw_network.get()),
                     sizeof(nnue::RawNetwork));
   if (!input_stream) {
     fmt::println("Failed to read complete network: {}", input_path);
-    return 1;
+    return EXIT_FAILURE;
   }
 
   const auto processed_network = ProcessNetwork(raw_network);

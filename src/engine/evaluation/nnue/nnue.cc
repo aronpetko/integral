@@ -33,7 +33,8 @@ namespace nnue {
 void LoadFromIncBin() {
   if (gEVALSize != sizeof(Network)) {
     fmt::println("Invalid embedded network size: {} bytes; expected {}",
-                 gEVALSize, sizeof(Network));
+                 gEVALSize,
+                 sizeof(Network));
     std::abort();
   }
   // Load the preprocessed network from embedded binary data

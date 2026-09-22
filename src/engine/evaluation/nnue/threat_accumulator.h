@@ -1,8 +1,8 @@
 #ifndef INTEGRAL_THREAT_ACCUMULATOR_H
 #define INTEGRAL_THREAT_ACCUMULATOR_H
 
-#include "perspective_accumulator.h"
 #include "pawn_pair/pawn_pair_features.h"
+#include "perspective_accumulator.h"
 
 namespace nnue {
 
@@ -112,7 +112,8 @@ struct ThreatFeaturePolicy {
       remaining &= ~BitBoard::FromSquare(first);
       const auto first_id = pawn_pair::GetPawnId(
           first ^ square_flip, state.GetPieceColor(first), perspective);
-      for (const Square second : remaining & pawn_pair::kAdjacentFileMasks[first]) {
+      for (const Square second :
+           remaining& pawn_pair::kAdjacentFileMasks[first]) {
         const auto second_id = pawn_pair::GetPawnId(
             second ^ square_flip, state.GetPieceColor(second), perspective);
         const auto index = pawn_pair::GetPawnIndex(first_id, second_id);
@@ -123,9 +124,12 @@ struct ThreatFeaturePolicy {
     }
   }
 
-  static Weight const* PawnPairRow(Color perspective, Square king_square,
-                                   Square first, Color first_color,
-                                   Square second, Color second_color);
+  static Weight const* PawnPairRow(Color perspective,
+                                   Square king_square,
+                                   Square first,
+                                   Color first_color,
+                                   Square second,
+                                   Color second_color);
 };
 
 class ThreatPerspectiveAccumulator

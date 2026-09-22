@@ -44,11 +44,11 @@ using PawnId = U8;
 [[nodiscard]] U16 GetPawnIndex(PawnId first_pawn, PawnId second_pawn);
 
 [[nodiscard]] U16 GetPawnPairIndex(Square first_pawn_square,
-                                           Color first_pawn_color,
-                                           Square second_pawn_square,
-                                           Color second_pawn_color,
-                                           Color perspective,
-                                           Square king_square);
+                                   Color first_pawn_color,
+                                   Square second_pawn_square,
+                                   Color second_pawn_color,
+                                   Color perspective,
+                                   Square king_square);
 
 }  // namespace nnue::pawn_pair
 

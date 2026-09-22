@@ -153,19 +153,21 @@ void ThreatAccumulatorChange::UpdatePawnPairsForSquares(
         (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
   }
 
-  // Remove processed pawns from candidates so captures and en passant emit each
-  // old pair only once.
+  // Remove processed pawns from candidates for captures and en passant
   for (const Square pawn_square : changed_pawns) {
     candidates &= ~BitBoard::FromSquare(pawn_square);
+
     const auto pawn_color = state.GetPieceColor(pawn_square);
     std::array<pawn_pair::PawnId, 2> first_ids;
     for (const Color perspective : {kWhite, kBlack}) {
       first_ids[perspective] = pawn_pair::GetPawnId(
           pawn_square ^ square_flips[perspective], pawn_color, perspective);
     }
+
     for (const Square other :
-         candidates & pawn_pair::kAdjacentFileMasks[pawn_square]) {
+         (candidates & pawn_pair::kAdjacentFileMasks[pawn_square])) {
       const auto other_color = state.GetPieceColor(other);
+
       PawnPairChangeInfo change;
       for (const Color perspective : {kWhite, kBlack}) {
         const auto second_id = pawn_pair::GetPawnId(
@@ -173,6 +175,7 @@ void ThreatAccumulatorChange::UpdatePawnPairsForSquares(
         change.indices[perspective] =
             pawn_pair::GetPawnIndex(first_ids[perspective], second_id);
       }
+
       PushChangeInfo<kAddChange>(change);
     }
   }
