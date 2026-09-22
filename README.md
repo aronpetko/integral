@@ -16,9 +16,9 @@ Integral implements the widely adopted negamax search approach with alpha-beta p
 Integral utilizes an efficiently updatable neural network (NNUE) for its evaluation function.
 
 ### Architecture
-Integral's neural network is a horizontally mirrored perspective network, containing 12 factorized king input buckets with threat inputs and fifty-move rule inputs, an L1 of 768 neurons, an L2 of 16 neurons, an L3 of 32 neurons, and 8 output buckets.
+Integral's neural network is a horizontally mirrored perspective network, containing 12 factorized king input buckets with threat inputs, pawn-pawn pair inputs, and fifty-move rule inputs, an L1 of 768 neurons, an L2 of 16 neurons, an L3 of 32 neurons, and 8 output buckets.
 
-`[(768 + 1x11)x12hm (Factorized) + 60144hm -> 768]x2 -> (16 -> 32 -> 1)1x8`
+`[(768 + 1x11)x12hm (Factorized) + 59808hm + 4560hm -> 768]x2 -> (16 -> 32 -> 1)1x8`
 
 ### Data Generation Process
 This neural network is trained on hundreds of millions of self-play games. Most self-play games starts with 3-4 randomly selected moves off a randomly selected opening from the **UHO_Lichess_4852_v1** book. Additionally, a majority of the data uses 5-man Syzygy endgame tablebases to guide the data generation search. 
