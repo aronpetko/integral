@@ -691,7 +691,7 @@ Score Searcher::PVSearch(Thread &thread,
     history.quiet_history->UpdateMoveScore(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
     history.pawn_history->UpdateMoveScore(
-        board.GetStateHistory().Back(), prev_stack->move, bonus);
+        board.GetStateHistory().Back(), prev_stack->move, bonus, prev_stack);
   }
 
   stack->threats = state.threats;
@@ -1283,7 +1283,8 @@ Score Searcher::PVSearch(Thread &thread,
     history.quiet_history->UpdateMoveScore(
         past_turn, prev_stack->move, prev_stack->threats, quiet_history_bonus);
     history.pawn_history->UpdateMoveScore(
-        board.GetStateHistory().Back(), prev_stack->move, pawn_history_bonus);
+        board.GetStateHistory().Back(), prev_stack->move, pawn_history_bonus,
+        prev_stack);
   }
 
   if (syzygy::enabled) {

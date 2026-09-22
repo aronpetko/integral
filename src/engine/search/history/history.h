@@ -56,7 +56,7 @@ class History {
                   kSecondContinuationHistoryWeight;
     move_score += continuation_history->GetScore(state, move, stack - 4) *
                   kFourthContinuationHistoryWeight;
-    move_score += pawn_history->GetScore(state, move) * kPawnHistoryWeight;
+    move_score += pawn_history->GetScore(state, move, stack) * kPawnHistoryWeight;
 
     return move_score / kHistoryWeightScale;
   }
