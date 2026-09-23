@@ -177,7 +177,12 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   }, [](Command *cmd) {
     const auto option_name = *cmd->ParseArgument<std::string>("name");
     const auto option_value = *cmd->ParseArgument<std::string>("value");
-    listener.GetOption(option_name).SetValue(option_value);
+
+    if (const auto option = listener.GetOption(option_name)) {
+      option->SetValue(option_value);
+    } else {
+      fmt::println("Error: unknown option '{}'", option_name);
+    }
   });
 
   listener.RegisterCommand("test", CommandType::kUnordered, {

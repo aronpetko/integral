@@ -37,7 +37,7 @@ class Listener {
         command->ProcessLine(ss);
         command->Execute();
       } else {
-        fmt::println("Error: unknown command: '{}'", command_name);
+        fmt::println("Error: unknown command '{}'", command_name);
       }
     }
   }
@@ -80,8 +80,9 @@ class Listener {
     options_[name] = Option(name, value, visibility, std::move(callback));
   }
 
-  [[maybe_unused]] Option &GetOption(std::string_view option) {
-    return options_[option];
+  [[maybe_unused]] Option *GetOption(std::string_view option) {
+    auto opt = options_.find(option);
+    return opt != options_.end() ? &opt->second : nullptr;
   }
 
   [[maybe_unused]] void PrintOptions() {
@@ -95,7 +96,6 @@ class Listener {
  private:
   std::unordered_map<std::string_view, std::shared_ptr<Command>> commands_;
   std::map<std::string_view, Option, CaseInsensitive> options_;
-  std::mutex mtx_;
 };
 
 inline Listener listener;

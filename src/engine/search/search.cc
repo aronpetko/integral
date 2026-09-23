@@ -69,9 +69,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
   thread.root_moves = RootMoveList(thread.board);
 
   const int multi_pv =
-      std::min(uci::listener.GetOption("MultiPV").GetValue<int>(),
+      std::min(uci::listener.GetOption("MultiPV")->GetValue<int>(),
                thread.root_moves.Size());
-  const bool minimal = uci::listener.GetOption("Minimal").GetValue<bool>();
+  const bool minimal = uci::listener.GetOption("Minimal")->GetValue<bool>();
 
   std::unique_ptr<uci::reporter::ReportInfo> report_info;
   if (thread.IsMainThread()) {
