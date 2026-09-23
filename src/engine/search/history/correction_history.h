@@ -74,9 +74,11 @@ class CorrectionHistory {
                        bonus);
     }
 
-    const U16 tt_continuation_index = GetTTContinuationIndex(
-        state.zobrist_key, key_history[key_history.Size() - 1]);
-    UpdateTableScore(tt_continuation_table_[tt_continuation_index], bonus);
+    if (!key_history.Empty()) {
+      const U16 tt_continuation_index = GetTTContinuationIndex(
+          state.zobrist_key, key_history[key_history.Size() - 1]);
+      UpdateTableScore(tt_continuation_table_[tt_continuation_index], bonus);
+    }
 
     // Update continuation table scores
     for (int ply_ago : {2, 3}) {
@@ -107,11 +109,14 @@ class CorrectionHistory {
     const I32 major_correction =
         major_table_[GetMajorTableIndex(state)] * kMajorCorrectionWeight;
     const I32 continuation_correction = [&]() -> I32 {
-      const U16 tt_continuation_index = GetTTContinuationIndex(
-          state.zobrist_key, key_history[key_history.Size() - 1]);
-      Score total =
-          tt_continuation_table_[tt_continuation_index] * kTTCorrectionWeight;
-      ;
+      Score total = 0;
+
+      if (!key_history.Empty()) {
+        const U16 tt_continuation_index = GetTTContinuationIndex(
+            state.zobrist_key, key_history[key_history.Size() - 1]);
+        total +=
+            tt_continuation_table_[tt_continuation_index] * kTTCorrectionWeight;
+      }
 
       for (int ply_ago : {2, 3}) {
         if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
