@@ -670,6 +670,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     std::tie(stack->static_eval, stack->eval_complexity) =
         AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->eval_complexity = std::abs(stack->eval_complexity);
 
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
