@@ -314,6 +314,10 @@ class Board {
     return history_;
   }
 
+  inline const auto &GetKeyHistory() const {
+    return key_history_;
+  }
+
   inline auto &GetAccumulator() {
     return accumulator_;
   }

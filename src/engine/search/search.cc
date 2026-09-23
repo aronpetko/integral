@@ -234,7 +234,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
 
   // Adjust based on prior search scores in similar positions
   static_eval = thread.history.correction_history->CorrectStaticEval(
-      state, stack, static_eval);
+      thread.board, stack, static_eval);
 
 #ifndef DATAGEN
   // Adjust based on proximity to a fifty-move-rule draw
@@ -529,7 +529,7 @@ Score Searcher::PVSearch(Thread &thread,
       stack->static_eval =
           AdjustStaticEval(eval::Evaluate(board), thread, stack);
       history.correction_history->UpdateScore(
-          state, stack, kDrawScore, TranspositionTableEntry::kExact, depth);
+          board, stack, kDrawScore, TranspositionTableEntry::kExact, depth);
     }
     if ((alpha = kDrawScore) >= beta) {
       return alpha;
@@ -1316,7 +1316,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
-          state, stack, best_score, tt_flag, depth);
+          board, stack, best_score, tt_flag, depth);
     }
   }
 

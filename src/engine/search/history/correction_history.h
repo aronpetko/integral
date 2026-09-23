@@ -15,6 +15,7 @@ TUNABLE_STEP(kPawnCorrectionWeight, 45, 0, 125, false, 3);
 TUNABLE_STEP(kNonPawnCorrectionWeight, 42, 0, 125, false, 3);
 TUNABLE_STEP(kMajorCorrectionWeight, 37, 0, 125, false, 3);
 TUNABLE_STEP(kContinuationCorrectionWeight, 53, 0, 125, false, 3);
+TUNABLE_STEP(kTTCorrectionWeight, 40, 0, 125, false, 3);
 
 class CorrectionHistory {
   constexpr static U16 kDefaultHashSize = 16384;
@@ -33,6 +34,8 @@ class CorrectionHistory {
     major_table_ = std::make_unique<std::atomic_int16_t[]>(MajorTableEntries());
     non_pawn_table_ =
         std::make_unique<std::atomic_int16_t[]>(NonPawnTableEntries());
+    tt_continuation_table_ =
+        std::make_unique<std::atomic_int16_t[]>(TTContinuationTableEntries());
 
     ClearContinuationTable();
   }
@@ -41,10 +44,11 @@ class CorrectionHistory {
     ClearTable(pawn_table_.get(), PawnTableEntries());
     ClearTable(major_table_.get(), MajorTableEntries());
     ClearTable(non_pawn_table_.get(), NonPawnTableEntries());
+    ClearTable(tt_continuation_table_.get(), TTContinuationTableEntries());
     ClearContinuationTable();
   }
 
-  void UpdateScore(const BoardState &state,
+  void UpdateScore(const Board &board,
                    StackEntry *stack,
                    Score search_score,
                    TranspositionTableEntry::Flag score_type,
@@ -54,6 +58,8 @@ class CorrectionHistory {
       return;
     }
 
+    const auto &state = board.GetState();
+    const auto &key_history = board.GetKeyHistory();
     const I16 bonus = CalculateBonus(stack->static_eval, search_score, depth);
 
     // Update pawn table score
@@ -68,6 +74,10 @@ class CorrectionHistory {
                        bonus);
     }
 
+    const U16 tt_continuation_index = GetTTContinuationIndex(
+        state.zobrist_key, key_history[key_history.Size() - 1]);
+    UpdateTableScore(tt_continuation_table_[tt_continuation_index], bonus);
+
     // Update continuation table scores
     for (int ply_ago : {2, 3}) {
       if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
@@ -80,9 +90,12 @@ class CorrectionHistory {
     }
   }
 
-  [[nodiscard]] Score CorrectStaticEval(const BoardState &state,
+  [[nodiscard]] Score CorrectStaticEval(const Board &board,
                                         StackEntry *stack,
                                         Score static_eval) const {
+    const auto &state = board.GetState();
+    const auto &key_history = board.GetKeyHistory();
+
     const Score pawn_correction =
         pawn_table_[GetPawnTableIndex(state)] * kPawnCorrectionWeight;
     const I32 non_pawn_white_correction =
@@ -94,7 +107,11 @@ class CorrectionHistory {
     const I32 major_correction =
         major_table_[GetMajorTableIndex(state)] * kMajorCorrectionWeight;
     const I32 continuation_correction = [&]() -> I32 {
-      Score total = 0;
+      const U16 tt_continuation_index = GetTTContinuationIndex(
+          state.zobrist_key, key_history[key_history.Size() - 1]);
+      Score total =
+          tt_continuation_table_[tt_continuation_index] * kTTCorrectionWeight;
+      ;
 
       for (int ply_ago : {2, 3}) {
         if (stack->ply >= ply_ago && (stack - ply_ago)->move &&
@@ -134,6 +151,10 @@ class CorrectionHistory {
 
   [[nodiscard]] U64 NonPawnTableEntries() const {
     return hash_size_ * kNumColors * kNumColors;
+  }
+
+  [[nodiscard]] U64 TTContinuationTableEntries() const {
+    return hash_size_ * 2;
   }
 
   static void ClearTable(std::atomic_int16_t *table, U64 entries) {
@@ -187,11 +208,18 @@ class CorrectionHistory {
     return (hash_index * kNumColors + state.turn) * kNumColors + color;
   }
 
+  [[nodiscard]] U64 GetTTContinuationIndex(U64 current_key,
+                                           U64 past_key) const {
+    const U64 hash_index = (current_key ^ past_key) & (hash_size_ * 2 - 1ULL);
+    return hash_index;
+  }
+
  private:
   U64 hash_size_;
   std::unique_ptr<std::atomic_int16_t[]> pawn_table_;
   std::unique_ptr<std::atomic_int16_t[]> non_pawn_table_;
   std::unique_ptr<std::atomic_int16_t[]> major_table_;
+  std::unique_ptr<std::atomic_int16_t[]> tt_continuation_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };
