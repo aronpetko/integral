@@ -1114,9 +1114,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      if (stack->eval_complexity > kLmrComplexityDiff) {
-        reduction -= kLmrComplexity;
-      }
+      reduction -= std::min(stack->eval_complexity * 10, 1536);
 
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0]) {
