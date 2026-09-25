@@ -1029,7 +1029,7 @@ Score Searcher::PVSearch(Thread &thread,
       if (tt_move_excluded_score < new_beta) {
         // Extend more if the TT move is singular by a big margin
         if (tt_move_excluded_score <
-            new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
+            new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node + (in_pv_node && !tt_was_in_pv) * 50) {
           extensions =
               2 + (!in_pv_node && is_quiet &&
                    tt_move_excluded_score < new_beta - kSeTripleMargin);
