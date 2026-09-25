@@ -25,7 +25,7 @@ constexpr std::size_t kHmcBucketCount =
 // The runtime network carries one extra, all-zero row that a bucket-0 HMC maps
 // to, so looking up the row is a table index with no branch
 constexpr std::size_t kHmcRowCount = kHmcBucketCount + 1;
-constexpr std::size_t kInputBucketCount = 12;
+constexpr std::size_t kInputBucketCount = 16;
 constexpr std::size_t kOutputBucketCount = 8;
 
 constexpr std::int32_t kFtQuantization = 255;
