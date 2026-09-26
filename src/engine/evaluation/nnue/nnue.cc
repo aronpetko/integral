@@ -101,12 +101,13 @@ Score Evaluate(Board &board) {
         const auto clipped_pair_value1 =
             simd::Min(pair_accumulator_value1, quantise_vector);
 
-        // Perform a left-shift on them and multiply the products using the
-        // higher 16 bits
-        const auto first_product = simd::MulhiEpi16(
-            clipped_value << (16 - kFtShift), clipped_pair_value);
-        const auto second_product = simd::MulhiEpi16(
-            clipped_value1 << (16 - kFtShift), clipped_pair_value1);
+        // Multiply the pairs with a rounding high multiply, which computes
+        // (a * b + 2^14) >> 15, so shifting by one less than a plain mulhi
+        // gives (a * b) >> kFtShift rounded to nearest rather than floored
+        const auto first_product = simd::MulhrsEpi16(
+            clipped_value << (15 - kFtShift), clipped_pair_value);
+        const auto second_product = simd::MulhrsEpi16(
+            clipped_value1 << (15 - kFtShift), clipped_pair_value1);
 
         // Pack the two I16 vectors into a U8 vector, which will clamp negative
         // values to 0 because of unsigned saturation. This is why we didn't
@@ -268,7 +269,9 @@ Score Evaluate(Board &board) {
                                  stm_accumulator.threat[i + arch::kL1Size / 2] +
                                  hmc[i + arch::kL1Size / 2]));
 
-      const auto product = (first_val * second_val) >> 9;
+      // Round to nearest to match the SIMD path's rounding multiply
+      const auto product =
+          (first_val * second_val + (1 << (kFtShift - 1))) >> kFtShift;
       feature_output[i + them * arch::kL1Size / 2] = static_cast<U8>(product);
     }
   }

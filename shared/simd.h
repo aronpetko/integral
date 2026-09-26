@@ -454,6 +454,25 @@ constexpr int kPackusOrder[2] = {0, 1};
 #endif
 }
 
+// Rounding high multiply: (a * b + 2^14) >> 15
+[[nodiscard]] inline Vepi16 MulhrsEpi16(Vepi16 a, Vepi16 b) {
+#if BUILD_HAS_AVX512
+  return std::bit_cast<Vepi16>(_mm512_mulhrs_epi16(std::bit_cast<__m512i>(a),
+                                                   std::bit_cast<__m512i>(b)));
+#elif BUILD_HAS_AVX2
+  return std::bit_cast<Vepi16>(_mm256_mulhrs_epi16(std::bit_cast<__m256i>(a),
+                                                   std::bit_cast<__m256i>(b)));
+#elif BUILD_HAS_SSE41
+  return std::bit_cast<Vepi16>(
+      _mm_mulhrs_epi16(std::bit_cast<__m128i>(a), std::bit_cast<__m128i>(b)));
+#else
+  Vepi16 out{};
+  for (std::size_t i = 0; i < kNativeLanes<I16>; ++i)
+    out[i] = I16((I32(a[i]) * I32(b[i]) + (1 << 14)) >> 15);
+  return out;
+#endif
+}
+
 [[nodiscard]] inline Vepu8 PackusEpi16(Vepi16 a, Vepi16 b) {
 #if BUILD_HAS_AVX512
   return std::bit_cast<Vepu8>(_mm512_packus_epi16(std::bit_cast<__m512i>(a),
