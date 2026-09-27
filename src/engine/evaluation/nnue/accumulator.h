@@ -68,11 +68,6 @@ class Accumulator {
 
   [[nodiscard]] int GetOutputBucket(const BoardState& state) const;
 
-  // HMC rows are shared by every king bucket and both perspectives.
-  [[nodiscard]] static const I16* HmcRow(int hmc_row) {
-    return network->hmc_weights[hmc_row].data();
-  }
-
   [[nodiscard]] PerspectiveView operator[](int perspective) {
     auto& entry = stack_[head_idx_];
     return {entry.psqt_perspectives[perspective],

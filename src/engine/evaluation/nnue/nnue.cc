@@ -70,7 +70,7 @@ Score Evaluate(Board &board) {
     for (int them = 0; them <= 1; them++) {
       const auto perspective = static_cast<Color>(state.turn ^ them);
       const auto &stm_accumulator = accumulator[perspective];
-      const auto hmc = kHasHmc ? Accumulator::HmcRow(hmc_bucket) : nullptr;
+      const auto hmc = kHasHmc ? network->hmc_weights[hmc_bucket].data() : nullptr;
 
       const auto load_neurons = [&](int idx) {
         auto value = simd::Load<I16>(&stm_accumulator.psqt[idx]) +
@@ -258,7 +258,7 @@ Score Evaluate(Board &board) {
   for (int them = 0; them <= 1; them++) {
     const auto perspective = static_cast<Color>(state.turn ^ them);
     const auto &stm_accumulator = accumulator[perspective];
-    const I16 *hmc = Accumulator::HmcRow(hmc_bucket);
+    const I16 *hmc = network->hmc_weights[hmc_bucket].data();
     for (int i = 0; i < arch::kL1Size / 2; i++) {
       const auto first_val = CReLU(static_cast<I16>(
           stm_accumulator.psqt[i] + stm_accumulator.threat[i] + hmc[i]));
