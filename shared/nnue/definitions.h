@@ -25,7 +25,7 @@ constexpr std::size_t kHmcBucketCount =
 // The runtime network carries one extra, all-zero row that a bucket-0 HMC maps
 // to, so looking up the row is a table index with no branch
 constexpr std::size_t kHmcRowCount = kHmcBucketCount + 1;
-constexpr std::size_t kInputBucketCount = 12;
+constexpr std::size_t kInputBucketCount = 16;
 constexpr std::size_t kOutputBucketCount = 8;
 
 constexpr std::int32_t kFtQuantization = 255;
@@ -39,7 +39,7 @@ constexpr std::int32_t kEvalScale = 200;
 
 struct RawNetwork {
   MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
-  MultiArray<I16, arch::kInputBucketCount, arch::kHmcBucketCount, arch::kL1Size> hmc_weights;
+  MultiArray<I16, arch::kHmcBucketCount, arch::kL1Size> hmc_weights;
   MultiArray<I8, arch::kThreatPawnPairFeatureCount, arch::kL1Size> threat_weights;
   MultiArray<I16, arch::kL1Size> feature_biases;
   MultiArray<I8, arch::kOutputBucketCount, arch::kL2Size, arch::kL1Size> l1_weights;
@@ -52,7 +52,7 @@ struct RawNetwork {
 
 struct alignas(simd::kAlignment) Network {
   alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
-  alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, arch::kHmcRowCount, arch::kL1Size> hmc_weights;
+  alignas(simd::kAlignment) MultiArray<I16, arch::kHmcRowCount, arch::kL1Size> hmc_weights;
   alignas(simd::kAlignment) MultiArray<I8, arch::kThreatPawnPairFeatureCount, arch::kL1Size> threat_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
   union {
