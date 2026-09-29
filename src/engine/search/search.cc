@@ -746,12 +746,17 @@ Score Searcher::PVSearch(Thread &thread,
     // do a quiescent search to determine if we should prune
     const int razoring_margin =
         kRazoringMult * depth - !improving * kRazoringNotImproving;
+    const auto razoring_alpha = stack->static_eval + razoring_margin;
     if (!stack->excluded_tt_move && depth <= kRazoringDepth && alpha < 2000 &&
-        stack->static_eval + razoring_margin < alpha) {
-      const Score razoring_score =
-          QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
-      if (razoring_score <= alpha) {
-        return razoring_score;
+        razoring_alpha <= alpha) {
+      Score razoring_score = QuiescentSearch<NodeType::kNonPV>(
+          thread, razoring_alpha, razoring_alpha + 1, stack);
+      if (razoring_score <= razoring_alpha) {
+        razoring_score =
+            QuiescentSearch<NodeType::kNonPV>(thread, alpha, alpha + 1, stack);
+        if (razoring_score <= alpha) {
+          return razoring_score;
+        }
       }
     }
 
