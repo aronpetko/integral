@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 set(CMAKE_CXX_STANDARD 20)
 
-# Build options for different architectures
+# Build options for different architectures (passed from parent)
 option(BUILD_NATIVE "Build with native optimizations" ${PREPROCESS_BUILD_NATIVE})
 option(BUILD_VNNI512 "Build with AVX512 VNNI support" ${PREPROCESS_BUILD_VNNI512})
 option(BUILD_AVX512 "Build with AVX512 optimizations" ${PREPROCESS_BUILD_AVX512})
@@ -11,8 +11,10 @@ option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" ${PREPROCES
 option(BUILD_DEBUG "Build with debug information" ${PREPROCESS_BUILD_DEBUG})
 option(SPARSE_PERMUTE "Use sparse permute network format" ${PREPROCESS_SPARSE_PERMUTE})
 
-# Architecture-specific flags
-set(CXXFLAGS_NATIVE "-march=native")
+# Produce network layout suitable for aarch64/NEON
+option(PRODUCE_AARCH64_NET "Produce aarch64 network layout (skip x86 packus/Dpbusd permutations)" ${PREPROCESS_PRODUCE_AARCH64_NET})
+
+# Architecture-specific flags (x86 only – this tool always runs on the host)
 set(CXXFLAGS_VNNI512 "-march=znver4 -mtune=znver4 -DBUILD_VNNI512 -DBUILD_FAST_PEXT")
 set(CXXFLAGS_AVX512 "-march=x86-64-v4 -mtune=skylake-avx512 -DBUILD_AVX512 -DBUILD_FAST_PEXT")
 set(CXXFLAGS_AVX2_BMI2 "-march=haswell -mtune=haswell -mavx2 -mbmi2 -DBUILD_AVX2_BMI2 -DBUILD_FAST_PEXT")
@@ -34,7 +36,13 @@ elseif (BUILD_AVX2)
 elseif (BUILD_SSE41_POPCNT)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_SSE41_POPCNT} -DBUILD_SSE41_POPCNT")
 elseif (BUILD_NATIVE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_NATIVE} -DBUILD_NATIVE")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBUILD_NATIVE")
+endif ()
+
+# Tell the source code to skip x86-only permutations when targeting aarch64 nets
+if (PRODUCE_AARCH64_NET)
+    add_definitions(-DPRODUCE_AARCH64_NET -DBUILD_HAS_NEON)
+    message(STATUS "preprocess: producing aarch64 network layout")
 endif ()
 
 # Include third-party directories

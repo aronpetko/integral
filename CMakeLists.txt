@@ -11,13 +11,14 @@ include(CheckCXXSourceRuns)
 include(CheckIPOSupported)
 
 # Build options for different architectures
-set(BUILD_NATIVE ON)
+set(BUILD_NATIVE OFF)
 option(BUILD_NATIVE "Build with native optimizations" ON)
 option(BUILD_VNNI512 "Build with AVX512 VNNI support" OFF)
 option(BUILD_AVX512 "Build with AVX512 optimizations" OFF)
 option(BUILD_AVX2_BMI2 "Build with AVX2 + BMI2 optimizations" OFF)
 option(BUILD_AVX2 "Build with AVX2 optimizations" OFF)
 option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
+option(BUILD_ANDROID_AARCH64 "Build for Android via NDK with NEON/dotprod optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
@@ -28,7 +29,6 @@ set(NNUE_PATH "${PROJECT_SOURCE_DIR}/${NETWORK_NAME}.nnue")
 
 # Define the location to download the .nnue file if not provided
 if (NOT EVALFILE)
-    # Check if the .nnue file exists, if not, download it
     if (NOT EXISTS ${NNUE_PATH})
         message(STATUS "${NETWORK_NAME}.nnue not found. Downloading from ${NNUE_URL}...")
         file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
@@ -47,7 +47,7 @@ else ()
     message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
 endif ()
 
-# Option for preparing the network to sparse permute neurons (requires turning off AVX)
+# Option for preparing the network to sparse permute neurons
 option(SPARSE_PERMUTE OFF)
 if (SPARSE_PERMUTE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPARSE_PERMUTE")
@@ -55,40 +55,63 @@ endif ()
 
 # Define output path for preprocessed file
 set(PREPROCESSED_FILE "${CMAKE_CURRENT_BINARY_DIR}/processed.nnue")
-set(PREPROCESS_BUILD_NATIVE ${BUILD_NATIVE} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_VNNI512 ${BUILD_VNNI512} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_AVX512 ${BUILD_AVX512} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_AVX2_BMI2 ${BUILD_AVX2_BMI2} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_AVX2 ${BUILD_AVX2} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_SSE41_POPCNT ${BUILD_SSE41_POPCNT} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_DEBUG ${BUILD_DEBUG} CACHE INTERNAL "")
-set(PREPROCESS_SPARSE_PERMUTE ${SPARSE_PERMUTE} CACHE INTERNAL "")
+
+# ------------------------------------------------------------------
+# Options passed to the preprocess sub-project
+# ------------------------------------------------------------------
+set(PREPROCESS_BUILD_NATIVE          ${BUILD_NATIVE}          CACHE INTERNAL "")
+set(PREPROCESS_BUILD_VNNI512         ${BUILD_VNNI512}         CACHE INTERNAL "")
+set(PREPROCESS_BUILD_AVX512          ${BUILD_AVX512}          CACHE INTERNAL "")
+set(PREPROCESS_BUILD_AVX2_BMI2       ${BUILD_AVX2_BMI2}       CACHE INTERNAL "")
+set(PREPROCESS_BUILD_AVX2            ${BUILD_AVX2}            CACHE INTERNAL "")
+set(PREPROCESS_BUILD_SSE41_POPCNT    ${BUILD_SSE41_POPCNT}    CACHE INTERNAL "")
+set(PREPROCESS_BUILD_DEBUG           ${BUILD_DEBUG}           CACHE INTERNAL "")
+set(PREPROCESS_SPARSE_PERMUTE        ${SPARSE_PERMUTE}        CACHE INTERNAL "")
+
+if (BUILD_ANDROID_AARCH64)
+    set(PREPROCESS_PRODUCE_AARCH64_NET ON  CACHE INTERNAL "")
+    message(STATUS "Android aarch64 build: preprocess will produce aarch64 network layout")
+else ()
+    set(PREPROCESS_PRODUCE_AARCH64_NET OFF CACHE INTERNAL "")
+endif ()
 
 # Add subdirectory containing the preprocess project
 add_subdirectory(preprocess)
 
-# Custom command to run preprocessing
-add_custom_command(
-        OUTPUT ${PREPROCESSED_FILE}
-        COMMAND preprocess ${EVALFILE} ${PREPROCESSED_FILE}
-        DEPENDS preprocess ${EVALFILE}
-        COMMENT "Running net preprocessing"
-        VERBATIM
-)
-
-# Custom target that depends on the output file
-add_custom_target(run_preprocess ALL DEPENDS ${PREPROCESSED_FILE})
-
-# Define preprocessed file as a macro so it’s accessible from C++
-add_definitions(-DEVALFILE="${PREPROCESSED_FILE}")
+# ------------------------------------------------------------------
+# Preprocessing step
+# When cross-compiling for Android the preprocess binary cannot be
+# executed on the host, so we expect EVALFILE to already point at a
+# pre-processed network (created by Makefile stage 1).
+# ------------------------------------------------------------------
+if (BUILD_ANDROID_AARCH64)
+    message(STATUS "Android aarch64: skipping host execution of preprocess (using pre-processed EVALFILE)")
+    add_custom_target(run_preprocess ALL
+        COMMAND ${CMAKE_COMMAND} -E echo "Using pre-processed network: ${EVALFILE}"
+        DEPENDS ${EVALFILE}
+    )
+    add_definitions(-DEVALFILE="${EVALFILE}")
+else ()
+    add_custom_command(
+            OUTPUT ${PREPROCESSED_FILE}
+            COMMAND preprocess ${EVALFILE} ${PREPROCESSED_FILE}
+            DEPENDS preprocess ${EVALFILE}
+            COMMENT "Running net preprocessing"
+            VERBATIM
+    )
+    add_custom_target(run_preprocess ALL DEPENDS ${PREPROCESSED_FILE})
+    add_definitions(-DEVALFILE="${PREPROCESSED_FILE}")
+endif ()
 
 # Architecture-specific flags
-set(CXXFLAGS_NATIVE "-march=native")
 set(CXXFLAGS_VNNI512 "-march=znver4 -mtune=znver4 -DBUILD_VNNI512 -DUSE_PEXT")
 set(CXXFLAGS_AVX512 "-march=x86-64-v4 -mtune=skylake-avx512 -DBUILD_AVX512 -DUSE_PEXT")
 set(CXXFLAGS_AVX2_BMI2 "-march=haswell -mtune=haswell -mavx2 -mbmi2 -DBUILD_AVX2_BMI2 -DUSE_PEXT")
 set(CXXFLAGS_AVX2 "-march=bdver4 -mno-tbm -mno-sse4a -mno-bmi2 -mtune=znver2 -DBUILD_AVX2")
 set(CXXFLAGS_SSE41_POPCNT "-march=nehalem -mtune=sandybridge -DBUILD_SSE41_POPCNT")
+set(CXXFLAGS_ANDROID_NEON "-march=armv8.2-a+dotprod+fp+simd+crypto+crc -ftree-vectorize -funroll-loops -m64 -stdlib=libc++ -fPIE -std=gnu++20 -flto=auto -Ofast -pipe -finline-functions -pthread -ffast-math -MMD -MP -w -frounding-math -funsafe-math-optimizations -fsee -fwrapv -DBUILD_HAS_NEON -fconstexpr-steps=100000000 -DBUILD_ANDROID_NEON")
+
+set(LDFLAGS_ANDROID_NEON "-lm -latomic -static-libstdc++ -pie -Wl,-z,stack-size=8388608")
 
 # Apply the correct flags based on the build type
 if (BUILD_DEBUG)
@@ -104,6 +127,9 @@ elseif (BUILD_AVX2)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_AVX2} -DBUILD_AVX2")
 elseif (BUILD_SSE41_POPCNT)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_SSE41_POPCNT} -DBUILD_SSE41_POPCNT")
+elseif (BUILD_ANDROID_AARCH64)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_ANDROID_NEON}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS_ANDROID_NEON}")
 elseif (BUILD_NATIVE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXXFLAGS_NATIVE} -DBUILD_NATIVE")
 
@@ -115,30 +141,22 @@ elseif (BUILD_NATIVE)
             ERROR_QUIET
     )
 
-    # Debug output
     message(STATUS "Checking for BMI2 support in native build...")
 
-    # Check if BMI2 is supported
     string(FIND "${COMPILER_DEFINES}" "__BMI2__" HAS_BMI2)
-
-    # Also check for specific Zen architectures
     string(FIND "${COMPILER_DEFINES}" "__znver1" IS_ZNVER1)
     string(FIND "${COMPILER_DEFINES}" "__znver2" IS_ZNVER2)
     string(FIND "${COMPILER_DEFINES}" "__znver3" IS_ZNVER3)
     string(FIND "${COMPILER_DEFINES}" "__znver4" IS_ZNVER4)
 
     if (NOT HAS_BMI2 EQUAL -1)
-        # BMI2 is supported
         if (NOT IS_ZNVER3 EQUAL -1 OR NOT IS_ZNVER4 EQUAL -1)
-            # Zen 3 and Zen 4 have fast PEXT
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_PEXT")
             message(STATUS "BMI2 (PEXT) support detected and enabled for Zen 3/4 processor")
         elseif (IS_ZNVER1 EQUAL -1 AND IS_ZNVER2 EQUAL -1)
-            # Not znver1 or znver2, so PEXT should be fast (Intel or other)
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_PEXT")
             message(STATUS "BMI2 (PEXT) support detected and enabled for native build")
         elseif (NOT IS_ZNVER2 EQUAL -1 AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-            # Special case: Check for AMD EPYC 7B on znver2
             execute_process(
                     COMMAND lscpu
                     OUTPUT_VARIABLE LSCPU_OUTPUT
@@ -176,13 +194,15 @@ if (LTO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 endif ()
 
-# Add Clang-specific flags
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# Add Clang-specific flags (skipped for Android)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT BUILD_ANDROID_AARCH64)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
 endif ()
 
-# Static linking on Windows
-if (WIN32)
+# Static linking on Windows (skipped for Android, even when cross-compiled
+# from a Windows host, since WIN32 tracks CMAKE_SYSTEM_NAME rather than the
+# actual target)
+if (WIN32 AND NOT BUILD_ANDROID_AARCH64)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,/STACK:8388608")
     endif ()
@@ -206,6 +226,18 @@ add_executable(integral ${SOURCES}
         src/data_gen/data_gen.h
         src/data_gen/format/binpack.h
         src/engine/search/cuckoo.cc)
+
+# Cross-compiling for Android on a Windows host leaves CMAKE_SYSTEM_NAME at
+# its host default ("Windows") unless a proper NDK toolchain file is used,
+# so CMake still appends ".exe" to the `integral` target even though the
+# produced binary is an Android ELF, not a PE. Clear the suffix on this
+# target specifically -- NOT via the global CMAKE_EXECUTABLE_SUFFIX variable,
+# which would also strip the .exe off `preprocess` in the subdirectory added
+# above, and preprocess has to keep running as a native Windows .exe on the
+# host.
+if (BUILD_ANDROID_AARCH64)
+    set_target_properties(integral PROPERTIES SUFFIX "")
+endif ()
 
 # Make sure main build depends on this
 add_dependencies(integral run_preprocess)
