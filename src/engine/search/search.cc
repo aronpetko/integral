@@ -1089,6 +1089,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Reduce less if we have seen this node in the PV before
       if (tt_was_in_pv) {
         reduction -= kLmrWasPvNode;
+        reduction -= kLmrPvNode * in_pv_node;
       }
 
       // Reduce more if this node is expected to fail high
