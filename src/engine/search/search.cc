@@ -974,7 +974,7 @@ Score Searcher::PVSearch(Thread &thread,
             *eval::kSeePieceScores[captured] +
             kBadNoisyFutMarginMult * lmr_fractional_depth / kLmrDepthScale;
         if (futility_score <= alpha) {
-          break;
+          continue;
         }
       }
 
