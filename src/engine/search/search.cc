@@ -100,8 +100,9 @@ void Searcher::IterativeDeepening(Thread &thread) {
       int fail_high_count = 0;
 
       while (true) {
+        const int new_depth = std::max(1, depth - fail_high_count);
         const Score score = PVSearch<NodeType::kPV>(
-            thread, depth - fail_high_count, alpha, beta, root_stack, false);
+            thread, new_depth, alpha, beta, root_stack, false);
 
         thread.root_moves.SortNextMove(thread.pv_move_idx);
 
