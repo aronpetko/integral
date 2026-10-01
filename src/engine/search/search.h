@@ -14,6 +14,8 @@
 namespace search {
 
 constexpr int kMaxSearchDepth = 100;
+// Number of nodes the main thread searches between checking the clock
+constexpr int kTimeCheckInterval = 512;
 
 enum class NodeType {
   kPV,
@@ -109,7 +111,8 @@ struct alignas(64) Thread {
         nodes_searched(0),
         sel_depth(0),
         tb_hits(0),
-        nmp_min_ply(0) {
+        nmp_min_ply(0),
+        time_check_countdown(kTimeCheckInterval) {
     if (shared_correction_history == nullptr) {
       owned_correction_history =
           std::make_unique<history::CorrectionHistory>(1);
@@ -143,6 +146,7 @@ struct alignas(64) Thread {
     scores.fill(kScoreNone);
 
     nmp_min_ply = 0;
+    time_check_countdown = kTimeCheckInterval;
 
     // Reset info data
     nodes_searched = 0;
@@ -163,6 +167,7 @@ struct alignas(64) Thread {
   int pv_move_idx;
   RootMoveList root_moves;
   U16 nmp_min_ply;
+  int time_check_countdown;
 };
 
 class Searcher {

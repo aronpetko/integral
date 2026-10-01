@@ -492,9 +492,9 @@ Score Searcher::PVSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
-  static thread_local int counter = 0;
-  if (thread.IsMainThread() && (++counter & 4095) == 0) {
-    counter = 0;
+  // Check the clock every so often
+  if (thread.IsMainThread() && --thread.time_check_countdown <= 0) {
+    thread.time_check_countdown = kTimeCheckInterval;
     if (time_mgmt_.TimesUp(thread.nodes_searched)) {
       stop_.store(true, std::memory_order_relaxed);
     }
@@ -1065,7 +1065,7 @@ Score Searcher::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched =
+    const U64 prev_nodes_searched =
         thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
 
     // Principal Variation Search (PVS)

@@ -5,16 +5,24 @@
 
 namespace search {
 
-TUNABLE(kStabilityBase, 1.232044615542811, 0.5, 2.0, true);
-TUNABLE(kStabilitySlope, 0.053606823646481394, 0.02, 0.07, true);
-TUNABLE(kScoreChangeBase, 0.12629154205276114, 0.05, 0.2, true);
-TUNABLE(kSearchScoreCoeff, 0.023107992566090252, 0.01, 0.04, true);
-TUNABLE(kPreviousScoreCoeff, 0.025299252497434234, 0.01, 0.04, true);
-TUNABLE(kScoreChangeMin, 0.5297008962945585, 0.3, 0.7, true);
-TUNABLE(kScoreChangeMax, 1.6994615900363166, 1.25, 2.0, true);
-TUNABLE(kNodeFactorBase, 0.546157946120436, 0.3, 0.7, true);
-TUNABLE(kNodeFactorSlope, 2.296080118538782, 1.8, 2.5, true);
-TUNABLE(kNodeFactorIntercept, 0.4535368327980294, 0.2, 0.65, true);
+TUNABLE(kStabilityBase, 1.232044615542811, 0.5, 2.0, false);
+TUNABLE(kStabilitySlope, 0.053606823646481394, 0.02, 0.07, false);
+TUNABLE(kScoreChangeBase, 0.12629154205276114, 0.05, 0.2, false);
+TUNABLE(kSearchScoreCoeff, 0.023107992566090252, 0.01, 0.04, false);
+TUNABLE(kPreviousScoreCoeff, 0.025299252497434234, 0.01, 0.04, false);
+TUNABLE(kScoreChangeMin, 0.5297008962945585, 0.3, 0.7, false);
+TUNABLE(kScoreChangeMax, 1.6994615900363166, 1.25, 2.0, false);
+TUNABLE(kNodeFactorBase, 0.546157946120436, 0.3, 0.7, false);
+TUNABLE(kNodeFactorSlope, 2.296080118538782, 1.8, 2.5, false);
+TUNABLE(kNodeFactorIntercept, 0.4535368327980294, 0.2, 0.65, false);
+TUNABLE(kMaxBestMoveStability, 10, 5, 15, false);
+TUNABLE(kSoftLimitTimeCap, 0.5, 0.3, 0.8, false);
+TUNABLE(kIncrementMoves, 50, 30, 70, false);
+TUNABLE(kAllocatedTimeLeftCap, 0.4193, 0.3, 0.55, false);
+TUNABLE(kAllocatedTotalTimeFactor, 0.0575, 0.04, 0.075, false);
+TUNABLE(kHardLimitTimeCap, 0.825, 0.7, 0.95, false);
+TUNABLE(kHardLimitScale, 5.928, 4.0, 8.0, false);
+TUNABLE(kHardLimitBuffer, 10, 0, 30, false);
 
 bool TimeConfig::HasBeenModified() const {
   static const TimeConfig default_config;
@@ -108,7 +116,7 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
   if (previous_best_move_ != best_move) {
     previous_best_move_ = best_move;
     best_move_stability_ = 0;
-  } else if (best_move_stability_ < 10) {
+  } else if (best_move_stability_ < kMaxBestMoveStability) {
     best_move_stability_++;
   }
 
@@ -139,8 +147,14 @@ bool TimedLimiter::ShouldStop(Move best_move, int depth, Thread& thread) {
       kNodeFactorBase,
       percent_nodes_not_best * kNodeFactorSlope + kNodeFactorIntercept);
 
-  return TimeElapsed() >= allocated_time_ * stability_factor *
-                              score_change_factor * node_count_factor;
+  // Cap the scaled time so an unstable search can't burn most of the clock,
+  // since the hard limit is all that's left to save us otherwise
+  const double soft_limit =
+      std::min<double>(allocated_time_ * stability_factor *
+                           score_change_factor * node_count_factor,
+                       kSoftLimitTimeCap * time_left_);
+
+  return TimeElapsed() >= soft_limit;
 }
 
 bool TimedLimiter::TimesUp(U64 nodes_searched) {
@@ -164,16 +178,21 @@ void TimedLimiter::CalculateLimits() {
   const int overhead = uci::listener.GetOption("MoveOverhead")->GetValue<int>();
 
   if (move_time_ != 0) {
-    hard_limit_ = move_time_ - overhead;
+    hard_limit_ = std::max(1, move_time_ - overhead);
     return;
   }
 
-  const int total_time =
-      std::max(1, time_left_ + 50 * increment_ - 50 * overhead);
-  allocated_time_ = std::min(time_left_ * 0.4193, total_time * 0.0575);
-  hard_limit_ = std::max(
-      1.0,
-      std::min(time_left_ * 0.9221 - overhead, allocated_time_ * 5.928) - 10);
+  const int total_time = std::max(
+      1,
+      time_left_ + kIncrementMoves * increment_ - kIncrementMoves * overhead);
+  allocated_time_ = std::min<double>(time_left_ * kAllocatedTimeLeftCap,
+                                     total_time * kAllocatedTotalTimeFactor);
+
+  // Leave enough of the clock untouched that a slow stop doesn't flag
+  const double clock_cap = time_left_ * kHardLimitTimeCap - overhead;
+  const double scaled_limit = allocated_time_ * kHardLimitScale;
+  hard_limit_ = std::max<double>(
+      1.0, std::min(clock_cap, scaled_limit) - kHardLimitBuffer);
 }
 
 void TimedLimiter::Update(const TimeConfig& config) {
