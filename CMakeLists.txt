@@ -53,6 +53,12 @@ if (SPARSE_PERMUTE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPARSE_PERMUTE")
 endif ()
 
+# Add Clang-specific flags
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fconstexpr-steps=100000000>)
+    add_compile_definitions(FMT_CONSTEVAL=)
+endif ()
+
 # Define output path for preprocessed file
 set(PREPROCESSED_FILE "${CMAKE_CURRENT_BINARY_DIR}/processed.nnue")
 set(PREPROCESS_BUILD_NATIVE ${BUILD_NATIVE} CACHE INTERNAL "")
@@ -176,15 +182,12 @@ if (LTO_SUPPORTED)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 endif ()
 
-# Add Clang-specific flags
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libstdc++")
-endif ()
-
 # Static linking on Windows
 if (WIN32)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if (CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,/STACK:8388608")
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,8388608")
     endif ()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 endif ()
@@ -209,3 +212,45 @@ add_executable(integral ${SOURCES}
 
 # Make sure main build depends on this
 add_dependencies(integral run_preprocess)
+
+# Profile-guided optimization: build with GENERATE, run the pgo_profile target, then rebuild with USE
+set(PGO_MODE OFF CACHE STRING "Profile-guided optimization stage (OFF, GENERATE, USE)")
+set(PGO_DIR "${CMAKE_CURRENT_BINARY_DIR}/pgo")
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(PGO_USE_FLAGS -fprofile-use=${PGO_DIR}/integral.profdata
+            -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date)
+else ()
+    set(PGO_USE_FLAGS -fprofile-use -fprofile-correction -Wno-missing-profile)
+endif ()
+
+if (PGO_MODE STREQUAL "GENERATE")
+    target_compile_options(integral PRIVATE -fprofile-generate)
+    target_link_options(integral PRIVATE -fprofile-generate)
+
+    set(PGO_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${PGO_DIR}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${PGO_DIR}
+            COMMAND ${CMAKE_COMMAND} -E env LLVM_PROFILE_FILE=${PGO_DIR}/integral.profraw
+                    $<TARGET_FILE:integral> bench)
+
+    # Clang profiles must be merged with the llvm-profdata matching the compiler version
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        string(REGEX MATCH "^[0-9]+" CLANG_MAJOR_VERSION "${CMAKE_CXX_COMPILER_VERSION}")
+        get_filename_component(CLANG_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        find_program(LLVM_PROFDATA
+                NAMES llvm-profdata-${CLANG_MAJOR_VERSION} llvm-profdata
+                HINTS ${CLANG_DIR} /usr/lib/llvm-${CLANG_MAJOR_VERSION}/bin)
+        if (NOT LLVM_PROFDATA)
+            message(FATAL_ERROR "llvm-profdata not found, build with PGO=OFF")
+        endif ()
+        list(APPEND PGO_COMMANDS COMMAND ${LLVM_PROFDATA} merge
+                -output=${PGO_DIR}/integral.profdata ${PGO_DIR}/integral.profraw)
+    endif ()
+
+    add_custom_target(pgo_profile ${PGO_COMMANDS} VERBATIM)
+    add_dependencies(pgo_profile integral)
+elseif (PGO_MODE STREQUAL "USE")
+    target_compile_options(integral PRIVATE ${PGO_USE_FLAGS})
+    target_link_options(integral PRIVATE ${PGO_USE_FLAGS})
+endif ()
