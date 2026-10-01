@@ -16,11 +16,11 @@ TUNABLE(kNodeFactorBase, 0.546157946120436, 0.3, 0.7, false);
 TUNABLE(kNodeFactorSlope, 2.296080118538782, 1.8, 2.5, false);
 TUNABLE(kNodeFactorIntercept, 0.4535368327980294, 0.2, 0.65, false);
 TUNABLE(kMaxBestMoveStability, 10, 5, 15, false);
-TUNABLE(kSoftLimitTimeCap, 0.5, 0.3, 0.8, false);
+TUNABLE(kSoftLimitTimeCap, 0.8, 0.3, 0.8, false);
 TUNABLE(kIncrementMoves, 50, 30, 70, false);
 TUNABLE(kAllocatedTimeLeftCap, 0.4193, 0.3, 0.55, false);
 TUNABLE(kAllocatedTotalTimeFactor, 0.0575, 0.04, 0.075, false);
-TUNABLE(kHardLimitTimeCap, 0.825, 0.7, 0.95, false);
+TUNABLE(kHardLimitTimeCap, 0.9221, 0.7, 0.95, false);
 TUNABLE(kHardLimitScale, 5.928, 4.0, 8.0, false);
 TUNABLE(kHardLimitBuffer, 10, 0, 30, false);
 
@@ -182,13 +182,11 @@ void TimedLimiter::CalculateLimits() {
     return;
   }
 
-  const int total_time = std::max(
-      1,
-      time_left_ + kIncrementMoves * increment_ - kIncrementMoves * overhead);
+  const int total_time =
+      std::max(1, time_left_ + kIncrementMoves * (increment_ - overhead));
   allocated_time_ = std::min<double>(time_left_ * kAllocatedTimeLeftCap,
                                      total_time * kAllocatedTotalTimeFactor);
 
-  // Leave enough of the clock untouched that a slow stop doesn't flag
   const double clock_cap = time_left_ * kHardLimitTimeCap - overhead;
   const double scaled_limit = allocated_time_ * kHardLimitScale;
   hard_limit_ = std::max<double>(
