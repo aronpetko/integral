@@ -1,14 +1,20 @@
-# Default compiler settings
-CC ?= gcc
-CXX ?= g++
-
 # Detect the operating system
 ifeq ($(OS),Windows_NT)
     detected_OS := Windows
     EXE_EXT := .exe
+    NULL_DEVICE := NUL
 else
     detected_OS := $(shell uname -s)
     EXE_EXT :=
+    NULL_DEVICE := /dev/null
+endif
+
+# Default compiler settings, preferring Clang when available
+ifeq ($(origin CXX),default)
+    CXX := $(if $(shell clang++ --version 2>$(NULL_DEVICE)),clang++,g++)
+endif
+ifeq ($(origin CC),default)
+    CC := $(subst g++,gcc,$(subst clang++,clang,$(CXX)))
 endif
 
 # Build directory
@@ -27,12 +33,31 @@ EXE ?= integral
 # Whether or not datagen will be used
 DATAGEN ?= OFF
 
+# Whether or not to use profile-guided optimization
+PGO ?= ON
+ifeq ($(BUILD_TYPE),BUILD_DEBUG)
+    override PGO := OFF
+endif
+
+BUILD_TYPES := BUILD_NATIVE BUILD_VNNI512 BUILD_AVX512 BUILD_AVX2_BMI2 BUILD_AVX2 BUILD_SSE41_POPCNT BUILD_DEBUG
+configure = cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) $(foreach type,$(BUILD_TYPES),-D$(type)=$(if $(filter $(type),$(BUILD_TYPE)),ON,OFF)) -DDATAGEN=$(DATAGEN) -DPGO_MODE=$(1) ..
+
 # Standard targets
 .PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native
 
 all: $(BUILD_DIR)
-	@echo Building $(EXE) with $(BUILD_TYPE)...
+	@echo Building $(EXE) with $(BUILD_TYPE) using $(CXX)...
+ifeq ($(PGO),ON)
+	@$(call configure,GENERATE)
 	@$(MAKE) -C $(BUILD_DIR)
+	@echo Generating PGO profile...
+	@$(MAKE) -C $(BUILD_DIR) pgo_profile
+	@$(call configure,USE)
+	@$(MAKE) -C $(BUILD_DIR)
+else
+	@$(call configure,OFF)
+	@$(MAKE) -C $(BUILD_DIR)
+endif
 	@echo Copying executable...
 	@$(MAKE) copy_executable
 
@@ -42,8 +67,6 @@ ifeq ($(detected_OS),Windows)
 else
 	@mkdir -p $(BUILD_DIR)
 endif
-	@echo Configuring CMake with BUILD_TYPE=$(BUILD_TYPE)...
-	@cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -D$(BUILD_TYPE)=ON -DDATAGEN=$(DATAGEN) ..
 
 clean:
 ifeq ($(detected_OS),Windows)

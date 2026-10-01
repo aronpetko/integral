@@ -38,3 +38,5 @@ git clone https://github.com/aronpetko/integral
 cd integral
 make [native | vnni512 | avx512 | avx2_bmi2 | avx2 | sse41_popcnt]
 ```
+
+Clang is used when available, and builds use profile-guided optimization by default (disable with `PGO=OFF`).
