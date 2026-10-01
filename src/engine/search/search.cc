@@ -962,6 +962,22 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
+      // Bad Noisy Futility Pruning: Stop searching losing captures at
+      // near-leaf nodes when even winning the captured piece can't raise alpha
+      if (move_picker.GetStage() == MovePicker::Stage::kBadNoisys &&
+          move.GetType() != MoveType::kPromotion && !stack->in_check &&
+          lmr_depth <= kBadNoisyFutPruneDepth) {
+        const auto captured =
+            move.IsEnPassant(state) ? kPawn : state.GetPieceType(move.GetTo());
+        const int futility_score =
+            stack->static_eval + kBadNoisyFutMarginBase +
+            *eval::kSeePieceScores[captured] +
+            kBadNoisyFutMarginMult * lmr_fractional_depth / kLmrDepthScale;
+        if (futility_score <= alpha) {
+          continue;
+        }
+      }
+
       // History Pruning: Prune moves with a low history score moves at
       // near-leaf nodes
       const int history_margin =
