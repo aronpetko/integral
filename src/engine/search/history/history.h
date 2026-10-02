@@ -31,10 +31,13 @@ class History {
     pawn_history = std::make_unique<PawnHistory>();
   }
 
-  // Reinitialize the history objects for quicker clearing. Correction history
-  // is shared between threads, so it's owned and cleared elsewhere.
+  // Correction history is shared between threads, so it's owned and cleared
+  // by the main Searcher instance
   void Clear() {
-    Initialize();
+    quiet_history->Clear();
+    continuation_history->Clear();
+    capture_history->Clear();
+    pawn_history->Clear();
   }
 
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,
