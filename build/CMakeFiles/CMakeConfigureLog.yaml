@@ -1,0 +1,441 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineSystem.cmake:204 (message)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      The system is: Windows - 10.0.26200 - AMD64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: C:/Program Files/LLVM/bin/clang.exe 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.exe"
+      
+      The C compiler identification is Clang, found in:
+        D:/Coding/integral/build/CMakeFiles/3.26.3/CompilerIdC/a.exe
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:1153 (message)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:221 (CMAKE_DETERMINE_MSVC_SHOWINCLUDES_PREFIX)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Detecting C compiler /showIncludes prefix:
+        
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:1153 (message)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:221 (CMAKE_DETERMINE_MSVC_SHOWINCLUDES_PREFIX)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Detecting C compiler /showIncludes prefix:
+        
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: C:/Program Files/LLVM/bin/clang++.exe 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.exe"
+      
+      The CXX compiler identification is Clang, found in:
+        D:/Coding/integral/build/CMakeFiles/3.26.3/CompilerIdCXX/a.exe
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:1153 (message)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:221 (CMAKE_DETERMINE_MSVC_SHOWINCLUDES_PREFIX)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Detecting CXX compiler /showIncludes prefix:
+        
+  -
+    kind: "message-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:1153 (message)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerId.cmake:221 (CMAKE_DETERMINE_MSVC_SHOWINCLUDES_PREFIX)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Detecting CXX compiler /showIncludes prefix:
+        
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7"
+      binary: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-O0 -g -Xclang -gcodeview"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile cmTC_30c1a/fast && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/cmTC_30c1a.dir/build.make CMakeFiles/cmTC_30c1a.dir/build
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7'
+        Building C object CMakeFiles/cmTC_30c1a.dir/CMakeCCompilerABI.c.obj
+        "C:/Program Files/LLVM/bin/clang.exe"   -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -MD -MT CMakeFiles/cmTC_30c1a.dir/CMakeCCompilerABI.c.obj -MF CMakeFiles/cmTC_30c1a.dir/CMakeCCompilerABI.c.obj.d -o CMakeFiles/cmTC_30c1a.dir/CMakeCCompilerABI.c.obj -c "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeCCompilerABI.c"
+        Linking C executable cmTC_30c1a.exe
+        "C:/Program Files/LLVM/bin/clang.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -Xlinker /subsystem:console @CMakeFiles/cmTC_30c1a.dir/objects1.rsp -o cmTC_30c1a.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:cmTC_30c1a.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7/cmTC_30c1a.pdb -Xlinker /version:0.0  
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7'
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-1k4ow7'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f"
+      binary: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-O0 -g -Xclang -gcodeview"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile cmTC_31526/fast && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/cmTC_31526.dir/build.make CMakeFiles/cmTC_31526.dir/build
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f'
+        Building CXX object CMakeFiles/cmTC_31526.dir/CMakeCXXCompilerABI.cpp.obj
+        "C:/Program Files/LLVM/bin/clang++.exe"   -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -MD -MT CMakeFiles/cmTC_31526.dir/CMakeCXXCompilerABI.cpp.obj -MF CMakeFiles/cmTC_31526.dir/CMakeCXXCompilerABI.cpp.obj.d -o CMakeFiles/cmTC_31526.dir/CMakeCXXCompilerABI.cpp.obj -c "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeCXXCompilerABI.cpp"
+        Linking CXX executable cmTC_31526.exe
+        "C:/Program Files/LLVM/bin/clang++.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -Xlinker /subsystem:console @CMakeFiles/cmTC_31526.dir/objects1.rsp -o cmTC_31526.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:cmTC_31526.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f/cmTC_31526.pdb -Xlinker /version:0.0  
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f'
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-t4ha5f'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/Internal/FeatureTesting.cmake:34 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/Internal/FeatureTesting.cmake:83 (_record_compiler_features)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/Compiler/CMakeCommonCompilerMacros.cmake:121 (_record_compiler_features_cxx)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompileFeatures.cmake:70 (cmake_record_cxx_compile_features)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeTestCXXCompiler.cmake:70 (CMAKE_DETERMINE_COMPILE_FEATURES)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting CXX compile features"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia"
+      binary: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-O0 -g -Xclang -gcodeview"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_FEATURE_TEST"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile cmTC_e9c28/fast && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/cmTC_e9c28.dir/build.make CMakeFiles/cmTC_e9c28.dir/build
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia'
+        Building CXX object CMakeFiles/cmTC_e9c28.dir/feature_tests.cxx.obj
+        "C:/Program Files/LLVM/bin/clang++.exe"   -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd   -std=c++14 -MD -MT CMakeFiles/cmTC_e9c28.dir/feature_tests.cxx.obj -MF CMakeFiles/cmTC_e9c28.dir/feature_tests.cxx.obj.d -o CMakeFiles/cmTC_e9c28.dir/feature_tests.cxx.obj -c D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia/feature_tests.cxx
+        Linking CXX executable cmTC_e9c28.exe
+        "C:/Program Files/LLVM/bin/clang++.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -Xlinker /subsystem:console @CMakeFiles/cmTC_e9c28.dir/objects1.rsp -o cmTC_e9c28.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:cmTC_e9c28.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia/cmTC_e9c28.pdb -Xlinker /version:0.0  @CMakeFiles/cmTC_e9c28.dir/linkLibs.rsp 
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia'
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-4k7gia'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/Internal/FeatureTesting.cmake:34 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/Internal/FeatureTesting.cmake:83 (_record_compiler_features)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/Compiler/CMakeCommonCompilerMacros.cmake:129 (_record_compiler_features_cxx)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeDetermineCompileFeatures.cmake:70 (cmake_record_cxx_compile_features)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CMakeTestCXXCompiler.cmake:70 (CMAKE_DETERMINE_COMPILE_FEATURES)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting CXX compile features"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn"
+      binary: "D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-O0 -g -Xclang -gcodeview"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_FEATURE_TEST"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile cmTC_3786f/fast && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/cmTC_3786f.dir/build.make CMakeFiles/cmTC_3786f.dir/build
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn'
+        Building CXX object CMakeFiles/cmTC_3786f.dir/feature_tests.cxx.obj
+        "C:/Program Files/LLVM/bin/clang++.exe"   -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd   -std=c++14 -MD -MT CMakeFiles/cmTC_3786f.dir/feature_tests.cxx.obj -MF CMakeFiles/cmTC_3786f.dir/feature_tests.cxx.obj.d -o CMakeFiles/cmTC_3786f.dir/feature_tests.cxx.obj -c D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn/feature_tests.cxx
+        Linking CXX executable cmTC_3786f.exe
+        "C:/Program Files/LLVM/bin/clang++.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -g -Xclang -gcodeview -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -Xlinker /subsystem:console @CMakeFiles/cmTC_3786f.dir/objects1.rsp -o cmTC_3786f.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:cmTC_3786f.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn/cmTC_3786f.pdb -Xlinker /version:0.0  @CMakeFiles/cmTC_3786f.dir/linkLibs.rsp 
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn'
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/CMakeScratch/TryCompile-e4kmdn'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:138 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:266 (_ipo_run_language_check)"
+      - "CMakeLists.txt:177 (check_ipo_supported)"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src"
+      binary: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin"
+    buildResult:
+      variable: "_IPO_LANGUAGE_CHECK_RESULT"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -SD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src -BD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin --check-build-system CMakeFiles/Makefile.cmake 0
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin//CMakeFiles/progress.marks
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/Makefile2 all
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [ 25%] Building CXX object CMakeFiles/foo.dir/foo.cpp.obj
+        "C:/Program Files/LLVM/bin/clang++.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/foo.dir/foo.cpp.obj -MF CMakeFiles/foo.dir/foo.cpp.obj.d -o CMakeFiles/foo.dir/foo.cpp.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp
+        [ 50%] Linking CXX static library foo.lib
+        "C:/Program Files/CMake/bin/cmake.exe" -P CMakeFiles/foo.dir/cmake_clean_target.cmake
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_link_script CMakeFiles/foo.dir/link.txt --verbose=1
+        "C:/Program Files/LLVM/bin/llvm-ar.exe" qc foo.lib CMakeFiles/foo.dir/foo.cpp.obj
+        "C:/Program Files/LLVM/bin/llvm-ranlib.exe" foo.lib
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [ 50%] Built target foo
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [ 75%] Building CXX object CMakeFiles/boo.dir/main.cpp.obj
+        "C:/Program Files/LLVM/bin/clang++.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/boo.dir/main.cpp.obj -MF CMakeFiles/boo.dir/main.cpp.obj.d -o CMakeFiles/boo.dir/main.cpp.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src/main.cpp
+        [100%] Linking CXX executable boo.exe
+        "C:/Program Files/LLVM/bin/clang++.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -Xlinker /subsystem:console @CMakeFiles/boo.dir/objects1.rsp -o boo.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:boo.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/boo.pdb -Xlinker /version:0.0  @CMakeFiles/boo.dir/linkLibs.rsp 
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [100%] Built target boo
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles 0
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:138 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:266 (_ipo_run_language_check)"
+      - "CMakeLists.txt:177 (check_ipo_supported)"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src"
+      binary: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin"
+    buildResult:
+      variable: "_IPO_LANGUAGE_CHECK_RESULT"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -SD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src -BD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin --check-build-system CMakeFiles/Makefile.cmake 0
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin//CMakeFiles/progress.marks
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/Makefile2 all
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/foo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [ 25%] Building C object CMakeFiles/foo.dir/foo.c.obj
+        "C:/Program Files/LLVM/bin/clang.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/foo.dir/foo.c.obj -MF CMakeFiles/foo.dir/foo.c.obj.d -o CMakeFiles/foo.dir/foo.c.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src/foo.c
+        [ 50%] Linking C static library foo.lib
+        "C:/Program Files/CMake/bin/cmake.exe" -P CMakeFiles/foo.dir/cmake_clean_target.cmake
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_link_script CMakeFiles/foo.dir/link.txt --verbose=1
+        "C:/Program Files/LLVM/bin/llvm-ar.exe" qc foo.lib CMakeFiles/foo.dir/foo.c.obj
+        "C:/Program Files/LLVM/bin/llvm-ranlib.exe" foo.lib
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [ 50%] Built target foo
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/boo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [ 75%] Building C object CMakeFiles/boo.dir/main.c.obj
+        "C:/Program Files/LLVM/bin/clang.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/boo.dir/main.c.obj -MF CMakeFiles/boo.dir/main.c.obj.d -o CMakeFiles/boo.dir/main.c.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src/main.c
+        [100%] Linking C executable boo.exe
+        "C:/Program Files/LLVM/bin/clang.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -Xlinker /subsystem:console @CMakeFiles/boo.dir/objects1.rsp -o boo.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:boo.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/boo.pdb -Xlinker /version:0.0  @CMakeFiles/boo.dir/linkLibs.rsp 
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [100%] Built target boo
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles 0
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        
+      exitCode: 0
+...
+
+---
+events:
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:138 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:266 (_ipo_run_language_check)"
+      - "CMakeLists.txt:177 (check_ipo_supported)"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src"
+      binary: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin"
+    buildResult:
+      variable: "_IPO_LANGUAGE_CHECK_RESULT"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -SD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src -BD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin --check-build-system CMakeFiles/Makefile.cmake 0
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin//CMakeFiles/progress.marks
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/Makefile2 all
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [ 25%] Building CXX object CMakeFiles/foo.dir/foo.cpp.obj
+        "C:/Program Files/LLVM/bin/clang++.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/foo.dir/foo.cpp.obj -MF CMakeFiles/foo.dir/foo.cpp.obj.d -o CMakeFiles/foo.dir/foo.cpp.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp
+        [ 50%] Linking CXX static library foo.lib
+        "C:/Program Files/CMake/bin/cmake.exe" -P CMakeFiles/foo.dir/cmake_clean_target.cmake
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_link_script CMakeFiles/foo.dir/link.txt --verbose=1
+        "C:/Program Files/LLVM/bin/llvm-ar.exe" qc foo.lib CMakeFiles/foo.dir/foo.cpp.obj
+        "C:/Program Files/LLVM/bin/llvm-ranlib.exe" foo.lib
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [ 50%] Built target foo
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [ 75%] Building CXX object CMakeFiles/boo.dir/main.cpp.obj
+        "C:/Program Files/LLVM/bin/clang++.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/boo.dir/main.cpp.obj -MF CMakeFiles/boo.dir/main.cpp.obj.d -o CMakeFiles/boo.dir/main.cpp.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/src/main.cpp
+        [100%] Linking CXX executable boo.exe
+        "C:/Program Files/LLVM/bin/clang++.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -Xlinker /subsystem:console @CMakeFiles/boo.dir/objects1.rsp -o boo.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:boo.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/boo.pdb -Xlinker /version:0.0  @CMakeFiles/boo.dir/linkLibs.rsp 
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        [100%] Built target boo
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles 0
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:138 (try_compile)"
+      - "C:/Program Files/CMake/share/cmake-3.26/Modules/CheckIPOSupported.cmake:266 (_ipo_run_language_check)"
+      - "CMakeLists.txt:177 (check_ipo_supported)"
+    directories:
+      source: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src"
+      binary: "D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin"
+    buildResult:
+      variable: "_IPO_LANGUAGE_CHECK_RESULT"
+      cached: true
+      stdout: |
+        Change Dir: D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin
+        
+        Run Build Command(s):C:/Program Files/CMake/bin/cmake.exe -E env VERBOSE=1 C:/ProgramData/chocolatey/bin/make.exe -f Makefile && make[2]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -SD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src -BD:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin --check-build-system CMakeFiles/Makefile.cmake 0
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin//CMakeFiles/progress.marks
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/Makefile2 all
+        make[3]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/foo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [ 25%] Building C object CMakeFiles/foo.dir/foo.c.obj
+        "C:/Program Files/LLVM/bin/clang.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/foo.dir/foo.c.obj -MF CMakeFiles/foo.dir/foo.c.obj.d -o CMakeFiles/foo.dir/foo.c.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src/foo.c
+        [ 50%] Linking C static library foo.lib
+        "C:/Program Files/CMake/bin/cmake.exe" -P CMakeFiles/foo.dir/cmake_clean_target.cmake
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_link_script CMakeFiles/foo.dir/link.txt --verbose=1
+        "C:/Program Files/LLVM/bin/llvm-ar.exe" qc foo.lib CMakeFiles/foo.dir/foo.c.obj
+        "C:/Program Files/LLVM/bin/llvm-ranlib.exe" foo.lib
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [ 50%] Built target foo
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/depend
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_depends "Unix Makefiles" D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles/boo.dir/DependInfo.cmake
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        C:/ProgramData/chocolatey/lib/make/tools/install/bin/make.exe  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/build
+        make[4]: Entering directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [ 75%] Building C object CMakeFiles/boo.dir/main.c.obj
+        "C:/Program Files/LLVM/bin/clang.exe"   -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -MD -MT CMakeFiles/boo.dir/main.c.obj -MF CMakeFiles/boo.dir/main.c.obj.d -o CMakeFiles/boo.dir/main.c.obj -c D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/src/main.c
+        [100%] Linking C executable boo.exe
+        "C:/Program Files/LLVM/bin/clang.exe" -fuse-ld=lld-link -nostartfiles -nostdlib -O0 -D_DEBUG -D_DLL -D_MT -Xclang --dependent-lib=msvcrtd -g -Xclang -gcodeview -flto=thin -Xlinker /subsystem:console @CMakeFiles/boo.dir/objects1.rsp -o boo.exe -Xlinker /MANIFEST:EMBED -Xlinker /implib:boo.lib -Xlinker /pdb:D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/boo.pdb -Xlinker /version:0.0  @CMakeFiles/boo.dir/linkLibs.rsp 
+        make[4]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        [100%] Built target boo
+        make[3]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        "C:/Program Files/CMake/bin/cmake.exe" -E cmake_progress_start D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin/CMakeFiles 0
+        make[2]: Leaving directory 'D:/Coding/integral/build/CMakeFiles/_CMakeLTOTest-C/bin'
+        
+      exitCode: 0
+...

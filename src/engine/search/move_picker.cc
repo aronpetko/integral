@@ -240,7 +240,8 @@ int MovePicker::ScoreMove(Move &move) {
       break;
   }
 
-  threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
+  threat_score += kDirectCheckBonus * (board_.MoveGivesDirectCheck(move) &&
+                                       eval::StaticExchange(move, -20, state));
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will

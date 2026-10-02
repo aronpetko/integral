@@ -1,0 +1,2 @@
+"C:/Program Files/LLVM/bin/llvm-ar.exe" qc foo.lib CMakeFiles/foo.dir/foo.cpp.obj
+"C:/Program Files/LLVM/bin/llvm-ranlib.exe" foo.lib
