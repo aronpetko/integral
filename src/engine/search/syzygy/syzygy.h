@@ -7,8 +7,8 @@
 
 namespace syzygy {
 
-inline std::atomic<bool> enabled = false;
-inline std::atomic<int> probe_depth = 0;
+inline bool enabled = false;
+inline U32 probe_depth = 0;
 
 enum class ProbeResult {
   kFailed,
@@ -21,7 +21,9 @@ void SetPath(std::string_view path);
 
 void Free();
 
-ProbeResult ProbePosition(const BoardState &state);
+[[nodiscard]] ProbeResult ProbePosition(const BoardState &state);
+
+[[nodiscard]] U32 MaximumPieces();
 
 }  // namespace syzygy
 
