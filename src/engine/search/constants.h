@@ -64,6 +64,10 @@ TUNABLE_STEP(kFutMarginBase, 131, 100, 250, false, 20);
 TUNABLE_STEP(kFutMarginMult, 83, 50, 200, false, 5);
 TUNABLE(kFutMarginHistDiv, 124, 32, 256, false);
 
+TUNABLE(kBadNoisyFutPruneDepth, 5, 3, 10, true);
+TUNABLE_STEP(kBadNoisyFutMarginBase, 100, 0, 200, false, 15);
+TUNABLE_STEP(kBadNoisyFutMarginMult, 150, 50, 250, false, 10);
+
 TUNABLE(kSeeQuietThresh, -27, -150, -5, false);
 TUNABLE(kSeeNoisyThresh, -94, -150, -5, false);
 TUNABLE(kSeePruneHistDiv, 138, 50, 300, false);
