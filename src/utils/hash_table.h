@@ -1,6 +1,7 @@
 #ifndef INTEGRAL_CACHE_H
 #define INTEGRAL_CACHE_H
 
+#include <algorithm>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -70,6 +71,13 @@ inline std::size_t LargePageSize() {
   }
   throw std::bad_alloc();
 #else
+#if defined(__linux__)
+  // madvise requires a page-aligned address, and transparent huge pages can
+  // only back whole 2MB-aligned regions, so align to the huge page size
+  constexpr std::size_t kHugePageSize = 2 * 1024 * 1024;
+  alignment = std::max(alignment, kHugePageSize);
+#endif
+
   // aligned_alloc requires the size to be a multiple of the alignment
   if (size % alignment != 0) {
     size += alignment - (size % alignment);
