@@ -1112,6 +1112,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction += kLmrCutNode;
       }
 
+      if (stack->eval <= alpha && std::abs(stack->eval) < kTBWinInMaxPlyScore) {
+        reduction += std::max(alpha - stack->eval, 768);
+      }
+
       // Reduce less if this move gives check
       if (gives_check) {
         reduction -= kLmrGivesCheck;
