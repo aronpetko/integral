@@ -1239,7 +1239,8 @@ Score Searcher::PVSearch(Thread &thread,
         alpha = score;
         if (alpha >= beta) {
           const int history_depth =
-              depth + (alpha > beta + kHistoryBonusMargin);
+              depth + (alpha > beta + kHistoryBonusMargin) +
+              (move_picker.GetStage() == MovePicker::Stage::kBadNoisys);
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
