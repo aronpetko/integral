@@ -1007,6 +1007,7 @@ Score Searcher::PVSearch(Thread &thread,
     // enough (close enough in depth), we perform a reduced-depth search with
     // the TT move excluded to see if any other moves can beat it.
     int extensions = 0;
+    bool is_singular = false;
     if (!in_root && depth >= kSeDepth && move == tt_move &&
         tt_entry->depth + 3 >= depth &&
         tt_entry->flag != TranspositionTableEntry::kUpperBound &&
@@ -1043,6 +1044,9 @@ Score Searcher::PVSearch(Thread &thread,
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
       if (tt_move_excluded_score < new_beta) {
+        if (is_quiet) {
+          stack->AddKillerMove(move);
+        }
         // Extend more if the TT move is singular by a big margin
         if (tt_move_excluded_score <
             new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
@@ -1241,7 +1245,6 @@ Score Searcher::PVSearch(Thread &thread,
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
-            stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
             history.pawn_history->UpdateScore(
