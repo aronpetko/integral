@@ -14,7 +14,7 @@ constexpr std::size_t kPawnPairFeatureCount = 4560;
 constexpr std::size_t kThreatFeatureCount = 59808;
 constexpr std::size_t kThreatPawnPairFeatureCount =
     kThreatFeatureCount + kPawnPairFeatureCount;
-constexpr std::size_t kL1Size = 768;
+constexpr std::size_t kL1Size = 1024;
 constexpr std::size_t kL2Size = 16;
 constexpr std::size_t kL3Size = 32;
 
