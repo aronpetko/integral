@@ -253,6 +253,11 @@ Score Searcher::QuiescentSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
+  CheckTime(thread);
+  if (ShouldQuit()) {
+    return 0;
+  }
+
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
@@ -409,6 +414,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
 
+    if (ShouldQuit()) {
+      return 0;
+    }
+
     moves_seen++;
 
     if (score > best_score) {
@@ -492,14 +501,7 @@ Score Searcher::PVSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
-  static thread_local int counter = 0;
-  if (thread.IsMainThread() && (++counter & 4095) == 0) {
-    counter = 0;
-    if (time_mgmt_.TimesUp(thread.nodes_searched)) {
-      stop_.store(true, std::memory_order_relaxed);
-    }
-  }
-
+  CheckTime(thread);
   if (ShouldQuit()) {
     return 0;
   }
@@ -856,6 +858,10 @@ Score Searcher::PVSearch(Thread &thread,
 
           board.UndoMove();
 
+          if (ShouldQuit()) {
+            return 0;
+          }
+
           if (score >= pc_beta) {
             const TranspositionTableEntry new_tt_entry(
                 zobrist_key,
@@ -913,7 +919,8 @@ Score Searcher::PVSearch(Thread &thread,
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
       constexpr int kLmrDepthScale = 1024;
-      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
+      int reduction = tables::kLateMoveReduction[is_quiet][std::min(
+                          depth, kMaxSearchDepth)][moves_seen] *
                       kLmrDepthScale;
 
       // Reduce more in non-PV nodes
@@ -1094,8 +1101,9 @@ Score Searcher::PVSearch(Thread &thread,
     // move ordering) are searched at lower depths
     if (depth > 2 && moves_seen >= 1 + in_root * 2) {
       constexpr int kLmrScale = 1024;
-      reduction =
-          tables::kLateMoveReduction[is_quiet][depth][moves_seen] * kLmrScale;
+      reduction = tables::kLateMoveReduction[is_quiet][std::min(
+                      depth, kMaxSearchDepth)][moves_seen] *
+                  kLmrScale;
 
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
@@ -1371,6 +1379,7 @@ void Searcher::QuitThreads() {
     return;
   }
 
+  stop_.store(true, std::memory_order_relaxed);
   quit_.store(true, std::memory_order_release);
   stop_barrier_.ArriveAndWait();
   start_barrier_.ArriveAndWait();
@@ -1378,6 +1387,16 @@ void Searcher::QuitThreads() {
   for (auto &&thread : raw_threads_) {
     if (thread.joinable()) {
       thread.join();
+    }
+  }
+}
+
+void Searcher::CheckTime(Thread &thread) {
+  static thread_local int counter = 0;
+  if (thread.IsMainThread() && (++counter & 4095) == 0) {
+    counter = 0;
+    if (time_mgmt_.TimesUp(thread.nodes_searched)) {
+      stop_.store(true, std::memory_order_relaxed);
     }
   }
 }
@@ -1430,9 +1449,7 @@ void Searcher::SetThreadCount(U16 count) {
 }
 
 void Searcher::Start(TimeConfig time_config) {
-  if (searching_threads_.load() > 0) {
-    return;
-  }
+  WaitForThreads();
 
   // Wait untl all search threads have stopped
   stop_barrier_.ArriveAndWait();
@@ -1484,10 +1501,11 @@ U64 Searcher::Bench(std::unique_ptr<Thread> &thread, int depth) {
 
 void Searcher::Stop() {
   stop_.store(true, std::memory_order_relaxed);
-  WaitForThreads();
 }
 
 void Searcher::NewGame(bool clear_tables) {
+  WaitForThreads();
+
   if (clear_tables) {
     transposition_table_.Clear(std::max<int>(1, threads_.size()));
     tables::kLateMoveReduction = tables::GenerateLateMoveReductionTable();
@@ -1522,6 +1540,7 @@ U64 Searcher::GetTbHits() const {
 }
 
 void Searcher::ResizeHash(U64 size) {
+  WaitForThreads();
   transposition_table_.Resize(size);
   transposition_table_.Clear(std::max<int>(1, threads_.size()));
 }

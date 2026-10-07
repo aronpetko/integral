@@ -130,7 +130,7 @@ class Stack {
   }
 
  private:
-  std::array<StackEntry, kMaxPlyFromRoot + kPadding> stack_;
+  std::array<StackEntry, kMaxPlyFromRoot + 2 * kPadding> stack_;
 };
 
 }  // namespace search

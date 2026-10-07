@@ -216,6 +216,8 @@ class Searcher {
                  StackEntry *stack,
                  bool cut_node);
 
+  void CheckTime(Thread &thread);
+
   [[nodiscard]] bool ShouldQuit();
 
  private:
