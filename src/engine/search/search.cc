@@ -1137,11 +1137,9 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less for moves the policy likes
-      if (is_quiet) {
-        const auto &parent = board.GetStateHistory().Back();
-        if (!policy) policy.emplace(parent);
-        reduction -= (policy->RawLogit(parent, move) >> 11) * kLmrPolicy / 1024;
-      }
+      const auto &parent = board.GetStateHistory().Back();
+      if (!policy) policy.emplace(parent);
+      reduction -= (policy->RawLogit(parent, move) >> 11) * kLmrPolicy / 1024;
 
       // Reduce more if our static evaluation is going down
       if (!improving) {
