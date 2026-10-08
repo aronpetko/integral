@@ -33,7 +33,7 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE(kQuietPolicyScale, 4096, 0, 16384, false);
+//TUNABLE(kQuietPolicyScale, 4096, 0, 16384, false);
 TUNABLE(kNoisyPolicyScale, 2048, 0, 16384, false);
 
 MovePicker::MovePicker(MovePickerType type,
@@ -249,8 +249,7 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score + history_.GetQuietMoveScore(state, move, stack_) +
-         PolicyScore(move, kQuietPolicyScale);
+  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
 }
 
 int MovePicker::PolicyScore(Move move, int scale) {
