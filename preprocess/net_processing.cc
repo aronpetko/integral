@@ -4,17 +4,44 @@
 
 #include "../shared/nnue/definitions.h"
 
+// Pawnocchio stores neuron n at this position so its packus produces the
+// natural order, which is undone here before applying our own permutation
+constexpr std::size_t PawnocchioPosition(std::size_t neuron) {
+  const std::size_t chunk = neuron % 64;
+  const std::size_t lane = chunk / 16;
+  const std::size_t half = chunk % 16 / 8;
+  return neuron - chunk + half * 32 + lane * 8 + chunk % 8;
+}
+
+template <typename Row>
+void RestoreNeuronOrder(Row& dst, const Row& src) {
+  for (std::size_t n = 0; n < nnue::arch::kL1Size; ++n) {
+    dst[n] = src[PawnocchioPosition(n)];
+  }
+}
+
 std::unique_ptr<nnue::Network> ProcessNetwork(
     const std::unique_ptr<nnue::RawNetwork>& raw_network) {
   auto network = std::make_unique<nnue::Network>();
 
-  // Copy over arrays that don't need transposing
-  network->feature_weights = raw_network->feature_weights;
-  for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
-    network->hmc_weights[h] = raw_network->hmc_weights[h];
+  for (std::size_t b = 0; b < nnue::arch::kInputBucketCount; ++b) {
+    for (std::size_t f = 0; f < nnue::arch::kPsqFeatureCount; ++f) {
+      RestoreNeuronOrder(network->feature_weights[b][f],
+                         raw_network->feature_weights[b][f]);
+    }
   }
-  network->feature_biases = raw_network->feature_biases;
-  network->threat_weights = raw_network->threat_weights;
+  for (std::size_t f = 0; f < nnue::arch::kThreatPawnPairFeatureCount; ++f) {
+    RestoreNeuronOrder(network->threat_weights[f],
+                       raw_network->threat_weights[f]);
+  }
+  RestoreNeuronOrder(network->feature_biases, raw_network->feature_biases);
+
+  network->l1_weights = raw_network->l1_weights;
+  network->l1_biases = raw_network->l1_biases;
+  network->l2_weights = raw_network->l2_weights;
+  network->l2_biases = raw_network->l2_biases;
+  network->l3_weights = raw_network->l3_weights;
+  network->l3_biases = raw_network->l3_biases;
 
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
@@ -24,8 +51,9 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   auto weights = reinterpret_cast<__m128i*>(&network->feature_weights);
   auto biases = reinterpret_cast<__m128i*>(&network->feature_biases);
 
-  for (int i = 0; i < nnue::arch::kInputBucketCount * 768 *
-                          nnue::arch::kL1Size / kWeightsPerBlock;
+  for (std::size_t i = 0; i < nnue::arch::kInputBucketCount *
+                                  nnue::arch::kPsqFeatureCount *
+                                  nnue::arch::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) regs[j] = weights[i + j];
 
@@ -40,15 +68,6 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
       biases[i + j] = regs[simd::kPackusOrder[j]];
   }
 
-  auto hmc = reinterpret_cast<__m128i*>(&network->hmc_weights);
-  for (int i = 0;
-       i < nnue::arch::kHmcRowCount * nnue::arch::kL1Size / kWeightsPerBlock;
-       i += kNumRegs) {
-    for (int j = 0; j < kNumRegs; j++) regs[j] = hmc[i + j];
-
-    for (int j = 0; j < kNumRegs; j++) hmc[i + j] = regs[simd::kPackusOrder[j]];
-  }
-
   // Same 8-element granularity as the FT weights, but I8 rows -> 8-byte blocks.
   auto threats = reinterpret_cast<U64*>(&network->threat_weights);
   std::array<U64, kNumRegs> threat_regs;
@@ -60,47 +79,6 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
       threats[i + j] = threat_regs[simd::kPackusOrder[j]];
   }
 #endif
-
-  network->l1_biases = raw_network->l1_biases;
-  network->l2_biases = raw_network->l2_biases;
-  network->l3_weights = raw_network->l3_weights;
-  network->l3_biases = raw_network->l3_biases;
-
-  // Transpose l1_weights from [b][l2][l1] to [b][l1][l2]
-  for (int b = 0; b < nnue::arch::kOutputBucketCount; b++) {
-    for (int l1 = 0; l1 < nnue::arch::kL1Size; l1++) {
-      for (int l2 = 0; l2 < nnue::arch::kL2Size; l2++) {
-        network->l1_weights[b][l1][l2] = raw_network->l1_weights[b][l2][l1];
-      }
-    }
-  }
-
-#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  // Weight permutation for DpbusdEpi32
-  {
-    const auto tmp = std::make_shared<nnue::Network>(*network);
-    for (int bucket = 0; bucket < nnue::arch::kOutputBucketCount; bucket++) {
-      for (int i = 0; i < nnue::arch::kL1Size; i += 4) {
-        for (int j = 0; j < nnue::arch::kL2Size; ++j) {
-          for (int k = 0; k < 4; k++) {
-            network
-                ->l1_weights_alt[bucket][i * nnue::arch::kL2Size + j * 4 + k] =
-                tmp->l1_weights[bucket][i + k][j];
-          }
-        }
-      }
-    }
-  }
-#endif
-
-  // Transpose l2_weights from [b][l3][l2] to [b][l2][l3]
-  for (int b = 0; b < nnue::arch::kOutputBucketCount; b++) {
-    for (int l2 = 0; l2 < nnue::arch::kL2Size; l2++) {
-      for (int l3 = 0; l3 < nnue::arch::kL3Size; l3++) {
-        network->l2_weights[b][l2][l3] = raw_network->l2_weights[b][l3][l2];
-      }
-    }
-  }
 
   return network;
 }

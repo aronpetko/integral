@@ -17,36 +17,14 @@ namespace nnue {
 constexpr std::array<int, 64> kKingBucketMap {
   0,  1,  2,  3,  3,  2,  1,  0,
   4,  5,  6,  7,  7,  6,  5,  4,
-  8,  8,  9,  9,  9,  9,  8,  8,
-  10, 10, 11, 11, 11, 11, 10, 10,
-  12, 12, 13, 13, 13, 13, 12, 12,
-  12, 12, 13, 13, 13, 13, 12, 12,
-  14, 14, 15, 15, 15, 15, 14, 14,
-  14, 14, 15, 15, 15, 15, 14, 14,
+  8,  9,  10, 11, 11, 10, 9,  8,
+  12, 13, 14, 15, 15, 14, 13, 12,
+  16, 17, 18, 19, 19, 18, 17, 16,
+  20, 21, 22, 23, 23, 22, 21, 20,
+  24, 25, 26, 27, 27, 26, 25, 24,
+  28, 29, 30, 31, 31, 30, 29, 28,
 };
 // clang-format on
-
-using HmcBucketTable = std::array<U8, 101>;
-
-constexpr HmcBucketTable GenerateHmcBucketTable() {
-  HmcBucketTable table{};
-  for (std::size_t clock = 0; clock < table.size(); ++clock) {
-    if (clock < arch::kHmcBucketsStart) {
-      table[clock] = arch::kHmcBucketCount;
-    } else {
-      const std::size_t idx =
-          (clock - arch::kHmcBucketsStart) / arch::kHmcBucketsStep;
-      table[clock] = static_cast<U8>(std::min(idx, arch::kHmcBucketCount - 1));
-    }
-  }
-  return table;
-}
-
-constexpr HmcBucketTable kHmcBucketTable = GenerateHmcBucketTable();
-
-[[nodiscard]] inline int GetHmcBucket(U16 fifty_moves_clock) {
-  return kHmcBucketTable[std::min<U16>(fifty_moves_clock, 100)];
-}
 
 constexpr U8 kBucketDivisor =
     (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;

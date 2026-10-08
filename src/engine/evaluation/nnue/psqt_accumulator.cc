@@ -14,11 +14,10 @@ PsqtFeaturePolicy::FeatureRow(Square square,
   const int relative_king_square = king_square ^ (0b111000 * perspective);
   const int king_bucket_idx = kKingBucketMap[relative_king_square];
   const int square_idx = square ^ 0b111000 * perspective;
-  const int color_idx = perspective != piece_color;
-  const int piece_idx = piece;
-  return network
-      ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx]
-      .as_array();
+  // Both kings share the friendly king's features
+  const int color_idx = perspective != piece_color && piece != kKing;
+  const int feature_idx = color_idx * 384 + piece * 64 + square_idx;
+  return network->feature_weights[king_bucket_idx][feature_idx].as_array();
 }
 
 PsqtPerspectiveAccumulator::Weight const*

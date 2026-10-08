@@ -21,9 +21,9 @@ option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
-set(NETWORK_NAME zapdos)
+set(NETWORK_NAME pp_big11)
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
-set(NNUE_URL "https://github.com/aronpetko/integral-networks/releases/download/${NETWORK_NAME}/${NETWORK_NAME}.nnue")
+set(NNUE_URL "https://github.com/JonathanHallstrom/pawnocchio-nets/releases/download/${NETWORK_NAME}.nnue/${NETWORK_NAME}.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/${NETWORK_NAME}.nnue")
 
 # Define the location to download the .nnue file if not provided
