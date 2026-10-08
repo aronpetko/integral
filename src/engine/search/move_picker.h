@@ -2,7 +2,6 @@
 #define INTEGRAL_MOVE_PICKER_H_
 
 #include <algorithm>
-#include <optional>
 
 #include "../../chess/move_gen.h"
 #include "../evaluation/evaluation.h"
@@ -59,7 +58,7 @@ class MovePicker {
 
   int ScoreMove(Move &move);
 
-  [[nodiscard]] int PolicyScore(Move move, int scale);
+  void AddPolicyScores(List<ScoredMove, kMaxMoves> &list, int scale);
 
  private:
   Board &board_;
@@ -73,7 +72,6 @@ class MovePicker {
   int moves_idx_;
   int see_threshold_;
   bool force_evasions_;
-  std::optional<nnue::policy::PolicyEvaluator> policy_;
 };
 
 }  // namespace search

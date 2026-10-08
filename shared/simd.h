@@ -436,6 +436,49 @@ constexpr int kPackusOrder[2] = {0, 1};
 #endif
 }
 
+// Non-native widths: split wider vectors, use the 256-bit form under AVX512
+template <typename V>
+[[nodiscard]] inline auto MultiplyAddEpi16(V a, V b) {
+  static_assert(std::is_same_v<ElementOf<V>, I16>);
+  constexpr std::size_t N = kLanesOf<V>;
+  if constexpr (N > kNativeLanes<I16>) {
+    return Concat(MultiplyAddEpi16(LowerHalf(a), LowerHalf(b)),
+                  MultiplyAddEpi16(UpperHalf(a), UpperHalf(b)));
+  } else {
+#if BUILD_HAS_AVX512
+    if constexpr (N == 16)
+      return std::bit_cast<Vector<I32, 8>>(_mm256_madd_epi16(
+          std::bit_cast<__m256i>(a), std::bit_cast<__m256i>(b)));
+#endif
+#if BUILD_HAS_AVX512 || BUILD_HAS_AVX2
+    if constexpr (N == 8)
+      return std::bit_cast<Vector<I32, 4>>(_mm_madd_epi16(
+          std::bit_cast<__m128i>(a), std::bit_cast<__m128i>(b)));
+#endif
+    Vector<I32, N / 2> out{};
+    for (std::size_t i = 0; i < N / 2; ++i)
+      out[i] =
+          I32(a[2 * i]) * I32(b[2 * i]) + I32(a[2 * i + 1]) * I32(b[2 * i + 1]);
+    return out;
+  }
+}
+
+namespace detail {
+
+template <typename V, std::size_t... I>
+[[nodiscard]] inline V PairwiseAdd(V a, V b, std::index_sequence<I...>) {
+  return __builtin_shufflevector(a, b, (2 * I)...) +
+         __builtin_shufflevector(a, b, (2 * I + 1)...);
+}
+
+}  // namespace detail
+
+// Sums adjacent lanes of a and b concatenated
+template <typename V>
+[[nodiscard]] inline V PairwiseAdd(V a, V b) {
+  return detail::PairwiseAdd(a, b, std::make_index_sequence<kLanesOf<V>>{});
+}
+
 [[nodiscard]] inline Vepi16 MulhiEpi16(Vepi16 a, Vepi16 b) {
 #if BUILD_HAS_AVX512
   return std::bit_cast<Vepi16>(

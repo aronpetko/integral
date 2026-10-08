@@ -3,6 +3,7 @@
 
 #include "../../chess/move_gen.h"
 #include "../../utils/types.h"
+#include "../evaluation/nnue/policy/policy.h"
 #include "history/continuation_entries.h"
 
 namespace search {
@@ -77,6 +78,8 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
+  // Reused when this ply revisits the same position (e.g. re-searches)
+  nnue::policy::PolicyEvaluator policy;
 
   void AddKillerMove(Move killer_move) {
     // Ensure we don't have duplicate killer moves
