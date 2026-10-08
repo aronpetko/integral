@@ -191,10 +191,9 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     }
   }
 
-  if (move_type == MoveGenType::kNoisy)
-    AddPolicyScores(list,
-                    move_type == MoveGenType::kNoisy ? kNoisyPolicyScale
-                                                     : kQuietPolicyScale);
+  AddPolicyScores(
+      list,
+      move_type == MoveGenType::kNoisy ? kNoisyPolicyScale : kQuietPolicyScale);
 }
 
 int MovePicker::ScoreMove(Move &move) {
