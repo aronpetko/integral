@@ -33,7 +33,7 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE(kQuietPolicyScale, 8192, 0, 16384, false);
+TUNABLE(kQuietPolicyScale, 2048, 0, 16384, false);
 TUNABLE(kNoisyPolicyScale, 2048, 0, 16384, false);
 
 MovePicker::MovePicker(MovePickerType type,
