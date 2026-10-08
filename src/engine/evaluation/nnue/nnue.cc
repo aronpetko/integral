@@ -3,27 +3,6 @@
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
 #include "accumulator.h"
-#include <x86intrin.h>
-#include <chrono>
-#include <cstdio>
-namespace {
-struct ProfStats {
-  U64 evals = 0, apply = 0, transform = 0, l1 = 0, head = 0, nnz = 0, active = 0;
-  std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-  U64 tsc_start = __rdtsc();
-  ~ProfStats() {
-    const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
-    const double hz = (__rdtsc() - tsc_start) / secs;
-    const double e = evals;
-    std::fprintf(stderr, "evals=%llu  cycles/eval: apply=%.0f transform=%.0f l1=%.0f head=%.0f  nnz_groups=%.1f active=%.1f
-",
-      (unsigned long long)evals, apply/e, transform/e, l1/e, head/e, nnz/e, active/e);
-    std::fprintf(stderr, "share of wall time: apply=%.1f%% transform=%.1f%% l1=%.1f%% head=%.1f%%
-",
-      100*apply/hz/secs, 100*transform/hz/secs, 100*l1/hz/secs, 100*head/hz/secs);
-  }
-} prof;
-}
 
 #ifdef _MSC_VER
 #define SP_MSVC
@@ -108,9 +87,7 @@ Score Evaluate(Board &board) {
   auto &state = board.GetState();
   auto &accumulator = *board.GetAccumulator();
 
-  const U64 t0 = __rdtsc();
   accumulator.ApplyChanges(state);
-  const U64 t1 = __rdtsc();
   const auto bucket = accumulator.GetOutputBucket(state);
 
   constexpr int kFtShift = 9;
@@ -206,9 +183,6 @@ Score Evaluate(Board &board) {
     }
   }
 
-  const U64 t2 = __rdtsc();
-  for (int k = 0; k < arch::kL1Size; ++k) prof.active += feature_output[k] != 0;
-  prof.nnz += nnz_count;
   // Forward the feature layer neurons to the 2nd layer. The weights of each
   // group of 4 inputs are laid out as kL2Size outputs of 4 bytes each
   {
@@ -279,11 +253,7 @@ Score Evaluate(Board &board) {
   }
 #endif
 
-  const U64 t3 = __rdtsc();
-  const auto result = Propagate(l1_sums, bucket);
-  const U64 t4 = __rdtsc();
-  ++prof.evals; prof.apply += t1 - t0; prof.transform += t2 - t1; prof.l1 += t3 - t2; prof.head += t4 - t3;
-  return result;
+  return Propagate(l1_sums, bucket);
 }
 
 }  // namespace nnue
