@@ -154,7 +154,7 @@ bool Board::IsMoveLegal(Move move) const {
       }
 
       // The king can't castle through an attacked square
-      return !(king_path & ~king_mask & state_.threats[state_.turn]);
+      return !(king_path & ~king_mask & state_.threats);
     }
 
     // Make sure the destination square isn't attacked
@@ -538,9 +538,8 @@ void Board::HandleCastling(Move move) {
 }
 
 void Board::CalculateThreats() {
-  const Color us = state_.turn, them = FlipColor(us);
+  const Color them = FlipColor(state_.turn);
 
-  state_.threats.fill(0);
   state_.threatened_by[kPawn] = move_gen::PawnAttacks(state_.Pawns(them), them);
 
   state_.threatened_by[kKnight] = 0;
@@ -548,45 +547,29 @@ void Board::CalculateThreats() {
     state_.threatened_by[kKnight] |= move_gen::KnightMoves(square);
   }
 
-  const BitBoard our_queens = state_.Queens(us), their_queens = state_.Queens(them);
+  const BitBoard queens = state_.Queens(them);
   const BitBoard occupied = state_.Occupied();
 
   state_.threatened_by[kBishop] = 0;
   state_.threatened_by[kQueen] = 0;
   state_.threatened_by[kRook] = 0;
 
-  for (Square square : state_.Bishops(them) | their_queens) {
-    state_.threatened_by[(their_queens.IsSet(square) ? kQueen : kBishop)] |=
+  for (Square square : state_.Bishops(them) | queens) {
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kBishop)] |=
         move_gen::BishopMoves(square, occupied);
   }
 
-  for (Square square : state_.Rooks(them) | their_queens) {
-    state_.threatened_by[(their_queens.IsSet(square) ? kQueen : kRook)] |=
+  for (Square square : state_.Rooks(them) | queens) {
+    state_.threatened_by[(queens.IsSet(square) ? kQueen : kRook)] |=
         move_gen::RookMoves(square, occupied);
   }
 
   state_.threatened_by[kKing] =
       move_gen::KingAttacks(state_.King(them).GetLsb());
 
-  state_.threats[us] =
-      state_.threatened_by[kPawn] | state_.threatened_by[kKnight] |
-      state_.threatened_by[kBishop] | state_.threatened_by[kRook] |
-      state_.threatened_by[kQueen] | state_.threatened_by[kKing];
-
-  state_.threats[them] |= move_gen::KingAttacks(state_.King(us).GetLsb());
-  state_.threats[them] |= move_gen::PawnAttacks(state_.Pawns(us), us);
-
-  for (Square square : state_.Knights(us)) {
-    state_.threats[them] |= move_gen::KnightMoves(square);
-  }
-
-  for (Square square : state_.Bishops(us) | our_queens) {
-    state_.threats[them] |= move_gen::BishopMoves(square, occupied);
-  }
-
-  for (Square square : state_.Rooks(us) | our_queens) {
-    state_.threats[them] |= move_gen::RookMoves(square, occupied);
-  }
+  state_.threats = state_.threatened_by[kPawn] | state_.threatened_by[kKnight] |
+                   state_.threatened_by[kBishop] | state_.threatened_by[kRook] |
+                   state_.threatened_by[kQueen] | state_.threatened_by[kKing];
 
   CalculateKingThreats();
 }

@@ -10,23 +10,21 @@ namespace nnue::policy {
 
 class PolicyEvaluator {
  public:
-  PolicyEvaluator() = default;
+  explicit PolicyEvaluator(const BoardState& state);
 
-  explicit PolicyEvaluator(const BoardState& state) {
-    Update(state);
+  // Logit scaled by Q^3
+  [[nodiscard]] I32 RawLogit(const BoardState& state, Move move) const {
+    const auto idx = features::GetMoveOutputIndex(
+        move, state.GetPieceType(move.GetFrom()), flip_, mirror_);
+    const auto weights = simd::Convert<I32>(
+        simd::Load<I8, kHiddenSize>(policy_network->l1_weights[idx].data()));
+    return simd::ReduceAdd(hidden_ * weights) +
+           policy_network->l1_biases[idx] * kBiasScale;
   }
 
-  void Update(const BoardState& state,
-              const PolicyEvaluator* source = nullptr);
-
-  // Logits scaled by Q^3
-  void RawLogits(const BoardState& state,
-                 std::span<const Move> moves,
-                 std::span<I32> logits) const;
-
-  void Logits(const BoardState& state,
-              const MoveList& moves,
-              std::span<float> logits) const;
+  [[nodiscard]] float Logit(const BoardState& state, Move move) const {
+    return static_cast<float>(RawLogit(state, move)) * kLogitScale;
+  }
 
   void Probabilities(const BoardState& state,
                      const MoveList& moves,
@@ -34,18 +32,13 @@ class PolicyEvaluator {
 
  private:
   static constexpr int kHiddenSize = arch::policy::kL1Size / 2;
-  static constexpr int kChunkSize = 16;
-  static constexpr int kChunksPerMove = kHiddenSize / kChunkSize;
-  static_assert(kHiddenSize % kChunkSize == 0);
-
   static constexpr I32 kQ = arch::policy::kQuantisation;
   static constexpr I32 kBiasScale = kQ * kQ;
   static constexpr float kLogitScale = 1.0f / static_cast<float>(kQ * kQ * kQ);
 
-  PolicyAccumulator accumulator_;
-  int flip_ = 0;
-  bool mirror_ = false;
-  std::array<simd::Vector<I16, kChunkSize>, kChunksPerMove> hidden_;
+  int flip_;
+  bool mirror_;
+  simd::Vector<I32, kHiddenSize> hidden_;
 };
 
 }  // namespace nnue::policy

@@ -174,14 +174,13 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
       if (board.IsMoveLegal(pseudo_legal[i])) moves.Push(pseudo_legal[i]);
     }
 
-    std::array<float, kMaxMoves> logits, probabilities;
+    std::array<float, kMaxMoves> probabilities;
     const auto &state = board.GetState();
     const nnue::policy::PolicyEvaluator policy(state);
-    policy.Logits(state, moves, logits);
     policy.Probabilities(state, moves, probabilities);
     for (int i = 0; i < moves.Size(); ++i) {
       fmt::println("info move {} logit {:.6f} policy {:.6f}",
-                   moves[i].ToString(), logits[i], probabilities[i]);
+                   moves[i].ToString(), policy.Logit(state, moves[i]), probabilities[i]);
     }
   });
 

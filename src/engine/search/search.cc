@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <numeric>
+#include <optional>
 #include <thread>
 
 #include "../../data_gen/data_gen.h"
+#include "../evaluation/nnue/policy/policy.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -355,7 +357,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
-  stack->threats = state.threats[state.turn];
+  stack->threats = state.threats;
 
   const Score futility_score = best_score + kQsFutMargin;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
@@ -696,7 +698,7 @@ Score Searcher::PVSearch(Thread &thread,
         board.GetStateHistory().Back(), prev_stack->move, bonus);
   }
 
-  stack->threats = state.threats[state.turn];
+  stack->threats = state.threats;
 
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
@@ -897,6 +899,8 @@ Score Searcher::PVSearch(Thread &thread,
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
+  std::optional<nnue::policy::PolicyEvaluator> policy;
+
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
@@ -1025,7 +1029,7 @@ Score Searcher::PVSearch(Thread &thread,
           return history.capture_history->GetScore(state, tt_move);
         } else {
           return history.quiet_history->GetScore(
-                     state, tt_move, state.threats[state.turn]) +
+                     state, tt_move, state.threats) +
                  history.continuation_history->GetScore(
                      state, tt_move, stack - 1) +
                  history.continuation_history->GetScore(
@@ -1130,6 +1134,13 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= stack->history_score * kLmrHistQuiet / kLmrHistDiv;
       } else {
         reduction -= stack->history_score * kLmrHistCapture / kLmrCaptHistDiv;
+      }
+
+      // Reduce less for moves the policy likes
+      if (is_quiet) {
+        const auto &parent = board.GetStateHistory().Back();
+        if (!policy) policy.emplace(parent);
+        reduction -= (policy->RawLogit(parent, move) >> 11) * kLmrPolicy / 1024;
       }
 
       // Reduce more if our static evaluation is going down

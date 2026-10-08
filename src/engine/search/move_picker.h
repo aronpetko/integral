@@ -5,7 +5,6 @@
 
 #include "../../chess/move_gen.h"
 #include "../evaluation/evaluation.h"
-#include "../evaluation/nnue/policy/policy.h"
 #include "history/history.h"
 
 namespace search {
@@ -57,8 +56,6 @@ class MovePicker {
   void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
 
   int ScoreMove(Move &move);
-
-  void AddPolicyScores(List<ScoredMove, kMaxMoves> &list, int scale);
 
  private:
   Board &board_;

@@ -284,7 +284,7 @@ struct BoardState {
   U64 zobrist_key, pawn_key, minor_key, major_key;
   std::array<U64, 2> non_pawn_keys;
   BitBoard checkers;
-  std::array<BitBoard, 2> threats;
+  BitBoard threats;
   std::array<BitBoard, kNumPieceTypes> threatened_by;
   std::array<BitBoard, kNumColors> pinned;
   std::array<BitBoard, 4> check_zones;

@@ -33,9 +33,6 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE(kQuietPolicyScale, 4096, 0, 16384, false);
-TUNABLE(kNoisyPolicyScale, 2048, 0, 16384, false);
-
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -190,10 +187,6 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
       list.Push({move, ScoreMove(move)});
     }
   }
-
-  AddPolicyScores(
-      list,
-      move_type == MoveGenType::kNoisy ? kNoisyPolicyScale : kQuietPolicyScale);
 }
 
 int MovePicker::ScoreMove(Move &move) {
@@ -253,39 +246,6 @@ int MovePicker::ScoreMove(Move &move) {
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
   return threat_score + history_.GetQuietMoveScore(state, move, stack_);
-}
-
-void MovePicker::AddPolicyScores(List<ScoredMove, kMaxMoves> &list, int scale) {
-  // Fuck qsearch and probcut
-  if (type_ != MovePickerType::kSearch || list.Size() == 0) {
-    return;
-  }
-
-  const auto &state = board_.GetState();
-  stack_->policy.Update(state, &(stack_ - 2)->policy);
-
-  std::array<Move, kMaxMoves> moves;
-  for (int i = 0; i < list.Size(); ++i) {
-    moves[i] = list[i].move;
-  }
-
-  std::array<I32, kMaxMoves> logits;
-  stack_->policy.RawLogits(state,
-                           std::span(moves.data(), list.Size()),
-                           std::span(logits.data(), list.Size()));
-
-  constexpr int kLogitShift = 21;
-  static_assert(I64(nnue::arch::policy::kQuantisation) *
-                    nnue::arch::policy::kQuantisation *
-                    nnue::arch::policy::kQuantisation ==
-                1LL << kLogitShift);
-  for (int i = 0; i < list.Size(); ++i) {
-    if (list[i].move.GetType() == MoveType::kPromotion) {
-      continue;
-    }
-    list[i].score +=
-        static_cast<int>((static_cast<I64>(logits[i]) * scale) >> kLogitShift);
-  }
 }
 
 }  // namespace search
