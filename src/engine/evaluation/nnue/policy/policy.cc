@@ -10,7 +10,6 @@ void PolicyEvaluator::Update(const BoardState& state,
                              const PolicyEvaluator* source) {
   if (accumulator_.IsAt(state)) return;
 
-  // A refresh adds one row per piece
   int best_cost = state.Occupied().PopCount();
   const PolicyAccumulator* best = nullptr;
   const PolicyAccumulator* candidates[] = {
@@ -35,7 +34,6 @@ void PolicyEvaluator::Update(const BoardState& state,
   flip_ =
       (state.turn == Color::kBlack ? 0b111000 : 0) ^ (mirror_ ? 0b000111 : 0);
 
-  // Pairwise CReLU
   const auto activated =
       simd::Clip(accumulator_.Values(), static_cast<I16>(kQ));
   const auto hidden = simd::LowerHalf(activated) * simd::UpperHalf(activated);
@@ -48,8 +46,7 @@ void PolicyEvaluator::RawLogits(const BoardState& state,
   constexpr int kBlockSize = 8;
   constexpr int kChunks = kBlockSize * kChunksPerMove;
 
-  // Compute every output index up front so the rows can be prefetched while
-  // the rest are being computed
+  // Compute every output index first so the weight rows can be prefetched
   std::array<U16, kMaxMoves> indices;
   for (std::size_t i = 0; i < moves.size(); ++i) {
     const Move move = moves[i];
@@ -62,8 +59,8 @@ void PolicyEvaluator::RawLogits(const BoardState& state,
     const int count = static_cast<int>(
         std::min<std::size_t>(kBlockSize, moves.size() - start));
 
-    // Each madd yields partial sums for one chunk of a move; padding a partial
-    // block with its first move keeps the reduction branchless
+    // Each madd gives partial sums for one chunk of a move, and partial blocks
+    // are padded with their first move
     std::array<simd::Vector<I32, kBlockSize>, kChunks> sums;
     for (int i = 0; i < kBlockSize; ++i) {
       const I8* row =
@@ -77,7 +74,7 @@ void PolicyEvaluator::RawLogits(const BoardState& state,
       }
     }
 
-    // Pairwise adds collapse the partial sums into one logit per move
+    // Pairwise add the partial sums down to one logit per move
     for (int width = kChunks; width > 1; width /= 2) {
       for (int i = 0; i < width / 2; ++i) {
         sums[i] = simd::PairwiseAdd(sums[2 * i], sums[2 * i + 1]);

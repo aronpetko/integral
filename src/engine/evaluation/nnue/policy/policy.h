@@ -16,8 +16,6 @@ class PolicyEvaluator {
     Update(state);
   }
 
-  // Updates incrementally from whichever of this evaluator's last position or
-  // `source` is closer, refreshing when neither is cheaper
   void Update(const BoardState& state,
               const PolicyEvaluator* source = nullptr);
 

@@ -12,8 +12,6 @@ namespace {
   return (turn == Color::kBlack ? 0b111000 : 0) ^ (mirror ? 0b000111 : 0);
 }
 
-// Adds or subtracts the rows of the pieces on `squares`, as given by the
-// bitboards of the position they're in
 template <bool kAdd>
 void ApplyRows(PolicyAccumulator::Vector& values,
                BitBoard squares,
@@ -30,7 +28,6 @@ void ApplyRows(PolicyAccumulator::Vector& values,
     const BitBoard side_squares = squares & side_bbs[side];
     for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
       for (const Square square : (side_squares & piece_bbs[piece])) {
-        // threats[c] holds the squares attacked by c's opponent
         const auto& row =
             weights[threats[them].IsSet(square)][threats[us].IsSet(square)]
                    [side != us][piece][square ^ flip];

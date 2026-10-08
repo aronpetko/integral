@@ -436,7 +436,6 @@ constexpr int kPackusOrder[2] = {0, 1};
 #endif
 }
 
-// Non-native widths: split wider vectors, use the 256-bit form under AVX512
 template <typename V>
 [[nodiscard]] inline auto MultiplyAddEpi16(V a, V b) {
   static_assert(std::is_same_v<ElementOf<V>, I16>);
@@ -473,7 +472,6 @@ template <typename V, std::size_t... I>
 
 }  // namespace detail
 
-// Sums adjacent lanes of a and b concatenated
 template <typename V>
 [[nodiscard]] inline V PairwiseAdd(V a, V b) {
   return detail::PairwiseAdd(a, b, std::make_index_sequence<kLanesOf<V>>{});
