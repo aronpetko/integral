@@ -48,7 +48,7 @@ else ()
 endif ()
 
 # Allow user to specify POLICYFILE through CMake
-set(POLICY_NETWORK_NAME policy)
+set(POLICY_NETWORK_NAME 32)
 set(POLICYFILE "${POLICYFILE}" CACHE STRING "Path to the policy (.pn) file")
 set(POLICY_NETWORK_PATH "${PROJECT_SOURCE_DIR}/${POLICY_NETWORK_NAME}.pn")
 

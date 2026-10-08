@@ -262,7 +262,8 @@ void MovePicker::AddPolicyScores(List<ScoredMove, kMaxMoves> &list, int scale) {
   }
 
   const auto &state = board_.GetState();
-  stack_->policy.Update(state);
+  // The grandparent has the same side to move, so is usually close
+  stack_->policy.Update(state, &(stack_ - 2)->policy);
 
   std::array<Move, kMaxMoves> moves;
   for (int i = 0; i < list.Size(); ++i) {

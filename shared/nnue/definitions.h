@@ -69,7 +69,7 @@ struct alignas(simd::kAlignment) ValueNetwork {
 
 namespace arch::policy {
 
-constexpr std::size_t kL1Size = 16;
+constexpr std::size_t kL1Size = 32;
 constexpr std::size_t kOutputSize = 3920;
 
 constexpr std::int32_t kQuantisation = 128;

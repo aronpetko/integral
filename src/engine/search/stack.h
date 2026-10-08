@@ -78,7 +78,7 @@ struct StackEntry {
   BitBoard threats;
   // Reduction applied for this ply
   int reduction;
-  // Reused when this ply revisits the same position (e.g. re-searches)
+  // Updated incrementally from this ply's last position or the grandparent's
   nnue::policy::PolicyEvaluator policy;
 
   void AddKillerMove(Move killer_move) {

@@ -2,29 +2,51 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace nnue::policy {
 
-void PolicyEvaluator::Refresh(const BoardState& state) {
-  key_ = state.zobrist_key;
+void PolicyEvaluator::Update(const BoardState& state,
+                             const PolicyEvaluator* source) {
+  if (accumulator_.IsAt(state)) return;
+
+  // A refresh adds one row per piece
+  int best_cost = state.Occupied().PopCount();
+  const PolicyAccumulator* best = nullptr;
+  const PolicyAccumulator* candidates[] = {
+      &accumulator_, source ? &source->accumulator_ : nullptr};
+  for (const auto* candidate : candidates) {
+    if (!candidate) continue;
+    const int cost = candidate->UpdateCost(state);
+    if (cost >= 0 && cost < best_cost) {
+      best_cost = cost;
+      best = candidate;
+    }
+  }
+
+  if (!best) {
+    accumulator_.Refresh(state);
+  } else {
+    if (best != &accumulator_) accumulator_ = *best;
+    accumulator_.Update(state);
+  }
+
   mirror_ = Square(state.King(state.turn).GetLsb()).File() >= File::kFileE;
   flip_ =
       (state.turn == Color::kBlack ? 0b111000 : 0) ^ (mirror_ ? 0b000111 : 0);
 
-  PolicyAccumulator accumulator;
-  accumulator.Refresh(state);
-
   // Pairwise CReLU
-  const auto activated = simd::Clip(accumulator.Values(), static_cast<I16>(kQ));
+  const auto activated =
+      simd::Clip(accumulator_.Values(), static_cast<I16>(kQ));
   const auto hidden = simd::LowerHalf(activated) * simd::UpperHalf(activated);
-  hidden_pair_ = simd::Concat(hidden, hidden);
+  std::memcpy(hidden_.data(), &hidden, sizeof(hidden_));
 }
 
 void PolicyEvaluator::RawLogits(const BoardState& state,
                                 std::span<const Move> moves,
                                 std::span<I32> logits) const {
   constexpr int kBlockSize = 8;
-  static_assert(kHiddenSize == 8, "the reduction assumes 8 hidden neurons");
+  constexpr int kChunks = kBlockSize * kChunksPerMove;
 
   // Compute every output index up front so the rows can be prefetched while
   // the rest are being computed
@@ -40,27 +62,30 @@ void PolicyEvaluator::RawLogits(const BoardState& state,
     const int count = static_cast<int>(
         std::min<std::size_t>(kBlockSize, moves.size() - start));
 
-    // Pad a partial block with its first move
-    std::array<const I8*, kBlockSize> rows;
+    // Each madd yields partial sums for one chunk of a move; padding a partial
+    // block with its first move keeps the reduction branchless
+    std::array<simd::Vector<I32, kBlockSize>, kChunks> sums;
     for (int i = 0; i < kBlockSize; ++i) {
-      rows[i] = policy_network->l1_weights[indices[start + (i < count ? i : 0)]]
-                    .data();
+      const I8* row =
+          policy_network->l1_weights[indices[start + (i < count ? i : 0)]]
+              .data();
+      for (int c = 0; c < kChunksPerMove; ++c) {
+        const auto weights = simd::Convert<I16>(
+            simd::Load<I8, kChunkSize>(row + c * kChunkSize));
+        sums[i * kChunksPerMove + c] =
+            simd::MultiplyAddEpi16(weights, hidden_[c]);
+      }
     }
 
-    // Each madd yields 4 partial sums for each of two moves
-    std::array<simd::Vector<I32, kBlockSize>, kBlockSize / 2> sums;
-    for (int i = 0; i < kBlockSize / 2; ++i) {
-      const auto pair_weights = simd::Convert<I16>(
-          simd::Concat(simd::Load<I8, kHiddenSize>(rows[2 * i]),
-                       simd::Load<I8, kHiddenSize>(rows[2 * i + 1])));
-      sums[i] = simd::MultiplyAddEpi16(pair_weights, hidden_pair_);
+    // Pairwise adds collapse the partial sums into one logit per move
+    for (int width = kChunks; width > 1; width /= 2) {
+      for (int i = 0; i < width / 2; ++i) {
+        sums[i] = simd::PairwiseAdd(sums[2 * i], sums[2 * i + 1]);
+      }
     }
 
     alignas(simd::kAlignment) std::array<I32, kBlockSize> out;
-    simd::Store<I32, kBlockSize>(
-        out.data(),
-        simd::PairwiseAdd(simd::PairwiseAdd(sums[0], sums[1]),
-                          simd::PairwiseAdd(sums[2], sums[3])));
+    simd::Store<I32, kBlockSize>(out.data(), sums[0]);
     for (int i = 0; i < count; ++i) {
       logits[start + i] =
           out[i] + policy_network->l1_biases[indices[start + i]] * kBiasScale;

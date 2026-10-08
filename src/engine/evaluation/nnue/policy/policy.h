@@ -16,10 +16,10 @@ class PolicyEvaluator {
     Update(state);
   }
 
-  // Only refreshes when the position changed since the last update
-  void Update(const BoardState& state) {
-    if (state.zobrist_key != key_) Refresh(state);
-  }
+  // Updates incrementally from whichever of this evaluator's last position or
+  // `source` is closer, refreshing when neither is cheaper
+  void Update(const BoardState& state,
+              const PolicyEvaluator* source = nullptr);
 
   // Logits scaled by Q^3
   void RawLogits(const BoardState& state,
@@ -36,17 +36,18 @@ class PolicyEvaluator {
 
  private:
   static constexpr int kHiddenSize = arch::policy::kL1Size / 2;
+  static constexpr int kChunkSize = 16;
+  static constexpr int kChunksPerMove = kHiddenSize / kChunkSize;
+  static_assert(kHiddenSize % kChunkSize == 0);
+
   static constexpr I32 kQ = arch::policy::kQuantisation;
   static constexpr I32 kBiasScale = kQ * kQ;
   static constexpr float kLogitScale = 1.0f / static_cast<float>(kQ * kQ * kQ);
 
-  void Refresh(const BoardState& state);
-
-  U64 key_ = 0;
+  PolicyAccumulator accumulator_;
   int flip_ = 0;
   bool mirror_ = false;
-  // Hidden layer repeated twice, so one madd covers two moves
-  simd::Vector<I16, kHiddenSize * 2> hidden_pair_;
+  std::array<simd::Vector<I16, kChunkSize>, kChunksPerMove> hidden_;
 };
 
 }  // namespace nnue::policy
