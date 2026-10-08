@@ -21,30 +21,47 @@ option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
-set(NETWORK_NAME zapdos)
+set(VALUE_NETWORK_NAME zapdos)
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
-set(NNUE_URL "https://github.com/aronpetko/integral-networks/releases/download/${NETWORK_NAME}/${NETWORK_NAME}.nnue")
-set(NNUE_PATH "${PROJECT_SOURCE_DIR}/${NETWORK_NAME}.nnue")
+set(VALUE_NETWORK_URL "https://github.com/aronpetko/integral-networks/releases/download/${VALUE_NETWORK_NAME}/${VALUE_NETWORK_NAME}.nnue")
+set(VALUE_NETWORK_PATH "${PROJECT_SOURCE_DIR}/${VALUE_NETWORK_NAME}.nnue")
 
 # Define the location to download the .nnue file if not provided
 if (NOT EVALFILE)
     # Check if the .nnue file exists, if not, download it
-    if (NOT EXISTS ${NNUE_PATH})
-        message(STATUS "${NETWORK_NAME}.nnue not found. Downloading from ${NNUE_URL}...")
-        file(DOWNLOAD ${NNUE_URL} ${NNUE_PATH}
+    if (NOT EXISTS ${VALUE_NETWORK_PATH})
+        message(STATUS "${VALUE_NETWORK_NAME}.nnue not found. Downloading from ${VALUE_NETWORK_URL}...")
+        file(DOWNLOAD ${VALUE_NETWORK_URL} ${VALUE_NETWORK_PATH}
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
         )
         list(GET DOWNLOAD_STATUS 0 DOWNLOAD_STATUS_CODE)
         if (NOT ${DOWNLOAD_STATUS_CODE} EQUAL 0)
-            message(FATAL_ERROR "Failed to download ${NETWORK_NAME}.nnue from ${NNUE_URL}")
+            message(FATAL_ERROR "Failed to download ${VALUE_NETWORK_NAME}.nnue from ${VALUE_NETWORK_URL}")
         endif ()
     else ()
-        message(STATUS "${NETWORK_NAME}.nnue already exists. Skipping download.")
+        message(STATUS "${VALUE_NETWORK_NAME}.nnue already exists. Skipping download.")
     endif ()
-    set(EVALFILE ${NNUE_PATH})
+    set(EVALFILE ${VALUE_NETWORK_PATH})
 else ()
     message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
+endif ()
+
+# Allow user to specify POLICYFILE through CMake
+set(POLICY_NETWORK_NAME policy)
+set(POLICYFILE "${POLICYFILE}" CACHE STRING "Path to the policy (.pn) file")
+set(POLICY_NETWORK_PATH "${PROJECT_SOURCE_DIR}/${POLICY_NETWORK_NAME}.pn")
+
+if (NOT POLICYFILE)
+    if (NOT EXISTS ${POLICY_NETWORK_PATH})
+        # TODO: Download the policy network like the value network
+        message(FATAL_ERROR "${POLICY_NETWORK_NAME}.pn not found at ${POLICY_NETWORK_PATH}")
+    else ()
+        message(STATUS "${POLICY_NETWORK_NAME}.pn already exists. Skipping download.")
+    endif ()
+    set(POLICYFILE ${POLICY_NETWORK_PATH})
+else ()
+    message(STATUS "Using user-specified POLICYFILE: ${POLICYFILE}")
 endif ()
 
 # Option for preparing the network to sparse permute neurons (requires turning off AVX)
@@ -87,6 +104,7 @@ add_custom_target(run_preprocess ALL DEPENDS ${PREPROCESSED_FILE})
 
 # Define preprocessed file as a macro so it’s accessible from C++
 add_definitions(-DEVALFILE="${PREPROCESSED_FILE}")
+add_definitions(-DPOLICYFILE="${POLICYFILE}")
 
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
@@ -212,6 +230,10 @@ add_executable(integral ${SOURCES}
 
 # Make sure main build depends on this
 add_dependencies(integral run_preprocess)
+
+# Recompile when either network changes
+set_source_files_properties(src/engine/evaluation/nnue/nnue.cc PROPERTIES
+        OBJECT_DEPENDS "${PREPROCESSED_FILE};${POLICYFILE}")
 
 # Profile-guided optimization: build with GENERATE, run the pgo_profile target, then rebuild with USE
 set(PGO_MODE OFF CACHE STRING "Profile-guided optimization stage (OFF, GENERATE, USE)")

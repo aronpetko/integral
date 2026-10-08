@@ -33,6 +33,9 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
+TUNABLE(kQuietPolicyScale, 4096, 0, 16384, false);
+TUNABLE(kNoisyPolicyScale, 2048, 0, 16384, false);
+
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -213,7 +216,8 @@ int MovePicker::ScoreMove(Move &move) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
     const int victim_value = *kPieceScores[victim] * 100;
-    return victim_value + history_.GetCaptureMoveScore(state, move);
+    return victim_value + history_.GetCaptureMoveScore(state, move) +
+           PolicyScore(move, kNoisyPolicyScale);
   }
 
   const BitBoard pawn_threats = state.threatened_by[kPawn];
@@ -245,7 +249,27 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
+  return threat_score + history_.GetQuietMoveScore(state, move, stack_) +
+         PolicyScore(move, kQuietPolicyScale);
+}
+
+int MovePicker::PolicyScore(Move move, int scale) {
+  // Fuck qsearch and probcut
+  if (type_ != MovePickerType::kSearch) {
+    return 0;
+  }
+
+  if (!policy_) {
+    policy_.emplace(board_.GetState());
+  }
+
+  constexpr int kLogitShift = 21;
+  static_assert(I64(nnue::arch::policy::kQuantisation) *
+                    nnue::arch::policy::kQuantisation *
+                    nnue::arch::policy::kQuantisation ==
+                1LL << kLogitShift);
+  return static_cast<int>((static_cast<I64>(policy_->RawLogit(move)) * scale) >>
+                          kLogitShift);
 }
 
 }  // namespace search

@@ -186,7 +186,7 @@ inline constexpr auto kPieceOffsets = ([]() {
 
 inline constexpr auto kAttackTable = ([]() {
   MultiArray<U32, 6, 2, 6, 2, 2> attack_table;
-  attack_table.fill(nnue::arch::kThreatFeatureCount);
+  attack_table.fill(nnue::arch::value::kThreatFeatureCount);
   for (const auto attacker_side : {Color::kWhite, Color::kBlack}) {
     for (int attacker_piece_idx = 0;
          attacker_piece_idx < PieceType::kNumPieceTypes;

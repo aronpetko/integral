@@ -31,12 +31,13 @@ using HmcBucketTable = std::array<U8, 101>;
 constexpr HmcBucketTable GenerateHmcBucketTable() {
   HmcBucketTable table{};
   for (std::size_t clock = 0; clock < table.size(); ++clock) {
-    if (clock < arch::kHmcBucketsStart) {
-      table[clock] = arch::kHmcBucketCount;
+    if (clock < arch::value::kHmcBucketsStart) {
+      table[clock] = arch::value::kHmcBucketCount;
     } else {
-      const std::size_t idx =
-          (clock - arch::kHmcBucketsStart) / arch::kHmcBucketsStep;
-      table[clock] = static_cast<U8>(std::min(idx, arch::kHmcBucketCount - 1));
+      const std::size_t idx = (clock - arch::value::kHmcBucketsStart) /
+                              arch::value::kHmcBucketsStep;
+      table[clock] =
+          static_cast<U8>(std::min(idx, arch::value::kHmcBucketCount - 1));
     }
   }
   return table;
@@ -48,8 +49,8 @@ constexpr HmcBucketTable kHmcBucketTable = GenerateHmcBucketTable();
   return kHmcBucketTable[std::min<U16>(fifty_moves_clock, 100)];
 }
 
-constexpr U8 kBucketDivisor =
-    (32 + arch::kOutputBucketCount - 1) / arch::kOutputBucketCount;
+constexpr U8 kBucketDivisor = (32 + arch::value::kOutputBucketCount - 1) /
+                              arch::value::kOutputBucketCount;
 
 struct FeatureData {
   Square square = Squares::kNoSquare;

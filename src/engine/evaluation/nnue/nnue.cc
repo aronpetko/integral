@@ -4,26 +4,16 @@
 #include "../../../../shared/simd.h"
 #include "accumulator.h"
 
-#ifdef _MSC_VER
-#define SP_MSVC
-#pragma push_macro("_MSC_VER")
-#undef _MSC_VER
-#endif
-
 #include "../../../third-party/incbin/incbin.h"
 #include "sparse.h"
 
-#ifdef SP_MSVC
-#pragma pop_macro("_MSC_VER")
-#undef SP_MSVC
-#endif
-
 INCBIN(EVAL, EVALFILE);
+INCBIN(POLICY, POLICYFILE);
 
 namespace nnue {
 
 [[nodiscard]] I32 CReLU(I16 value) {
-  return std::clamp<I32>(value, 0, arch::kFtQuantization);
+  return std::clamp<I32>(value, 0, arch::value::kFtQuantization);
 }
 
 [[nodiscard]] float CReLU(float value) {
@@ -31,14 +21,23 @@ namespace nnue {
 }
 
 void LoadFromIncBin() {
-  if (gEVALSize != sizeof(Network)) {
-    fmt::println("Invalid embedded network size: {} bytes; expected {}",
+  if (gEVALSize != sizeof(ValueNetwork)) {
+    fmt::println("Invalid value network size: {} bytes; expected {}",
                  gEVALSize,
-                 sizeof(Network));
+                 sizeof(ValueNetwork));
     std::abort();
   }
-  // Load the preprocessed network from embedded binary data
-  network = reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
+  value_network =
+      reinterpret_cast<ValueNetwork *>(const_cast<unsigned char *>(gEVALData));
+
+  if (gPOLICYSize != sizeof(PolicyNetwork)) {
+    fmt::println("Invalid policy network size: {} bytes; expected {}",
+                 gPOLICYSize,
+                 sizeof(PolicyNetwork));
+    std::abort();
+  }
+  policy_network = reinterpret_cast<PolicyNetwork *>(
+      const_cast<unsigned char *>(gPOLICYData));
 }
 
 Score Evaluate(Board &board) {
@@ -57,20 +56,21 @@ Score Evaluate(Board &board) {
   constexpr int kI8Lanes = simd::kNativeLanes<I8>;
   constexpr int kF32Lanes = simd::kNativeLanes<float>;
 
-  const auto quantise_vector = simd::Set<I16>(arch::kFtQuantization);
+  const auto quantise_vector = simd::Set<I16>(arch::value::kFtQuantization);
 
-  std::array<U16, arch::kL1Size / 4> nnz_indices;
+  std::array<U16, arch::value::kL1Size / 4> nnz_indices;
   int nnz_count = 0;
   auto nnz_base = simd::Zero<U16, 8>();
   const auto lookup_increment = simd::Set<U16, 8>(8);
 
   // Activate the feature layer neurons
-  alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
+  alignas(simd::kAlignment) std::array<U8, arch::value::kL1Size> feature_output;
   const auto transform_features = [&]<bool kHasHmc>() {
     for (int them = 0; them <= 1; them++) {
       const auto perspective = static_cast<Color>(state.turn ^ them);
       const auto &stm_accumulator = accumulator[perspective];
-      const auto hmc = kHasHmc ? network->hmc_weights[hmc_bucket].data() : nullptr;
+      const auto hmc =
+          kHasHmc ? value_network->hmc_weights[hmc_bucket].data() : nullptr;
 
       const auto load_neurons = [&](int idx) {
         auto value = simd::Load<I16>(&stm_accumulator.psqt[idx]) +
@@ -81,22 +81,23 @@ Score Evaluate(Board &board) {
         return value;
       };
 
-      for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
+      for (int i = 0; i < arch::value::kL1Size / 2; i += kI8Lanes) {
         // Clip first accumulator values
         const auto accumulator_value = load_neurons(i);
-        const auto pair_accumulator_value = load_neurons(i + arch::kL1Size / 2);
+        const auto pair_accumulator_value =
+            load_neurons(i + arch::value::kL1Size / 2);
 
         const auto clipped_value =
-            simd::Clip(accumulator_value, arch::kFtQuantization);
+            simd::Clip(accumulator_value, arch::value::kFtQuantization);
         const auto clipped_pair_value =
             simd::Min(pair_accumulator_value, quantise_vector);
 
         // Clip second accumulator values
         const auto accumulator_value1 = load_neurons(i + kI16Lanes);
         const auto pair_accumulator_value1 =
-            load_neurons(i + arch::kL1Size / 2 + kI16Lanes);
+            load_neurons(i + arch::value::kL1Size / 2 + kI16Lanes);
         const auto clipped_value1 =
-            simd::Clip(accumulator_value1, arch::kFtQuantization);
+            simd::Clip(accumulator_value1, arch::value::kFtQuantization);
         const auto clipped_pair_value1 =
             simd::Min(pair_accumulator_value1, quantise_vector);
 
@@ -111,8 +112,8 @@ Score Evaluate(Board &board) {
         // values to 0 because of unsigned saturation. This is why we didn't
         // clamp the pair values to 0 earlier, effectively saving us an
         // operation
-        auto &features =
-            simd::AsVector<U8>(&feature_output[i + them * arch::kL1Size / 2]);
+        auto &features = simd::AsVector<U8>(
+            &feature_output[i + them * arch::value::kL1Size / 2]);
         features = simd::PackusEpi16(first_product, second_product);
 
         // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
@@ -147,7 +148,7 @@ Score Evaluate(Board &board) {
     }
   };
 
-  if (hmc_bucket == arch::kHmcBucketCount) {
+  if (hmc_bucket == arch::value::kHmcBucketCount) {
     transform_features.template operator()<false>();
   } else {
     transform_features.template operator()<true>();
@@ -158,7 +159,7 @@ Score Evaluate(Board &board) {
 #endif
 
   // Forward the feature layer neurons to the 2nd layer
-  alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
+  alignas(simd::kAlignment) std::array<I32, arch::value::kL2Size> l1_sums{};
   {
     int i = 0;
     for (; i < nnz_count - 1; i += 2) {
@@ -167,11 +168,11 @@ Score Evaluate(Board &board) {
           simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx])));
       const auto feature_vector_two = simd::Cast<U8>(
           simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx_two])));
-      for (int j = 0; j < arch::kL2Size; j += kI32Lanes) {
-        const auto weight_vector =
-            simd::AsVector<I8>(&network->l1_weights[bucket][idx + j / 4][0]);
+      for (int j = 0; j < arch::value::kL2Size; j += kI32Lanes) {
+        const auto weight_vector = simd::AsVector<I8>(
+            &value_network->l1_weights[bucket][idx + j / 4][0]);
         const auto weight_vector_two = simd::AsVector<I8>(
-            &network->l1_weights[bucket][idx_two + j / 4][0]);
+            &value_network->l1_weights[bucket][idx_two + j / 4][0]);
         auto &features = simd::AsVector<I32>(&l1_sums[j]);
         features = simd::DpbusdEpi32x2(features,
                                        feature_vector,
@@ -186,9 +187,9 @@ Score Evaluate(Board &board) {
       const int idx = nnz_indices[i] * 4;
       const auto feature_vector = simd::Cast<U8>(
           simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx])));
-      for (int j = 0; j < arch::kL2Size; j += kI32Lanes) {
-        const auto weight_vector =
-            simd::AsVector<I8>(&network->l1_weights[bucket][idx + j / 4][0]);
+      for (int j = 0; j < arch::value::kL2Size; j += kI32Lanes) {
+        const auto weight_vector = simd::AsVector<I8>(
+            &value_network->l1_weights[bucket][idx + j / 4][0]);
         auto &features = simd::AsVector<I32>(&l1_sums[j]);
         features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
       }
@@ -198,14 +199,15 @@ Score Evaluate(Board &board) {
   // Quantisation constants to convert to float
   constexpr float kL1Normalization =
       static_cast<float>(1 << kFtShift) /
-      static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
-                         arch::kL1Quantization);
+      static_cast<float>(arch::value::kFtQuantization *
+                         arch::value::kFtQuantization *
+                         arch::value::kL1Quantization);
   const auto l1_multiplier_vector = simd::Set<float>(kL1Normalization);
 
-  alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output;
-  for (int i = 0; i < arch::kL2Size; i += kF32Lanes) {
+  alignas(simd::kAlignment) std::array<float, arch::value::kL2Size> l1_output;
+  for (int i = 0; i < arch::value::kL2Size; i += kF32Lanes) {
     const auto bias_vector =
-        simd::AsVector<float>(&network->l1_biases[bucket][i]);
+        simd::AsVector<float>(&value_network->l1_biases[bucket][i]);
     const auto float_vector =
         simd::Convert<float>(simd::AsVector<I32>(&l1_sums[i]));
     const auto casted_sum =
@@ -214,21 +216,21 @@ Score Evaluate(Board &board) {
   }
 
   // Forward the feature layer neurons to the 2nd layer
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_sums;
+  alignas(simd::kAlignment) std::array<float, arch::value::kL3Size> l2_sums;
   std::memcpy(
-      l2_sums.data(), network->l2_biases[bucket].data(), sizeof(l2_sums));
-  for (int i = 0; i < arch::kL2Size; i++) {
+      l2_sums.data(), value_network->l2_biases[bucket].data(), sizeof(l2_sums));
+  for (int i = 0; i < arch::value::kL2Size; i++) {
     const auto l1_vector = simd::Set<float>(l1_output[i]);
-    for (int j = 0; j < arch::kL3Size; j += kF32Lanes) {
+    for (int j = 0; j < arch::value::kL3Size; j += kF32Lanes) {
       const auto weight_vector =
-          simd::AsVector<float>(&network->l2_weights[bucket][i][j]);
+          simd::AsVector<float>(&value_network->l2_weights[bucket][i][j]);
       auto &features = simd::AsVector<float>(&l2_sums[j]);
       features = simd::MultiplyAdd(weight_vector, l1_vector, features);
     }
   }
 
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output;
-  for (int i = 0; i < arch::kL3Size; i += kF32Lanes) {
+  alignas(simd::kAlignment) std::array<float, arch::value::kL3Size> l2_output;
+  for (int i = 0; i < arch::value::kL3Size; i += kF32Lanes) {
     simd::AsVector<float>(&l2_output[i]) =
         simd::Clamp(simd::AsVector<float>(&l2_sums[i]), 0.0f, 1.0f);
   }
@@ -237,10 +239,10 @@ Score Evaluate(Board &board) {
   constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
   std::array<simd::Vepf32, kResultChunks> result_sums;
   result_sums.fill(simd::Zero<float>());
-  for (int i = 0; i < arch::kL3Size / kF32Lanes; i += kResultChunks) {
+  for (int i = 0; i < arch::value::kL3Size / kF32Lanes; i += kResultChunks) {
     for (int chunk = 0; chunk < kResultChunks; chunk++) {
       const auto weight_vector = simd::AsVector<float>(
-          &network->l3_weights[bucket][(i + chunk) * kF32Lanes]);
+          &value_network->l3_weights[bucket][(i + chunk) * kF32Lanes]);
       const auto l2_vector =
           simd::AsVector<float>(&l2_output[(i + chunk) * kF32Lanes]);
       result_sums[chunk] =
@@ -249,26 +251,27 @@ Score Evaluate(Board &board) {
   }
 
   const auto l3_output =
-      simd::ReduceAdd(result_sums) + network->l3_biases[bucket];
-  return static_cast<Score>(l3_output * arch::kEvalScale);
+      simd::ReduceAdd(result_sums) + value_network->l3_biases[bucket];
+  return static_cast<Score>(l3_output * arch::value::kEvalScale);
 
 #else
   // Activate the feature layer via pair-wise CReLU multiplication
-  std::array<U8, arch::kL1Size> feature_output{};
+  std::array<U8, arch::value::kL1Size> feature_output{};
   for (int them = 0; them <= 1; them++) {
     const auto perspective = static_cast<Color>(state.turn ^ them);
     const auto &stm_accumulator = accumulator[perspective];
-    const I16 *hmc = network->hmc_weights[hmc_bucket].data();
-    for (int i = 0; i < arch::kL1Size / 2; i++) {
+    const I16 *hmc = value_network->hmc_weights[hmc_bucket].data();
+    for (int i = 0; i < arch::value::kL1Size / 2; i++) {
       const auto first_val = CReLU(static_cast<I16>(
           stm_accumulator.psqt[i] + stm_accumulator.threat[i] + hmc[i]));
-      const auto second_val =
-          CReLU(static_cast<I16>(stm_accumulator.psqt[i + arch::kL1Size / 2] +
-                                 stm_accumulator.threat[i + arch::kL1Size / 2] +
-                                 hmc[i + arch::kL1Size / 2]));
+      const auto second_val = CReLU(static_cast<I16>(
+          stm_accumulator.psqt[i + arch::value::kL1Size / 2] +
+          stm_accumulator.threat[i + arch::value::kL1Size / 2] +
+          hmc[i + arch::value::kL1Size / 2]));
 
       const auto product = (first_val * second_val) >> 9;
-      feature_output[i + them * arch::kL1Size / 2] = static_cast<U8>(product);
+      feature_output[i + them * arch::value::kL1Size / 2] =
+          static_cast<U8>(product);
     }
   }
 
@@ -278,34 +281,36 @@ Score Evaluate(Board &board) {
 
   const float kL1Normalization =
       static_cast<float>(1 << kFtShift) /
-      static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
-                         arch::kL1Quantization);
+      static_cast<float>(arch::value::kFtQuantization *
+                         arch::value::kFtQuantization *
+                         arch::value::kL1Quantization);
 
   // Forward the feature layer neurons to the 2nd layer
-  std::array<I32, arch::kL2Size> l1_sums{};
-  for (int i = 0; i < arch::kL1Size; i++) {
+  std::array<I32, arch::value::kL2Size> l1_sums{};
+  for (int i = 0; i < arch::value::kL1Size; i++) {
     if (!feature_output[i]) continue;
 
-    for (int j = 0; j < arch::kL2Size; j++) {
-      l1_sums[j] += feature_output[i] * network->l1_weights[bucket][i][j];
+    for (int j = 0; j < arch::value::kL2Size; j++) {
+      l1_sums[j] += feature_output[i] * value_network->l1_weights[bucket][i][j];
     }
   }
 
   // Activate 2nd layer neurons
-  std::array<float, arch::kL2Size> l1_output{};
-  for (int i = 0; i < arch::kL2Size; i++) {
+  std::array<float, arch::value::kL2Size> l1_output{};
+  for (int i = 0; i < arch::value::kL2Size; i++) {
     l1_output[i] = CReLU(static_cast<float>(l1_sums[i]) * kL1Normalization +
-                         network->l1_biases[bucket][i]);
+                         value_network->l1_biases[bucket][i]);
   }
 
   // Forward the 2nd layer neurons to the 3rd layer
-  std::array<float, arch::kL3Size> l2_output{};
-  std::memcpy(
-      l2_output.data(), network->l2_biases[bucket].data(), sizeof(l2_output));
-  for (int i = 0; i < arch::kL2Size; i++) {
-    for (int j = 0; j < arch::kL3Size; j++) {
+  std::array<float, arch::value::kL3Size> l2_output{};
+  std::memcpy(l2_output.data(),
+              value_network->l2_biases[bucket].data(),
+              sizeof(l2_output));
+  for (int i = 0; i < arch::value::kL2Size; i++) {
+    for (int j = 0; j < arch::value::kL3Size; j++) {
       l2_output[j] = std::fma(
-          l1_output[i], network->l2_weights[bucket][i][j], l2_output[j]);
+          l1_output[i], value_network->l2_weights[bucket][i][j], l2_output[j]);
     }
   }
 
@@ -313,20 +318,21 @@ Score Evaluate(Board &board) {
   constexpr int kResultChunks = 64 / sizeof(float);
   std::array<float, kResultChunks> result_sums{};
 
-  for (int i = 0; i < arch::kL3Size; i += kResultChunks) {
+  for (int i = 0; i < arch::value::kL3Size; i += kResultChunks) {
     for (int chunk = 0; chunk < kResultChunks; chunk++) {
       const float activated = CReLU(l2_output[i + chunk]);
-      result_sums[chunk] = std::fma(activated,
-                                    network->l3_weights[bucket][i + chunk],
-                                    result_sums[chunk]);
+      result_sums[chunk] =
+          std::fma(activated,
+                   value_network->l3_weights[bucket][i + chunk],
+                   result_sums[chunk]);
     }
   }
 
   const float l3_output =
-      network->l3_biases[bucket] + simd::ReduceAdd(result_sums);
+      value_network->l3_biases[bucket] + simd::ReduceAdd(result_sums);
 
   // Scale output
-  return static_cast<Score>(l3_output * arch::kEvalScale);
+  return static_cast<Score>(l3_output * arch::value::kEvalScale);
 #endif
 }
 

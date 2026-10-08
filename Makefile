@@ -26,6 +26,7 @@ BUILD_TYPE ?= BUILD_NATIVE
 
 # Path to evaluation file (can be overridden from command line)
 EVALFILE ?=
+POLICYFILE ?=
 
 # Executable name (can be overridden from command line)
 EXE ?= integral
@@ -40,7 +41,7 @@ ifeq ($(BUILD_TYPE),BUILD_DEBUG)
 endif
 
 BUILD_TYPES := BUILD_NATIVE BUILD_VNNI512 BUILD_AVX512 BUILD_AVX2_BMI2 BUILD_AVX2 BUILD_SSE41_POPCNT BUILD_DEBUG
-configure = cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) $(foreach type,$(BUILD_TYPES),-D$(type)=$(if $(filter $(type),$(BUILD_TYPE)),ON,OFF)) -DDATAGEN=$(DATAGEN) -DPGO_MODE=$(1) ..
+configure = cd $(BUILD_DIR) && cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_OPTION) -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DEVALFILE=$(EVALFILE) -DPOLICYFILE=$(POLICYFILE) $(foreach type,$(BUILD_TYPES),-D$(type)=$(if $(filter $(type),$(BUILD_TYPE)),ON,OFF)) -DDATAGEN=$(DATAGEN) -DPGO_MODE=$(1) ..
 
 # Standard targets
 .PHONY: all clean debug x86_64 x86_64_popcnt x86_64_bmi2 native

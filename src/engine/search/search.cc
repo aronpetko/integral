@@ -355,7 +355,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     alpha = std::max(alpha, best_score);
   }
 
-  stack->threats = state.threats;
+  stack->threats = state.threats[state.turn];
 
   const Score futility_score = best_score + kQsFutMargin;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
@@ -696,7 +696,7 @@ Score Searcher::PVSearch(Thread &thread,
         board.GetStateHistory().Back(), prev_stack->move, bonus);
   }
 
-  stack->threats = state.threats;
+  stack->threats = state.threats[state.turn];
 
   // This condition is dependent on if the side to move's static evaluation
   // has improved in the past two or four plies. It also used as a metric for
@@ -1025,7 +1025,7 @@ Score Searcher::PVSearch(Thread &thread,
           return history.capture_history->GetScore(state, tt_move);
         } else {
           return history.quiet_history->GetScore(
-                     state, tt_move, state.threats) +
+                     state, tt_move, state.threats[state.turn]) +
                  history.continuation_history->GetScore(
                      state, tt_move, stack - 1) +
                  history.continuation_history->GetScore(

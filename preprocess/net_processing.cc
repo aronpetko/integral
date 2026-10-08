@@ -4,13 +4,13 @@
 
 #include "../shared/nnue/definitions.h"
 
-std::unique_ptr<nnue::Network> ProcessNetwork(
-    const std::unique_ptr<nnue::RawNetwork>& raw_network) {
-  auto network = std::make_unique<nnue::Network>();
+std::unique_ptr<nnue::ValueNetwork> ProcessNetwork(
+    const std::unique_ptr<nnue::RawValueNetwork>& raw_network) {
+  auto network = std::make_unique<nnue::ValueNetwork>();
 
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
-  for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
+  for (int h = 0; h < nnue::arch::value::kHmcBucketCount; ++h) {
     network->hmc_weights[h] = raw_network->hmc_weights[h];
   }
   network->feature_biases = raw_network->feature_biases;
@@ -24,8 +24,8 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   auto weights = reinterpret_cast<__m128i*>(&network->feature_weights);
   auto biases = reinterpret_cast<__m128i*>(&network->feature_biases);
 
-  for (int i = 0; i < nnue::arch::kInputBucketCount * 768 *
-                          nnue::arch::kL1Size / kWeightsPerBlock;
+  for (int i = 0; i < nnue::arch::value::kInputBucketCount * 768 *
+                          nnue::arch::value::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) regs[j] = weights[i + j];
 
@@ -33,7 +33,8 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
       weights[i + j] = regs[simd::kPackusOrder[j]];
   }
 
-  for (int i = 0; i < nnue::arch::kL1Size / kWeightsPerBlock; i += kNumRegs) {
+  for (int i = 0; i < nnue::arch::value::kL1Size / kWeightsPerBlock;
+       i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) regs[j] = biases[i + j];
 
     for (int j = 0; j < kNumRegs; j++)
@@ -41,8 +42,8 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   }
 
   auto hmc = reinterpret_cast<__m128i*>(&network->hmc_weights);
-  for (int i = 0;
-       i < nnue::arch::kHmcRowCount * nnue::arch::kL1Size / kWeightsPerBlock;
+  for (int i = 0; i < nnue::arch::value::kHmcRowCount *
+                          nnue::arch::value::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) regs[j] = hmc[i + j];
 
@@ -52,8 +53,8 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   // Same 8-element granularity as the FT weights, but I8 rows -> 8-byte blocks.
   auto threats = reinterpret_cast<U64*>(&network->threat_weights);
   std::array<U64, kNumRegs> threat_regs;
-  for (std::size_t i = 0; i < nnue::arch::kThreatPawnPairFeatureCount *
-                                  nnue::arch::kL1Size / kWeightsPerBlock;
+  for (std::size_t i = 0; i < nnue::arch::value::kThreatPawnPairFeatureCount *
+                                  nnue::arch::value::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) threat_regs[j] = threats[i + j];
     for (int j = 0; j < kNumRegs; j++)
@@ -67,9 +68,9 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   network->l3_biases = raw_network->l3_biases;
 
   // Transpose l1_weights from [b][l2][l1] to [b][l1][l2]
-  for (int b = 0; b < nnue::arch::kOutputBucketCount; b++) {
-    for (int l1 = 0; l1 < nnue::arch::kL1Size; l1++) {
-      for (int l2 = 0; l2 < nnue::arch::kL2Size; l2++) {
+  for (int b = 0; b < nnue::arch::value::kOutputBucketCount; b++) {
+    for (int l1 = 0; l1 < nnue::arch::value::kL1Size; l1++) {
+      for (int l2 = 0; l2 < nnue::arch::value::kL2Size; l2++) {
         network->l1_weights[b][l1][l2] = raw_network->l1_weights[b][l2][l1];
       }
     }
@@ -78,13 +79,14 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
   // Weight permutation for DpbusdEpi32
   {
-    const auto tmp = std::make_shared<nnue::Network>(*network);
-    for (int bucket = 0; bucket < nnue::arch::kOutputBucketCount; bucket++) {
-      for (int i = 0; i < nnue::arch::kL1Size; i += 4) {
-        for (int j = 0; j < nnue::arch::kL2Size; ++j) {
+    const auto tmp = std::make_shared<nnue::ValueNetwork>(*network);
+    for (int bucket = 0; bucket < nnue::arch::value::kOutputBucketCount;
+         bucket++) {
+      for (int i = 0; i < nnue::arch::value::kL1Size; i += 4) {
+        for (int j = 0; j < nnue::arch::value::kL2Size; ++j) {
           for (int k = 0; k < 4; k++) {
-            network
-                ->l1_weights_alt[bucket][i * nnue::arch::kL2Size + j * 4 + k] =
+            network->l1_weights_alt[bucket][i * nnue::arch::value::kL2Size +
+                                            j * 4 + k] =
                 tmp->l1_weights[bucket][i + k][j];
           }
         }
@@ -94,9 +96,9 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
 #endif
 
   // Transpose l2_weights from [b][l3][l2] to [b][l2][l3]
-  for (int b = 0; b < nnue::arch::kOutputBucketCount; b++) {
-    for (int l2 = 0; l2 < nnue::arch::kL2Size; l2++) {
-      for (int l3 = 0; l3 < nnue::arch::kL3Size; l3++) {
+  for (int b = 0; b < nnue::arch::value::kOutputBucketCount; b++) {
+    for (int l2 = 0; l2 < nnue::arch::value::kL2Size; l2++) {
+      for (int l3 = 0; l3 < nnue::arch::value::kL3Size; l3++) {
         network->l2_weights[b][l2][l3] = raw_network->l2_weights[b][l3][l2];
       }
     }
@@ -116,7 +118,7 @@ int main(int argc, char* argv[]) {
 
   fmt::println("Preprocessing {}", input_path);
 
-  auto raw_network = std::make_unique<nnue::RawNetwork>();
+  auto raw_network = std::make_unique<nnue::RawValueNetwork>();
 
   std::ifstream input_stream(input_path, std::ios::binary | std::ios::ate);
   if (!input_stream) {
@@ -124,20 +126,23 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  constexpr std::size_t raw_size = sizeof(nnue::RawNetwork);
+  constexpr std::size_t raw_size = sizeof(nnue::RawValueNetwork);
   constexpr std::size_t padded_size = (raw_size + 63) / 64 * 64;
 
   const auto input_size = input_stream.tellg();
   if (input_size != static_cast<std::streamoff>(raw_size) &&
       input_size != static_cast<std::streamoff>(padded_size)) {
-    fmt::println("Invalid network size: {} bytes; expected {} or {} (Bullet padding)",
-                 static_cast<long long>(input_size), raw_size, padded_size);
+    fmt::println(
+        "Invalid network size: {} bytes; expected {} or {} (Bullet padding)",
+        static_cast<long long>(input_size),
+        raw_size,
+        padded_size);
     return EXIT_FAILURE;
   }
 
   input_stream.seekg(0);
   input_stream.read(reinterpret_cast<char*>(raw_network.get()),
-                    sizeof(nnue::RawNetwork));
+                    sizeof(nnue::RawValueNetwork));
   if (!input_stream) {
     fmt::println("Failed to read complete network: {}", input_path);
     return EXIT_FAILURE;
@@ -147,7 +152,7 @@ int main(int argc, char* argv[]) {
 
   std::ofstream output_stream(output_path, std::ios::binary | std::ios::ate);
   output_stream.write(reinterpret_cast<char*>(processed_network.get()),
-                      sizeof(nnue::Network));
+                      sizeof(nnue::ValueNetwork));
 
   output_stream.close();
   if (!output_stream) {

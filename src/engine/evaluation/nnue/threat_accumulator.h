@@ -59,14 +59,15 @@ struct ThreatAccumulatorChange {
 };
 
 struct ThreatFeaturePolicy {
-  static constexpr int kWidth = arch::kL1Size;
+  static constexpr int kWidth = arch::value::kL1Size;
   using Value = I16;
   using Weight = I8;
 
   // Biases are handled by the PSQT accumulator
-  static Value Bias(int) {
+  static Value Bias(std::size_t) {
     return 0;
   }
+
   static std::pair<Weight const*, bool> FeatureRow(Color perspective,
                                                    Square king_square,
                                                    PieceType attacker,
@@ -117,19 +118,12 @@ struct ThreatFeaturePolicy {
         const auto second_id = pawn_pair::GetPawnId(
             second ^ square_flip, state.GetPieceColor(second), perspective);
         const auto index = pawn_pair::GetPawnIndex(first_id, second_id);
-        const auto* row = network->threat_weights[index].as_array().data();
+        const auto row = value_network->threat_weights[index].as_array().data();
         __builtin_prefetch(row);
         emit(row, true);
       }
     }
   }
-
-  static Weight const* PawnPairRow(Color perspective,
-                                   Square king_square,
-                                   Square first,
-                                   Color first_color,
-                                   Square second,
-                                   Color second_color);
 };
 
 class ThreatPerspectiveAccumulator

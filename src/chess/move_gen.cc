@@ -6,56 +6,6 @@
 
 namespace move_gen {
 
-constexpr std::array<BitBoard, 64> GenerateKnightMasks() {
-  std::array<BitBoard, 64> masks{};
-  for (int square = 0; square < kSquareCount; square++) {
-    const BitBoard src_mask = BitBoard::FromSquare(square);
-    masks[square] |= (src_mask & ~kFileMasks[kFileH]) << 17;
-    masks[square] |= (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG]))
-                  << 10;
-    masks[square] |=
-        (src_mask & ~(kFileMasks[kFileH] | kFileMasks[kFileG])) >> 6;
-    masks[square] |= (src_mask & ~kFileMasks[kFileH]) >> 15;
-    masks[square] |= (src_mask & ~kFileMasks[kFileA]) << 15;
-    masks[square] |= (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB]))
-                  << 6;
-    masks[square] |=
-        (src_mask & ~(kFileMasks[kFileA] | kFileMasks[kFileB])) >> 10;
-    masks[square] |= (src_mask & ~kFileMasks[kFileA]) >> 17;
-  }
-  return masks;
-}
-
-constexpr std::array<BitBoard, 64> GenerateKingMasks() {
-  std::array<BitBoard, 64> masks{};
-  for (int square = 0; square < kSquareCount; square++) {
-    const BitBoard src_mask = BitBoard::FromSquare(square);
-
-    masks[square] |= Shift<Direction::kNorth>(src_mask);
-    masks[square] |= Shift<Direction::kSouth>(src_mask);
-    masks[square] |= Shift<Direction::kEast>(src_mask);
-    masks[square] |= Shift<Direction::kWest>(src_mask);
-    masks[square] |= Shift<Direction::kNorthEast>(src_mask);
-    masks[square] |= Shift<Direction::kNorthWest>(src_mask);
-    masks[square] |= Shift<Direction::kSouthEast>(src_mask);
-    masks[square] |= Shift<Direction::kSouthWest>(src_mask);
-  }
-  return masks;
-}
-
-constexpr std::array<std::array<BitBoard, 64>, 2> GeneratePawnAttackMasks() {
-  std::array<std::array<BitBoard, 64>, 2> masks{};
-  for (int square = 0; square < kSquareCount; square++) {
-    const BitBoard src_mask = BitBoard::FromSquare(square);
-
-    masks[Color::kWhite][square] |= Shift<Direction::kNorthEast>(src_mask);
-    masks[Color::kWhite][square] |= Shift<Direction::kNorthWest>(src_mask);
-    masks[Color::kBlack][square] |= Shift<Direction::kSouthEast>(src_mask);
-    masks[Color::kBlack][square] |= Shift<Direction::kSouthWest>(src_mask);
-  }
-  return masks;
-}
-
 constexpr std::array<std::array<BitBoard, 64>, 64> GenerateRayBetweenMasks() {
   std::array<std::array<BitBoard, 64>, 64> masks{};
   for (int square = 0; square < kSquareCount; square++) {
@@ -122,9 +72,6 @@ GenerateRayIntersectingMasks() {
   return masks;
 }
 
-constexpr auto kKnightMasks = GenerateKnightMasks();
-constexpr auto kKingMasks = GenerateKingMasks();
-constexpr auto kPawnAttackMasks = GeneratePawnAttackMasks();
 // Must be const because magic attacks are initialized at runtime
 const auto kRayBetweenMasks = GenerateRayBetweenMasks();
 const auto kRayIntersectingMasks = GenerateRayIntersectingMasks();

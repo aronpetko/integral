@@ -219,7 +219,7 @@ void Accumulator::IncrementHead() {
 
 int Accumulator::GetOutputBucket(const BoardState& state) const {
   return std::min((state.Occupied().PopCount() - 2) / kBucketDivisor,
-                  static_cast<int>(arch::kOutputBucketCount - 1));
+                  static_cast<int>(arch::value::kOutputBucketCount - 1));
 }
 
 int Accumulator::GetKingBucket(Square king_square, Color king_color) const {

@@ -80,7 +80,7 @@ class Accumulator {
   int head_idx_;
   std::vector<AccumulatorEntry> stack_;
   // Finny tables: [mirrored][king bucket].
-  MultiArray<BucketCacheEntry, 2, arch::kInputBucketCount> input_bucket_cache_;
+  MultiArray<BucketCacheEntry, 2, arch::value::kInputBucketCount> input_bucket_cache_;
 };
 
 }  // namespace nnue

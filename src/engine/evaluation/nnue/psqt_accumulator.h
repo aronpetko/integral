@@ -30,12 +30,12 @@ struct PsqtAccumulatorChange {
 };
 
 struct PsqtFeaturePolicy {
-  static constexpr int kWidth = arch::kL1Size;
+  static constexpr int kWidth = arch::value::kL1Size;
   using Value = I16;
   using Weight = I16;
 
-  static Value Bias(int i) {
-    return network->feature_biases[i];
+  static Value Bias(std::size_t idx) {
+    return value_network->feature_biases[idx];
   }
 
   static std::span<Weight, kWidth> FeatureRow(Square square,

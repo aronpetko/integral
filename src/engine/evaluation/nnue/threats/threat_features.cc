@@ -14,7 +14,7 @@ std::pair<std::size_t, bool> GetThreatFeatureIndex(PieceType attacker,
   const auto offset = kPieceOffsets.offsets[attacker][attacker_color][from];
   const auto piece_idx = kPieceIndex[attacker][attacker_color][from][to];
   return {attack_index + offset + piece_idx,
-          attack_index != nnue::arch::kThreatFeatureCount};
+          attack_index != nnue::arch::value::kThreatFeatureCount};
 }
 
 }  // namespace nnue::threats

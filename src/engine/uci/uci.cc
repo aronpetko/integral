@@ -5,6 +5,7 @@
 #include "../../ascii_logo.h"
 #include "../../data_gen/data_gen.h"
 #include "../../tests/tests.h"
+#include "../evaluation/nnue/policy/policy.h"
 #include "../evaluation/nnue/sparse.h"
 #include "../search/search.h"
 #include "../search/syzygy/syzygy.h"
@@ -164,6 +165,22 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   listener.RegisterCommand("eval", CommandType::kUnordered, {}, [&board](Command *cmd) {
     const auto eval = eval::Evaluate(board);
     fmt::println("info cp {}\ninfo normalized cp {}", eval, eval::NormalizeScore(eval, board.GetState().MaterialCount()));
+  });
+
+  listener.RegisterCommand("policy", CommandType::kUnordered, {}, [&board](Command *cmd) {
+    MoveList moves;
+    const auto pseudo_legal = move_gen::GenerateMoves<MoveGenType::kAll>(board);
+    for (int i = 0; i < pseudo_legal.Size(); ++i) {
+      if (board.IsMoveLegal(pseudo_legal[i])) moves.Push(pseudo_legal[i]);
+    }
+
+    std::array<float, kMaxMoves> probabilities;
+    const nnue::policy::PolicyEvaluator policy(board.GetState());
+    policy.Probabilities(moves, probabilities);
+    for (int i = 0; i < moves.Size(); ++i) {
+      fmt::println("info move {} logit {:.6f} policy {:.6f}",
+                   moves[i].ToString(), policy.Logit(moves[i]), probabilities[i]);
+    }
   });
 
   listener.RegisterCommand("print", CommandType::kUnordered, {}, [&board](Command *cmd) {

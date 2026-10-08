@@ -16,7 +16,7 @@ PsqtFeaturePolicy::FeatureRow(Square square,
   const int square_idx = square ^ 0b111000 * perspective;
   const int color_idx = perspective != piece_color;
   const int piece_idx = piece;
-  return network
+  return value_network
       ->feature_weights[king_bucket_idx][color_idx][piece_idx][square_idx]
       .as_array();
 }

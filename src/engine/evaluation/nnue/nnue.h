@@ -9,7 +9,8 @@
 
 namespace nnue {
 
-inline Network* network = nullptr;
+inline ValueNetwork* value_network = nullptr;
+inline PolicyNetwork* policy_network = nullptr;
 
 class Accumulator;
 

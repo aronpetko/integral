@@ -227,20 +227,8 @@ ThreatFeaturePolicy::FeatureRow(Color perspective,
 
   const auto [feature_idx, valid] = threats::GetThreatFeatureIndex(
       attacker, attacker_color, victim, victim_color, from, to);
-  const auto row = arch::kPawnPairFeatureCount + feature_idx;
-  return {network->threat_weights[row].as_array().data(), valid};
-}
-
-ThreatFeaturePolicy::Weight const* ThreatFeaturePolicy::PawnPairRow(
-    Color perspective,
-    Square king_square,
-    Square first,
-    Color first_color,
-    Square second,
-    Color second_color) {
-  const auto index = pawn_pair::GetPawnPairIndex(
-      first, first_color, second, second_color, perspective, king_square);
-  return network->threat_weights[index].as_array().data();
+  const auto row = arch::value::kPawnPairFeatureCount + feature_idx;
+  return {value_network->threat_weights[row].as_array().data(), valid};
 }
 
 void ThreatPerspectiveAccumulator::ApplyChange(
@@ -288,15 +276,17 @@ void ThreatPerspectiveAccumulator::ApplyChange(
 
   for (int i = 0; i < change.pawn_pair_adds.Size(); ++i) {
     const auto add = change.pawn_pair_adds[i];
-    const auto* row =
-        network->threat_weights[add.indices[perspective]].as_array().data();
+    const auto* row = value_network->threat_weights[add.indices[perspective]]
+                          .as_array()
+                          .data();
     __builtin_prefetch(row);
     add_rows[num_add++] = row;
   }
   for (int i = 0; i < change.pawn_pair_subs.Size(); ++i) {
     const auto sub = change.pawn_pair_subs[i];
-    const auto* row =
-        network->threat_weights[sub.indices[perspective]].as_array().data();
+    const auto* row = value_network->threat_weights[sub.indices[perspective]]
+                          .as_array()
+                          .data();
     __builtin_prefetch(row);
     sub_rows[num_sub++] = row;
   }
