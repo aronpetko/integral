@@ -33,7 +33,7 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-//TUNABLE(kQuietPolicyScale, 4096, 0, 16384, false);
+// TUNABLE(kQuietPolicyScale, 4096, 0, 16384, false);
 TUNABLE(kNoisyPolicyScale, 2048, 0, 16384, false);
 
 MovePicker::MovePicker(MovePickerType type,
@@ -258,17 +258,20 @@ int MovePicker::PolicyScore(Move move, int scale) {
     return 0;
   }
 
-  if (!policy_) {
-    policy_.emplace(board_.GetState());
-  }
-
   constexpr int kLogitShift = 21;
   static_assert(I64(nnue::arch::policy::kQuantisation) *
                     nnue::arch::policy::kQuantisation *
                     nnue::arch::policy::kQuantisation ==
                 1LL << kLogitShift);
-  return static_cast<int>((static_cast<I64>(policy_->RawLogit(move)) * scale) >>
+  return static_cast<int>((static_cast<I64>(PolicyLogit(move)) * scale) >>
                           kLogitShift);
+}
+
+I32 MovePicker::PolicyLogit(Move move) {
+  if (!policy_) {
+    policy_.emplace(board_.GetState());
+  }
+  return policy_->RawLogit(move);
 }
 
 }  // namespace search

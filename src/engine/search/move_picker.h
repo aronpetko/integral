@@ -51,6 +51,9 @@ class MovePicker {
     return stage_;
   }
 
+  // Raw policy logit (scaled by 2^21), before the move is made
+  [[nodiscard]] I32 PolicyLogit(Move move);
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 

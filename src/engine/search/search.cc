@@ -1085,6 +1085,12 @@ Score Searcher::PVSearch(Thread &thread,
     stack->continuation_correction_entry =
         history.correction_history->GetContEntry(state, move);
 
+    const bool lmr_candidate = depth > 2 && moves_seen >= 1 + in_root * 2;
+    const auto policy_logit =
+        lmr_candidate && is_quiet
+            ? static_cast<int>(move_picker.PolicyLogit(move) >> 11)
+            : 0;
+
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
@@ -1099,7 +1105,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2) {
+    if (lmr_candidate) {
       constexpr int kLmrScale = 1024;
       reduction = tables::kLateMoveReduction[is_quiet][std::min(
                       depth, kMaxSearchDepth)][moves_seen] *
@@ -1130,6 +1136,11 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= stack->history_score * kLmrHistQuiet / kLmrHistDiv;
       } else {
         reduction -= stack->history_score * kLmrHistCapture / kLmrCaptHistDiv;
+      }
+
+      // Reduce less for moves the policy likes
+      if (is_quiet) {
+        reduction -= policy_logit * kLmrPolicy / 1024;
       }
 
       // Reduce more if our static evaluation is going down
