@@ -33,8 +33,8 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE(kQuietPolicyScale, 1024, 0, 16384, false);
-TUNABLE(kNoisyPolicyScale, 512, 0, 16384, false);
+TUNABLE(kQuietPolicyScale, 4096, 0, 16384, false);
+TUNABLE(kNoisyPolicyScale, 2048, 0, 16384, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -191,9 +191,10 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     }
   }
 
-  AddPolicyScores(
-      list,
-      move_type == MoveGenType::kNoisy ? kNoisyPolicyScale : kQuietPolicyScale);
+  if (move_type == MoveGenType::kQuiet)
+    AddPolicyScores(list,
+                    move_type == MoveGenType::kNoisy ? kNoisyPolicyScale
+                                                     : kQuietPolicyScale);
 }
 
 int MovePicker::ScoreMove(Move &move) {
