@@ -69,7 +69,6 @@ static_assert(kPieceOffsets[PieceType::kKing][Squares::kSquareCount] ==
       return kPromotionOffset + type * kPromotionStride + promotion_id;
     }
     case MoveType::kCastle: {
-      // Matches the trainer, which flips the side when *not* mirrored
       const bool is_kingside = move.GetFrom() < move.GetTo();
       return kCastleOffset + (is_kingside ^ !mirror);
     }
