@@ -942,6 +942,12 @@ Score Searcher::PVSearch(Thread &thread,
         reduction += kLmrDepthNotImproving;
       }
 
+      // Reduce less for moves the policy likes
+      if (!policy) {
+        policy.emplace(state);
+      }
+      reduction -= (policy->RawLogit(state, move) >> 11) * kLmrPolicy / 1024;
+
       const int lmr_fractional_depth =
           std::max(depth * kLmrDepthScale - reduction, 0);
 
@@ -1135,11 +1141,6 @@ Score Searcher::PVSearch(Thread &thread,
       } else {
         reduction -= stack->history_score * kLmrHistCapture / kLmrCaptHistDiv;
       }
-
-      // Reduce less for moves the policy likes
-      const auto &parent = board.GetStateHistory().Back();
-      if (!policy) policy.emplace(parent);
-      reduction -= (policy->RawLogit(parent, move) >> 11) * kLmrPolicy / 1024;
 
       // Reduce more if our static evaluation is going down
       if (!improving) {
