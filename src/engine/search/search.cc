@@ -2,11 +2,9 @@
 
 #include <algorithm>
 #include <numeric>
-#include <optional>
 #include <thread>
 
 #include "../../data_gen/data_gen.h"
-#include "../evaluation/nnue/policy/policy.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -899,8 +897,6 @@ Score Searcher::PVSearch(Thread &thread,
   Score best_score = kScoreNone;
   Move best_move = Move::NullMove();
 
-  std::optional<nnue::policy::PolicyEvaluator> policy;
-
   MovePicker move_picker(
       MovePickerType::kSearch, board, tt_move, history, stack);
   while (const auto move = move_picker.Next()) {
@@ -1134,13 +1130,6 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= stack->history_score * kLmrHistQuiet / kLmrHistDiv;
       } else {
         reduction -= stack->history_score * kLmrHistCapture / kLmrCaptHistDiv;
-      }
-
-      // Reduce less for moves the policy likes
-      if (is_quiet) {
-        const auto &parent = board.GetStateHistory().Back();
-        if (!policy) policy.emplace(parent);
-        reduction -= (policy->RawLogit(parent, move) >> 11) * kLmrPolicy / 1024;
       }
 
       // Reduce more if our static evaluation is going down

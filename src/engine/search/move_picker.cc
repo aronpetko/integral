@@ -33,6 +33,8 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
+TUNABLE_STEP(kQuietPolicyWeight, 4096, 0, 16384, false, 512);
+
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -123,6 +125,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
     moves_idx_ = 0;
+    policy_.emplace(state);
     GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
   }
 
@@ -242,10 +245,18 @@ int MovePicker::ScoreMove(Move &move) {
 
   threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
 
+  // Order moves the policy network likes earlier
+  int policy_score = 0;
+  if (policy_) {
+    policy_score =
+        (policy_->RawLogit(state, move) >> 11) * kQuietPolicyWeight / 1024;
+  }
+
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
+  return threat_score + policy_score +
+         history_.GetQuietMoveScore(state, move, stack_);
 }
 
 }  // namespace search
