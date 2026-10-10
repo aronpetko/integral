@@ -1132,6 +1132,17 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= stack->history_score * kLmrHistCapture / kLmrCaptHistDiv;
       }
 
+      // Reduce less for moves the policy likes, and more for ones it dislikes
+      if (is_quiet) {
+        // Odds of being the best move fall off faster below 0 than they rise
+        // above it, and flatten out at the extremes
+        const int logit = std::clamp(
+            move_picker.PolicyLogit(board.GetStateHistory().Back(), move),
+            -kLmrPolicyMinLogit,
+            kLmrPolicyMaxLogit);
+        reduction -= logit * (logit > 0 ? kLmrPolicyPos : kLmrPolicyNeg) / 1024;
+      }
+
       // Reduce more if our static evaluation is going down
       if (!improving) {
         reduction += kLmrNotImproving;

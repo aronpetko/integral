@@ -47,6 +47,12 @@ class MovePicker {
 
   void SkipQuiets();
 
+  // Policy logit of a move from this position, where 1024 = 1 logit
+  [[nodiscard]] int PolicyLogit(const BoardState &state, Move move) {
+    if (!policy_) policy_.emplace(state);
+    return policy_->RawLogit(state, move) >> 11;
+  }
+
   [[nodiscard]] Stage GetStage() const {
     return stage_;
   }

@@ -105,6 +105,10 @@ TUNABLE_STEP(kLmrComplexity, 696, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrFirstKillerMove, 858, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrSecondKillerMove, 947, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrRoundingCutoff, 579, 512, 2048, false, 120);
+TUNABLE_STEP(kLmrPolicyPos, 192, 0, 1024, false, 32);
+TUNABLE_STEP(kLmrPolicyNeg, 384, 0, 1024, false, 32);
+TUNABLE_STEP(kLmrPolicyMinLogit, 1536, 512, 4096, false, 128);
+TUNABLE_STEP(kLmrPolicyMaxLogit, 1280, 512, 4096, false, 128);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 215, 50, 300, false);

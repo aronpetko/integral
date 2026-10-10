@@ -125,7 +125,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
     moves_idx_ = 0;
-    policy_.emplace(state);
+    if (!policy_) policy_.emplace(state);
     GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
   }
 
@@ -248,8 +248,7 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves the policy network likes earlier
   int policy_score = 0;
   if (policy_) {
-    policy_score =
-        (policy_->RawLogit(state, move) >> 11) * kQuietPolicyWeight / 1024;
+    policy_score = PolicyLogit(state, move) * kQuietPolicyWeight / 1024;
   }
 
   // Order moves that caused a beta cutoff by their own history score
