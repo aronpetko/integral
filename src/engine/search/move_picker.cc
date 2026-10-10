@@ -33,7 +33,7 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE_STEP(kQuietPolicyWeight, 4096, 0, 16384, false, 512);
+TUNABLE_STEP(kQuietPolicyWeight, 16384, 0, 16384, false, 512);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
