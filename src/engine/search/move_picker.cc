@@ -131,7 +131,9 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kQuiets) {
     if (moves_idx_ < quiets_.Size()) {
-      return SelectionSort(quiets_, moves_idx_++);
+      SelectionSort(quiets_, moves_idx_);
+      last_quiet_ = quiets_[moves_idx_++];
+      return last_quiet_.move;
     }
 
     stage_ = Stage::kBadNoisys;
@@ -187,12 +189,14 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     auto move = moves[i];
     if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
         (killers[1] != move || killer_1_noisy)) {
-      list.Push({move, ScoreMove(move)});
+      ScoredMove scored{move, 0};
+      scored.score = ScoreMove(move, scored.policy_logit);
+      list.Push(scored);
     }
   }
 }
 
-int MovePicker::ScoreMove(Move &move) {
+int MovePicker::ScoreMove(Move &move, int &policy_logit) {
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
 
@@ -248,7 +252,8 @@ int MovePicker::ScoreMove(Move &move) {
   // Order moves the policy network likes earlier
   int policy_score = 0;
   if (policy_) {
-    policy_score = PolicyLogit(state, move) * kQuietPolicyWeight / 1024;
+    policy_logit = policy_->RawLogit(state, move) >> 11;
+    policy_score = policy_logit * kQuietPolicyWeight / 1024;
   }
 
   // Order moves that caused a beta cutoff by their own history score

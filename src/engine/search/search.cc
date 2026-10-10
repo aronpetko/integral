@@ -1134,8 +1134,6 @@ Score Searcher::PVSearch(Thread &thread,
 
       // Reduce less for moves the policy likes, and more for ones it dislikes
       if (is_quiet) {
-        // Odds of being the best move fall off faster below 0 than they rise
-        // above it, and flatten out at the extremes
         const int logit = std::clamp(
             move_picker.PolicyLogit(board.GetStateHistory().Back(), move),
             -kLmrPolicyMinLogit,

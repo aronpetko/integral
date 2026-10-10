@@ -14,6 +14,7 @@ namespace search {
 struct ScoredMove {
   Move move;
   int score;
+  int policy_logit = 0;
 };
 
 enum class MovePickerType {
@@ -49,6 +50,8 @@ class MovePicker {
 
   // Policy logit of a move from this position, where 1024 = 1 logit
   [[nodiscard]] int PolicyLogit(const BoardState &state, Move move) {
+    // Quiets already had their logit computed when they were scored
+    if (move == last_quiet_.move) return last_quiet_.policy_logit;
     if (!policy_) policy_.emplace(state);
     return policy_->RawLogit(state, move) >> 11;
   }
@@ -63,7 +66,7 @@ class MovePicker {
   template <MoveGenType move_type>
   void GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list);
 
-  int ScoreMove(Move &move);
+  int ScoreMove(Move &move, int &policy_logit);
 
  private:
   Board &board_;
@@ -75,6 +78,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   std::optional<nnue::policy::PolicyEvaluator> policy_;
+  ScoredMove last_quiet_{Move::NullMove(), 0};
   int moves_idx_;
   int see_threshold_;
   bool force_evasions_;
