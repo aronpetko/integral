@@ -68,6 +68,9 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kGenerateNoisys) {
     stage_ = Stage::kGoodNoisys;
+    // Skip the policy network in quiescence and probcut, where it isn't worth
+    // the cost of building it at every node
+    if (type_ == MovePickerType::kSearch) policy_.emplace(state);
     GenerateAndScoreMoves<MoveGenType::kNoisy>(noisys_);
   }
 
@@ -125,7 +128,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
     moves_idx_ = 0;
-    policy_.emplace(state);
+    if (!policy_) policy_.emplace(state);
     GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
   }
 
@@ -216,7 +219,16 @@ int MovePicker::ScoreMove(Move &move) {
     const auto victim =
         move.IsEnPassant(state) ? PieceType::kPawn : state.GetPieceType(to);
     const int victim_value = *kPieceScores[victim] * 100;
-    return victim_value + history_.GetCaptureMoveScore(state, move);
+
+    // Order captures the policy network likes earlier
+    int policy_score = 0;
+    if (policy_) {
+      policy_score =
+          (policy_->RawLogit(state, move) >> 11) * kQuietPolicyWeight / 1024;
+    }
+
+    return victim_value + policy_score +
+           history_.GetCaptureMoveScore(state, move);
   }
 
   const BitBoard pawn_threats = state.threatened_by[kPawn];
