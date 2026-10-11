@@ -68,7 +68,6 @@ class MovePicker {
   Stage stage_;
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
-  std::optional<nnue::policy::PolicyEvaluator> policy_;
   int moves_idx_;
   int see_threshold_;
   bool force_evasions_;

@@ -125,7 +125,6 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kGenerateQuiets) {
     stage_ = Stage::kQuiets;
     moves_idx_ = 0;
-    policy_.emplace(state);
     GenerateAndScoreMoves<MoveGenType::kQuiet>(quiets_);
   }
 
@@ -182,12 +181,33 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const bool killer_0_noisy = killers[0].IsNoisy(state),
              killer_1_noisy = killers[1].IsNoisy(state);
 
+  // Prefetch policy rows while scoring, then compute the logits in one batch
+  std::optional<nnue::policy::PolicyEvaluator> policy;
+  std::array<U16, kMaxMoves> policy_rows;
+  if constexpr (move_type == MoveGenType::kQuiet) {
+    policy.emplace(state);
+  }
+
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
     if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
         (killers[1] != move || killer_1_noisy)) {
+      if (policy) {
+        policy_rows[list.Size()] = policy->PrefetchOutput(state, move);
+      }
       list.Push({move, ScoreMove(move)});
+    }
+  }
+
+  if (policy && list.Size() > 0) {
+    std::array<I32, kMaxMoves> logits;
+    policy->RawLogits(std::span(policy_rows.data(), list.Size()),
+                      logits.data());
+
+    // Order moves the policy network likes earlier
+    for (int i = 0; i < list.Size(); ++i) {
+      list[i].score += (logits[i] >> 11) * kQuietPolicyWeight / 1024;
     }
   }
 }
@@ -244,14 +264,6 @@ int MovePicker::ScoreMove(Move &move) {
   }
 
   threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
-
-  // Compute the policy score but discard it, to measure the inference cost
-  // without changing move ordering
-  if (policy_) {
-    const int policy_score =
-        (policy_->RawLogit(state, move) >> 11) * kQuietPolicyWeight / 1024;
-    asm volatile("" : : "r"(policy_score));
-  }
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will

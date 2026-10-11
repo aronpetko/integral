@@ -22,23 +22,33 @@ void PolicyAccumulator::Refresh(const BoardState& state) {
   for (const Square square : state.Rooks(us) | queens) {
     our_threats |= move_gen::RookMoves(square, occupied);
   }
-  const BitBoard their_threats = state.threats;
 
-  const auto& weights = policy_network->feature_weights;
-  values_ = simd::Convert<I16>(
+  const auto ours = static_cast<U64>(our_threats);
+  const auto theirs = static_cast<U64>(state.threats);
+  const auto their_pieces = static_cast<U64>(state.Occupied(them));
+
+  // Single branchless loop over all pieces, accumulated in registers
+  const auto* weights =
+      reinterpret_cast<const I8*>(&policy_network->feature_weights);
+  auto values = simd::Convert<I16>(
       simd::Load<I8, kWidth>(policy_network->feature_biases.data()));
-
-  for (const Color side : {us, them}) {
-    const BitBoard side_pieces = state.Occupied(side);
-    for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
-      for (const Square square : state.piece_bbs[piece] & side_pieces) {
-        const auto& row =
-            weights[our_threats.IsSet(square)][their_threats.IsSet(square)]
-                   [side != us][piece][square ^ flip];
-        values_ += simd::Convert<I16>(simd::Load<I8, kWidth>(row.data()));
-      }
-    }
+#if defined(__clang__)
+#pragma clang loop unroll(disable)
+#elif defined(__GNUC__)
+#pragma GCC unroll 1
+#endif
+  for (const Square square : occupied) {
+    const U64 bit = 1ULL << square;
+    const int threat = 2 * !!(ours & bit) + !!(theirs & bit);
+    const int side = !!(their_pieces & bit);
+    const int feature = ((threat * 2 + side) * PieceType::kNumPieceTypes +
+                         state.piece_on_square[square]) *
+                            Squares::kSquareCount +
+                        (square ^ flip);
+    values += simd::Convert<I16>(
+        simd::Load<I8, kWidth>(weights + feature * kWidth));
   }
+  values_ = values;
 }
 
 }  // namespace nnue::policy

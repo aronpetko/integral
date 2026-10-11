@@ -409,6 +409,62 @@ template <typename V, std::size_t Count>
   return ReduceAdd(acc);
 }
 
+// Lane i of the result is the horizontal sum of vs[i]
+[[nodiscard]] inline Vepi32 ReduceAddBatch(
+    const std::array<Vepi32, kNativeLanes<I32>>& vs) {
+#if BUILD_HAS_AVX512
+  const auto v = [&](int i) { return std::bit_cast<__m512i>(vs[i]); };
+  __m512i pairs[8];
+  for (int i = 0; i < 8; ++i) {
+    pairs[i] =
+        _mm512_add_epi32(_mm512_unpacklo_epi32(v(2 * i), v(2 * i + 1)),
+                         _mm512_unpackhi_epi32(v(2 * i), v(2 * i + 1)));
+  }
+  __m512i quads[4];
+  for (int i = 0; i < 4; ++i) {
+    quads[i] =
+        _mm512_add_epi32(_mm512_unpacklo_epi64(pairs[2 * i], pairs[2 * i + 1]),
+                         _mm512_unpackhi_epi64(pairs[2 * i], pairs[2 * i + 1]));
+  }
+  const auto fold = [](__m512i a, __m512i b) {
+    return _mm512_add_epi32(
+        _mm512_shuffle_i32x4(a, b, _MM_SHUFFLE(2, 0, 2, 0)),
+        _mm512_shuffle_i32x4(a, b, _MM_SHUFFLE(3, 1, 3, 1)));
+  };
+  return std::bit_cast<Vepi32>(
+      fold(fold(quads[0], quads[1]), fold(quads[2], quads[3])));
+#elif BUILD_HAS_AVX2
+  const auto v = [&](int i) { return std::bit_cast<__m256i>(vs[i]); };
+  __m256i pairs[4];
+  for (int i = 0; i < 4; ++i) {
+    pairs[i] =
+        _mm256_add_epi32(_mm256_unpacklo_epi32(v(2 * i), v(2 * i + 1)),
+                         _mm256_unpackhi_epi32(v(2 * i), v(2 * i + 1)));
+  }
+  __m256i quads[2];
+  for (int i = 0; i < 2; ++i) {
+    quads[i] =
+        _mm256_add_epi32(_mm256_unpacklo_epi64(pairs[2 * i], pairs[2 * i + 1]),
+                         _mm256_unpackhi_epi64(pairs[2 * i], pairs[2 * i + 1]));
+  }
+  return std::bit_cast<Vepi32>(
+      _mm256_add_epi32(_mm256_permute2x128_si256(quads[0], quads[1], 0x20),
+                       _mm256_permute2x128_si256(quads[0], quads[1], 0x31)));
+#elif BUILD_HAS_SSE41
+  const auto v = [&](int i) { return std::bit_cast<__m128i>(vs[i]); };
+  const __m128i p0 = _mm_add_epi32(_mm_unpacklo_epi32(v(0), v(1)),
+                                   _mm_unpackhi_epi32(v(0), v(1)));
+  const __m128i p1 = _mm_add_epi32(_mm_unpacklo_epi32(v(2), v(3)),
+                                   _mm_unpackhi_epi32(v(2), v(3)));
+  return std::bit_cast<Vepi32>(
+      _mm_add_epi32(_mm_unpacklo_epi64(p0, p1), _mm_unpackhi_epi64(p0, p1)));
+#else
+  Vepi32 out{};
+  for (std::size_t i = 0; i < kNativeLanes<I32>; ++i) out[i] = ReduceAdd(vs[i]);
+  return out;
+#endif
+}
+
 #if BUILD_HAS_AVX512
 constexpr int kPackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
 #elif BUILD_HAS_AVX2
