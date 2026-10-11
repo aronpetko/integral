@@ -29,16 +29,19 @@ class PawnHistory {
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    I16 depth,
-                   MoveList &quiets) {
+                   MoveList &quiets,
+                   I16 best_policy,
+                   std::span<const I16> quiet_policies) {
     const I16 bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
-    UpdateMoveScore(state, stack->move, bonus);
+    UpdateMoveScore(state, stack->move, PolicyBonus(bonus, best_policy));
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
-      UpdateMoveScore(state, quiets[i], penalty);
+      UpdateMoveScore(
+          state, quiets[i], PolicyPenalty(penalty, quiet_policies[i]));
     }
   }
 

@@ -892,6 +892,8 @@ Score Searcher::PVSearch(Thread &thread,
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
+  // Policy probabilities of the failed quiets
+  std::array<I16, kMaxMoves> quiet_policies;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -913,6 +915,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
+    const I16 policy = move_picker.LastPolicy();
 
     stack->history_score = history.GetMoveScore(state, move, stack);
 
@@ -1250,12 +1253,19 @@ Score Searcher::PVSearch(Thread &thread,
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+            const auto policies =
+                std::span<const I16>(quiet_policies.data(), quiets.Size());
+            history.quiet_history->UpdateScore(state,
+                                               stack,
+                                               history_depth,
+                                               stack->threats,
+                                               quiets,
+                                               policy,
+                                               policies);
             history.pawn_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, quiets, policy, policies);
             history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, quiets, policy, policies);
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
@@ -1274,9 +1284,10 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Penalize the history score of moves that failed to raise alpha
     if (move != best_move) {
-      if (is_quiet)
+      if (is_quiet) {
+        quiet_policies[quiets.Size()] = policy;
         quiets.Push(move);
-      else if (is_capture)
+      } else if (is_capture)
         captures.Push(move);
     }
   }
