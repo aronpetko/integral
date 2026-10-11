@@ -33,7 +33,9 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE_STEP(kQuietPolicyWeight, 16384, 0, 65536, false, 2048);
+TUNABLE_STEP(kQuietPolicyLogitWeight, 4096, 0, 16384, false, 512);
+TUNABLE_STEP(kQuietPolicyProbWeight, 8192, 0, 65536, false, 2048);
+// Softmax temperature in hundredths
 TUNABLE_STEP(kQuietPolicyTemperature, 75, 25, 400, false, 15);
 
 MovePicker::MovePicker(MovePickerType type,
@@ -212,9 +214,12 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
         static_cast<float>(kQuietPolicyTemperature) / 100.0f,
         probabilities.data());
 
+    // The logit orders every move the policy network likes earlier, while the
+    // probability adds a bonus to the moves it is confident in
     for (int i = 0; i < list.Size(); ++i) {
-      list[i].score += static_cast<int>(probabilities[i] *
-                                        static_cast<float>(kQuietPolicyWeight));
+      list[i].score += (logits[i] >> 11) * kQuietPolicyLogitWeight / 1024;
+      list[i].score += static_cast<int>(
+          probabilities[i] * static_cast<float>(kQuietPolicyProbWeight));
     }
   }
 }
