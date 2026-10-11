@@ -245,18 +245,18 @@ int MovePicker::ScoreMove(Move &move) {
 
   threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
 
-  // Order moves the policy network likes earlier
-  int policy_score = 0;
+  // Compute the policy score but discard it, to measure the inference cost
+  // without changing move ordering
   if (policy_) {
-    policy_score =
+    const int policy_score =
         (policy_->RawLogit(state, move) >> 11) * kQuietPolicyWeight / 1024;
+    asm volatile("" : : "r"(policy_score));
   }
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
   // be ordered first
-  return threat_score + policy_score +
-         history_.GetQuietMoveScore(state, move, stack_);
+  return threat_score + history_.GetQuietMoveScore(state, move, stack_);
 }
 
 }  // namespace search
