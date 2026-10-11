@@ -28,7 +28,7 @@ static I16 HistoryPenalty(I16 depth,
 }
 
 TUNABLE(kHistPolicyBonusScale, 1024, 0, 1024, false);
-TUNABLE(kHistPolicyPenaltyScale, 512, 0, 1024, false);
+TUNABLE(kHistPolicyPenaltyScale, 1024, 0, 1024, false);
 
 constexpr I16 kPolicyOne = 1024;
 constexpr I16 kNoPolicy = -1;

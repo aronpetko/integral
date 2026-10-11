@@ -37,6 +37,8 @@ TUNABLE_STEP(kQuietPolicyLogitWeight, 4096, 0, 16384, false, 512);
 TUNABLE_STEP(kQuietPolicyProbWeight, 8192, 0, 65536, false, 2048);
 // Softmax temperature in hundredths
 TUNABLE_STEP(kQuietPolicyTemperature, 75, 25, 400, false, 15);
+// Move score per unit of log probability under the final quiet ordering
+TUNABLE_STEP(kQuietOrderingScale, 4096, 1024, 16384, false, 512);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -224,8 +226,27 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
       list[i].score += (logits[i] >> 11) * kQuietPolicyLogitWeight / 1024;
       list[i].score += static_cast<int>(
           probabilities[i] * static_cast<float>(kQuietPolicyProbWeight));
-      list[i].policy = static_cast<I16>(
-          std::lround(probabilities[i] * history::kPolicyOne));
+    }
+
+    // Probability of each move under the combined policy and history ordering,
+    // so the histories only learn what the ordering still gets wrong
+    int max_score = list[0].score;
+    for (int i = 1; i < list.Size(); ++i) {
+      max_score = std::max(max_score, list[i].score);
+    }
+
+    const float inverse_scale = 1.0f / static_cast<float>(kQuietOrderingScale);
+    float total = 0.0f;
+    for (int i = 0; i < list.Size(); ++i) {
+      probabilities[i] = std::exp(
+          static_cast<float>(list[i].score - max_score) * inverse_scale);
+      total += probabilities[i];
+    }
+
+    const float inverse_total = 1.0f / total;
+    for (int i = 0; i < list.Size(); ++i) {
+      list[i].policy = static_cast<I16>(std::lround(
+          probabilities[i] * inverse_total * history::kPolicyOne));
     }
   }
 }
