@@ -30,20 +30,15 @@ static I16 HistoryPenalty(I16 depth,
 TUNABLE(kHistPolicyBonusScale, 1024, 0, 1024, false);
 TUNABLE(kHistPolicyPenaltyScale, 512, 0, 1024, false);
 
-// Policy probability of a move out of kPolicyOne
 constexpr I16 kPolicyOne = 1024;
-// Moves the policy network didn't score (TT move and killers)
 constexpr I16 kNoPolicy = -1;
 
-// Credit cutoffs the policy didn't expect, so the history learns to correct
-// the policy rather than duplicate it
 static I16 PolicyBonus(I16 bonus, I16 policy) {
   if (policy == kNoPolicy) return bonus;
   const int factor = kPolicyOne - kHistPolicyBonusScale * policy / kPolicyOne;
   return static_cast<I16>(bonus * factor / kPolicyOne);
 }
 
-// Penalize moves the policy liked more than the ones it already disliked
 static I16 PolicyPenalty(I16 penalty, I16 policy) {
   if (policy == kNoPolicy) return penalty;
   const int factor =
