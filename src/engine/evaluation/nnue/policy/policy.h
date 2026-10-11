@@ -29,6 +29,11 @@ class PolicyEvaluator {
   // Logits scaled by Q^3 for each output row from PrefetchOutput
   void RawLogits(std::span<const U16> rows, I32* logits) const;
 
+  // Softmax of logits scaled by Q^3 at the given temperature
+  static void Softmax(std::span<const I32> logits,
+                      float temperature,
+                      float* probabilities);
+
   [[nodiscard]] float Logit(const BoardState& state, Move move) const {
     return static_cast<float>(RawLogit(state, move)) * kLogitScale;
   }

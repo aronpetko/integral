@@ -47,6 +47,27 @@ void PolicyEvaluator::RawLogits(std::span<const U16> rows, I32* logits) const {
   }
 }
 
+void PolicyEvaluator::Softmax(std::span<const I32> logits,
+                              float temperature,
+                              float* probabilities) {
+  if (logits.empty()) return;
+
+  const I32 max_logit = *std::max_element(logits.begin(), logits.end());
+  const float scale = kLogitScale / temperature;
+
+  float total = 0.0f;
+  for (std::size_t i = 0; i < logits.size(); ++i) {
+    probabilities[i] =
+        std::exp(static_cast<float>(logits[i] - max_logit) * scale);
+    total += probabilities[i];
+  }
+
+  const float inverse_total = 1.0f / total;
+  for (std::size_t i = 0; i < logits.size(); ++i) {
+    probabilities[i] *= inverse_total;
+  }
+}
+
 void PolicyEvaluator::Probabilities(const BoardState& state,
                                     const MoveList& moves,
                                     std::span<float> probabilities) const {

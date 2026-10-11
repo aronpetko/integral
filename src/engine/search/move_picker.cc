@@ -33,7 +33,9 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE_STEP(kQuietPolicyWeight, 4096, 0, 16384, false, 512);
+TUNABLE_STEP(kQuietPolicyWeight, 32768, 0, 65536, false, 2048);
+// Softmax temperature in hundredths
+TUNABLE_STEP(kQuietPolicyTemperature, 100, 25, 400, false, 15);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -205,9 +207,15 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     policy->RawLogits(std::span(policy_rows.data(), list.Size()),
                       logits.data());
 
-    // Order moves the policy network likes earlier
+    std::array<float, kMaxMoves> probabilities;
+    nnue::policy::PolicyEvaluator::Softmax(
+        std::span(logits.data(), list.Size()),
+        static_cast<float>(kQuietPolicyTemperature) / 100.0f,
+        probabilities.data());
+
     for (int i = 0; i < list.Size(); ++i) {
-      list[i].score += (logits[i] >> 11) * kQuietPolicyWeight / 1024;
+      list[i].score += static_cast<int>(probabilities[i] *
+                                        static_cast<float>(kQuietPolicyWeight));
     }
   }
 }
