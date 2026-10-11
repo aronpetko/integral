@@ -33,9 +33,8 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE_STEP(kQuietPolicyWeight, 32768, 0, 65536, false, 2048);
-// Softmax temperature in hundredths
-TUNABLE_STEP(kQuietPolicyTemperature, 100, 25, 400, false, 15);
+TUNABLE_STEP(kQuietPolicyWeight, 16384, 0, 65536, false, 2048);
+TUNABLE_STEP(kQuietPolicyTemperature, 75, 25, 400, false, 15);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
