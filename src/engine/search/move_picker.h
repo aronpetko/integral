@@ -11,9 +11,14 @@
 
 namespace search {
 
+// Logit gap of moves the policy network didn't score
+constexpr I16 kNoPolicyGap = -1;
+
 struct ScoredMove {
   Move move;
   int score;
+  // How far the policy logit is below the best quiet, in 1/256ths of a nat
+  I16 policy_gap = kNoPolicyGap;
 };
 
 enum class MovePickerType {
@@ -51,6 +56,11 @@ class MovePicker {
     return stage_;
   }
 
+  // Policy logit gap of the last move returned by Next
+  [[nodiscard]] I16 LastPolicyGap() const {
+    return last_policy_gap_;
+  }
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 
@@ -69,6 +79,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
+  I16 last_policy_gap_;
   int see_threshold_;
   bool force_evasions_;
 };
