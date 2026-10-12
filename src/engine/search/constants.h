@@ -80,7 +80,7 @@ TUNABLE(kCaptHistThreshMult, -1735, -3000, -1000, false);
 
 // Policy logits are in 1/256ths of a nat
 TUNABLE(kPolicyPruneDepth, 6, 3, 10, true);
-TUNABLE_STEP(kPolicyPruneBase, -960, -2048, 0, false, 64);
+TUNABLE_STEP(kPolicyPruneBase, -300, -2048, 0, false, 64);
 TUNABLE_STEP(kPolicyPruneMult, 64, 0, 256, false, 16);
 TUNABLE(kPolicyPruneHistDiv, 32, 8, 128, false);
 
