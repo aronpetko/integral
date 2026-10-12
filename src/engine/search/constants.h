@@ -78,10 +78,10 @@ TUNABLE(kHistThreshMult, -2191, -3000, -500, false);
 TUNABLE(kCaptHistThreshBase, -494, -1000, 500, false);
 TUNABLE(kCaptHistThreshMult, -1735, -3000, -1000, false);
 
-// Policy logit gaps are in 1/256ths of a nat
+// Policy logits are in 1/256ths of a nat
 TUNABLE(kPolicyPruneDepth, 6, 3, 10, true);
-TUNABLE_STEP(kPolicyPruneBase, 512, 0, 1536, false, 64);
-TUNABLE_STEP(kPolicyPruneMult, 128, 0, 512, false, 32);
+TUNABLE_STEP(kPolicyPruneBase, -960, -2048, 0, false, 64);
+TUNABLE_STEP(kPolicyPruneMult, 64, 0, 256, false, 16);
 TUNABLE(kPolicyPruneHistDiv, 32, 8, 128, false);
 
 TUNABLE(kLmrHistDiv, 11680, 5000, 15000, true);
