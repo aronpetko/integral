@@ -56,6 +56,10 @@ class MovePicker {
   // network on first use since most nodes never need it
   [[nodiscard]] int PolicyLogit(Move move);
 
+  void RecordQuietFailure(bool reduced);
+
+  void UpdatePolicyCorrection(int depth);
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 
@@ -65,6 +69,11 @@ class MovePicker {
   int ScoreMove(Move &move);
 
  private:
+  struct PolicyFailure {
+    ScoredMove scored_move;
+    int weight;
+  };
+
   Board &board_;
   Move tt_move_;
   MovePickerType type_;
@@ -73,6 +82,7 @@ class MovePicker {
   Stage stage_;
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
+  List<PolicyFailure, kMaxMoves> policy_failures_;
   std::optional<nnue::policy::PolicyEvaluator> policy_;
   int moves_idx_;
   int see_threshold_;

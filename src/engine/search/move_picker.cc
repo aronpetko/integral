@@ -1,5 +1,7 @@
 #include "move_picker.h"
 
+#include <cmath>
+
 namespace search {
 
 TUNABLE(kSeeNoisyHistoryDiv, 86, 32, 250, false);
@@ -32,6 +34,9 @@ TUNABLE(kMinorPawnThreatScorePos, 8031, 3000, 12000, false);
 TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
+TUNABLE(kPolicyThreatDiv, 32, 8, 128, false);
+TUNABLE(kPolicyCorrectionScale, 8, 1, 32, false);
+TUNABLE(kPolicyCorrectionMaxBonus, 64, 16, 256, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -199,6 +204,40 @@ int MovePicker::PolicyLogit(Move move) {
   return policy_->RawLogit(state, move) >> 13;
 }
 
+void MovePicker::RecordQuietFailure(bool reduced) {
+  if (type_ == MovePickerType::kSearch && stage_ == Stage::kQuiets &&
+      !stack_->in_check) {
+    policy_failures_.Push({quiets_[moves_idx_ - 1], reduced ? 1 : 4});
+  }
+}
+
+void MovePicker::UpdatePolicyCorrection(int depth) {
+  if (type_ != MovePickerType::kSearch || stage_ != Stage::kQuiets ||
+      stack_->in_check || policy_failures_.Empty()) {
+    return;
+  }
+
+  const auto &state = board_.GetState();
+  const auto winner = quiets_[moves_idx_ - 1];
+  auto &correction = *history_.policy_correction_history;
+  const int rate = std::min(kPolicyCorrectionScale * depth,
+                            static_cast<int>(kPolicyCorrectionMaxBonus));
+  float total_bonus = 0.0f;
+  int winner_bonus = 0;
+  for (int i = 0; i < policy_failures_.Size(); ++i) {
+    const auto loser = policy_failures_[i];
+    const float margin = std::clamp(
+        (winner.score - loser.scored_move.score) / 256.0f, -16.0f, 16.0f);
+    const float error = 1.0f / (1.0f + std::exp(margin));
+    total_bonus += rate * loser.weight * error / (4 * policy_failures_.Size());
+    const int bonus = std::lround(total_bonus) - winner_bonus;
+    correction.UpdateScore(
+        state, loser.scored_move.move, stack_->threats, -bonus);
+    winner_bonus += bonus;
+  }
+  correction.UpdateScore(state, winner.move, stack_->threats, winner_bonus);
+}
+
 int MovePicker::ScoreMove(Move &move) {
   const auto from = move.GetFrom();
   const auto to = move.GetTo();
@@ -252,9 +291,13 @@ int MovePicker::ScoreMove(Move &move) {
 
   threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
 
-  // Order moves that caused a beta cutoff by their own history score
-  // The higher the depth this move caused a cutoff the more likely it move will
-  // be ordered first
+  if (type_ == MovePickerType::kSearch) {
+    return PolicyLogit(move) +
+           history_.policy_correction_history->GetScore(
+               state, move, stack_->threats) +
+           threat_score / kPolicyThreatDiv;
+  }
+
   return threat_score + history_.GetQuietMoveScore(state, move, stack_);
 }
 

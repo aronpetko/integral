@@ -991,7 +991,6 @@ Score Searcher::PVSearch(Thread &thread,
           is_quiet ? kHistThreshBase + kHistThreshMult * depth
                    : kCaptHistThreshBase + kCaptHistThreshMult * depth;
       if (depth <= kHistPruneDepth && stack->history_score <= history_margin) {
-        move_picker.SkipQuiets();
         continue;
       }
 
@@ -1006,15 +1005,6 @@ Score Searcher::PVSearch(Thread &thread,
       }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(move, see_threshold, state)) {
-        continue;
-      }
-
-      // Policy Pruning: Skip quiet moves the policy network rates poorly at
-      // near-leaf nodes
-      if (move_picker.GetStage() == MovePicker::Stage::kQuiets &&
-          lmr_depth <= kPolicyPruneDepth && !stack->in_check &&
-          move_picker.PolicyLogit(move) <
-              kPolicyPruneBase - kPolicyPruneMult * depth) {
         continue;
       }
     }
@@ -1258,6 +1248,9 @@ Score Searcher::PVSearch(Thread &thread,
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
+            if (!in_root && !stack->excluded_tt_move) {
+              move_picker.UpdatePolicyCorrection(history_depth);
+            }
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
@@ -1279,6 +1272,10 @@ Score Searcher::PVSearch(Thread &thread,
           --depth;
         }
       }
+    }
+
+    if (is_quiet && !in_root && !stack->excluded_tt_move) {
+      move_picker.RecordQuietFailure(reduction > 0 && !needs_full_search);
     }
 
     // Penalize the history score of moves that failed to raise alpha

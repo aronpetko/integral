@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-BENCH_EXE="cmake-build-release/integral.exe"
+BENCH_EXE="${BENCH_EXE:-cmake-build-release/integral.exe}"
 
 if [[ ! -f "$BENCH_EXE" ]]; then
   echo "Error: $BENCH_EXE not found. Build the project first." >&2
