@@ -995,15 +995,12 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
-      // Policy Pruning: Skip quiet moves the policy network rates far below the
-      // best quiet at near-leaf nodes, unless a good history rescues them
-      const int policy_gap = move_picker.LastPolicyGap();
-      const int policy_margin =
-          kPolicyPruneBase + kPolicyPruneMult * depth +
-          std::max<int>(stack->history_score, 0) / kPolicyPruneHistDiv;
-      if (policy_gap != kNoPolicyGap && depth <= kPolicyPruneDepth &&
-          !stack->in_check && policy_gap > policy_margin &&
-          !board.MoveGivesDirectCheck(move)) {
+      // Policy Pruning: Skip quiet moves the policy network rates poorly at
+      // near-leaf nodes, unless a good history rescues them
+      const int policy_logit = move_picker.LastPolicyLogit();
+      const int policy_threshold = kPolicyPruneBase - kPolicyPruneMult * depth;
+      if (policy_logit != kNoPolicyLogit && depth <= kPolicyPruneDepth &&
+          !stack->in_check && policy_logit < policy_threshold) {
         continue;
       }
 

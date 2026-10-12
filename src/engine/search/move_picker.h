@@ -2,6 +2,7 @@
 #define INTEGRAL_MOVE_PICKER_H_
 
 #include <algorithm>
+#include <limits>
 #include <optional>
 
 #include "../../chess/move_gen.h"
@@ -11,14 +12,14 @@
 
 namespace search {
 
-// Logit gap of moves the policy network didn't score
-constexpr I16 kNoPolicyGap = -1;
+// Logit of moves the policy network didn't score
+constexpr I16 kNoPolicyLogit = std::numeric_limits<I16>::min();
 
 struct ScoredMove {
   Move move;
   int score;
-  // How far the policy logit is below the best quiet, in 1/256ths of a nat
-  I16 policy_gap = kNoPolicyGap;
+  // Policy logit in 1/256ths of a nat
+  I16 policy_logit = kNoPolicyLogit;
 };
 
 enum class MovePickerType {
@@ -56,9 +57,9 @@ class MovePicker {
     return stage_;
   }
 
-  // Policy logit gap of the last move returned by Next
-  [[nodiscard]] I16 LastPolicyGap() const {
-    return last_policy_gap_;
+  // Policy logit of the last move returned by Next
+  [[nodiscard]] I16 LastPolicyLogit() const {
+    return last_policy_logit_;
   }
 
  private:
@@ -79,7 +80,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
-  I16 last_policy_gap_;
+  I16 last_policy_logit_;
   int see_threshold_;
   bool force_evasions_;
 };

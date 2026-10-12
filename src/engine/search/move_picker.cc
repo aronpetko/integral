@@ -47,13 +47,13 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      last_policy_gap_(kNoPolicyGap),
+      last_policy_logit_(kNoPolicyLogit),
       see_threshold_(see_threshold),
       force_evasions_(force_evasions) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
-  last_policy_gap_ = kNoPolicyGap;
+  last_policy_logit_ = kNoPolicyLogit;
 
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateNoisys;
@@ -131,7 +131,7 @@ Move MovePicker::Next() {
   if (stage_ == Stage::kQuiets) {
     if (moves_idx_ < quiets_.Size()) {
       const auto move = SelectionSort(quiets_, moves_idx_);
-      last_policy_gap_ = quiets_[moves_idx_++].policy_gap;
+      last_policy_logit_ = quiets_[moves_idx_++].policy_logit;
       return move;
     }
 
@@ -208,13 +208,9 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     policy->RawLogits(std::span(policy_rows.data(), list.Size()),
                       logits.data());
 
-    const I32 max_logit = *std::max_element(logits.begin(),
-                                            logits.begin() + list.Size());
-
-    // Logits are scaled by Q^3 = 2^21 per nat, so shift down to 256 per nat
     for (int i = 0; i < list.Size(); ++i) {
-      list[i].policy_gap =
-          static_cast<I16>(std::min((max_logit - logits[i]) >> 13, 32767));
+      list[i].policy_logit = static_cast<I16>(
+          std::clamp(logits[i] >> 13, kNoPolicyLogit + 1, 32767));
     }
   }
 }
