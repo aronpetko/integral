@@ -1012,7 +1012,7 @@ Score Searcher::PVSearch(Thread &thread,
       // Policy Pruning: Skip quiet moves the policy network rates poorly at
       // near-leaf nodes
       if (move_picker.GetStage() == MovePicker::Stage::kQuiets &&
-          depth <= kPolicyPruneDepth && !stack->in_check &&
+          lmr_depth <= kPolicyPruneDepth && !stack->in_check &&
           move_picker.PolicyLogit(move) <
               kPolicyPruneBase - kPolicyPruneMult * depth) {
         continue;
