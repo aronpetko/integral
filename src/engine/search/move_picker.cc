@@ -47,13 +47,11 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
-      last_policy_logit_(kNoPolicyLogit),
       see_threshold_(see_threshold),
       force_evasions_(force_evasions) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
-  last_policy_logit_ = kNoPolicyLogit;
 
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateNoisys;
@@ -130,9 +128,7 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kQuiets) {
     if (moves_idx_ < quiets_.Size()) {
-      const auto move = SelectionSort(quiets_, moves_idx_);
-      last_policy_logit_ = quiets_[moves_idx_++].policy_logit;
-      return move;
+      return SelectionSort(quiets_, moves_idx_++);
     }
 
     stage_ = Stage::kBadNoisys;
@@ -183,36 +179,24 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const bool killer_0_noisy = killers[0].IsNoisy(state),
              killer_1_noisy = killers[1].IsNoisy(state);
 
-  // Prefetch policy rows while scoring, then compute the logits in one batch
-  // for policy pruning
-  std::optional<nnue::policy::PolicyEvaluator> policy;
-  std::array<U16, kMaxMoves> policy_rows;
-  if constexpr (move_type == MoveGenType::kQuiet) {
-    policy.emplace(state);
-  }
-
   auto moves = move_gen::GenerateMoves<move_type>(board_);
   for (int i = 0; i < moves.Size(); i++) {
     auto move = moves[i];
     if (move != tt_move_ && (killers[0] != move || killer_0_noisy) &&
         (killers[1] != move || killer_1_noisy)) {
-      if (policy) {
-        policy_rows[list.Size()] = policy->PrefetchOutput(state, move);
-      }
       list.Push({move, ScoreMove(move)});
     }
   }
+}
 
-  if (policy && list.Size() > 0) {
-    std::array<I32, kMaxMoves> logits;
-    policy->RawLogits(std::span(policy_rows.data(), list.Size()),
-                      logits.data());
-
-    for (int i = 0; i < list.Size(); ++i) {
-      list[i].policy_logit = static_cast<I16>(
-          std::clamp(logits[i] >> 13, kNoPolicyLogit + 1, 32767));
-    }
+int MovePicker::PolicyLogit(Move move) {
+  const auto &state = board_.GetState();
+  if (!policy_) {
+    policy_.emplace(state);
   }
+
+  // Logits are scaled by Q^3 = 2^21 per nat, so shift down to 256 per nat
+  return policy_->RawLogit(state, move) >> 13;
 }
 
 int MovePicker::ScoreMove(Move &move) {

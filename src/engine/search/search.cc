@@ -995,15 +995,6 @@ Score Searcher::PVSearch(Thread &thread,
         continue;
       }
 
-      // Policy Pruning: Skip quiet moves the policy network rates poorly at
-      // near-leaf nodes, unless a good history rescues them
-      const int policy_logit = move_picker.LastPolicyLogit();
-      const int policy_threshold = kPolicyPruneBase - kPolicyPruneMult * depth;
-      if (policy_logit != kNoPolicyLogit && depth <= kPolicyPruneDepth &&
-          !stack->in_check && policy_logit < policy_threshold) {
-        continue;
-      }
-
       // Static Exchange Evaluation (SEE) Pruning: Skip moves that lose too
       // much material
       const int see_threshold = [&]() -> int {
@@ -1015,6 +1006,15 @@ Score Searcher::PVSearch(Thread &thread,
       }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
           !eval::StaticExchange(move, see_threshold, state)) {
+        continue;
+      }
+
+      // Policy Pruning: Skip quiet moves the policy network rates poorly at
+      // near-leaf nodes
+      if (move_picker.GetStage() == MovePicker::Stage::kQuiets &&
+          depth <= kPolicyPruneDepth && !stack->in_check &&
+          move_picker.PolicyLogit(move) <
+              kPolicyPruneBase - kPolicyPruneMult * depth) {
         continue;
       }
     }

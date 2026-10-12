@@ -12,14 +12,9 @@
 
 namespace search {
 
-// Logit of moves the policy network didn't score
-constexpr I16 kNoPolicyLogit = std::numeric_limits<I16>::min();
-
 struct ScoredMove {
   Move move;
   int score;
-  // Policy logit in 1/256ths of a nat
-  I16 policy_logit = kNoPolicyLogit;
 };
 
 enum class MovePickerType {
@@ -57,10 +52,9 @@ class MovePicker {
     return stage_;
   }
 
-  // Policy logit of the last move returned by Next
-  [[nodiscard]] I16 LastPolicyLogit() const {
-    return last_policy_logit_;
-  }
+  // Policy logit of a quiet move in 1/256ths of a nat, evaluating the policy
+  // network on first use since most nodes never need it
+  [[nodiscard]] int PolicyLogit(Move move);
 
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
@@ -79,8 +73,8 @@ class MovePicker {
   Stage stage_;
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
+  std::optional<nnue::policy::PolicyEvaluator> policy_;
   int moves_idx_;
-  I16 last_policy_logit_;
   int see_threshold_;
   bool force_evasions_;
 };
