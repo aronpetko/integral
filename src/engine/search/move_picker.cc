@@ -33,8 +33,6 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
-TUNABLE_STEP(kQuietPolicyWeight, 4096, 0, 16384, false, 512);
-
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
                        Move tt_move,
@@ -49,11 +47,13 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
+      last_policy_logit_(kNoPolicyLogit),
       see_threshold_(see_threshold),
       force_evasions_(force_evasions) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
+  last_policy_logit_ = kNoPolicyLogit;
 
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateNoisys;
@@ -130,7 +130,9 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kQuiets) {
     if (moves_idx_ < quiets_.Size()) {
-      return SelectionSort(quiets_, moves_idx_++);
+      const auto move = SelectionSort(quiets_, moves_idx_);
+      last_policy_logit_ = quiets_[moves_idx_++].policy_logit;
+      return move;
     }
 
     stage_ = Stage::kBadNoisys;
@@ -182,6 +184,7 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
              killer_1_noisy = killers[1].IsNoisy(state);
 
   // Prefetch policy rows while scoring, then compute the logits in one batch
+  // for policy pruning
   std::optional<nnue::policy::PolicyEvaluator> policy;
   std::array<U16, kMaxMoves> policy_rows;
   if constexpr (move_type == MoveGenType::kQuiet) {
@@ -205,9 +208,9 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     policy->RawLogits(std::span(policy_rows.data(), list.Size()),
                       logits.data());
 
-    // Order moves the policy network likes earlier
     for (int i = 0; i < list.Size(); ++i) {
-      list[i].score += (logits[i] >> 11) * kQuietPolicyWeight / 1024;
+      list[i].policy_logit = static_cast<I16>(
+          std::clamp(logits[i] >> 13, kNoPolicyLogit + 1, 32767));
     }
   }
 }
