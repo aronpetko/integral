@@ -2,6 +2,7 @@
 #define INTEGRAL_ACCUMULATOR_H
 
 #include "perspective_accumulator.h"
+#include "policy/policy_accumulator.h"
 #include "psqt_accumulator.h"
 #include "threat_accumulator.h"
 
@@ -13,8 +14,10 @@ struct AccumulatorEntry {
   alignas(simd::kAlignment)
       std::array<ThreatPerspectiveAccumulator, 2> threat_perspectives;
   PsqtAccumulatorChange psqt_change;
+  std::array<policy::PolicyAccumulator, 2> policy_perspectives;
   std::array<Square, 2> kings;
   std::array<bool, 2> updated;
+  std::array<bool, 2> policy_updated;
   // The squares the move into this node changed the occupant of
   BitBoard threat_updated_squares;
   // The board state this entry's move was made from
@@ -53,6 +56,10 @@ class Accumulator {
   void PushChanges(const BoardState& previous_state,
                    PsqtAccumulatorChange& psqt_change);
   void ApplyChanges(const BoardState& current_state);
+
+  // Lazily brings the side to move's policy accumulator up to date
+  [[nodiscard]] const policy::PolicyAccumulator& GetPolicy(
+      const BoardState& current_state);
 
   [[nodiscard]] bool NeedRefresh(Color perspective,
                                  Square old_king,

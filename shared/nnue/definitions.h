@@ -78,7 +78,7 @@ constexpr std::int32_t kQuantisation = 128;
 
 // clang-format off
 struct PolicyNetwork {
-  MultiArray<I8, 2, 2, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::policy::kL1Size> feature_weights;
+  MultiArray<I8, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::policy::kL1Size> feature_weights;
   MultiArray<I8, arch::policy::kL1Size> feature_biases;
   MultiArray<I8, arch::policy::kOutputSize, arch::policy::kL1Size / 2> l1_weights;
   MultiArray<I8, arch::policy::kOutputSize> l1_biases;

@@ -10,7 +10,7 @@ namespace nnue::policy {
 
 class PolicyEvaluator {
  public:
-  explicit PolicyEvaluator(const BoardState& state);
+  explicit PolicyEvaluator(Board& board);
 
   // Logit scaled by Q^3
   [[nodiscard]] I32 RawLogit(const BoardState& state, Move move) const {

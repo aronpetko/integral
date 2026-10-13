@@ -176,7 +176,7 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
 
     std::array<float, kMaxMoves> probabilities;
     const auto &state = board.GetState();
-    const nnue::policy::PolicyEvaluator policy(state);
+    const nnue::policy::PolicyEvaluator policy(board);
     policy.Probabilities(state, moves, probabilities);
     for (int i = 0; i < moves.Size(); ++i) {
       fmt::println("info move {} logit {:.6f} policy {:.6f}",

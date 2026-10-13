@@ -1,17 +1,19 @@
 #include "policy.h"
 
+#include "../accumulator.h"
+
 #include <algorithm>
 #include <cmath>
 
 namespace nnue::policy {
 
-PolicyEvaluator::PolicyEvaluator(const BoardState& state) {
+PolicyEvaluator::PolicyEvaluator(Board& board) {
+  const auto& state = board.GetState();
   mirror_ = Square(state.King(state.turn).GetLsb()).File() >= File::kFileE;
   flip_ =
       (state.turn == Color::kBlack ? 0b111000 : 0) ^ (mirror_ ? 0b000111 : 0);
 
-  PolicyAccumulator accumulator;
-  accumulator.Refresh(state);
+  const auto& accumulator = board.GetAccumulator()->GetPolicy(state);
 
   // Products rescaled to [0, Q] fit in a U8 and keep u8 x i8 pair sums in I16
   static_assert(kQ == 128);

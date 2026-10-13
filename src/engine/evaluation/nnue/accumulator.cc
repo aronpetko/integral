@@ -22,6 +22,8 @@ void Accumulator::SetFromState(const BoardState& state) {
     accumulator.threat_perspectives[color].Refresh(
         state, color, accumulator.kings[color]);
     accumulator.threat_updated_squares = 0;
+    accumulator.policy_perspectives[color].Refresh(state, color);
+    accumulator.policy_updated[color] = true;
   }
 }
 
@@ -98,6 +100,8 @@ void Accumulator::PushChanges(const BoardState& previous_state,
   entry.psqt_change = psqt_change;
   entry.updated[Color::kBlack] = false;
   entry.updated[Color::kWhite] = false;
+  entry.policy_updated[Color::kBlack] = false;
+  entry.policy_updated[Color::kWhite] = false;
   entry.threat_updated_squares = psqt_change.UpdatedSquares();
   entry.previous_state = &previous_state;
 
@@ -195,6 +199,42 @@ void Accumulator::ApplyChanges(const BoardState& current_state) {
       dirty_accumulator.updated[perspective] = true;
     }
   }
+}
+
+const policy::PolicyAccumulator& Accumulator::GetPolicy(
+    const BoardState& current_state) {
+  const Color perspective = current_state.turn;
+
+  int iter = head_idx_;
+  while (!stack_[iter].policy_updated[perspective]) {
+    --iter;
+  }
+
+  for (; iter != head_idx_; ++iter) {
+    const int dirty_idx = iter + 1;
+    auto& dirty_accumulator = stack_[dirty_idx];
+    const auto& clean_accumulator = stack_[iter];
+    const auto dirty_king = dirty_accumulator.kings[perspective];
+
+    // Policy features are mirrored by the same rule as the threat features
+    if (NeedThreatRefresh(clean_accumulator.kings[perspective], dirty_king)) {
+      const BoardState& dirty_state =
+          dirty_idx == head_idx_ ? current_state
+                                 : *stack_[dirty_idx + 1].previous_state;
+      dirty_accumulator.policy_perspectives[perspective].Refresh(dirty_state,
+                                                                 perspective);
+    } else {
+      dirty_accumulator.policy_perspectives[perspective].ApplyChange(
+          clean_accumulator.policy_perspectives[perspective],
+          dirty_accumulator.psqt_change,
+          perspective,
+          dirty_king);
+    }
+
+    dirty_accumulator.policy_updated[perspective] = true;
+  }
+
+  return stack_[head_idx_].policy_perspectives[perspective];
 }
 
 bool Accumulator::NeedRefresh(Color perspective,
