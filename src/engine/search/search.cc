@@ -898,7 +898,7 @@ Score Searcher::PVSearch(Thread &thread,
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
-      MovePickerType::kSearch, board, tt_move, history, stack);
+      MovePickerType::kSearch, board, tt_move, history, stack, 0, false, depth);
   while (const auto move = move_picker.Next()) {
     if (in_root && !thread.root_moves.MoveExists(move, thread.pv_move_idx)) {
       continue;

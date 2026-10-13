@@ -41,7 +41,8 @@ class MovePicker {
              history::History &history,
              StackEntry *stack,
              int see_threshold = 0,
-             bool force_evasions = false);
+             bool force_evasions = false,
+             int depth = 0);
 
   Move Next();
 
@@ -71,6 +72,7 @@ class MovePicker {
   int moves_idx_;
   int see_threshold_;
   bool force_evasions_;
+  int depth_;
 };
 
 }  // namespace search

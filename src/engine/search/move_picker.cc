@@ -34,6 +34,7 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
 TUNABLE_STEP(kQuietPolicyWeight, 4096, 0, 16384, false, 512);
+TUNABLE(kQuietPolicyMinDepth, 5, 1, 12, true);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -41,7 +42,8 @@ MovePicker::MovePicker(MovePickerType type,
                        history::History &history,
                        StackEntry *stack,
                        int see_threshold,
-                       bool force_evasions)
+                       bool force_evasions,
+                       int depth)
     : board_(board),
       tt_move_(tt_move),
       type_(type),
@@ -50,7 +52,8 @@ MovePicker::MovePicker(MovePickerType type,
       stage_(Stage::kTTMove),
       moves_idx_(0),
       see_threshold_(see_threshold),
-      force_evasions_(force_evasions) {}
+      force_evasions_(force_evasions),
+      depth_(depth) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
@@ -181,11 +184,12 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   const bool killer_0_noisy = killers[0].IsNoisy(state),
              killer_1_noisy = killers[1].IsNoisy(state);
 
-  // Prefetch policy rows while scoring, then compute the logits in one batch
   std::optional<nnue::policy::PolicyEvaluator> policy;
   std::array<U16, kMaxMoves> policy_rows;
   if constexpr (move_type == MoveGenType::kQuiet) {
-    policy.emplace(state);
+    if (depth_ >= kQuietPolicyMinDepth) {
+      policy.emplace(state);
+    }
   }
 
   auto moves = move_gen::GenerateMoves<move_type>(board_);
