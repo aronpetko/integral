@@ -892,6 +892,7 @@ Score Searcher::PVSearch(Thread &thread,
   const int original_alpha = alpha;
   // Keep track of quiet and capture moves that failed to cause a beta cutoff
   MoveList quiets, captures;
+  std::array<I16, kMaxMoves> quiet_policies;
 
   int moves_seen = 0;
   Score best_score = kScoreNone;
@@ -913,6 +914,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     const bool is_quiet = !move.IsNoisy(state);
     const bool is_capture = move.IsCapture(state);
+    const I16 policy = move_picker.LastPolicy();
 
     stack->history_score = history.GetMoveScore(state, move, stack);
 
@@ -1256,6 +1258,13 @@ Score Searcher::PVSearch(Thread &thread,
                 state, stack, history_depth, quiets);
             history.continuation_history->UpdateScore(
                 state, stack, history_depth, quiets);
+            history.policy_correction_history->UpdateScore(
+                state,
+                history_depth,
+                move,
+                policy,
+                quiets,
+                std::span(quiet_policies.data(), quiets.Size()));
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
@@ -1274,9 +1283,10 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Penalize the history score of moves that failed to raise alpha
     if (move != best_move) {
-      if (is_quiet)
+      if (is_quiet) {
+        quiet_policies[quiets.Size()] = policy;
         quiets.Push(move);
-      else if (is_capture)
+      } else if (is_capture)
         captures.Push(move);
     }
   }

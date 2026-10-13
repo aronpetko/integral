@@ -2,6 +2,8 @@
 #define INTEGRAL_MOVE_PICKER_H_
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <optional>
 
 #include "../../chess/move_gen.h"
@@ -14,6 +16,7 @@ namespace search {
 struct ScoredMove {
   Move move;
   int score;
+  I16 policy = history::kNoPolicy;
 };
 
 enum class MovePickerType {
@@ -51,6 +54,10 @@ class MovePicker {
     return stage_;
   }
 
+  [[nodiscard]] I16 LastPolicy() const {
+    return last_policy_;
+  }
+
  private:
   Move &SelectionSort(List<ScoredMove, kMaxMoves> &move_list, int index);
 
@@ -69,6 +76,7 @@ class MovePicker {
   List<ScoredMove, kMaxMoves> noisys_, bad_noisys_;
   List<ScoredMove, kMaxMoves> quiets_;
   int moves_idx_;
+  I16 last_policy_;
   int see_threshold_;
   bool force_evasions_;
 };

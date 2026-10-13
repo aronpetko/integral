@@ -49,11 +49,13 @@ MovePicker::MovePicker(MovePickerType type,
       stack_(stack),
       stage_(Stage::kTTMove),
       moves_idx_(0),
+      last_policy_(history::kNoPolicy),
       see_threshold_(see_threshold),
       force_evasions_(force_evasions) {}
 
 Move MovePicker::Next() {
   const auto &state = board_.GetState();
+  last_policy_ = history::kNoPolicy;
 
   if (stage_ == Stage::kTTMove) {
     stage_ = Stage::kGenerateNoisys;
@@ -130,7 +132,9 @@ Move MovePicker::Next() {
 
   if (stage_ == Stage::kQuiets) {
     if (moves_idx_ < quiets_.Size()) {
-      return SelectionSort(quiets_, moves_idx_++);
+      const auto move = SelectionSort(quiets_, moves_idx_);
+      last_policy_ = quiets_[moves_idx_++].policy;
+      return move;
     }
 
     stage_ = Stage::kBadNoisys;
@@ -205,9 +209,28 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     policy->RawLogits(std::span(policy_rows.data(), list.Size()),
                       logits.data());
 
-    // Order moves the policy network likes earlier
+    std::array<int, kMaxMoves> corrected;
+    int max_corrected = std::numeric_limits<int>::min();
     for (int i = 0; i < list.Size(); ++i) {
-      list[i].score += (logits[i] >> 11) * kQuietPolicyWeight / 1024;
+      corrected[i] =
+          (logits[i] >> 11) +
+          history_.policy_correction_history->GetScore(state, list[i].move);
+      max_corrected = std::max(max_corrected, corrected[i]);
+    }
+
+    std::array<float, kMaxMoves> probabilities;
+    float total = 0.0f;
+    for (int i = 0; i < list.Size(); ++i) {
+      probabilities[i] =
+          std::exp(static_cast<float>(corrected[i] - max_corrected) / 1024.0f);
+      total += probabilities[i];
+    }
+
+    const float inverse_total = 1.0f / total;
+    for (int i = 0; i < list.Size(); ++i) {
+      list[i].score += corrected[i] * kQuietPolicyWeight / 1024;
+      list[i].policy = static_cast<I16>(std::lround(
+          probabilities[i] * inverse_total * history::kPolicyOne));
     }
   }
 }
