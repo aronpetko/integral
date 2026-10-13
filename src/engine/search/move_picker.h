@@ -14,6 +14,7 @@ namespace search {
 struct ScoredMove {
   Move move;
   int score;
+  int policy_score = 0;
 };
 
 enum class MovePickerType {
@@ -46,6 +47,8 @@ class MovePicker {
   Move Next();
 
   void SkipQuiets();
+
+  void UpdatePolicyCorrection(int depth, const MoveList &quiets);
 
   [[nodiscard]] Stage GetStage() const {
     return stage_;

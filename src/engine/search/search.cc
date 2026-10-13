@@ -1249,6 +1249,9 @@ Score Searcher::PVSearch(Thread &thread,
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
+            if (!in_root && !stack->excluded_tt_move) {
+              move_picker.UpdatePolicyCorrection(history_depth, quiets);
+            }
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);

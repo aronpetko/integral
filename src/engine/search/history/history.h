@@ -6,6 +6,7 @@
 #include "continuation_history.h"
 #include "correction_history.h"
 #include "pawn_history.h"
+#include "policy_correction_history.h"
 #include "quiet_history.h"
 
 namespace search::history {
@@ -29,6 +30,7 @@ class History {
     continuation_history = std::make_unique<ContinuationHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
+    policy_correction_history = std::make_unique<PolicyCorrectionHistory>();
   }
 
   // Correction history is shared between threads, so it's owned and cleared
@@ -38,6 +40,7 @@ class History {
     continuation_history->Clear();
     capture_history->Clear();
     pawn_history->Clear();
+    policy_correction_history->Clear();
   }
 
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,
@@ -74,6 +77,7 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<PawnHistory> pawn_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
+  std::unique_ptr<PolicyCorrectionHistory> policy_correction_history;
   // Shared between all search threads
   CorrectionHistory *correction_history = nullptr;
 };
