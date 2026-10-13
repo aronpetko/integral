@@ -10,7 +10,7 @@ namespace nnue::policy {
 
 class PolicyEvaluator {
  public:
-  explicit PolicyEvaluator(Board& board);
+  explicit PolicyEvaluator(const BoardState& state);
 
   // Logit scaled by Q^3
   [[nodiscard]] I32 RawLogit(const BoardState& state, Move move) const {
@@ -19,10 +19,13 @@ class PolicyEvaluator {
            policy_network->l1_biases[row] * kBiasScale;
   }
 
-  // Output row of a move for RawLogits, prefetching its weights
+  // Output row of a move for RawLogits, prefetching all of its weights
   [[nodiscard]] U16 PrefetchOutput(const BoardState& state, Move move) const {
     const auto row = OutputRow(state, move);
-    __builtin_prefetch(policy_network->l1_weights[row].data());
+    const auto* weights = policy_network->l1_weights[row].data();
+    for (std::size_t offset = 0; offset < kHiddenSize; offset += 64) {
+      __builtin_prefetch(weights + offset);
+    }
     return static_cast<U16>(row);
   }
 

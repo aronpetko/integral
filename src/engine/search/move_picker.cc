@@ -185,7 +185,7 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
   std::optional<nnue::policy::PolicyEvaluator> policy;
   std::array<U16, kMaxMoves> policy_rows;
   if constexpr (move_type == MoveGenType::kQuiet) {
-    policy.emplace(board_);
+    policy.emplace(state);
   }
 
   auto moves = move_gen::GenerateMoves<move_type>(board_);
