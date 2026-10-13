@@ -34,6 +34,7 @@ TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
 TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
 TUNABLE_STEP(kQuietPolicyWeight, 4096, 0, 16384, false, 512);
+TUNABLE_STEP(kQuietPolicyHistoryConfidence, 8192, 1024, 65536, false, 2048);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -205,9 +206,15 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
     policy->RawLogits(std::span(policy_rows.data(), list.Size()),
                       logits.data());
 
-    // Order moves the policy network likes earlier
+    // Order moves the policy network likes earlier, trusting it less the more
+    // the history has learned about the move
     for (int i = 0; i < list.Size(); ++i) {
-      list[i].score += (logits[i] >> 11) * kQuietPolicyWeight / 1024;
+      const I64 policy_score = (logits[i] >> 11) * kQuietPolicyWeight / 1024;
+      const I64 history_score =
+          std::abs(history_.GetQuietMoveScore(state, list[i].move, stack_));
+      list[i].score += static_cast<int>(
+          policy_score * kQuietPolicyHistoryConfidence /
+          (kQuietPolicyHistoryConfidence + history_score));
     }
   }
 }
