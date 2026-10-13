@@ -161,20 +161,15 @@ void MovePicker::UpdatePolicyCorrection(int depth, const MoveList &quiets) {
     return;
   }
 
-  const auto &state = board_.GetState();
   auto &correction = *history_.policy_correction_history;
   const auto winner = quiets_[moves_idx_ - 1];
-  correction.UpdateScore(state,
-                         winner.move,
-                         stack_->threats,
+  correction.UpdateScore(winner.policy_row,
                          winner.policy_score,
                          history::HistoryBonus(depth));
   for (int i = 0; i < quiets.Size(); ++i) {
     for (int j = 0; j < moves_idx_ - 1; ++j) {
       if (quiets[i] == quiets_[j].move) {
-        correction.UpdateScore(state,
-                               quiets[i],
-                               stack_->threats,
+        correction.UpdateScore(quiets_[j].policy_row,
                                quiets_[j].policy_score,
                                history::HistoryPenalty(depth));
         break;
@@ -235,10 +230,11 @@ void MovePicker::GenerateAndScoreMoves(List<ScoredMove, kMaxMoves> &list) {
 
     // Order moves the policy network likes earlier
     for (int i = 0; i < list.Size(); ++i) {
+      list[i].policy_row = policy_rows[i];
       list[i].policy_score = (logits[i] >> 11) * kQuietPolicyWeight / 1024;
       list[i].score += list[i].policy_score +
                        history_.policy_correction_history->GetScore(
-                           state, list[i].move, stack_->threats);
+                           list[i].policy_row);
     }
   }
 }

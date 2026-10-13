@@ -15,6 +15,7 @@ struct ScoredMove {
   Move move;
   int score;
   int policy_score = 0;
+  U16 policy_row = 0;
 };
 
 enum class MovePickerType {
