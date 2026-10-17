@@ -238,7 +238,9 @@ int MovePicker::ScoreMove(Move &move) {
       break;
     case kPawn: {
       const auto king_wall = [&state] {
-        const auto our_king = state.King(state.turn);
+        constexpr std::array<BitBoard, 2> kHomeRows = {0xff,
+                                                       0xff00000000000000};
+        const auto our_king = state.King(state.turn) & kHomeRows[state.turn];
         if (state.turn == Color::kWhite) {
           return Shift<Direction::kNorth>(our_king) |
                  Shift<Direction::kNorthEast>(our_king) |
