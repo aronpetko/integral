@@ -236,6 +236,21 @@ int MovePicker::ScoreMove(Move &move) {
       if (pawn_threats.IsSet(from)) threat_score += kMinorPawnThreatScorePos;
       if (pawn_threats.IsSet(to)) threat_score -= kMinorPawnThreatScoreNeg;
       break;
+    case kPawn: {
+      const auto king_wall = [&state] {
+        const auto our_king = state.King(state.turn);
+        if (state.turn == Color::kWhite) {
+          return Shift<Direction::kNorth>(our_king) |
+                 Shift<Direction::kNorthEast>(our_king) |
+                 Shift<Direction::kNorthWest>(our_king);
+        }
+        return Shift<Direction::kSouth>(our_king) |
+               Shift<Direction::kSouthEast>(our_king) |
+               Shift<Direction::kSouthWest>(our_king);
+      }();
+      if (king_wall.IsSet(from)) threat_score -= 4096;
+      break;
+    }
     default:
       break;
   }
