@@ -120,7 +120,9 @@ class CorrectionHistory {
   [[nodiscard]] ContinuationCorrectionEntry *GetContEntry(
       const BoardState &state, Move move) {
     const auto from = move.GetFrom(), to = move.GetTo();
-    return &continuation_table_[state.turn][state.GetPieceType(from)][to];
+    const auto &threats = state.threats;
+    return &continuation_table_[state.turn][state.GetPieceType(from)][to]
+                               [threats.IsSet(from)][threats.IsSet(to)];
   }
 
  private:
@@ -145,8 +147,12 @@ class CorrectionHistory {
   void ClearContinuationTable() {
     for (auto &by_color : continuation_table_) {
       for (auto &by_piece : by_color) {
-        for (auto &entry : by_piece) {
-          entry.fill(I16{0});
+        for (auto &by_square : by_piece) {
+          for (auto &by_form_threat : by_square) {
+            for (auto &by_to_threat : by_form_threat) {
+              by_to_threat.fill(I16{0});
+            }
+          }
         }
       }
     }
@@ -192,7 +198,12 @@ class CorrectionHistory {
   std::unique_ptr<std::atomic_int16_t[]> pawn_table_;
   std::unique_ptr<std::atomic_int16_t[]> non_pawn_table_;
   std::unique_ptr<std::atomic_int16_t[]> major_table_;
-  MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
+  MultiArray<ContinuationCorrectionEntry,
+             kNumColors,
+             kNumPieceTypes,
+             kSquareCount,
+             2,
+             2>
       continuation_table_;
 };
 
