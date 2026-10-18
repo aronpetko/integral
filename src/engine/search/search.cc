@@ -1137,7 +1137,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more if our static evaluation is going down
-      reduction -= std::clamp(512 * improvement / 128, -256, 1280);
+      reduction -= std::clamp(512 * improvement / 128, -1024, 256);
 
       // Reduce less if the static evaluation has been corrected a lot
       if (stack->eval_complexity > kLmrComplexityDiff) {
