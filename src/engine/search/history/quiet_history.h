@@ -11,6 +11,10 @@ class QuietHistory {
  public:
   QuietHistory() : table_({}) {}
 
+  void Clear() {
+    table_.fill(I16{0});
+  }
+
   void UpdateMoveScore(Color turn, Move move, BitBoard threats, I16 bonus) {
     // Apply a linear dampening to the bonus as the depth increases
     I16 &score =

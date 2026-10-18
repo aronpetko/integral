@@ -148,20 +148,20 @@ bool TimedLimiter::TimesUp(U64 nodes_searched) {
 }
 
 void TimedLimiter::Start() {
-  start_time_ = GetCurrentTime();
+  start_time_ = GetCurrentTimeMilliseconds();
   nodes_spent_.fill(0);
 }
 
 void TimedLimiter::Stop() {
-  end_time_ = GetCurrentTime();
+  end_time_ = GetCurrentTimeMilliseconds();
 }
 
 U64 TimedLimiter::TimeElapsed() const {
-  return std::max<U64>(1, GetCurrentTime() - start_time_);
+  return std::max<U64>(1, GetCurrentTimeMilliseconds() - start_time_);
 }
 
 void TimedLimiter::CalculateLimits() {
-  const int overhead = uci::listener.GetOption("MoveOverhead").GetValue<int>();
+  const int overhead = uci::listener.GetOption("MoveOverhead")->GetValue<int>();
 
   if (move_time_ != 0) {
     hard_limit_ = move_time_ - overhead;
@@ -229,7 +229,7 @@ TimedLimiter* TimeManagement::GetTimedLimiter() {
 }
 
 U64 TimeManagement::TimeElapsed() const {
-  return std::max<U64>(1, GetCurrentTime() - start_time_);
+  return std::max<U64>(1, GetCurrentTimeMilliseconds() - start_time_);
 }
 
 int TimeManagement::GetSearchDepth() const {
@@ -245,14 +245,14 @@ bool TimeManagement::IsInfinite() const {
 }
 
 void TimeManagement::Start() {
-  start_time_ = GetCurrentTime();
+  start_time_ = GetCurrentTimeMilliseconds();
   for (auto* limiter : active_limiters_) {
     limiter->Start();
   }
 }
 
 void TimeManagement::Stop() {
-  end_time_ = GetCurrentTime();
+  end_time_ = GetCurrentTimeMilliseconds();
   for (auto* limiter : active_limiters_) {
     limiter->Stop();
   }

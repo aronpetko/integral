@@ -26,6 +26,9 @@ void Initialize(search::Searcher &searcher) {
   listener.AddOption<OptionVisibility::kPublic>("MultiPV", 1, 1, 6);
   listener.AddOption<OptionVisibility::kPublic>("MoveOverhead", 10, 0, 10000);
   listener.AddOption<OptionVisibility::kPublic>("Minimal", false);
+  listener.AddOption<OptionVisibility::kPublic>("UCI_Chess960", false, [](const Option &option) {
+    chess960 = option.GetValue<bool>();
+  });
   listener.AddOption<OptionVisibility::kPublic>("SyzygyPath", std::string("<empty>"), [](const Option &option) {
     syzygy::SetPath(option.GetValue<std::string>());
   });
@@ -174,7 +177,12 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   }, [](Command *cmd) {
     const auto option_name = *cmd->ParseArgument<std::string>("name");
     const auto option_value = *cmd->ParseArgument<std::string>("value");
-    listener.GetOption(option_name).SetValue(option_value);
+
+    if (const auto option = listener.GetOption(option_name)) {
+      option->SetValue(option_value);
+    } else {
+      fmt::println("Error: unknown option '{}'", option_name);
+    }
   });
 
   listener.RegisterCommand("test", CommandType::kUnordered, {

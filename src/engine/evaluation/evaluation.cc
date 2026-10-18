@@ -14,8 +14,7 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   const PieceType &from_piece = state.GetPieceType(from);
   // Ignore en passant captures and castling
-  if (move.IsEnPassant(state) ||
-      (from_piece == kKing && std::abs(static_cast<int>(from) - to) == 2)) {
+  if (move.IsEnPassant(state) || move.GetType() == MoveType::kCastle) {
     return threshold <= 0;
   }
 
@@ -68,12 +67,16 @@ bool StaticExchange(Move move, int threshold, const BoardState &state) {
 
   Color turn = state.turn;
   Color winner = state.turn;
-  
-  const auto white_pinned = state.pinned[Color::kWhite] & state.Occupied(Color::kWhite);
-  const auto black_pinned = state.pinned[Color::kBlack] & state.Occupied(Color::kBlack);
-  
-  const auto white_king_ray = move_gen::RayIntersecting(to, state.King(Color::kWhite).GetLsb());
-  const auto black_king_ray = move_gen::RayIntersecting(to, state.King(Color::kBlack).GetLsb());
+
+  const auto white_pinned =
+      state.pinned[Color::kWhite] & state.Occupied(Color::kWhite);
+  const auto black_pinned =
+      state.pinned[Color::kBlack] & state.Occupied(Color::kBlack);
+
+  const auto white_king_ray =
+      move_gen::RayIntersecting(to, state.King(Color::kWhite).GetLsb());
+  const auto black_king_ray =
+      move_gen::RayIntersecting(to, state.King(Color::kBlack).GetLsb());
 
   const auto white_pinned_aligned = white_king_ray & white_pinned;
   const auto black_pinned_aligned = black_king_ray & black_pinned;

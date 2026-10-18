@@ -12,6 +12,16 @@ class ContinuationHistory {
  public:
   ContinuationHistory() : table_({}) {}
 
+  void Clear() {
+    for (auto &by_color : table_) {
+      for (auto &by_piece : by_color) {
+        for (auto &entry : by_piece) {
+          entry.fill(I16{0});
+        }
+      }
+    }
+  }
+
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    I16 depth,

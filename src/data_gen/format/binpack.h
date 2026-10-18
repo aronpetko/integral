@@ -96,20 +96,13 @@ class BinPackFormatter : public OutputFormatter {
   }
 
   void PushMove(Move move, Color turn, Score score) override {
-    Square from = move.GetFrom(), to = move.GetTo();
-
-    // No FRC support :(
-    const auto move_type = move.GetType();
-    if (move_type == MoveType::kCastle) {
-      const int displacement = to.File() - from.File() > 0 ? 1 : -2;
-      to += displacement;
-    }
+    const Square from = move.GetFrom(), to = move.GetTo();
 
     U16 move_data = 0;
     move_data |= from;
     move_data |= to << 6;
     move_data |= static_cast<U8>(move.GetPromotionType()) << 12;
-    move_data |= kBinPackMoveTypes[static_cast<int>(move_type)];
+    move_data |= kBinPackMoveTypes[static_cast<int>(move.GetType())];
 
     moves_.emplace_back(move_data, static_cast<I16>(score));
   }

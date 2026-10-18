@@ -54,15 +54,35 @@ BoardState StringToBoard(std::string_view fen_str) {
 
   std::string castle_rights;
   stream >> castle_rights;
+  state.castle_rights.Clear();
+
   for (const char &ch : castle_rights) {
-    if (ch == 'K')
-      state.castle_rights.SetCanKingsideCastle(Color::kWhite, true);
-    else if (ch == 'Q')
-      state.castle_rights.SetCanQueensideCastle(Color::kWhite, true);
-    else if (ch == 'k')
-      state.castle_rights.SetCanKingsideCastle(Color::kBlack, true);
-    else if (ch == 'q')
-      state.castle_rights.SetCanQueensideCastle(Color::kBlack, true);
+    const Color color = std::isupper(ch) ? Color::kWhite : Color::kBlack;
+    const Rank rank = color == Color::kWhite ? kRank1 : kRank8;
+    const char side = std::tolower(ch);
+
+    const BitBoard rooks = state.Rooks(color) & kRankMasks[rank];
+    if (!rooks) {
+      continue;
+    }
+
+    Square rook_square;
+    if (side == 'k' || side == 'q') {
+      // The castling rook is the outermost one on the given side
+      rook_square = side == 'k' ? rooks.GetMsb() : rooks.GetLsb();
+    } else if (side >= 'a' && side <= 'h') {
+      // Shredder FENs name the castling rook's file directly
+      chess960 = true;
+      rook_square = Square::FromRankFile(rank, side - 'a');
+    } else {
+      continue;
+    }
+
+    state.castle_rights.SetCastleRook(color,
+                                      rook_square > state.King(color).GetLsb()
+                                          ? CastleRights::kKingside
+                                          : CastleRights::kQueenside,
+                                      rook_square);
   }
 
   state.zobrist_key ^= zobrist::castle_rights[state.castle_rights.AsU8()];
@@ -119,17 +139,23 @@ std::string BoardToString(const BoardState &state) {
   output.push_back(' ');
   output.push_back(state.turn == Color::kWhite ? 'w' : 'b');
 
-  // Castling rights
+  // Castling rights, written as Shredder FEN when playing Chess960
   output.push_back(' ');
   std::string castling_rights;
-  if (state.castle_rights.CanKingsideCastle(Color::kWhite))
-    castling_rights += 'K';
-  if (state.castle_rights.CanQueensideCastle(Color::kWhite))
-    castling_rights += 'Q';
-  if (state.castle_rights.CanKingsideCastle(Color::kBlack))
-    castling_rights += 'k';
-  if (state.castle_rights.CanQueensideCastle(Color::kBlack))
-    castling_rights += 'q';
+  for (const Color color : {Color::kWhite, Color::kBlack}) {
+    for (const auto side :
+         {CastleRights::kKingside, CastleRights::kQueenside}) {
+      if (!state.castle_rights.CanCastle(color, side)) {
+        continue;
+      }
+
+      const char ch =
+          chess960
+              ? 'a' + state.castle_rights.CastleRookSquare(color, side).File()
+              : (side == CastleRights::kKingside ? 'k' : 'q');
+      castling_rights += color == Color::kWhite ? std::toupper(ch) : ch;
+    }
+  }
   output.append(castling_rights.empty() ? "-" : castling_rights);
 
   // En passant square

@@ -7,8 +7,9 @@
 
 using TimeStamp = I64;
 
-[[nodiscard]] static U64 GetCurrentTime() {
-  const auto duration = std::chrono::high_resolution_clock ::now().time_since_epoch();
+[[nodiscard]] static U64 GetCurrentTimeMilliseconds() {
+  const auto duration =
+      std::chrono::high_resolution_clock ::now().time_since_epoch();
   return std::chrono::duration_cast<std::chrono::milliseconds>(duration)
       .count();
 }

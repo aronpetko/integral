@@ -10,11 +10,11 @@
 
 namespace search::history {
 
-TUNABLE(kQuietHistoryWeight, 1055, 0, 2048, false);
-TUNABLE(kFirstContinuationHistoryWeight,  1275, 0, 2048, false);
-TUNABLE(kSecondContinuationHistoryWeight, 974, 0, 2048, false);
-TUNABLE(kFourthContinuationHistoryWeight, 910, 0, 2048, false);
-TUNABLE(kPawnHistoryWeight, 1036, 0, 2048, false);
+TUNABLE(kQuietHistoryWeight, 1076, 0, 2048, false);
+TUNABLE(kFirstContinuationHistoryWeight, 1321, 0, 2048, false);
+TUNABLE(kSecondContinuationHistoryWeight, 1110, 0, 2048, false);
+TUNABLE(kFourthContinuationHistoryWeight, 1009, 0, 2048, false);
+TUNABLE(kPawnHistoryWeight, 1089, 0, 2048, false);
 
 constexpr int kHistoryWeightScale = 1024;
 
@@ -27,14 +27,17 @@ class History {
   void Initialize() {
     quiet_history = std::make_unique<QuietHistory>();
     continuation_history = std::make_unique<ContinuationHistory>();
-    correction_history = std::make_unique<CorrectionHistory>();
     capture_history = std::make_unique<CaptureHistory>();
     pawn_history = std::make_unique<PawnHistory>();
   }
 
-  // Reinitialize the history objects for quicker clearing
+  // Correction history is shared between threads, so it's owned and cleared
+  // by the main Searcher instance
   void Clear() {
-    Initialize();
+    quiet_history->Clear();
+    continuation_history->Clear();
+    capture_history->Clear();
+    pawn_history->Clear();
   }
 
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,
@@ -71,7 +74,8 @@ class History {
   std::unique_ptr<CaptureHistory> capture_history;
   std::unique_ptr<PawnHistory> pawn_history;
   std::unique_ptr<ContinuationHistory> continuation_history;
-  std::unique_ptr<CorrectionHistory> correction_history;
+  // Shared between all search threads
+  CorrectionHistory *correction_history = nullptr;
 };
 
 }  // namespace search::history

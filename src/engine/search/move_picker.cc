@@ -2,13 +2,13 @@
 
 namespace search {
 
-TUNABLE(kSeeNoisyHistoryDiv, 92, 32, 250, false);
+TUNABLE(kSeeNoisyHistoryDiv, 86, 32, 250, false);
 
-TUNABLE(kPawnScore, 102, 50, 150, false);
-TUNABLE(kKnightScore, 301, 200, 400, false);
-TUNABLE(kBishopScore, 281, 200, 400, false);
-TUNABLE(kRookScore, 523, 400, 600, false);
-TUNABLE(kQueenScore, 889, 700, 1100, false);
+TUNABLE(kPawnScore, 104, 50, 150, false);
+TUNABLE(kKnightScore, 299, 200, 400, false);
+TUNABLE(kBishopScore, 278, 200, 400, false);
+TUNABLE(kRookScore, 524, 400, 600, false);
+TUNABLE(kQueenScore, 886, 700, 1100, false);
 TUNABLE(kKingScore, 0, 0, 0, true);  // Always 0
 TUNABLE(kNoneScore, 0, 0, 0, true);  // Always 0
 
@@ -24,12 +24,14 @@ inline std::array kPieceScores = {
 };
 // clang-format on
 
-TUNABLE(kQueenRookThreatScorePos, 19451, 10000, 30000, false);
-TUNABLE(kQueenRookThreatScoreNeg, 17612, 10000, 30000, false);
-TUNABLE(kRookMinorThreatScorePos, 13177, 5000, 20000, false);
-TUNABLE(kRookMinorThreatScoreNeg, 13758, 5000, 20000, false);
-TUNABLE(kMinorPawnThreatScorePos, 7852, 3000, 12000, false);
-TUNABLE(kMinorPawnThreatScoreNeg, 8475, 3000, 12000, false);
+TUNABLE(kQueenRookThreatScorePos, 19784, 10000, 30000, false);
+TUNABLE(kQueenRookThreatScoreNeg, 17201, 10000, 30000, false);
+TUNABLE(kRookMinorThreatScorePos, 13682, 5000, 20000, false);
+TUNABLE(kRookMinorThreatScoreNeg, 13432, 5000, 20000, false);
+TUNABLE(kMinorPawnThreatScorePos, 8031, 3000, 12000, false);
+TUNABLE(kMinorPawnThreatScoreNeg, 8670, 3000, 12000, false);
+
+TUNABLE(kDirectCheckBonus, 2044, 512, 6144, false);
 
 MovePicker::MovePicker(MovePickerType type,
                        Board &board,
@@ -84,7 +86,8 @@ Move MovePicker::Next() {
       bad_noisys_.Push({move, score});
     }
 
-    if (type_ == MovePickerType::kQuiescence && !state.InCheck() && !force_evasions_) {
+    if (type_ == MovePickerType::kQuiescence && !state.InCheck() &&
+        !force_evasions_) {
       return Move::NullMove();
     }
 
@@ -237,7 +240,7 @@ int MovePicker::ScoreMove(Move &move) {
       break;
   }
 
-  threat_score += 2048 * board_.MoveGivesDirectCheck(move);
+  threat_score += kDirectCheckBonus * board_.MoveGivesDirectCheck(move);
 
   // Order moves that caused a beta cutoff by their own history score
   // The higher the depth this move caused a cutoff the more likely it move will
