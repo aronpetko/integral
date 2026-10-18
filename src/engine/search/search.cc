@@ -702,6 +702,7 @@ Score Searcher::PVSearch(Thread &thread,
   // has improved in the past two or four plies. It also used as a metric for
   // adjusting pruning thresholds
   bool improving = false;
+  Score improvement = 0;
   // Similar idea follows, but we check if the opponent's evaluation has been
   // falling
   bool opponent_worsening = false;
@@ -714,7 +715,10 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   if (!stack->in_check) {
-    improving = past_stack && stack->static_eval > past_stack->static_eval;
+    if (past_stack) {
+      improvement = stack->static_eval - past_stack->static_eval;
+      improving = improvement > 0;
+    }
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
@@ -1133,9 +1137,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce more if our static evaluation is going down
-      if (!improving) {
-        reduction += kLmrNotImproving;
-      }
+      reduction -= std::clamp(512 * improvement / 128, -256, 1280);
 
       // Reduce less if the static evaluation has been corrected a lot
       if (stack->eval_complexity > kLmrComplexityDiff) {
