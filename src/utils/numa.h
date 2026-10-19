@@ -285,6 +285,36 @@ inline void PinThreadToNumaNode(std::size_t thread_id) {
 
 }  // namespace numa
 
+#else
+
+namespace numa {
+
+[[nodiscard]] inline bool ShouldConfigureNuma(std::size_t) {
+  return false;
+}
+
+struct NumaNode {
+  std::size_t id;
+  std::vector<std::size_t> core_ids;
+};
+
+[[nodiscard]] inline std::vector<NumaNode> GetCoresPerNumaNode() {
+  std::vector<std::size_t> core_ids;
+  for (std::size_t i = 0; i < std::thread::hardware_concurrency(); ++i) {
+    core_ids.emplace_back(i);
+  }
+
+  return {{0, std::move(core_ids)}};
+}
+
+[[nodiscard]] inline std::size_t GetNumaNodeForThreadId(std::size_t) {
+  return 0;
+}
+
+inline void PinThreadToNumaNode(std::size_t) {}
+
+}  // namespace numa
+
 #endif
 
 #endif  // INTEGRAL_NUMA_H
