@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "../../data_gen/data_gen.h"
+#include "../../utils/numa.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -1099,7 +1100,7 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2) {
+    if (depth >= 2 && moves_seen >= 2) {
       constexpr int kLmrScale = 1024;
       reduction = tables::kLateMoveReduction[is_quiet][std::min(
                       depth, kMaxSearchDepth)][moves_seen] *
@@ -1176,7 +1177,7 @@ Score Searcher::PVSearch(Thread &thread,
       // If we didn't perform late move reduction, then we search this move at
       // full depth with a null window search if we don't expect it to be a PV
       // move
-      needs_full_search = !in_pv_node || moves_seen >= 1;
+      needs_full_search = !in_pv_node || moves_seen >= 2;
     }
 
     // Either the move has potential from a reduced depth search or it's not
@@ -1431,9 +1432,20 @@ void Searcher::SetThreadCount(U16 count) {
   threads_.shrink_to_fit();
   threads_.resize(count);
 
+#ifdef USE_NUMA
+  const bool pin_threads = numa::ShouldConfigureNuma(count);
+#endif
+
   for (U16 i = 0; i < count; i++) {
-    raw_threads_.emplace_back([this, i]() {
+    raw_threads_.emplace_back([this, i, pin_threads]() {
+#ifdef USE_NUMA
+      if (pin_threads) {
+        numa::PinThreadToNumaNode(i);
+      }
+#endif
+
       threads_[i] = std::make_unique<Thread>(i, correction_history_.get());
+
       // Touch memory to enforce first-touch
       auto &thread = *threads_[i];
       thread.stack.Reset();
