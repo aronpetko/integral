@@ -1005,6 +1005,7 @@ Score Searcher::PVSearch(Thread &thread,
                stack->history_score / kSeePruneHistDiv;
       }();
       if (move_picker.GetStage() > MovePicker::Stage::kGoodNoisys &&
+          (!stack->in_check || !is_quiet) &&
           !eval::StaticExchange(move, see_threshold, state)) {
         continue;
       }
