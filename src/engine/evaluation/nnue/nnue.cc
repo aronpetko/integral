@@ -50,8 +50,8 @@ void LoadFromIncBin() {
   network = embedded_network;
 }
 
-void UseNetworkForNode(int node) {
-  if (node < 0) {
+void UseNetworkForNode(std::optional<std::size_t> node) {
+  if (!node) {
     network = embedded_network;
     return;
   }
@@ -60,19 +60,18 @@ void UseNetworkForNode(int node) {
   static std::vector<Network *> replicas;
 
   std::lock_guard lock(mutex);
-  if (node >= static_cast<int>(replicas.size())) {
-    replicas.resize(node + 1, nullptr);
+  if (*node >= replicas.size()) {
+    replicas.resize(*node + 1, nullptr);
   }
 
-  // The first thread on each node makes the copy, so first-touch places it
-  // on that node. Replicas live for the rest of the program
-  if (!replicas[node]) {
-    replicas[node] = static_cast<Network *>(
+  auto &replica = replicas[*node];
+  if (!replica) {
+    replica = static_cast<Network *>(
         AlignedAlloc(alignof(Network), sizeof(Network)));
-    std::memcpy(replicas[node], embedded_network, sizeof(Network));
+    std::memcpy(replica, embedded_network, sizeof(Network));
   }
 
-  network = replicas[node];
+  network = replica;
 }
 
 Score Evaluate(Board &board) {

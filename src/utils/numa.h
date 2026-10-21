@@ -2,6 +2,7 @@
 #define INTEGRAL_NUMA_H
 
 #include <cstddef>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -19,7 +20,6 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#include <psapi.h>
 
 namespace numa {
 
@@ -100,29 +100,6 @@ struct WindowsNumaNode {
   return highest_node > 0 || GetActiveProcessorGroupCount() > 1;
 }
 
-// Node the calling thread is running on right now, or -1 if unknown
-[[nodiscard]] inline int CurrentNode() {
-  PROCESSOR_NUMBER processor{};
-  GetCurrentProcessorNumberEx(&processor);
-
-  USHORT node = 0;
-  if (!GetNumaProcessorNodeEx(&processor, &node)) {
-    return -1;
-  }
-  return node;
-}
-
-// Node holding the page at the address, or -1 if unknown
-[[nodiscard]] inline int NodeOfAddress(const void *address) {
-  PSAPI_WORKING_SET_EX_INFORMATION info{};
-  info.VirtualAddress = const_cast<void *>(address);
-  if (!QueryWorkingSetEx(GetCurrentProcess(), &info, sizeof(info)) ||
-      !info.VirtualAttributes.Valid) {
-    return -1;
-  }
-  return static_cast<int>(info.VirtualAttributes.Node);
-}
-
 [[nodiscard]] inline bool ShouldConfigureNuma(std::size_t num_threads) {
   if (!IsAvailable()) {
     return false;
@@ -181,12 +158,19 @@ struct NumaNode {
   return 0;
 }
 
-// Where to pin a thread, computed ahead of time so pinning doesn't allocate.
-// An empty mask means the thread isn't pinned
-using Affinity = GROUP_AFFINITY;
+// Where a thread is pinned, with no node when it isn't
+struct Affinity {
+  std::optional<std::size_t> node;
+  GROUP_AFFINITY group{};
+};
 
 [[nodiscard]] inline std::vector<Affinity> GetThreadAffinities(
     std::size_t num_threads) {
+  std::vector<Affinity> affinities(num_threads);
+  if (!ShouldConfigureNuma(num_threads)) {
+    return affinities;
+  }
+
   const auto nodes = detail::QueryNumaNodes();
 
   std::size_t total_cores = 0;
@@ -196,7 +180,6 @@ using Affinity = GROUP_AFFINITY;
     }
   }
 
-  std::vector<Affinity> affinities(num_threads);
   if (total_cores == 0) {
     return affinities;
   }
@@ -210,12 +193,12 @@ using Affinity = GROUP_AFFINITY;
       for (const auto &affinity : node.group_masks) {
         const std::size_t group_cores = std::popcount(affinity.Mask);
         if (slot < group_cores) {
-          affinities[i] = affinity;
+          affinities[i] = {node.id, affinity};
           break;
         }
         slot -= group_cores;
       }
-      if (affinities[i].Mask != 0) {
+      if (affinities[i].node) {
         break;
       }
     }
@@ -224,21 +207,19 @@ using Affinity = GROUP_AFFINITY;
   return affinities;
 }
 
-// Must not allocate, so that the thread's first allocation happens after it's
-// pinned to its node
 inline void PinThread(const Affinity &affinity) {
-  if (affinity.Mask == 0) {
+  if (!affinity.node) {
     return;
   }
 
   const auto thread = GetCurrentThread();
-  SetThreadGroupAffinity(thread, &affinity, nullptr);
+  SetThreadGroupAffinity(thread, &affinity.group, nullptr);
 
   // Windows allocates from the ideal processor's node, so keep it inside the
   // new affinity for first-touch to land on this node
   PROCESSOR_NUMBER ideal{};
-  ideal.Group = affinity.Group;
-  ideal.Number = static_cast<BYTE>(std::countr_zero(affinity.Mask));
+  ideal.Group = affinity.group.Group;
+  ideal.Number = static_cast<BYTE>(std::countr_zero(affinity.group.Mask));
   SetThreadIdealProcessorEx(thread, &ideal, nullptr);
 }
 
@@ -247,7 +228,6 @@ inline void PinThread(const Affinity &affinity) {
 #elif defined(USE_NUMA)
 
 #include <numa.h>
-#include <numaif.h>
 #include <sched.h>
 
 #include <cassert>
@@ -256,29 +236,6 @@ namespace numa {
 
 [[nodiscard]] inline bool IsAvailable() {
   return numa_available() != -1;
-}
-
-// Node the calling thread is running on right now, or -1 if unknown
-[[nodiscard]] inline int CurrentNode() {
-  const int cpu = sched_getcpu();
-  if (cpu < 0 || !IsAvailable()) {
-    return -1;
-  }
-  return numa_node_of_cpu(cpu);
-}
-
-// Node holding the page at the address, or -1 if unknown (get_mempolicy is
-// blocked in containers without CAP_SYS_NICE)
-[[nodiscard]] inline int NodeOfAddress(const void *address) {
-  int node = -1;
-  if (get_mempolicy(&node,
-                    nullptr,
-                    0,
-                    const_cast<void *>(address),
-                    MPOL_F_NODE | MPOL_F_ADDR) != 0) {
-    return -1;
-  }
-  return node;
 }
 
 [[nodiscard]] inline bool ShouldConfigureNuma(std::size_t num_threads) {
@@ -354,17 +311,16 @@ struct NumaNode {
   return 0;
 }
 
-// Where to pin a thread, computed ahead of time so pinning doesn't allocate.
-// A negative node means the thread isn't pinned
+// Where a thread is pinned, with no node when it isn't
 struct Affinity {
-  int node = -1;
-  cpu_set_t cpus;
+  std::optional<std::size_t> node;
+  cpu_set_t cpus{};
 };
 
 [[nodiscard]] inline std::vector<Affinity> GetThreadAffinities(
     std::size_t num_threads) {
   std::vector<Affinity> affinities(num_threads);
-  if (!IsAvailable()) {
+  if (!ShouldConfigureNuma(num_threads)) {
     return affinities;
   }
 
@@ -377,7 +333,7 @@ struct Affinity {
       }
 
       auto &affinity = affinities[i];
-      affinity.node = static_cast<int>(id);
+      affinity.node = id;
       CPU_ZERO(&affinity.cpus);
       for (const auto core_id : core_ids) {
         if (core_id < CPU_SETSIZE) {
@@ -391,17 +347,13 @@ struct Affinity {
   return affinities;
 }
 
-// Must not allocate, so that the thread's first allocation (which sets up its
-// malloc arena) happens after it's pinned to its node. libnuma's own pinning
-// functions allocate, so call sched_setaffinity directly
 inline void PinThread(const Affinity &affinity) {
-  if (affinity.node < 0) {
+  if (!affinity.node) {
     return;
   }
 
   sched_setaffinity(0, sizeof(affinity.cpus), &affinity.cpus);
-  // Allocates, but only after the thread is pinned
-  numa_set_preferred(affinity.node);
+  numa_set_preferred(static_cast<int>(*affinity.node));
 }
 
 }  // namespace numa
@@ -412,14 +364,6 @@ namespace numa {
 
 [[nodiscard]] inline bool IsAvailable() {
   return false;
-}
-
-[[nodiscard]] inline int CurrentNode() {
-  return -1;
-}
-
-[[nodiscard]] inline int NodeOfAddress(const void *) {
-  return -1;
 }
 
 [[nodiscard]] inline bool ShouldConfigureNuma(std::size_t) {
@@ -444,7 +388,9 @@ struct NumaNode {
   return 0;
 }
 
-struct Affinity {};
+struct Affinity {
+  std::optional<std::size_t> node;
+};
 
 [[nodiscard]] inline std::vector<Affinity> GetThreadAffinities(
     std::size_t num_threads) {
