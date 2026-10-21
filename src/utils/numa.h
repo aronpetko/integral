@@ -19,6 +19,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <psapi.h>
 
 namespace numa {
 
@@ -88,7 +89,7 @@ struct WindowsNumaNode {
 
 }  // namespace detail
 
-[[nodiscard]] inline bool ShouldConfigureNuma(std::size_t num_threads) {
+[[nodiscard]] inline bool IsAvailable() {
   ULONG highest_node = 0;
   if (!GetNumaHighestNodeNumber(&highest_node)) {
     return false;
@@ -96,7 +97,34 @@ struct WindowsNumaNode {
 
   // Processes are confined to a single processor group by default before
   // Windows 11, so pinning matters with multiple groups even on one node
-  if (highest_node == 0 && GetActiveProcessorGroupCount() <= 1) {
+  return highest_node > 0 || GetActiveProcessorGroupCount() > 1;
+}
+
+// Node the calling thread is running on right now, or -1 if unknown
+[[nodiscard]] inline int CurrentNode() {
+  PROCESSOR_NUMBER processor{};
+  GetCurrentProcessorNumberEx(&processor);
+
+  USHORT node = 0;
+  if (!GetNumaProcessorNodeEx(&processor, &node)) {
+    return -1;
+  }
+  return node;
+}
+
+// Node holding the page at the address, or -1 if unknown
+[[nodiscard]] inline int NodeOfAddress(const void *address) {
+  PSAPI_WORKING_SET_EX_INFORMATION info{};
+  info.VirtualAddress = const_cast<void *>(address);
+  if (!QueryWorkingSetEx(GetCurrentProcess(), &info, sizeof(info)) ||
+      !info.VirtualAttributes.Valid) {
+    return -1;
+  }
+  return static_cast<int>(info.VirtualAttributes.Node);
+}
+
+[[nodiscard]] inline bool ShouldConfigureNuma(std::size_t num_threads) {
+  if (!IsAvailable()) {
     return false;
   }
 
@@ -194,14 +222,42 @@ inline void PinThreadToNumaNode(std::size_t thread_id) {
 #elif defined(USE_NUMA)
 
 #include <numa.h>
+#include <numaif.h>
 #include <sched.h>
 
 #include <cassert>
 
 namespace numa {
 
+[[nodiscard]] inline bool IsAvailable() {
+  return numa_available() != -1;
+}
+
+// Node the calling thread is running on right now, or -1 if unknown
+[[nodiscard]] inline int CurrentNode() {
+  const int cpu = sched_getcpu();
+  if (cpu < 0 || !IsAvailable()) {
+    return -1;
+  }
+  return numa_node_of_cpu(cpu);
+}
+
+// Node holding the page at the address, or -1 if unknown (get_mempolicy is
+// blocked in containers without CAP_SYS_NICE)
+[[nodiscard]] inline int NodeOfAddress(const void *address) {
+  int node = -1;
+  if (get_mempolicy(&node,
+                    nullptr,
+                    0,
+                    const_cast<void *>(address),
+                    MPOL_F_NODE | MPOL_F_ADDR) != 0) {
+    return -1;
+  }
+  return node;
+}
+
 [[nodiscard]] inline bool ShouldConfigureNuma(std::size_t num_threads) {
-  if (numa_available() == -1) {
+  if (!IsAvailable()) {
     return false;
   }
 
@@ -288,6 +344,18 @@ inline void PinThreadToNumaNode(std::size_t thread_id) {
 #else
 
 namespace numa {
+
+[[nodiscard]] inline bool IsAvailable() {
+  return false;
+}
+
+[[nodiscard]] inline int CurrentNode() {
+  return -1;
+}
+
+[[nodiscard]] inline int NodeOfAddress(const void *) {
+  return -1;
+}
 
 [[nodiscard]] inline bool ShouldConfigureNuma(std::size_t) {
   return false;

@@ -1406,6 +1406,95 @@ bool Searcher::ShouldQuit() {
   return stop_.load(std::memory_order_relaxed);
 }
 
+namespace {
+
+// Where a search thread ended up after pinning, -1 when unknown
+struct NumaPlacement {
+  int target_node = -1;
+  int cpu_node = -1;
+  int memory_node = -1;
+};
+
+void ReportNumaPlacement(bool pinned,
+                         const std::vector<NumaPlacement> &placements) {
+  if (!pinned) {
+    fmt::println("info string NUMA pinning off for {} threads ({})",
+                 placements.size(),
+                 numa::IsAvailable() ? "needs more than half of all threads"
+                                     : "NUMA unavailable");
+    return;
+  }
+
+  struct NodeSummary {
+    int threads = 0;
+    int on_cpu = 0;
+    int local_memory = 0;
+    int unknown_memory = 0;
+  };
+
+  std::vector<NodeSummary> nodes;
+  for (const auto &placement : placements) {
+    if (placement.target_node >= static_cast<int>(nodes.size())) {
+      nodes.resize(placement.target_node + 1);
+    }
+
+    auto &node = nodes[placement.target_node];
+    ++node.threads;
+    node.on_cpu += placement.cpu_node == placement.target_node;
+    node.local_memory += placement.memory_node == placement.target_node;
+    node.unknown_memory += placement.memory_node == -1;
+  }
+
+  fmt::println("info string NUMA pinned {} threads", placements.size());
+  for (std::size_t i = 0; i < nodes.size(); ++i) {
+    const auto &node = nodes[i];
+    if (node.threads == 0) {
+      continue;
+    }
+
+    fmt::println(
+        "info string NUMA node {}: {} threads, {} running on node, {} with "
+        "local memory{}",
+        i,
+        node.threads,
+        node.on_cpu,
+        node.local_memory,
+        node.unknown_memory > 0
+            ? fmt::format(" ({} unknown)", node.unknown_memory)
+            : "");
+  }
+
+  // List the first few misplaced threads to show where they went instead
+  constexpr int kMaxMismatchesShown = 8;
+  int mismatches = 0;
+  for (std::size_t i = 0; i < placements.size(); ++i) {
+    const auto &placement = placements[i];
+    const bool cpu_ok = placement.cpu_node == placement.target_node;
+    const bool memory_ok = placement.memory_node == placement.target_node ||
+                           placement.memory_node == -1;
+    if (cpu_ok && memory_ok) {
+      continue;
+    }
+
+    if (++mismatches <= kMaxMismatchesShown) {
+      fmt::println(
+          "info string NUMA thread {} meant for node {}: running on node {}, "
+          "memory on node {}",
+          i,
+          placement.target_node,
+          placement.cpu_node,
+          placement.memory_node);
+    }
+  }
+
+  if (mismatches > kMaxMismatchesShown) {
+    fmt::println("info string NUMA ... and {} more misplaced threads",
+                 mismatches - kMaxMismatchesShown);
+  }
+}
+
+}  // namespace
+
 void Searcher::SetThreadCount(U16 count) {
   if (threads_.size() == count) {
     return;
@@ -1432,17 +1521,14 @@ void Searcher::SetThreadCount(U16 count) {
   threads_.shrink_to_fit();
   threads_.resize(count);
 
-#ifdef USE_NUMA
   const bool pin_threads = numa::ShouldConfigureNuma(count);
-#endif
+  std::vector<NumaPlacement> placements(count);
 
   for (U16 i = 0; i < count; i++) {
-    raw_threads_.emplace_back([this, i, pin_threads]() {
-#ifdef USE_NUMA
+    raw_threads_.emplace_back([this, i, pin_threads, &placements]() {
       if (pin_threads) {
         numa::PinThreadToNumaNode(i);
       }
-#endif
 
       threads_[i] = std::make_unique<Thread>(i, correction_history_.get());
 
@@ -1452,12 +1538,25 @@ void Searcher::SetThreadCount(U16 count) {
       thread.history.Clear();
       thread.scores.fill(kScoreNone);
 
+      if (pin_threads) {
+        placements[i] = {
+            .target_node = static_cast<int>(numa::GetNumaNodeForThreadId(i)),
+            .cpu_node = numa::CurrentNode(),
+            .memory_node = numa::NodeOfAddress(
+                thread.history.continuation_history.get())};
+      }
+
       thread_init_barrier_.ArriveAndWait();
 
       Run(*threads_[i]);
     });
   }
   thread_init_barrier_.ArriveAndWait();
+
+  // Skip the single thread created at startup to keep UCI output clean
+  if (count > 1) {
+    ReportNumaPlacement(pin_threads, placements);
+  }
 }
 
 void Searcher::Start(TimeConfig time_config) {
