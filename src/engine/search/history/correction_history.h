@@ -7,6 +7,7 @@
 
 #include "../../../../shared/multi_array.h"
 #include "../../../tuner/spsa.h"
+#include "../../../utils/hash_table.h"
 #include "../stack.h"
 
 namespace search::history {
@@ -23,16 +24,23 @@ class CorrectionHistory {
   explicit CorrectionHistory(U16 num_threads) {
     Resize(num_threads);
   }
+  
+  static void *operator new(std::size_t size) {
+    return AllocatePages(size);
+  }
+
+  static void operator delete(void *ptr, std::size_t size) {
+    FreePages(ptr, size);
+  }
 
   void Resize(U16 num_threads) {
     // Round up to the next power of two so keys can be masked
     hash_size_ =
         std::bit_ceil<U64>(kDefaultHashSize * std::max<U16>(1, num_threads));
 
-    pawn_table_ = std::make_unique<std::atomic_int16_t[]>(PawnTableEntries());
-    major_table_ = std::make_unique<std::atomic_int16_t[]>(MajorTableEntries());
-    non_pawn_table_ =
-        std::make_unique<std::atomic_int16_t[]>(NonPawnTableEntries());
+    pawn_table_ = MakePageArray<std::atomic_int16_t>(PawnTableEntries());
+    major_table_ = MakePageArray<std::atomic_int16_t>(MajorTableEntries());
+    non_pawn_table_ = MakePageArray<std::atomic_int16_t>(NonPawnTableEntries());
 
     ClearContinuationTable();
   }
@@ -189,9 +197,9 @@ class CorrectionHistory {
 
  private:
   U64 hash_size_;
-  std::unique_ptr<std::atomic_int16_t[]> pawn_table_;
-  std::unique_ptr<std::atomic_int16_t[]> non_pawn_table_;
-  std::unique_ptr<std::atomic_int16_t[]> major_table_;
+  PageArray<std::atomic_int16_t> pawn_table_;
+  PageArray<std::atomic_int16_t> non_pawn_table_;
+  PageArray<std::atomic_int16_t> major_table_;
   MultiArray<ContinuationCorrectionEntry, kNumColors, kNumPieceTypes, 64>
       continuation_table_;
 };
