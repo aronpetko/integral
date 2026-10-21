@@ -1,6 +1,7 @@
 #include "search.h"
 
 #include <algorithm>
+#include <mutex>
 #include <numeric>
 #include <thread>
 
@@ -1415,6 +1416,7 @@ struct NumaPlacement {
   int cpu_node = -1;
   int memory_node = -1;
   int network_node = -1;
+  int correction_node = -1;
 };
 
 void ReportNumaPlacement(bool pinned,
@@ -1433,6 +1435,7 @@ void ReportNumaPlacement(bool pinned,
     int local_memory = 0;
     int unknown_memory = 0;
     int local_network = 0;
+    int local_correction = 0;
   };
 
   std::vector<NodeSummary> nodes;
@@ -1447,6 +1450,8 @@ void ReportNumaPlacement(bool pinned,
     node.local_memory += placement.memory_node == placement.target_node;
     node.unknown_memory += placement.memory_node == -1;
     node.local_network += placement.network_node == placement.target_node;
+    node.local_correction +=
+        placement.correction_node == placement.target_node;
   }
 
   fmt::println("info string NUMA pinned {} threads", placements.size());
@@ -1458,7 +1463,8 @@ void ReportNumaPlacement(bool pinned,
 
     fmt::println(
         "info string NUMA node {}: {} threads, {} running on node, {} with "
-        "local memory{}, {} with local network",
+        "local memory{}, {} with local network, {} with local correction "
+        "history",
         i,
         node.threads,
         node.on_cpu,
@@ -1466,7 +1472,8 @@ void ReportNumaPlacement(bool pinned,
         node.unknown_memory > 0
             ? fmt::format(" ({} unknown)", node.unknown_memory)
             : "",
-        node.local_network);
+        node.local_network,
+        node.local_correction);
   }
 
   // List the first few misplaced threads to show where they went instead
@@ -1517,8 +1524,6 @@ void Searcher::SetThreadCount(U16 count) {
   stop_barrier_.Reset(count + 1);
   start_barrier_.Reset(count + 1);
 
-  correction_history_ = std::make_unique<history::CorrectionHistory>(count);
-
   raw_threads_.clear();
   raw_threads_.shrink_to_fit();
   raw_threads_.reserve(count);
@@ -1529,16 +1534,52 @@ void Searcher::SetThreadCount(U16 count) {
   const bool pin_threads = numa::ShouldConfigureNuma(count);
   std::vector<NumaPlacement> placements(count);
 
+  // Threads share a correction history with the others on their NUMA node, or
+  // all share one when not pinned
+  std::vector<int> thread_nodes(count, 0);
+  std::vector<U16> threads_per_node(1, 0);
   for (U16 i = 0; i < count; i++) {
-    raw_threads_.emplace_back([this, i, pin_threads, &placements]() {
-      const int node =
-          pin_threads ? static_cast<int>(numa::GetNumaNodeForThreadId(i)) : -1;
+    if (pin_threads) {
+      thread_nodes[i] = static_cast<int>(numa::GetNumaNodeForThreadId(i));
+    }
+    if (thread_nodes[i] >= static_cast<int>(threads_per_node.size())) {
+      threads_per_node.resize(thread_nodes[i] + 1, 0);
+    }
+    ++threads_per_node[thread_nodes[i]];
+  }
+
+  correction_histories_.clear();
+  correction_histories_.resize(threads_per_node.size());
+  std::mutex correction_history_mutex;
+
+  for (U16 i = 0; i < count; i++) {
+    raw_threads_.emplace_back([this,
+                               i,
+                               pin_threads,
+                               &placements,
+                               &thread_nodes,
+                               &threads_per_node,
+                               &correction_history_mutex]() {
+      const int node = thread_nodes[i];
       if (pin_threads) {
         numa::PinThreadToNumaNode(i);
       }
-      nnue::UseNetworkForNode(node);
+      nnue::UseNetworkForNode(pin_threads ? node : -1);
 
-      threads_[i] = std::make_unique<Thread>(i, correction_history_.get());
+      // The first thread on each node creates its correction history, so
+      // first-touch places it on that node
+      history::CorrectionHistory *correction_history;
+      {
+        std::lock_guard lock(correction_history_mutex);
+        auto &shared = correction_histories_[node];
+        if (!shared) {
+          shared = std::make_unique<history::CorrectionHistory>(
+              threads_per_node[node]);
+        }
+        correction_history = shared.get();
+      }
+
+      threads_[i] = std::make_unique<Thread>(i, correction_history);
 
       // Touch memory to enforce first-touch
       auto &thread = *threads_[i];
@@ -1552,7 +1593,8 @@ void Searcher::SetThreadCount(U16 count) {
             .cpu_node = numa::CurrentNode(),
             .memory_node = numa::NodeOfAddress(
                 thread.history.continuation_history.get()),
-            .network_node = numa::NodeOfAddress(nnue::network)};
+            .network_node = numa::NodeOfAddress(nnue::network),
+            .correction_node = numa::NodeOfAddress(correction_history)};
       }
 
       thread_init_barrier_.ArriveAndWait();
@@ -1632,8 +1674,10 @@ void Searcher::NewGame(bool clear_tables) {
   }
 
   // Shared between every thread, so it's cleared once here
-  if (correction_history_) {
-    correction_history_->Clear();
+  for (auto &correction_history : correction_histories_) {
+    if (correction_history) {
+      correction_history->Clear();
+    }
   }
 
   for (auto &thread : threads_) {

@@ -229,7 +229,9 @@ class Searcher {
   std::mutex stop_mutex_, thread_stopped_mutex_;
   std::atomic_int searching_threads_;
   std::condition_variable thread_stopped_signal_;
-  std::unique_ptr<history::CorrectionHistory> correction_history_;
+  // One per NUMA node, indexed by node id, or a single one when not pinned
+  std::vector<std::unique_ptr<history::CorrectionHistory>>
+      correction_histories_;
   std::vector<std::unique_ptr<Thread>> threads_;
   std::vector<std::thread> raw_threads_;
   TranspositionTable transposition_table_;
