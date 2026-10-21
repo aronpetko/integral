@@ -6,6 +6,7 @@
 
 #include "../../data_gen/data_gen.h"
 #include "../../utils/numa.h"
+#include "../evaluation/nnue/nnue.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -1413,6 +1414,7 @@ struct NumaPlacement {
   int target_node = -1;
   int cpu_node = -1;
   int memory_node = -1;
+  int network_node = -1;
 };
 
 void ReportNumaPlacement(bool pinned,
@@ -1430,6 +1432,7 @@ void ReportNumaPlacement(bool pinned,
     int on_cpu = 0;
     int local_memory = 0;
     int unknown_memory = 0;
+    int local_network = 0;
   };
 
   std::vector<NodeSummary> nodes;
@@ -1443,6 +1446,7 @@ void ReportNumaPlacement(bool pinned,
     node.on_cpu += placement.cpu_node == placement.target_node;
     node.local_memory += placement.memory_node == placement.target_node;
     node.unknown_memory += placement.memory_node == -1;
+    node.local_network += placement.network_node == placement.target_node;
   }
 
   fmt::println("info string NUMA pinned {} threads", placements.size());
@@ -1454,14 +1458,15 @@ void ReportNumaPlacement(bool pinned,
 
     fmt::println(
         "info string NUMA node {}: {} threads, {} running on node, {} with "
-        "local memory{}",
+        "local memory{}, {} with local network",
         i,
         node.threads,
         node.on_cpu,
         node.local_memory,
         node.unknown_memory > 0
             ? fmt::format(" ({} unknown)", node.unknown_memory)
-            : "");
+            : "",
+        node.local_network);
   }
 
   // List the first few misplaced threads to show where they went instead
@@ -1526,9 +1531,12 @@ void Searcher::SetThreadCount(U16 count) {
 
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back([this, i, pin_threads, &placements]() {
+      const int node =
+          pin_threads ? static_cast<int>(numa::GetNumaNodeForThreadId(i)) : -1;
       if (pin_threads) {
         numa::PinThreadToNumaNode(i);
       }
+      nnue::UseNetworkForNode(node);
 
       threads_[i] = std::make_unique<Thread>(i, correction_history_.get());
 
@@ -1540,10 +1548,11 @@ void Searcher::SetThreadCount(U16 count) {
 
       if (pin_threads) {
         placements[i] = {
-            .target_node = static_cast<int>(numa::GetNumaNodeForThreadId(i)),
+            .target_node = node,
             .cpu_node = numa::CurrentNode(),
             .memory_node = numa::NodeOfAddress(
-                thread.history.continuation_history.get())};
+                thread.history.continuation_history.get()),
+            .network_node = numa::NodeOfAddress(nnue::network)};
       }
 
       thread_init_barrier_.ArriveAndWait();

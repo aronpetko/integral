@@ -367,6 +367,8 @@ void Generate(Config config) {
 
     threads.emplace_back(
         [&config, thread_path = std::move(thread_path), i, &fens]() {
+          nnue::UseNetworkForNode(-1);
+
           std::ofstream output_stream(thread_path,
                                       std::ios::binary | std::ios::app);
           if (!output_stream) {
