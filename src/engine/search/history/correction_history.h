@@ -7,7 +7,6 @@
 
 #include "../../../../shared/multi_array.h"
 #include "../../../tuner/spsa.h"
-#include "../../../utils/hash_table.h"
 #include "../stack.h"
 
 namespace search::history {
@@ -23,16 +22,6 @@ class CorrectionHistory {
  public:
   explicit CorrectionHistory(U16 num_threads) {
     Resize(num_threads);
-  }
-
-  // Fresh, page-aligned memory rather than the malloc arena, whose first pages
-  // are touched before the creating thread is pinned to its NUMA node
-  static void *operator new(std::size_t size) {
-    return AlignedAlloc(alignof(CorrectionHistory), size);
-  }
-
-  static void operator delete(void *ptr) {
-    AlignedFree(ptr);
   }
 
   void Resize(U16 num_threads) {

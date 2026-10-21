@@ -181,7 +181,12 @@ struct NumaNode {
   return 0;
 }
 
-inline void PinThreadToNumaNode(std::size_t thread_id) {
+// Where to pin a thread, computed ahead of time so pinning doesn't allocate.
+// An empty mask means the thread isn't pinned
+using Affinity = GROUP_AFFINITY;
+
+[[nodiscard]] inline std::vector<Affinity> GetThreadAffinities(
+    std::size_t num_threads) {
   const auto nodes = detail::QueryNumaNodes();
 
   std::size_t total_cores = 0;
@@ -191,30 +196,50 @@ inline void PinThreadToNumaNode(std::size_t thread_id) {
     }
   }
 
+  std::vector<Affinity> affinities(num_threads);
   if (total_cores == 0) {
+    return affinities;
+  }
+
+  // Fill nodes in order, same as GetNumaNodeForThreadId. A thread can only
+  // have affinity within one group, so a node spanning several groups is
+  // split by group as well
+  for (std::size_t i = 0; i < num_threads; ++i) {
+    std::size_t slot = i % total_cores;
+    for (const auto &node : nodes) {
+      for (const auto &affinity : node.group_masks) {
+        const std::size_t group_cores = std::popcount(affinity.Mask);
+        if (slot < group_cores) {
+          affinities[i] = affinity;
+          break;
+        }
+        slot -= group_cores;
+      }
+      if (affinities[i].Mask != 0) {
+        break;
+      }
+    }
+  }
+
+  return affinities;
+}
+
+// Must not allocate, so that the thread's first allocation happens after it's
+// pinned to its node
+inline void PinThread(const Affinity &affinity) {
+  if (affinity.Mask == 0) {
     return;
   }
 
-  thread_id %= total_cores;
+  const auto thread = GetCurrentThread();
+  SetThreadGroupAffinity(thread, &affinity, nullptr);
 
-  for (const auto &node : nodes) {
-    for (auto affinity : node.group_masks) {
-      const std::size_t group_cores = std::popcount(affinity.Mask);
-      if (thread_id >= group_cores) {
-        thread_id -= group_cores;
-        continue;
-      }
-
-      const auto thread = GetCurrentThread();
-      SetThreadGroupAffinity(thread, &affinity, nullptr);
-
-      PROCESSOR_NUMBER ideal{};
-      ideal.Group = affinity.Group;
-      ideal.Number = static_cast<BYTE>(std::countr_zero(affinity.Mask));
-      SetThreadIdealProcessorEx(thread, &ideal, nullptr);
-      return;
-    }
-  }
+  // Windows allocates from the ideal processor's node, so keep it inside the
+  // new affinity for first-touch to land on this node
+  PROCESSOR_NUMBER ideal{};
+  ideal.Group = affinity.Group;
+  ideal.Number = static_cast<BYTE>(std::countr_zero(affinity.Mask));
+  SetThreadIdealProcessorEx(thread, &ideal, nullptr);
 }
 
 }  // namespace numa
@@ -329,14 +354,54 @@ struct NumaNode {
   return 0;
 }
 
-inline void PinThreadToNumaNode(std::size_t thread_id) {
-  if (numa_available() == -1) {
+// Where to pin a thread, computed ahead of time so pinning doesn't allocate.
+// A negative node means the thread isn't pinned
+struct Affinity {
+  int node = -1;
+  cpu_set_t cpus;
+};
+
+[[nodiscard]] inline std::vector<Affinity> GetThreadAffinities(
+    std::size_t num_threads) {
+  std::vector<Affinity> affinities(num_threads);
+  if (!IsAvailable()) {
+    return affinities;
+  }
+
+  const auto nodes = GetCoresPerNumaNode();
+  for (std::size_t i = 0; i < num_threads; ++i) {
+    const auto node_id = GetNumaNodeForThreadId(i);
+    for (const auto &[id, core_ids] : nodes) {
+      if (id != node_id) {
+        continue;
+      }
+
+      auto &affinity = affinities[i];
+      affinity.node = static_cast<int>(id);
+      CPU_ZERO(&affinity.cpus);
+      for (const auto core_id : core_ids) {
+        if (core_id < CPU_SETSIZE) {
+          CPU_SET(core_id, &affinity.cpus);
+        }
+      }
+      break;
+    }
+  }
+
+  return affinities;
+}
+
+// Must not allocate, so that the thread's first allocation (which sets up its
+// malloc arena) happens after it's pinned to its node. libnuma's own pinning
+// functions allocate, so call sched_setaffinity directly
+inline void PinThread(const Affinity &affinity) {
+  if (affinity.node < 0) {
     return;
   }
 
-  const auto node = static_cast<int>(GetNumaNodeForThreadId(thread_id));
-  numa_run_on_node(node);
-  numa_set_preferred(node);
+  sched_setaffinity(0, sizeof(affinity.cpus), &affinity.cpus);
+  // Allocates, but only after the thread is pinned
+  numa_set_preferred(affinity.node);
 }
 
 }  // namespace numa
@@ -379,7 +444,14 @@ struct NumaNode {
   return 0;
 }
 
-inline void PinThreadToNumaNode(std::size_t) {}
+struct Affinity {};
+
+[[nodiscard]] inline std::vector<Affinity> GetThreadAffinities(
+    std::size_t num_threads) {
+  return std::vector<Affinity>(num_threads);
+}
+
+inline void PinThread(const Affinity &) {}
 
 }  // namespace numa
 

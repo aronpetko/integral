@@ -843,7 +843,9 @@ Score Searcher::PVSearch(Thread &thread,
           stack->history_score = history.GetMoveScore(state, move, stack);
 
           const int probcut_depth = depth - 3;
-          thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
+          const auto searched =
+              thread.nodes_searched.load(std::memory_order_relaxed);
+          thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
 
           board.MakeMove(move);
 
@@ -1091,8 +1093,11 @@ Score Searcher::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched =
-        thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
+    // Only this thread writes its counter, so a plain load and store avoids
+    // the locked instruction (and full fence) a fetch_add compiles to
+    const auto searched = thread.nodes_searched.load(std::memory_order_relaxed);
+    thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
+    const U32 prev_nodes_searched = searched;
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -1450,8 +1455,7 @@ void ReportNumaPlacement(bool pinned,
     node.local_memory += placement.memory_node == placement.target_node;
     node.unknown_memory += placement.memory_node == -1;
     node.local_network += placement.network_node == placement.target_node;
-    node.local_correction +=
-        placement.correction_node == placement.target_node;
+    node.local_correction += placement.correction_node == placement.target_node;
   }
 
   fmt::println("info string NUMA pinned {} threads", placements.size());
@@ -1533,9 +1537,7 @@ void Searcher::SetThreadCount(U16 count) {
 
   const bool pin_threads = numa::ShouldConfigureNuma(count);
   std::vector<NumaPlacement> placements(count);
-
-  // Threads share a correction history with the others on their NUMA node, or
-  // all share one when not pinned
+  
   std::vector<int> thread_nodes(count, 0);
   std::vector<U16> threads_per_node(1, 0);
   for (U16 i = 0; i < count; i++) {
@@ -1552,6 +1554,9 @@ void Searcher::SetThreadCount(U16 count) {
   correction_histories_.resize(threads_per_node.size());
   std::mutex correction_history_mutex;
 
+  const auto affinities = pin_threads ? numa::GetThreadAffinities(count)
+                                      : std::vector<numa::Affinity>(count);
+
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back([this,
                                i,
@@ -1559,15 +1564,17 @@ void Searcher::SetThreadCount(U16 count) {
                                &placements,
                                &thread_nodes,
                                &threads_per_node,
-                               &correction_history_mutex]() {
+                               &correction_history_mutex,
+                               &affinities]() {
+      // Pin before anything allocates, so first-touch puts all of this
+      // thread's memory on the corresponding NUMA node
+      numa::PinThread(affinities[i]);
+
       const int node = thread_nodes[i];
-      if (pin_threads) {
-        numa::PinThreadToNumaNode(i);
-      }
       nnue::UseNetworkForNode(pin_threads ? node : -1);
 
-      // The first thread on each node creates its correction history, so
-      // first-touch places it on that node
+      // Correction history is allocated to be shared once per NUMA node and
+      // across all threads pinned to that node
       history::CorrectionHistory *correction_history;
       {
         std::lock_guard lock(correction_history_mutex);
@@ -1591,8 +1598,8 @@ void Searcher::SetThreadCount(U16 count) {
         placements[i] = {
             .target_node = node,
             .cpu_node = numa::CurrentNode(),
-            .memory_node = numa::NodeOfAddress(
-                thread.history.continuation_history.get()),
+            .memory_node =
+                numa::NodeOfAddress(thread.history.continuation_history.get()),
             .network_node = numa::NodeOfAddress(nnue::network),
             .correction_node = numa::NodeOfAddress(correction_history)};
       }
