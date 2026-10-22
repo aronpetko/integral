@@ -1196,8 +1196,14 @@ Score Searcher::PVSearch(Thread &thread,
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
                         : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
+        const int quiet_history_score = history.quiet_history->GetScore(
+            board.GetStateHistory().Back(), move, stack->threats);
         history.continuation_history->UpdateMoveScore(
-            board.GetStateHistory().Back(), move, bonus, stack);
+            board.GetStateHistory().Back(),
+            move,
+            bonus,
+            stack,
+            quiet_history_score);
       }
     }
 
@@ -1262,7 +1268,7 @@ Score Searcher::PVSearch(Thread &thread,
             history.pawn_history->UpdateScore(
                 state, stack, history_depth, quiets);
             history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+                state, stack, history_depth, quiets, history.quiet_history);
           } else if (is_capture) {
             history.capture_history->UpdateScore(state, move, history_depth);
           }
