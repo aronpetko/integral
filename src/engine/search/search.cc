@@ -1093,8 +1093,7 @@ Score Searcher::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    // Only this thread writes its counter, so a plain load and store avoids
-    // the locked instruction (and full fence) a fetch_add compiles to
+
     const auto searched = thread.nodes_searched.load(std::memory_order_relaxed);
     thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
     const U32 prev_nodes_searched = searched;
@@ -1445,8 +1444,6 @@ void Searcher::SetThreadCount(U16 count) {
   for (U16 i = 0; i < count; i++) {
     raw_threads_.emplace_back(
         [this, i, &affinities, &correction_history_mutex]() {
-          // Pin before anything allocates, so first-touch puts all of this
-          // thread's memory on the corresponding NUMA node
           const auto &affinity = affinities[i];
           numa::PinThread(affinity);
           nnue::UseNetworkForNode(affinity.node);
@@ -1473,7 +1470,6 @@ void Searcher::SetThreadCount(U16 count) {
 
           threads_[i] = std::make_unique<Thread>(i, correction_history);
 
-          // Touch memory to enforce first-touch
           auto &thread = *threads_[i];
           thread.stack.Reset();
           thread.history.Clear();

@@ -25,7 +25,7 @@ namespace numa {
 
 namespace detail {
 
-// A NUMA node's logical processors, split by the processor group they're in
+// A NUMA node's logical processors split by the processor group they're in
 struct WindowsNumaNode {
   std::size_t id;
   std::vector<GROUP_AFFINITY> group_masks;
@@ -158,7 +158,7 @@ struct NumaNode {
   return 0;
 }
 
-// Where a thread is pinned, with no node when it isn't
+// Where a thread is pinned
 struct Affinity {
   std::optional<std::size_t> node;
   GROUP_AFFINITY group{};
@@ -184,9 +184,8 @@ struct Affinity {
     return affinities;
   }
 
-  // Fill nodes in order, same as GetNumaNodeForThreadId. A thread can only
-  // have affinity within one group, so a node spanning several groups is
-  // split by group as well
+  // A thread can only have affinity within one group, so a node spanning
+  // several groups is split by group as well
   for (std::size_t i = 0; i < num_threads; ++i) {
     std::size_t slot = i % total_cores;
     for (const auto &node : nodes) {
@@ -215,8 +214,6 @@ inline void PinThread(const Affinity &affinity) {
   const auto thread = GetCurrentThread();
   SetThreadGroupAffinity(thread, &affinity.group, nullptr);
 
-  // Windows allocates from the ideal processor's node, so keep it inside the
-  // new affinity for first-touch to land on this node
   PROCESSOR_NUMBER ideal{};
   ideal.Group = affinity.group.Group;
   ideal.Number = static_cast<BYTE>(std::countr_zero(affinity.group.Mask));
@@ -259,8 +256,7 @@ struct NumaNode {
 [[nodiscard]] inline std::vector<NumaNode> GetCoresPerNumaNode() {
   std::vector<NumaNode> nodes;
   if (numa_available() != -1) {
-    // Node ids can be sparse, so walk up to the highest id rather than the
-    // configured node count
+    // Node ids can be sparse, so walk up to the max node ID
     for (int node = 0; node <= numa_max_node(); ++node) {
       const auto cpu_mask = numa_allocate_cpumask();
       if (numa_node_to_cpus(node, cpu_mask) != 0) {
@@ -301,7 +297,7 @@ struct NumaNode {
   thread_id %= std::thread::hardware_concurrency();
 
   std::size_t cores_seen = 0;
-  for (const auto& [id, core_ids] : GetCoresPerNumaNode()) {
+  for (const auto &[id, core_ids] : GetCoresPerNumaNode()) {
     if (thread_id < cores_seen + core_ids.size()) {
       return id;
     }
@@ -311,7 +307,7 @@ struct NumaNode {
   return 0;
 }
 
-// Where a thread is pinned, with no node when it isn't
+// Where a thread is pinned
 struct Affinity {
   std::optional<std::size_t> node;
   cpu_set_t cpus{};

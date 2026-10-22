@@ -18,8 +18,6 @@ class Accumulator;
 
 void LoadFromIncBin();
 
-// Points the calling thread at a copy of the network on the given NUMA node,
-// or at the embedded network without one
 void UseNetworkForNode(std::optional<std::size_t> node);
 
 Score Evaluate(Board& board);
