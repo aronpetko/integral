@@ -213,6 +213,29 @@ add_executable(integral ${SOURCES}
 # Make sure main build depends on this
 add_dependencies(integral run_preprocess)
 
+# NUMA thread pinning
+option(USE_NUMA "Pin search threads to NUMA nodes when available" ON)
+if (USE_NUMA)
+    if (WIN32)
+        set(NUMA_FOUND ON)
+    else ()
+        include(CheckIncludeFileCXX)
+        check_include_file_cxx(numa.h HAVE_NUMA_H)
+        find_library(NUMA_LIBRARY numa)
+        if (HAVE_NUMA_H AND NUMA_LIBRARY)
+            set(NUMA_FOUND ON)
+            target_link_libraries(integral PRIVATE ${NUMA_LIBRARY})
+        endif ()
+    endif ()
+
+    if (NUMA_FOUND)
+        target_compile_definitions(integral PRIVATE USE_NUMA)
+        message(STATUS "NUMA support enabled")
+    else ()
+        message(STATUS "libnuma not found, building without NUMA support")
+    endif ()
+endif ()
+
 # Profile-guided optimization: build with GENERATE, run the pgo_profile target, then rebuild with USE
 set(PGO_MODE OFF CACHE STRING "Profile-guided optimization stage (OFF, GENERATE, USE)")
 set(PGO_DIR "${CMAKE_CURRENT_BINARY_DIR}/pgo")

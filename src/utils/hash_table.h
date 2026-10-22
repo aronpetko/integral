@@ -12,7 +12,7 @@
 
 #include "types.h"
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__APPLE__)
 #include <sys/mman.h>
 #elif defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -105,6 +105,52 @@ inline void AlignedFree(void* ptr) {
 #else
   std::free(ptr);
 #endif
+}
+
+[[nodiscard]] inline void* AllocatePages(std::size_t size) {
+#if defined(_WIN32)
+  void* ptr =
+      VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  if (!ptr) throw std::bad_alloc();
+#else
+  void* ptr = mmap(nullptr,
+                   size,
+                   PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS,
+                   -1,
+                   0);
+  if (ptr == MAP_FAILED) throw std::bad_alloc();
+#endif
+  return ptr;
+}
+
+inline void FreePages(void* ptr, [[maybe_unused]] std::size_t size) {
+#if defined(_WIN32)
+  VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+  munmap(ptr, size);
+#endif
+}
+
+template <typename T>
+struct PageDeleter {
+  std::size_t count;
+
+  void operator()(T* ptr) const {
+    std::destroy_n(ptr, count);
+    FreePages(ptr, count * sizeof(T));
+  }
+};
+
+template <typename T>
+using PageArray = std::unique_ptr<T[], PageDeleter<T>>;
+
+// Calling thread touches all pages because of value initialization
+template <typename T>
+[[nodiscard]] PageArray<T> MakePageArray(std::size_t count) {
+  auto* ptr = static_cast<T*>(AllocatePages(count * sizeof(T)));
+  std::uninitialized_value_construct_n(ptr, count);
+  return PageArray<T>(ptr, PageDeleter<T>{count});
 }
 
 template <typename T>
