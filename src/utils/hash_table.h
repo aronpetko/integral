@@ -107,16 +107,18 @@ inline void AlignedFree(void* ptr) {
 #endif
 }
 
-// Fresh zeroed pages straight from the OS. Unlike the heap, these are never
-// memory already placed on another NUMA node, so first-touch decides the node
 [[nodiscard]] inline void* AllocatePages(std::size_t size) {
 #if defined(_WIN32)
   void* ptr =
       VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
   if (!ptr) throw std::bad_alloc();
 #else
-  void* ptr = mmap(
-      nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  void* ptr = mmap(nullptr,
+                   size,
+                   PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS,
+                   -1,
+                   0);
   if (ptr == MAP_FAILED) throw std::bad_alloc();
 #endif
   return ptr;
@@ -143,7 +145,7 @@ struct PageDeleter {
 template <typename T>
 using PageArray = std::unique_ptr<T[], PageDeleter<T>>;
 
-// Value-initializes every element, so the calling thread touches all pages
+// Calling thread touches all pages because of value initialization
 template <typename T>
 [[nodiscard]] PageArray<T> MakePageArray(std::size_t count) {
   auto* ptr = static_cast<T*>(AllocatePages(count * sizeof(T)));

@@ -24,7 +24,7 @@ class CorrectionHistory {
   explicit CorrectionHistory(U16 num_threads) {
     Resize(num_threads);
   }
-  
+
   static void *operator new(std::size_t size) {
     return AllocatePages(size);
   }
