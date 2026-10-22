@@ -98,6 +98,11 @@ constexpr std::array<Square, 4> kRookCastleTargets = {
     Squares::kF1, Squares::kD1, Squares::kF8, Squares::kD8};
 
 struct BoardState {
+  static constexpr int kMailboxColorShift = 3;
+  static constexpr U8 kMailboxTypeMask = (1 << kMailboxColorShift) - 1;
+  static constexpr U8 kEmptySquare =
+      PieceType::kNone | kNoColor << kMailboxColorShift;
+
   BoardState()
       : turn(Color::kWhite),
         fifty_moves_clock(0),
@@ -278,11 +283,6 @@ struct BoardState {
 
   std::array<BitBoard, kNumPieceTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
-  static constexpr int kMailboxColorShift = 3;
-  static constexpr U8 kMailboxTypeMask = (1 << kMailboxColorShift) - 1;
-  static constexpr U8 kEmptySquare =
-      PieceType::kNone | kNoColor << kMailboxColorShift;
-
   std::array<U8, kSquareCount> mailbox;
   Color turn;
   Square en_passant;
