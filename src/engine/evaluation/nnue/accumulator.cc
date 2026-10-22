@@ -175,10 +175,8 @@ void Accumulator::ApplyChanges(const BoardState& current_state) {
         if (!threat_changes_accumulated) {
           threat_changes_accumulated = true;
           threat_change.Clear();
-          threat_change.UpdateThreatsForSquares<false>(
-              clean_state, dirty_accumulator.threat_updated_squares);
-          threat_change.UpdateThreatsForSquares<true>(
-              dirty_state, dirty_accumulator.threat_updated_squares);
+          threat_change.UpdateThreatsForMove(clean_state,
+                                             dirty_accumulator.psqt_change);
           threat_change.UpdatePawnPairsForSquares<false>(
               clean_state, dirty_accumulator.threat_updated_squares);
           threat_change.UpdatePawnPairsForSquares<true>(

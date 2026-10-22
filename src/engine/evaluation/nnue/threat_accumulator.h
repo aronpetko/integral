@@ -3,6 +3,8 @@
 
 #include "pawn_pair/pawn_pair_features.h"
 #include "perspective_accumulator.h"
+#include "psqt_accumulator.h"
+#include "threats/threat_features.h"
 
 namespace nnue {
 
@@ -12,11 +14,8 @@ struct ThreatAccumulatorChange {
 
   struct ThreatChangeInfo {
     Square attacker_square;
-    PieceType attacker_type;
-    Color attacker_color;
     Square victim_square;
-    PieceType victim_type;
-    Color victim_color;
+    U8 pair;
   };
 
   struct PawnPairChangeInfo {
@@ -29,19 +28,13 @@ struct ThreatAccumulatorChange {
   template <bool kAddChange>
   void PushChangeInfo(PawnPairChangeInfo info);
 
-  template <bool kAddChange>
+  template <bool kPutPiece, bool kChangesOccupancy>
   void UpdateThreatsForPiece(const BoardState& state,
                              PieceType piece_type,
                              Color piece_color,
-                             Square square,
-                             BitBoard exclude = 0);
-  template <bool kAddChange>
-  void UpdateDiscoveredThreats(const BoardState& state,
-                               Square square,
-                               BitBoard exclude = 0);
-  template <bool kAddChange>
-  void UpdateThreatsForSquares(const BoardState& state,
-                               BitBoard updated_squares);
+                             Square square);
+  void UpdateThreatsForMove(const BoardState& state,
+                            const PsqtAccumulatorChange& change);
 
   template <bool kAddChange>
   void UpdatePawnPairsForSquares(const BoardState& state,
@@ -67,14 +60,22 @@ struct ThreatFeaturePolicy {
   static Value Bias(int) {
     return 0;
   }
-  static std::pair<Weight const*, bool> FeatureRow(Color perspective,
-                                                   Square king_square,
-                                                   PieceType attacker,
-                                                   Color attacker_color,
-                                                   PieceType victim,
-                                                   Color victim_color,
+  static U8 SquareFlip(Color perspective, Square king_square) {
+    return (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
+  }
+
+  static U8 PairFlip(Color perspective) {
+    return threats::kThreatPairColorFlip * perspective;
+  }
+
+  static std::pair<Weight const*, bool> FeatureRow(U8 pair,
                                                    Square from,
-                                                   Square to);
+                                                   Square to) {
+    const auto feature = threats::GetThreatFeatureIndex(pair, from, to);
+    const bool valid = feature < arch::kThreatFeatureCount;
+    const auto row = valid ? arch::kPawnPairFeatureCount + feature : 0;
+    return {network->threat_weights[row].as_array().data(), valid};
+  }
 
   template <typename Emit>
   static void ForEachActiveFeature(const BoardState& state,
@@ -83,6 +84,8 @@ struct ThreatFeaturePolicy {
                                    Emit&& emit) {
     const auto occupied = state.Occupied();
     const auto targets = state.KinglessOccupied();
+    const U8 square_flip = SquareFlip(perspective, king_square);
+    const U8 pair_flip = PairFlip(perspective);
     for (int piece = PieceType::kPawn; piece <= PieceType::kQueen; ++piece) {
       for (Square from : state.piece_bbs[piece]) {
         const auto attacker_type = static_cast<PieceType>(piece);
@@ -90,23 +93,17 @@ struct ThreatFeaturePolicy {
         const auto attacks = move_gen::GetPieceAttacks(
             from, attacker_type, attacker_color, occupied);
         for (const Square to : attacks& targets) {
-          const auto victim = state.GetPieceType(to);
-          const auto victim_color = state.GetPieceColor(to);
-          const auto [threat_feature_row, valid] = FeatureRow(perspective,
-                                                              king_square,
-                                                              attacker_type,
-                                                              attacker_color,
-                                                              victim,
-                                                              victim_color,
-                                                              from,
-                                                              to);
+          const auto pair = threats::PackThreatPair(attacker_type,
+                                                    attacker_color,
+                                                    state.GetPieceType(to),
+                                                    state.GetPieceColor(to));
+          const auto [threat_feature_row, valid] = FeatureRow(
+              pair ^ pair_flip, from ^ square_flip, to ^ square_flip);
           __builtin_prefetch(threat_feature_row);
           emit(threat_feature_row, valid);
         }
       }
     }
-    const U8 square_flip =
-        (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
     auto remaining = state.Pawns();
     for (const Square first : state.Pawns()) {
       remaining &= ~BitBoard::FromSquare(first);

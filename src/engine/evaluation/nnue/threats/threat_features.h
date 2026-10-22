@@ -226,13 +226,79 @@ inline constexpr auto kAttackTable = ([]() {
   return attack_table;
 })();
 
-[[nodiscard]] std::pair<std::size_t, bool> GetThreatFeatureIndex(
-    PieceType attacker,
-    Color attacker_color,
-    PieceType victim,
-    Color victim_color,
-    Square from,
-    Square to);
+[[nodiscard]] constexpr U8 PackThreatPair(PieceType attacker,
+                                          Color attacker_color,
+                                          PieceType victim,
+                                          Color victim_color) {
+  return attacker << 5 | attacker_color << 4 | victim << 1 | victim_color;
+}
+
+constexpr U8 kThreatPairColorFlip =
+    PackThreatPair(kPawn, kBlack, kPawn, kBlack);
+constexpr std::size_t kThreatPairCount = PieceType::kNumPieceTypes << 5;
+
+inline constexpr auto kPairFeatureOffsets = ([]() {
+  MultiArray<U32, kThreatPairCount, 2> pair_offsets;
+  pair_offsets.fill(nnue::arch::kThreatFeatureCount);
+  for (const auto attacker_side : {Color::kWhite, Color::kBlack}) {
+    for (int attacker = 0; attacker < PieceType::kNumPieceTypes; ++attacker) {
+      for (const auto victim_side : {Color::kWhite, Color::kBlack}) {
+        for (int victim = 0; victim < PieceType::kNumPieceTypes; ++victim) {
+          const auto pair = PackThreatPair(static_cast<PieceType>(attacker),
+                                           attacker_side,
+                                           static_cast<PieceType>(victim),
+                                           victim_side);
+          for (int forward = 0; forward < 2; ++forward) {
+            pair_offsets[pair][forward] =
+                kAttackTable[attacker][attacker_side][victim][victim_side]
+                            [forward];
+          }
+        }
+      }
+    }
+  }
+  return pair_offsets;
+})();
+
+inline constexpr auto kSquarePairIndex = ([]() {
+  MultiArray<U16,
+             PieceType::kNumPieceTypes,
+             Squares::kSquareCount,
+             Squares::kSquareCount>
+      square_indices{};
+  for (int piece = 0; piece < PieceType::kNumPieceTypes; ++piece) {
+    for (int from = 0; from < 64; ++from) {
+      for (int to = 0; to < 64; ++to) {
+        const auto side = piece == PieceType::kPawn && to < from
+                            ? Color::kBlack
+                            : Color::kWhite;
+        square_indices[piece][from][to] =
+            kPieceOffsets.offsets[piece][side][from] +
+            kPieceIndex[piece][side][from][to];
+      }
+    }
+  }
+  return square_indices;
+})();
+
+static_assert(
+    []() {
+      for (int square = 0; square < 64; ++square) {
+        if (kPieceOffsets.offsets[kPawn][kWhite][square] !=
+            kPieceOffsets.offsets[kPawn][kBlack][square]) {
+          return false;
+        }
+      }
+      return true;
+    }(),
+    "kSquarePairIndex assumes both pawn colors share square offsets");
+
+[[nodiscard]] inline U32 GetThreatFeatureIndex(U8 pair,
+                                               Square from,
+                                               Square to) {
+  return kPairFeatureOffsets[pair][from < to] +
+         kSquarePairIndex[pair >> 5][from][to];
+}
 
 }  // namespace nnue::threats
 
