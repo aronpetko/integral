@@ -92,7 +92,7 @@ void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
   }
 
   // Kings are neither valid attackers nor valid victims, so they only ever
-  // affect the threat features by blocking rays.
+  // affect the threat features by blocking rays
   if (piece_type == PieceType::kKing) {
     return;
   }
@@ -158,35 +158,47 @@ void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
 void ThreatAccumulatorChange::UpdateThreatsForMove(
     const BoardState& state, const PsqtAccumulatorChange& change) {
   BoardState board = state;
+  const auto& moved = change.sub_0;
+  const auto& landed = change.add_0;
 
-  const auto remove =
-      [&]<bool kChangesOccupancy = true>(const FeatureData& feature) {
-        UpdateThreatsForPiece<false, kChangesOccupancy>(
-            board, feature.piece, feature.color, feature.square);
-        board.RemovePiece<false>(feature.square, feature.color);
-      };
-  const auto place =
-      [&]<bool kChangesOccupancy = true>(const FeatureData& feature) {
-        board.PlacePiece<false>(feature.square, feature.piece, feature.color);
-        UpdateThreatsForPiece<true, kChangesOccupancy>(
-            board, feature.piece, feature.color, feature.square);
-      };
+  // Lift the moving piece off its square
+  UpdateThreatsForPiece<false, true>(
+      board, moved.piece, moved.color, moved.square);
+  board.RemovePiece<false>(moved.square, moved.color);
 
+  // A capture on the destination only swaps its occupant, so the rays it
+  // blocks stay blocked
   if (change.type == PsqtAccumulatorChange::kCapture &&
-      change.sub_1.square == change.add_0.square) {
-    remove(change.sub_0);
-    remove.template operator()<false>(change.sub_1);
-    place.template operator()<false>(change.add_0);
+      change.sub_1.square == landed.square) {
+    const auto& captured = change.sub_1;
+    UpdateThreatsForPiece<false, false>(
+        board, captured.piece, captured.color, captured.square);
+    board.RemovePiece<false>(captured.square, captured.color);
+    board.PlacePiece<false>(landed.square, landed.piece, landed.color);
+    UpdateThreatsForPiece<true, false>(
+        board, landed.piece, landed.color, landed.square);
     return;
   }
 
+  // The en passant pawn or castling rook leaves before anything lands
   if (change.type != PsqtAccumulatorChange::kNormal) {
-    remove(change.sub_1);
+    const auto& removed = change.sub_1;
+    UpdateThreatsForPiece<false, true>(
+        board, removed.piece, removed.color, removed.square);
+    board.RemovePiece<false>(removed.square, removed.color);
   }
-  remove(change.sub_0);
-  place(change.add_0);
+
+  // Put the moving piece down
+  board.PlacePiece<false>(landed.square, landed.piece, landed.color);
+  UpdateThreatsForPiece<true, true>(
+      board, landed.piece, landed.color, landed.square);
+
+  // The castling rook lands last
   if (change.type == PsqtAccumulatorChange::kCastle) {
-    place(change.add_1);
+    const auto& rook = change.add_1;
+    board.PlacePiece<false>(rook.square, rook.piece, rook.color);
+    UpdateThreatsForPiece<true, true>(
+        board, rook.piece, rook.color, rook.square);
   }
 }
 
