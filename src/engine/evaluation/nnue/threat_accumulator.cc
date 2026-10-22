@@ -5,6 +5,31 @@
 
 namespace nnue {
 
+namespace {
+
+[[nodiscard]] BitBoard ValidVictims(const BoardState& state,
+                                    PieceType attacker) {
+  switch (attacker) {
+    case PieceType::kPawn:
+      return state.Knights() | state.Rooks();
+    case PieceType::kBishop:
+    case PieceType::kRook:
+      return state.Pawns() | state.Knights() | state.Bishops() | state.Rooks();
+    case PieceType::kKnight:
+    case PieceType::kQueen:
+      return state.KinglessOccupied();
+    default:
+      return 0;
+  }
+}
+
+[[nodiscard]] constexpr bool HasThreatFeatures(PieceType attacker,
+                                               PieceType victim) {
+  return threats::kPieceTypeTargetMap[attacker][victim] != -1;
+}
+
+}  // namespace
+
 template <bool kAddChange>
 void ThreatAccumulatorChange::PushChangeInfo(ThreatChangeInfo info) {
   if constexpr (kAddChange) {
@@ -23,117 +48,145 @@ void ThreatAccumulatorChange::PushChangeInfo(PawnPairChangeInfo info) {
   }
 }
 
-template <bool kAddChange>
+template <bool kPutPiece, bool kChangesOccupancy>
 void ThreatAccumulatorChange::UpdateThreatsForPiece(const BoardState& state,
                                                     PieceType piece_type,
                                                     Color piece_color,
-                                                    Square square,
-                                                    BitBoard exclude) {
+                                                    Square square) {
+  const auto occupied = state.Occupied();
+  const auto rook_attacks = move_gen::RookMoves(square, occupied);
+  const auto bishop_attacks = move_gen::BishopMoves(square, occupied);
+  const auto queens = state.Queens();
+  const auto rook_sliders = (queens | state.Rooks()) & rook_attacks;
+  const auto bishop_sliders = (queens | state.Bishops()) & bishop_attacks;
+
+  const auto victims = state.KinglessOccupied();
+  const auto push_blocked = [&](BitBoard sliders, BitBoard attacks) {
+    for (const Square slider_sq : sliders) {
+      const auto behind = attacks & victims &
+                          move_gen::RayIntersecting(slider_sq, square) &
+                          ~BitBoard::FromSquare(slider_sq);
+      if (!behind) {
+        continue;
+      }
+
+      const Square victim_sq = behind.GetLsb();
+      const auto slider_type = state.GetPieceType(slider_sq);
+      const auto victim_type = state.GetPieceType(victim_sq);
+      if (!HasThreatFeatures(slider_type, victim_type)) {
+        continue;
+      }
+
+      PushChangeInfo<!kPutPiece>(
+          {.attacker_square = slider_sq,
+           .victim_square = victim_sq,
+           .pair = threats::PackThreatPair(slider_type,
+                                           state.GetPieceColor(slider_sq),
+                                           victim_type,
+                                           state.GetPieceColor(victim_sq))});
+    }
+  };
+  if constexpr (kChangesOccupancy) {
+    push_blocked(rook_sliders, rook_attacks);
+    push_blocked(bishop_sliders, bishop_attacks);
+  }
+
   // Kings are neither valid attackers nor valid victims, so they only ever
   // affect the threat features by blocking rays.
   if (piece_type == PieceType::kKing) {
     return;
   }
 
-  const auto occupied = state.Occupied();
-  const auto candidates = occupied & ~state.Kings() & ~exclude;
+  BitBoard attacks;
+  switch (piece_type) {
+    case PieceType::kBishop:
+      attacks = bishop_attacks;
+      break;
+    case PieceType::kRook:
+      attacks = rook_attacks;
+      break;
+    case PieceType::kQueen:
+      attacks = rook_attacks | bishop_attacks;
+      break;
+    default:
+      attacks =
+          move_gen::GetPieceAttacks(square, piece_type, piece_color, occupied);
+      break;
+  }
 
   // Push all outgoing threats
-  const auto threatened_pieces =
-      move_gen::GetPieceAttacks(square, piece_type, piece_color, occupied) &
-      candidates;
-  for (const Square attacked_sq : threatened_pieces) {
-    const auto victim_type = state.GetPieceType(attacked_sq);
-    const auto victim_color = state.GetPieceColor(attacked_sq);
-    PushChangeInfo<kAddChange>({.attacker_square = square,
-                                .attacker_type = piece_type,
-                                .attacker_color = piece_color,
-                                .victim_square = attacked_sq,
-                                .victim_type = victim_type,
-                                .victim_color = victim_color});
+  for (const Square attacked_sq : attacks& ValidVictims(state, piece_type)) {
+    PushChangeInfo<kPutPiece>(
+        {.attacker_square = square,
+         .victim_square = attacked_sq,
+         .pair = threats::PackThreatPair(piece_type,
+                                         piece_color,
+                                         state.GetPieceType(attacked_sq),
+                                         state.GetPieceColor(attacked_sq))});
   }
 
   // Push all incoming threats
-  BitBoard incoming_threats = 0;
-  incoming_threats |=
-      state.Pawns(Color::kBlack) & move_gen::PawnAttacks(square, Color::kWhite);
-  incoming_threats |=
-      state.Pawns(Color::kWhite) & move_gen::PawnAttacks(square, Color::kBlack);
-  incoming_threats |= state.Knights() & move_gen::KnightMoves(square);
+  BitBoard incoming_threats = state.Knights() & move_gen::KnightMoves(square);
+  if (HasThreatFeatures(PieceType::kPawn, piece_type)) {
+    incoming_threats |= state.Pawns(Color::kBlack) &
+                        move_gen::PawnAttacks(square, Color::kWhite);
+    incoming_threats |= state.Pawns(Color::kWhite) &
+                        move_gen::PawnAttacks(square, Color::kBlack);
+  }
+  if (HasThreatFeatures(PieceType::kRook, piece_type)) {
+    incoming_threats |= rook_sliders;
+  } else {
+    incoming_threats |= rook_sliders & queens;
+  }
+  if (HasThreatFeatures(PieceType::kBishop, piece_type)) {
+    incoming_threats |= bishop_sliders;
+  } else {
+    incoming_threats |= bishop_sliders & queens;
+  }
 
-  const auto rooks = state.Queens() | state.Rooks();
-  const auto bishops = state.Queens() | state.Bishops();
-  const auto rook_attacks = move_gen::RookMoves(square, occupied);
-  const auto bishop_attacks = move_gen::BishopMoves(square, occupied);
-  incoming_threats |= (rooks & rook_attacks) | (bishops & bishop_attacks);
-
-  for (const Square attacker_sq : incoming_threats & ~exclude) {
-    const auto attacker_type = state.GetPieceType(attacker_sq);
-    const auto attacker_color = state.GetPieceColor(attacker_sq);
-    PushChangeInfo<kAddChange>({.attacker_square = attacker_sq,
-                                .attacker_type = attacker_type,
-                                .attacker_color = attacker_color,
-                                .victim_square = square,
-                                .victim_type = piece_type,
-                                .victim_color = piece_color});
+  for (const Square attacker_sq : incoming_threats) {
+    PushChangeInfo<kPutPiece>(
+        {.attacker_square = attacker_sq,
+         .victim_square = square,
+         .pair = threats::PackThreatPair(state.GetPieceType(attacker_sq),
+                                         state.GetPieceColor(attacker_sq),
+                                         piece_type,
+                                         piece_color)});
   }
 }
 
-template <bool kAddChange>
-void ThreatAccumulatorChange::UpdateDiscoveredThreats(const BoardState& state,
-                                                      Square square,
-                                                      BitBoard exclude) {
-  const auto occupied = state.Occupied();
-  const auto candidates = occupied & ~state.Kings() & ~exclude;
+void ThreatAccumulatorChange::UpdateThreatsForMove(
+    const BoardState& state, const PsqtAccumulatorChange& change) {
+  BoardState board = state;
 
-  const auto rook_attacks = move_gen::RookMoves(square, occupied);
-  const auto bishop_attacks = move_gen::BishopMoves(square, occupied);
-  const auto queens = state.Queens();
+  const auto remove =
+      [&]<bool kChangesOccupancy = true>(const FeatureData& feature) {
+        UpdateThreatsForPiece<false, kChangesOccupancy>(
+            board, feature.piece, feature.color, feature.square);
+        board.RemovePiece<false>(feature.square, feature.color);
+      };
+  const auto place =
+      [&]<bool kChangesOccupancy = true>(const FeatureData& feature) {
+        board.PlacePiece<false>(feature.square, feature.piece, feature.color);
+        UpdateThreatsForPiece<true, kChangesOccupancy>(
+            board, feature.piece, feature.color, feature.square);
+      };
 
-  const auto push_discoveries = [&](BitBoard sliders, BitBoard attacks) {
-    for (const Square attacker_sq : sliders & ~exclude) {
-      // Ignore if the ray already passed an updated square on its way here
-      if (move_gen::RayBetween(attacker_sq, square) & exclude) {
-        continue;
-      }
+  if (change.type == PsqtAccumulatorChange::kCapture &&
+      change.sub_1.square == change.add_0.square) {
+    remove(change.sub_0);
+    remove.template operator()<false>(change.sub_1);
+    place.template operator()<false>(change.add_0);
+    return;
+  }
 
-      const auto line = move_gen::RayIntersecting(attacker_sq, square);
-      const auto behind =
-          attacks & candidates & line & ~BitBoard::FromSquare(attacker_sq);
-      if (!behind) {
-        continue;
-      }
-
-      const Square victim_sq = behind.GetLsb();
-      const auto attacker_type = state.GetPieceType(attacker_sq);
-      const auto attacker_color = state.GetPieceColor(attacker_sq);
-      PushChangeInfo<kAddChange>(
-          {.attacker_square = attacker_sq,
-           .attacker_type = attacker_type,
-           .attacker_color = attacker_color,
-           .victim_square = victim_sq,
-           .victim_type = state.GetPieceType(victim_sq),
-           .victim_color = state.GetPieceColor(victim_sq)});
-    }
-  };
-
-  push_discoveries((queens | state.Rooks()) & rook_attacks, rook_attacks);
-  push_discoveries((queens | state.Bishops()) & bishop_attacks, bishop_attacks);
-}
-
-template <bool kAddChange>
-void ThreatAccumulatorChange::UpdateThreatsForSquares(
-    const BoardState& state, BitBoard updated_squares) {
-  BitBoard seen;
-  for (const Square square : updated_squares) {
-    const auto piece_type = state.GetPieceType(square);
-    if (piece_type == PieceType::kNone) {
-      UpdateDiscoveredThreats<kAddChange>(state, square, updated_squares);
-    } else {
-      UpdateThreatsForPiece<kAddChange>(
-          state, piece_type, state.GetPieceColor(square), square, seen);
-    }
-    seen |= BitBoard::FromSquare(square);
+  if (change.type != PsqtAccumulatorChange::kNormal) {
+    remove(change.sub_1);
+  }
+  remove(change.sub_0);
+  place(change.add_0);
+  if (change.type == PsqtAccumulatorChange::kCastle) {
+    place(change.add_1);
   }
 }
 
@@ -186,51 +239,6 @@ template void ThreatAccumulatorChange::UpdatePawnPairsForSquares<false>(
 template void ThreatAccumulatorChange::UpdatePawnPairsForSquares<true>(
     const BoardState& state, BitBoard updated_squares);
 
-template void ThreatAccumulatorChange::UpdateThreatsForPiece<false>(
-    const BoardState& state,
-    PieceType piece_type,
-    Color piece_color,
-    Square square,
-    BitBoard exclude);
-template void ThreatAccumulatorChange::UpdateThreatsForPiece<true>(
-    const BoardState& state,
-    PieceType piece_type,
-    Color piece_color,
-    Square square,
-    BitBoard exclude);
-template void ThreatAccumulatorChange::UpdateDiscoveredThreats<false>(
-    const BoardState& state, Square square, BitBoard exclude);
-template void ThreatAccumulatorChange::UpdateDiscoveredThreats<true>(
-    const BoardState& state, Square square, BitBoard exclude);
-template void ThreatAccumulatorChange::UpdateThreatsForSquares<false>(
-    const BoardState& state, BitBoard updated_squares);
-template void ThreatAccumulatorChange::UpdateThreatsForSquares<true>(
-    const BoardState& state, BitBoard updated_squares);
-
-std::pair<ThreatFeaturePolicy::Weight const*, bool>
-ThreatFeaturePolicy::FeatureRow(Color perspective,
-                                Square king_square,
-                                PieceType attacker,
-                                Color attacker_color,
-                                PieceType victim,
-                                Color victim_color,
-                                Square from,
-                                Square to) {
-  attacker_color = RelativeColor(attacker_color, perspective);
-  victim_color = RelativeColor(victim_color, perspective);
-
-  // Horizontal mirroring
-  const U8 square_flip =
-      (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
-  from = from ^ square_flip;
-  to = to ^ square_flip;
-
-  const auto [feature_idx, valid] = threats::GetThreatFeatureIndex(
-      attacker, attacker_color, victim, victim_color, from, to);
-  const auto row = arch::kPawnPairFeatureCount + feature_idx;
-  return {network->threat_weights[row].as_array().data(), valid};
-}
-
 ThreatFeaturePolicy::Weight const* ThreatFeaturePolicy::PawnPairRow(
     Color perspective,
     Square king_square,
@@ -255,17 +263,16 @@ void ThreatPerspectiveAccumulator::ApplyChange(
   std::array<Weight const*, kMaxRows> sub_rows;
   U16 num_sub = 0;
 
+  const U8 square_flip =
+      ThreatFeaturePolicy::SquareFlip(perspective, king_square);
+  const U8 pair_flip = ThreatFeaturePolicy::PairFlip(perspective);
+
   for (int i = 0; i < change.threat_adds.Size(); ++i) {
     const auto& add = change.threat_adds[i];
     const auto [row, valid] =
-        ThreatFeaturePolicy::FeatureRow(perspective,
-                                        king_square,
-                                        add.attacker_type,
-                                        add.attacker_color,
-                                        add.victim_type,
-                                        add.victim_color,
-                                        add.attacker_square,
-                                        add.victim_square);
+        ThreatFeaturePolicy::FeatureRow(add.pair ^ pair_flip,
+                                        add.attacker_square ^ square_flip,
+                                        add.victim_square ^ square_flip);
     __builtin_prefetch(row);
     add_rows[num_add] = row;
     num_add += valid;
@@ -273,14 +280,9 @@ void ThreatPerspectiveAccumulator::ApplyChange(
   for (int i = 0; i < change.threat_subs.Size(); ++i) {
     const auto& sub = change.threat_subs[i];
     const auto [row, valid] =
-        ThreatFeaturePolicy::FeatureRow(perspective,
-                                        king_square,
-                                        sub.attacker_type,
-                                        sub.attacker_color,
-                                        sub.victim_type,
-                                        sub.victim_color,
-                                        sub.attacker_square,
-                                        sub.victim_square);
+        ThreatFeaturePolicy::FeatureRow(sub.pair ^ pair_flip,
+                                        sub.attacker_square ^ square_flip,
+                                        sub.victim_square ^ square_flip);
     __builtin_prefetch(row);
     sub_rows[num_sub] = row;
     num_sub += valid;

@@ -110,7 +110,7 @@ struct BoardState {
         checkers(0ULL),
         pinned({}),
         half_moves(0) {
-    piece_on_square.fill(PieceType::kNone);
+    mailbox.fill(kEmptySquare);
   }
 
   template <bool update_key = true>
@@ -118,7 +118,7 @@ struct BoardState {
     // Add the piece to the bitboards and mailbox
     piece_bbs[piece_type].SetBit(square);
     side_bbs[color].SetBit(square);
-    piece_on_square[square] = piece_type;
+    mailbox[square] = ToMailbox(piece_type, color);
 
     // Insert the piece to the hash
     if constexpr (update_key) {
@@ -146,7 +146,7 @@ struct BoardState {
 
   template <bool update_key = true>
   void RemovePiece(Square square, Color color) {
-    auto &piece_type = piece_on_square[square];
+    const auto piece_type = GetPieceType(square);
 
     // Remove the piece from the hash
     if constexpr (update_key) {
@@ -176,17 +176,15 @@ struct BoardState {
     piece_bbs[piece_type].ClearBit(square);
     side_bbs[color].ClearBit(square);
 
-    piece_type = PieceType::kNone;
+    mailbox[square] = kEmptySquare;
   }
 
   [[nodiscard]] constexpr Color GetPieceColor(U8 square) const {
-    if (side_bbs[Color::kWhite].IsSet(square)) return Color::kWhite;
-    if (side_bbs[Color::kBlack].IsSet(square)) return Color::kBlack;
-    return Color::kNoColor;
+    return static_cast<Color>(mailbox[square] >> kMailboxColorShift);
   }
 
   [[nodiscard]] constexpr PieceType GetPieceType(U8 square) const {
-    return piece_on_square[square];
+    return static_cast<PieceType>(mailbox[square] & kMailboxTypeMask);
   }
 
   [[nodiscard]] constexpr int GetPieceAndColor(U8 square) const {
@@ -275,7 +273,17 @@ struct BoardState {
 
   std::array<BitBoard, kNumPieceTypes> piece_bbs;
   std::array<BitBoard, 2> side_bbs;
-  std::array<PieceType, kSquareCount> piece_on_square;
+  static constexpr int kMailboxColorShift = 3;
+  static constexpr U8 kMailboxTypeMask = (1 << kMailboxColorShift) - 1;
+
+  static constexpr U8 ToMailbox(PieceType piece_type, Color color) {
+    return piece_type | color << kMailboxColorShift;
+  }
+
+  static constexpr U8 kEmptySquare =
+      PieceType::kNone | kNoColor << kMailboxColorShift;
+
+  std::array<U8, kSquareCount> mailbox;
   Color turn;
   Square en_passant;
   U16 fifty_moves_clock;
