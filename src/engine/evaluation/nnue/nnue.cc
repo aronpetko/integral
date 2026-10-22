@@ -1,5 +1,10 @@
 #include "nnue.h"
 
+#include <mutex>
+#include <vector>
+
+#include "../../../utils/hash_table.h"
+
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
 #include "accumulator.h"
@@ -22,6 +27,8 @@ INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
+static Network *embedded_network = nullptr;
+
 [[nodiscard]] I32 CReLU(I16 value) {
   return std::clamp<I32>(value, 0, arch::kFtQuantization);
 }
@@ -38,7 +45,33 @@ void LoadFromIncBin() {
     std::abort();
   }
   // Load the preprocessed network from embedded binary data
-  network = reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
+  embedded_network =
+      reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
+  network = embedded_network;
+}
+
+void UseNetworkForNode(std::optional<std::size_t> node) {
+  if (!node) {
+    network = embedded_network;
+    return;
+  }
+
+  static std::mutex mutex;
+  static std::vector<Network *> replicas;
+
+  std::lock_guard lock(mutex);
+  if (*node >= replicas.size()) {
+    replicas.resize(*node + 1, nullptr);
+  }
+
+  auto &replica = replicas[*node];
+  if (!replica) {
+    replica = static_cast<Network *>(
+        AlignedAlloc(alignof(Network), sizeof(Network)));
+    std::memcpy(replica, embedded_network, sizeof(Network));
+  }
+
+  network = replica;
 }
 
 Score Evaluate(Board &board) {

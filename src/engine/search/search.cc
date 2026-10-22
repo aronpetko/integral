@@ -1,10 +1,13 @@
 #include "search.h"
 
 #include <algorithm>
+#include <mutex>
 #include <numeric>
 #include <thread>
 
 #include "../../data_gen/data_gen.h"
+#include "../../utils/numa.h"
+#include "../evaluation/nnue/nnue.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -840,7 +843,9 @@ Score Searcher::PVSearch(Thread &thread,
           stack->history_score = history.GetMoveScore(state, move, stack);
 
           const int probcut_depth = depth - 3;
-          thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
+          const auto searched =
+              thread.nodes_searched.load(std::memory_order_relaxed);
+          thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
 
           board.MakeMove(move);
 
@@ -1088,8 +1093,10 @@ Score Searcher::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched =
-        thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
+
+    const auto searched = thread.nodes_searched.load(std::memory_order_relaxed);
+    thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
+    const U32 prev_nodes_searched = searched;
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -1422,8 +1429,6 @@ void Searcher::SetThreadCount(U16 count) {
   stop_barrier_.Reset(count + 1);
   start_barrier_.Reset(count + 1);
 
-  correction_history_ = std::make_unique<history::CorrectionHistory>(count);
-
   raw_threads_.clear();
   raw_threads_.shrink_to_fit();
   raw_threads_.reserve(count);
@@ -1431,21 +1436,60 @@ void Searcher::SetThreadCount(U16 count) {
   threads_.shrink_to_fit();
   threads_.resize(count);
 
+  const auto affinities = numa::GetThreadAffinities(count);
+
+  correction_histories_.clear();
+  std::mutex correction_history_mutex;
+
   for (U16 i = 0; i < count; i++) {
-    raw_threads_.emplace_back([this, i]() {
-      threads_[i] = std::make_unique<Thread>(i, correction_history_.get());
-      // Touch memory to enforce first-touch
-      auto &thread = *threads_[i];
-      thread.stack.Reset();
-      thread.history.Clear();
-      thread.scores.fill(kScoreNone);
+    raw_threads_.emplace_back(
+        [this, i, &affinities, &correction_history_mutex]() {
+          const auto &affinity = affinities[i];
+          numa::PinThread(affinity);
+          nnue::UseNetworkForNode(affinity.node);
 
-      thread_init_barrier_.ArriveAndWait();
+          // Correction history is allocated to be shared once per NUMA node and
+          // across all threads pinned to that node
+          history::CorrectionHistory *correction_history;
+          {
+            std::lock_guard lock(correction_history_mutex);
+            const auto node = affinity.node.value_or(0);
+            if (node >= correction_histories_.size()) {
+              correction_histories_.resize(node + 1);
+            }
 
-      Run(*threads_[i]);
-    });
+            auto &shared = correction_histories_[node];
+            if (!shared) {
+              const auto node_threads = std::ranges::count(
+                  affinities, affinity.node, &numa::Affinity::node);
+              shared = std::make_unique<history::CorrectionHistory>(
+                  static_cast<U16>(node_threads));
+            }
+            correction_history = shared.get();
+          }
+
+          threads_[i] = std::make_unique<Thread>(i, correction_history);
+
+          auto &thread = *threads_[i];
+          thread.stack.Reset();
+          thread.history.Clear();
+          thread.scores.fill(kScoreNone);
+
+          thread_init_barrier_.ArriveAndWait();
+
+          Run(*threads_[i]);
+        });
   }
   thread_init_barrier_.ArriveAndWait();
+
+  for (std::size_t node = 0; node < correction_histories_.size(); ++node) {
+    const auto node_threads = std::ranges::count(
+        affinities, std::optional(node), &numa::Affinity::node);
+    if (node_threads > 0) {
+      fmt::println(
+          "info string {} threads pinned to NUMA node {}", node_threads, node);
+    }
+  }
 }
 
 void Searcher::Start(TimeConfig time_config) {
@@ -1512,8 +1556,10 @@ void Searcher::NewGame(bool clear_tables) {
   }
 
   // Shared between every thread, so it's cleared once here
-  if (correction_history_) {
-    correction_history_->Clear();
+  for (auto &correction_history : correction_histories_) {
+    if (correction_history) {
+      correction_history->Clear();
+    }
   }
 
   for (auto &thread : threads_) {
