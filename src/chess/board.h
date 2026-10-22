@@ -187,6 +187,11 @@ struct BoardState {
     return static_cast<PieceType>(mailbox[square] & kMailboxTypeMask);
   }
 
+  [[nodiscard]] static constexpr U8 ToMailbox(PieceType piece_type,
+                                              Color color) {
+    return piece_type | color << kMailboxColorShift;
+  }
+
   [[nodiscard]] constexpr int GetPieceAndColor(U8 square) const {
     const auto piece = GetPieceType(square);
     return piece != PieceType::kNone ? piece * 2 + GetPieceColor(square) : -1;
@@ -275,11 +280,6 @@ struct BoardState {
   std::array<BitBoard, 2> side_bbs;
   static constexpr int kMailboxColorShift = 3;
   static constexpr U8 kMailboxTypeMask = (1 << kMailboxColorShift) - 1;
-
-  static constexpr U8 ToMailbox(PieceType piece_type, Color color) {
-    return piece_type | color << kMailboxColorShift;
-  }
-
   static constexpr U8 kEmptySquare =
       PieceType::kNone | kNoColor << kMailboxColorShift;
 
