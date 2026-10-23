@@ -571,6 +571,15 @@ void Board::CalculateThreats() {
                    state_.threatened_by[kBishop] | state_.threatened_by[kRook] |
                    state_.threatened_by[kQueen] | state_.threatened_by[kKing];
 
+  const Color us = state_.turn;
+  const BitBoard threatened = state_.threats & state_.Occupied(us);
+  state_.threatened_piece_types =
+      (threatened & state_.Pawns(us)) != 0 |
+      ((threatened & state_.Knights(us)) != 0) << 1 |
+      ((threatened & state_.Bishops(us)) != 0) << 2 |
+      ((threatened & state_.Rooks(us)) != 0) << 3 |
+      ((threatened & state_.Queens(us)) != 0) << 4;
+
   CalculateKingThreats();
 }
 

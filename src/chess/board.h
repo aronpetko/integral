@@ -289,6 +289,7 @@ struct BoardState {
   U16 fifty_moves_clock;
   U16 half_moves;
   CastleRights castle_rights;
+  U8 threatened_piece_types;
   U64 zobrist_key, pawn_key, minor_key, major_key;
   std::array<U64, 2> non_pawn_keys;
   BitBoard checkers;

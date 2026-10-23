@@ -45,21 +45,11 @@ class QuietHistory {
 
  private:
   [[nodiscard]] static U8 ThreatIndex(const BoardState &state, Move move) {
-    const Color us = state.turn;
-    const BitBoard threatened = state.threats & state.Occupied(us);
-
-    // Which of our piece types are under attack
-    const U8 type_mask = (threatened & state.Pawns(us)) != 0 |
-                         ((threatened & state.Knights(us)) != 0) << 1 |
-                         ((threatened & state.Bishops(us)) != 0) << 2 |
-                         ((threatened & state.Rooks(us)) != 0) << 3 |
-                         ((threatened & state.Queens(us)) != 0) << 4;
-
     // Whether the move leaves or enters an attacked square
     const U8 move_mask = state.threats.IsSet(move.GetFrom()) << 1 |
                          state.threats.IsSet(move.GetTo());
 
-    return type_mask << 2 | move_mask;
+    return state.threatened_piece_types << 2 | move_mask;
   }
 
   static constexpr std::size_t kNumThreatBuckets = 128;
