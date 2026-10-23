@@ -981,9 +981,10 @@ Score Searcher::PVSearch(Thread &thread,
           lmr_depth <= kBadNoisyFutPruneDepth) {
         const auto captured =
             move.IsEnPassant(state) ? kPawn : state.GetPieceType(move.GetTo());
+        const auto captured_piece_value = *eval::kSeePieceScores[captured];
         const int futility_score =
             stack->static_eval + kBadNoisyFutMarginBase +
-            *eval::kSeePieceScores[captured] +
+            captured_piece_value * eval::StaticExchange(move, 0, state) +
             kBadNoisyFutMarginMult * lmr_fractional_depth / kLmrDepthScale;
         if (futility_score <= alpha) {
           continue;
