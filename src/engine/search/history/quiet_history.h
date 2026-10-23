@@ -40,16 +40,11 @@ class QuietHistory {
     }
   }
 
-  [[nodiscard]] int GetScore(const BoardState &state,
+  [[nodiscard]] I16 GetScore(const BoardState &state,
                              Move move,
                              BitBoard threats) const {
     return table_[state.turn][move.GetFrom()][move.GetTo()]
                  [threats.IsSet(move.GetFrom())][threats.IsSet(move.GetTo())];
-  }
-
- private:
-  [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
-    return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());
   }
 
  private:
