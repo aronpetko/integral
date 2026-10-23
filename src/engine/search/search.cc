@@ -954,7 +954,8 @@ Score Searcher::PVSearch(Thread &thread,
       // Late Move Pruning: Skip (late) quiet moves if we've already searched
       // the most promising moves
       const bool lmp_improving = improving || stack->eval >= beta;
-      const int lmp_threshold = (kLmpBase + kLmpDepthMult * depth * depth) /
+      const int lmp_threshold = (kLmpBase + kLmpDepthMult * depth * depth +
+                                 stack->history_score / 1024) /
                                 (lmp_improving ? kLmpImprovingDiv : kLmpDiv);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();
