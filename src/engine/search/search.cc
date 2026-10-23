@@ -694,7 +694,7 @@ Score Searcher::PVSearch(Thread &thread,
                                       -kEvalHistUpdateMin,
                                       kEvalHistUpdateMax);
     history.quiet_history->UpdateMoveScore(
-        FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
+        board.GetStateHistory().Back(), prev_stack->move, bonus);
     history.pawn_history->UpdateMoveScore(
         board.GetStateHistory().Back(), prev_stack->move, bonus);
   }
@@ -1029,8 +1029,7 @@ Score Searcher::PVSearch(Thread &thread,
         if (tt_move.IsCapture(state)) {
           return history.capture_history->GetScore(state, tt_move);
         } else {
-          return history.quiet_history->GetScore(
-                     state, tt_move, state.threats) +
+          return history.quiet_history->GetScore(state, tt_move) +
                  history.continuation_history->GetScore(
                      state, tt_move, stack - 1) +
                  history.continuation_history->GetScore(
@@ -1197,7 +1196,7 @@ Score Searcher::PVSearch(Thread &thread,
                         : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
         const int quiet_history_score = history.quiet_history->GetScore(
-            board.GetStateHistory().Back(), move, stack->threats);
+            board.GetStateHistory().Back(), move);
         history.continuation_history->UpdateMoveScore(
             board.GetStateHistory().Back(),
             move,
@@ -1264,7 +1263,7 @@ Score Searcher::PVSearch(Thread &thread,
           if (is_quiet) {
             stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
+                state, stack, history_depth, quiets);
             history.pawn_history->UpdateScore(
                 state, stack, history_depth, quiets);
             history.continuation_history->UpdateScore(
@@ -1318,7 +1317,7 @@ Score Searcher::PVSearch(Thread &thread,
         kPcmPawnHistoryWeight * history_bonus / kPcmHistoryBonusScale;
     const auto past_turn = FlipColor(state.turn);
     history.quiet_history->UpdateMoveScore(
-        past_turn, prev_stack->move, prev_stack->threats, quiet_history_bonus);
+        board.GetStateHistory().Back(), prev_stack->move, quiet_history_bonus);
     history.pawn_history->UpdateMoveScore(
         board.GetStateHistory().Back(), prev_stack->move, pawn_history_bonus);
   }

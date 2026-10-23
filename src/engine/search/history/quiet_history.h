@@ -15,43 +15,54 @@ class QuietHistory {
     table_.fill(I16{0});
   }
 
-  void UpdateMoveScore(Color turn, Move move, BitBoard threats, I16 bonus) {
+  void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
     // Apply a linear dampening to the bonus as the depth increases
-    I16 &score =
-        table_[ThreatIndex(threats)][turn][move.GetFrom()][move.GetTo()];
+    I16 &score = table_[ThreatIndex(state, move)][state.turn][move.GetFrom()]
+                       [move.GetTo()];
     score += ScaleBonus(score, bonus);
   }
 
   void UpdateScore(const BoardState &state,
                    StackEntry *stack,
                    I16 depth,
-                   BitBoard threats,
                    MoveList &quiets) {
     const I16 bonus = HistoryBonus(depth);
 
     // Apply a linear dampening to the bonus as the depth increases
-    UpdateMoveScore(state.turn, stack->move, threats, bonus);
+    UpdateMoveScore(state, stack->move, bonus);
 
     // Lower the score of the quiet moves that failed to raise alpha (gravity)
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
-      UpdateMoveScore(state.turn, quiets[i], threats, penalty);
+      UpdateMoveScore(state, quiets[i], penalty);
     }
   }
 
-  [[nodiscard]] int GetScore(const BoardState &state,
-                             Move move,
-                             BitBoard threats) const {
-    return table_[ThreatIndex(threats)][state.turn][move.GetFrom()]
+  [[nodiscard]] int GetScore(const BoardState &state, Move move) const {
+    return table_[ThreatIndex(state, move)][state.turn][move.GetFrom()]
                  [move.GetTo()];
   }
 
  private:
-  static constexpr std::size_t kNumThreatBuckets = 4096;
+  [[nodiscard]] static U8 ThreatIndex(const BoardState &state, Move move) {
+    const Color us = state.turn;
+    const BitBoard threatened = state.threats & state.Occupied(us);
 
-  [[nodiscard]] U16 ThreatIndex(BitBoard threats) const {
-    return threats.AsU64() & (kNumThreatBuckets - 1);
+    // Which of our piece types are under attack
+    const U8 type_mask = (threatened & state.Pawns(us)) != 0 |
+                         ((threatened & state.Knights(us)) != 0) << 1 |
+                         ((threatened & state.Bishops(us)) != 0) << 2 |
+                         ((threatened & state.Rooks(us)) != 0) << 3 |
+                         ((threatened & state.Queens(us)) != 0) << 4;
+
+    // Whether the move leaves or enters an attacked square
+    const U8 move_mask = state.threats.IsSet(move.GetFrom()) << 1 |
+                         state.threats.IsSet(move.GetTo());
+
+    return type_mask << 2 | move_mask;
   }
+
+  static constexpr std::size_t kNumThreatBuckets = 128;
 
  private:
   MultiArray<I16, kNumThreatBuckets, kNumColors, kSquareCount, kSquareCount>

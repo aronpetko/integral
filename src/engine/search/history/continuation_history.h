@@ -29,16 +29,21 @@ class ContinuationHistory {
                    MoveList &quiets,
                    const std::unique_ptr<QuietHistory> &quiet_history) {
     const int bonus = HistoryBonus(depth);
-    int quiet_history_score =
-        quiet_history->GetScore(state, stack->move, stack->threats);
-    UpdateMoveScore(state, stack->move, bonus, stack, quiet_history_score);
+    UpdateMoveScore(state,
+                    stack->move,
+                    bonus,
+                    stack,
+                    quiet_history->GetScore(state, stack->move));
 
     // Lower the score of the quiet moves that failed to raise alpha
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      quiet_history_score = quiet_history->GetScore(state, quiets[i], stack->threats);
-      UpdateMoveScore(state, quiets[i], penalty, stack, quiet_history_score);
+      UpdateMoveScore(state,
+                      quiets[i],
+                      penalty,
+                      stack,
+                      quiet_history->GetScore(state, quiets[i]));
     }
   }
 

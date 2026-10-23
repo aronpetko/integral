@@ -51,8 +51,7 @@ class History {
                                       Move move,
                                       StackEntry *stack) const {
     I32 move_score = 0;
-    move_score += quiet_history->GetScore(state, move, stack->threats) *
-                  kQuietHistoryWeight;
+    move_score += quiet_history->GetScore(state, move) * kQuietHistoryWeight;
     move_score += continuation_history->GetScore(state, move, stack - 1) *
                   kFirstContinuationHistoryWeight;
     move_score += continuation_history->GetScore(state, move, stack - 2) *
