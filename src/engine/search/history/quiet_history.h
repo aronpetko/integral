@@ -18,8 +18,7 @@ class QuietHistory {
   void UpdateMoveScore(Color turn, Move move, BitBoard threats, I16 bonus) {
     // Apply a linear dampening to the bonus as the depth increases
     I16 &score =
-        table_[turn][move.GetFrom()][move.GetTo()]
-              [threats.IsSet(move.GetFrom())][threats.IsSet(move.GetTo())];
+        table_[ThreatIndex(threats)][turn][move.GetFrom()][move.GetTo()];
     score += ScaleBonus(score, bonus);
   }
 
@@ -43,17 +42,20 @@ class QuietHistory {
   [[nodiscard]] int GetScore(const BoardState &state,
                              Move move,
                              BitBoard threats) const {
-    return table_[state.turn][move.GetFrom()][move.GetTo()]
-                 [threats.IsSet(move.GetFrom())][threats.IsSet(move.GetTo())];
+    return table_[ThreatIndex(threats)][state.turn][move.GetFrom()]
+                 [move.GetTo()];
   }
 
  private:
-  [[nodiscard]] int ThreatIndex(Move move, BitBoard threats) const {
-    return 2 * threats.IsSet(move.GetFrom()) + threats.IsSet(move.GetTo());
+  static constexpr std::size_t kNumThreatBuckets = 4096;
+
+  [[nodiscard]] U16 ThreatIndex(BitBoard threats) const {
+    return threats.AsU64() & (kNumThreatBuckets - 1);
   }
 
  private:
-  MultiArray<I16, kNumColors, kSquareCount, kSquareCount, 2, 2> table_;
+  MultiArray<I16, kNumThreatBuckets, kNumColors, kSquareCount, kSquareCount>
+      table_;
 };
 
 }  // namespace search::history
