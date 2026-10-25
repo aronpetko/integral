@@ -1199,13 +1199,17 @@ Score Searcher::PVSearch(Thread &thread,
     }
     // Perform a full depth search with a null window when LMR is skipped
     else if (!in_pv_node || moves_seen >= 1) {
-      const int null_window_depth = std::max(new_depth - (reduction > 5000), 0);
       score = -PVSearch<NodeType::kNonPV>(
-          thread, null_window_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
+          thread, new_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
     }
 
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (moves_seen == 0 || score > alpha)) {
+      // Extend the TT move if we are about to fall into quiescent search
+      if (move == tt_move) {
+        new_depth = std::max(new_depth, 1);
+      }
+
       score = -PVSearch<NodeType::kPV>(
           thread, new_depth, -beta, -alpha, stack + 1, false);
     }
