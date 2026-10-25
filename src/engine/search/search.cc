@@ -1199,7 +1199,7 @@ Score Searcher::PVSearch(Thread &thread,
     }
     // Perform a full depth search with a null window when LMR is skipped
     else if (!in_pv_node || moves_seen >= 1) {
-      const int null_window_depth = new_depth - (reduction > 5000);
+      const int null_window_depth = std::max(new_depth - (reduction > 5000), 0);
       score = -PVSearch<NodeType::kNonPV>(
           thread, null_window_depth, -alpha - 1, -alpha, stack + 1, !cut_node);
     }
