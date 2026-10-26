@@ -3,10 +3,8 @@
 namespace nnue {
 
 void BucketCacheEntry::Reset() {
-  accumulator.psqt_perspectives[Color::kWhite].Reset();
-  accumulator.psqt_perspectives[Color::kBlack].Reset();
-  accumulator.threat_perspectives[Color::kWhite].Reset();
-  accumulator.threat_perspectives[Color::kBlack].Reset();
+  psqt_perspectives[Color::kWhite].Reset();
+  psqt_perspectives[Color::kBlack].Reset();
   piece_bbs = {};
   side_bbs = {};
 }
@@ -16,19 +14,17 @@ void Accumulator::SetFromState(const BoardState& state) {
   stack_[head_idx_].previous_state = nullptr;
   for (const Color color : {Color::kBlack, Color::kWhite}) {
     auto& accumulator = stack_[head_idx_];
-    RefreshPerspective(accumulator, state, color, true);
+    const auto& psqt = RefreshBucketCache(state, color, true);
     accumulator.updated[color] = true;
     accumulator.kings[color] = state.King(color).GetLsb();
     accumulator.threat_perspectives[color].Refresh(
-        state, color, accumulator.kings[color]);
+        psqt, state, color, accumulator.kings[color]);
     accumulator.threat_updated_squares = 0;
   }
 }
 
-void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
-                                     const BoardState& __restrict__ state,
-                                     Color perspective,
-                                     bool reset) {
+const PsqtPerspectiveAccumulator& Accumulator::RefreshBucketCache(
+    const BoardState& state, Color perspective, bool reset) {
   const auto king_square = Square(state.King(perspective).GetLsb());
   const auto king_bucket = GetKingBucket(king_square, perspective);
   const auto mirrored = king_square.File() >= kFileE;
@@ -45,8 +41,7 @@ void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
   std::array<I16 const*, 32> subs;
   int num_subs = 0;
 
-  auto& psqt_perspective_accumulator =
-      cached.accumulator.psqt_perspectives[perspective];
+  auto& psqt_perspective_accumulator = cached.psqt_perspectives[perspective];
 
   for (const Color color : {Color::kBlack, Color::kWhite}) {
     for (int piece = PieceType::kPawn; piece <= PieceType::kKing; piece++) {
@@ -86,8 +81,7 @@ void Accumulator::RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
   cached.side_bbs[perspective] = state.side_bbs;
   cached.piece_bbs[perspective] = state.piece_bbs;
 
-  accumulator.psqt_perspectives[perspective] =
-      cached.accumulator.psqt_perspectives[perspective];
+  return psqt_perspective_accumulator;
 }
 
 void Accumulator::PushChanges(const BoardState& previous_state,
@@ -153,22 +147,13 @@ void Accumulator::ApplyChanges(const BoardState& current_state) {
       const auto clean_king = clean_accumulator.kings[perspective];
       const auto dirty_king = dirty_accumulator.kings[perspective];
 
-      // If the accumulator needs a refresh, we skip applying updates and just
-      // refresh it
-      if (NeedRefresh(perspective, clean_king, dirty_king)) {
-        RefreshPerspective(dirty_accumulator, dirty_state, perspective);
-      } else {
-        dirty_accumulator.psqt_perspectives[perspective].ApplyChange(
-            clean_accumulator.psqt_perspectives[perspective],
-            dirty_accumulator.psqt_change,
-            perspective,
-            dirty_accumulator.kings[perspective]);
-      }
-
       // If king crosses the E-file, refresh the threat features
       if (NeedThreatRefresh(clean_king, dirty_king)) {
         dirty_accumulator.threat_perspectives[perspective].Refresh(
-            dirty_state, perspective, dirty_king);
+            RefreshBucketCache(dirty_state, perspective),
+            dirty_state,
+            perspective,
+            dirty_king);
       } else {
         // Accumulate the changes in threats only once per "move", not per
         // perspective
@@ -182,9 +167,41 @@ void Accumulator::ApplyChanges(const BoardState& current_state) {
           threat_change.UpdatePawnPairsForSquares<true>(
               dirty_state, dirty_accumulator.threat_updated_squares);
         }
+
+        std::array<I16 const*, 2> psqt_adds, psqt_subs;
+        int num_psqt_adds = 0, num_psqt_subs = 0;
+        if (NeedRefresh(perspective, clean_king, dirty_king)) {
+          psqt_subs[num_psqt_subs++] =
+              &RefreshBucketCache(clean_state, perspective)[0];
+          psqt_adds[num_psqt_adds++] =
+              &RefreshBucketCache(dirty_state, perspective)[0];
+        } else {
+          const auto& change = dirty_accumulator.psqt_change;
+          const auto row = [&](const FeatureData& feature) {
+            return PsqtFeaturePolicy::FeatureRow(feature.square,
+                                                 dirty_king,
+                                                 feature.piece,
+                                                 feature.color,
+                                                 perspective)
+                .data();
+          };
+          psqt_adds[num_psqt_adds++] = row(change.add_0);
+          psqt_subs[num_psqt_subs++] = row(change.sub_0);
+          if (change.type != PsqtAccumulatorChange::kNormal) {
+            psqt_subs[num_psqt_subs++] = row(change.sub_1);
+            if (change.type == PsqtAccumulatorChange::kCastle) {
+              psqt_adds[num_psqt_adds++] = row(change.add_1);
+            }
+          }
+        }
+
         dirty_accumulator.threat_perspectives[perspective].ApplyChange(
             clean_accumulator.threat_perspectives[perspective],
             threat_change,
+            psqt_adds.data(),
+            num_psqt_adds,
+            psqt_subs.data(),
+            num_psqt_subs,
             perspective,
             dirty_king);
       }

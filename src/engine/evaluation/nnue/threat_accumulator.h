@@ -134,8 +134,26 @@ class ThreatPerspectiveAccumulator
  public:
   void ApplyChange(const ThreatPerspectiveAccumulator& previous,
                    const ThreatAccumulatorChange& change,
+                   I16 const* const* psqt_adds,
+                   int num_psqt_adds,
+                   I16 const* const* psqt_subs,
+                   int num_psqt_subs,
                    Color perspective,
                    Square king_square);
+
+  void Refresh(const PsqtPerspectiveAccumulator& psqt,
+               const BoardState& state,
+               Color perspective,
+               Square king_square) {
+    Weight const* rows[512];
+    int num_rows = 0;
+    ThreatFeaturePolicy::ForEachActiveFeature(
+        state, perspective, king_square, [&](Weight const* row, bool valid) {
+          rows[num_rows] = row;
+          num_rows += valid;
+        });
+    ApplyDeltas(&psqt[0], rows, num_rows, nullptr, 0, nullptr, 0, nullptr, 0);
+  }
 };
 
 }  // namespace nnue
