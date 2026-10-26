@@ -10,6 +10,9 @@ include(CheckCXXCompilerFlag)
 include(CheckCXXSourceRuns)
 include(CheckIPOSupported)
 
+# For clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Build options for different architectures
 set(BUILD_NATIVE ON)
 option(BUILD_NATIVE "Build with native optimizations" ON)
