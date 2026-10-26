@@ -1206,11 +1206,7 @@ Score Searcher::PVSearch(Thread &thread,
     // Perform a full window search on this move if it's known to be good
     if (in_pv_node && (moves_seen == 0 || score > alpha)) {
       // Extend the TT move if we are about to fall into quiescent search
-      if (move == tt_move &&
-          ((tt_entry->score != kScoreNone &&
-            std::abs(tt_entry->score) > kTBWinInMaxPlyScore &&
-            tt_entry->depth > 0) ||
-           (tt_entry->depth > 1 && thread.root_depth > 8))) {
+      if (move == tt_move && in_pv_node && tt_entry->depth >= 2) {
         new_depth = std::max(new_depth, 1);
       }
 
