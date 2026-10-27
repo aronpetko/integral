@@ -1328,7 +1328,7 @@ Score Searcher::PVSearch(Thread &thread,
     const auto one_ply_conthist_bonus =
         512 * history_bonus / kPcmHistoryBonusScale;
     const int quiet_history_score = history.quiet_history->GetScore(
-        board.GetStateHistory().Back(), prev_stack->move, stack->threats);
+        board.GetStateHistory().Back(), prev_stack->move, prev_stack->threats);
     history.continuation_history->UpdateMoveScore(
         board.GetStateHistory().Back(),
         prev_stack->move,
