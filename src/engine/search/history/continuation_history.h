@@ -37,7 +37,8 @@ class ContinuationHistory {
     const I16 penalty = HistoryPenalty(depth);
     for (int i = 0; i < quiets.Size(); i++) {
       // Apply a linear dampening to the penalty as the depth increases
-      quiet_history_score = quiet_history->GetScore(state, quiets[i], stack->threats);
+      quiet_history_score =
+          quiet_history->GetScore(state, quiets[i], stack->threats);
       UpdateMoveScore(state, quiets[i], penalty, stack, quiet_history_score);
     }
   }
@@ -49,10 +50,11 @@ class ContinuationHistory {
                        int quiet_history_score) {
     const auto total_score =
         GetScore(state, move, stack - 1) + GetScore(state, move, stack - 2) +
-        GetScore(state, move, stack - 4) + GetScore(state, move, stack - 6) +
-        quiet_history_score / 2;
+        GetScore(state, move, stack - 3) + GetScore(state, move, stack - 4) +
+        GetScore(state, move, stack - 6) + quiet_history_score / 2;
 
     UpdateIndividualScore(state, move, bonus, total_score, stack - 1);
+    UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 4);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 6);
