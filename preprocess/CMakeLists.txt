@@ -43,3 +43,8 @@ include_directories(../third-party/fmt/include)
 add_definitions(-DFMT_HEADER_ONLY)
 
 add_executable(preprocess net_processing.cc)
+
+# Enable static linking on Windows
+if (WIN32)
+    target_link_options(preprocess PRIVATE -static)
+endif ()
