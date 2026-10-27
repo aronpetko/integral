@@ -1311,16 +1311,30 @@ Score Searcher::PVSearch(Thread &thread,
   if (!best_move && prev_stack->move && !prev_stack->capture_move &&
       prev_stack->move.GetType() != MoveType::kPromotion) {
     constexpr int kPcmHistoryBonusScale = 1024;
+
     const auto history_bonus = history::HistoryBonus(depth);
+    const auto past_turn = FlipColor(state.turn);
+
     const auto quiet_history_bonus =
         kPcmQuietHistoryWeight * history_bonus / kPcmHistoryBonusScale;
-    const auto pawn_history_bonus =
-        kPcmPawnHistoryWeight * history_bonus / kPcmHistoryBonusScale;
-    const auto past_turn = FlipColor(state.turn);
     history.quiet_history->UpdateMoveScore(
         past_turn, prev_stack->move, prev_stack->threats, quiet_history_bonus);
+
+    const auto pawn_history_bonus =
+        kPcmPawnHistoryWeight * history_bonus / kPcmHistoryBonusScale;
     history.pawn_history->UpdateMoveScore(
         board.GetStateHistory().Back(), prev_stack->move, pawn_history_bonus);
+
+    const auto one_ply_conthist_bonus =
+        512 * history_bonus / kPcmHistoryBonusScale;
+    const int quiet_history_score = history.quiet_history->GetScore(
+        board.GetStateHistory().Back(), prev_stack->move, stack->threats);
+    history.continuation_history->UpdateMoveScore(
+        board.GetStateHistory().Back(),
+        prev_stack->move,
+        one_ply_conthist_bonus,
+        prev_stack,
+        quiet_history_score);
   }
 
   if (syzygy::enabled) {
