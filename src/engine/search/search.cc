@@ -1145,7 +1145,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       // Reduce less if the static evaluation has been corrected a lot
-      reduction -= 2048 * stack->eval_complexity / 1024;
+      reduction -= 512 * stack->eval_complexity / 128;
 
       // Reduce less if this move is a killer move
       if (move == stack->killer_moves[0]) {
