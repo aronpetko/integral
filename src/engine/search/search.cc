@@ -314,8 +314,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   const int original_alpha = alpha;
 
   int moves_seen = 0;
-  Score best_score = kScoreNone;
-  Score raw_static_eval = kScoreNone;
+  Score best_score = kScoreNone, raw_static_eval = kScoreNone;
 
   if (!stack->in_check) {
     if (tt_static_eval != kScoreNone) {
@@ -325,6 +324,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
     }
 
     stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
+    stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
 
     if (tt_hit &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
@@ -370,8 +370,13 @@ Score Searcher::QuiescentSearch(Thread &thread,
       tt_entry->flag != TranspositionTableEntry::kUpperBound &&
       !tt_move.IsNoisy(state);
 
-  MovePicker move_picker(
-      MovePickerType::kQuiescence, board, tt_move, history, stack, 0, evasions);
+  MovePicker move_picker(MovePickerType::kQuiescence,
+                         board,
+                         tt_move,
+                         history,
+                         stack,
+                         256 * -stack->eval_complexity / 128,
+                         evasions);
   while (const auto move = move_picker.Next()) {
     // Stop searching since all the good noisy moves have been searched,
     // unless we need to find a quiet evasion
