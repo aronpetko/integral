@@ -55,7 +55,7 @@ class ContinuationHistory {
 
     UpdateIndividualScore(state, move, bonus, total_score, stack - 1);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
-    UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
+    UpdateIndividualScore(state, move, bonus, total_score, stack - 3);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 4);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 6);
   }
