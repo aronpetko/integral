@@ -266,6 +266,10 @@ ThreatFeaturePolicy::Weight const* ThreatFeaturePolicy::PawnPairRow(
 void ThreatPerspectiveAccumulator::ApplyChange(
     const ThreatPerspectiveAccumulator& previous,
     const ThreatAccumulatorChange& change,
+    I16 const* const* psqt_adds,
+    int num_psqt_adds,
+    I16 const* const* psqt_subs,
+    int num_psqt_subs,
     Color perspective,
     Square king_square) {
   constexpr int kMaxRows = ThreatAccumulatorChange::kMaxThreatRows +
@@ -315,7 +319,15 @@ void ThreatPerspectiveAccumulator::ApplyChange(
     sub_rows[num_sub++] = row;
   }
 
-  ApplyDeltas(previous, add_rows.data(), num_add, sub_rows.data(), num_sub);
+  ApplyDeltas(&previous[0],
+              add_rows.data(),
+              num_add,
+              sub_rows.data(),
+              num_sub,
+              psqt_adds,
+              num_psqt_adds,
+              psqt_subs,
+              num_psqt_subs);
 }
 
 }  // namespace nnue

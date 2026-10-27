@@ -106,8 +106,7 @@ Score Evaluate(Board &board) {
       const auto hmc = kHasHmc ? network->hmc_weights[hmc_bucket].data() : nullptr;
 
       const auto load_neurons = [&](int idx) {
-        auto value = simd::Load<I16>(&stm_accumulator.psqt[idx]) +
-                     simd::Load<I16>(&stm_accumulator.threat[idx]);
+        auto value = simd::Load<I16>(&stm_accumulator.threat[idx]);
         if constexpr (kHasHmc) {
           value = value + simd::Load<I16>(&hmc[idx]);
         }
@@ -293,11 +292,10 @@ Score Evaluate(Board &board) {
     const auto &stm_accumulator = accumulator[perspective];
     const I16 *hmc = network->hmc_weights[hmc_bucket].data();
     for (int i = 0; i < arch::kL1Size / 2; i++) {
-      const auto first_val = CReLU(static_cast<I16>(
-          stm_accumulator.psqt[i] + stm_accumulator.threat[i] + hmc[i]));
+      const auto first_val =
+          CReLU(static_cast<I16>(stm_accumulator.threat[i] + hmc[i]));
       const auto second_val =
-          CReLU(static_cast<I16>(stm_accumulator.psqt[i + arch::kL1Size / 2] +
-                                 stm_accumulator.threat[i + arch::kL1Size / 2] +
+          CReLU(static_cast<I16>(stm_accumulator.threat[i + arch::kL1Size / 2] +
                                  hmc[i + arch::kL1Size / 2]));
 
       const auto product = (first_val * second_val) >> 9;
