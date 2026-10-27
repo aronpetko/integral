@@ -91,6 +91,26 @@ class PerspectiveAccumulator {
                    int num_adds,
                    Weight const* const* subs,
                    int num_subs) {
+    ApplyDeltas(previous.values_.data(),
+                adds,
+                num_adds,
+                subs,
+                num_subs,
+                nullptr,
+                0,
+                nullptr,
+                0);
+  }
+
+  void ApplyDeltas(const Value* previous,
+                   Weight const* const* adds,
+                   int num_adds,
+                   Weight const* const* subs,
+                   int num_subs,
+                   I16 const* const* wide_adds,
+                   int num_wide_adds,
+                   I16 const* const* wide_subs,
+                   int num_wide_subs) {
     // We process the accumulation of size kWidth elements, in chunks of
     // kBlockVecs SIMD registers, to avoid unnecessary loads and stores
     // from register spills.
@@ -107,7 +127,21 @@ class PerspectiveAccumulator {
     for (int i = 0, K = 0; i < kBlockCount; ++i, K += kElementsPerBlock) {
       simd::Vepi16 vecs[kBlockVecs];
       for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
-        vecs[j] = simd::Load(&previous.values_[k]);
+        vecs[j] = simd::Load(&previous[k]);
+      }
+
+      for (int add_i = 0; add_i < num_wide_adds; ++add_i) {
+        const auto* feature = wide_adds[add_i];
+        for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+          vecs[j] = vecs[j] + simd::Load(&feature[k]);
+        }
+      }
+
+      for (int sub_i = 0; sub_i < num_wide_subs; ++sub_i) {
+        const auto* feature = wide_subs[sub_i];
+        for (int j = 0, k = K; j < kBlockVecs; ++j, k += kElementsPerVec) {
+          vecs[j] = vecs[j] - simd::Load(&feature[k]);
+        }
       }
 
       for (int add_i = 0; add_i < num_adds; ++add_i) {

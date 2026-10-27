@@ -119,4 +119,8 @@ fabric.properties
 # https://plugins.jetbrains.com/plugin/8053-azure-toolkit-for-intellij
 .idea/**/azureSettings.xml
 
+/build/
+/.zed/
+/.cache/
+
 # End of https://www.toptal.com/developers/gitignore/api/clion

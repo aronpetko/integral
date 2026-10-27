@@ -955,7 +955,7 @@ Score Searcher::PVSearch(Thread &thread,
       // the most promising moves
       const bool lmp_improving = improving || stack->eval >= beta;
       const int lmp_threshold = (kLmpBase + kLmpDepthMult * depth * depth +
-                                 stack->history_score / 1024) /
+                                 stack->history_score / 8) /
                                 (lmp_improving ? kLmpImprovingDiv : kLmpDiv);
       if (is_quiet && moves_seen >= lmp_threshold) {
         move_picker.SkipQuiets();

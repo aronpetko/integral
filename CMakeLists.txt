@@ -10,6 +10,9 @@ include(CheckCXXCompilerFlag)
 include(CheckCXXSourceRuns)
 include(CheckIPOSupported)
 
+# For clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Build options for different architectures
 set(BUILD_NATIVE ON)
 option(BUILD_NATIVE "Build with native optimizations" ON)
@@ -21,7 +24,7 @@ option(BUILD_SSE41_POPCNT "Build with SSE4.1 + POPCNT optimizations" OFF)
 option(BUILD_DEBUG "Build with debug information" OFF)
 
 # Allow user to specify EVALFILE through CMake
-set(NETWORK_NAME zapdos)
+set(NETWORK_NAME yveltal)
 set(EVALFILE "${EVALFILE}" CACHE STRING "Path to the evaluation (.nnue) file")
 set(NNUE_URL "https://github.com/aronpetko/integral-networks/releases/download/${NETWORK_NAME}/${NETWORK_NAME}.nnue")
 set(NNUE_PATH "${PROJECT_SOURCE_DIR}/${NETWORK_NAME}.nnue")

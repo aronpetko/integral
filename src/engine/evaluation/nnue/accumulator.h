@@ -9,8 +9,6 @@ namespace nnue {
 
 struct AccumulatorEntry {
   alignas(simd::kAlignment)
-      std::array<PsqtPerspectiveAccumulator, 2> psqt_perspectives;
-  alignas(simd::kAlignment)
       std::array<ThreatPerspectiveAccumulator, 2> threat_perspectives;
   PsqtAccumulatorChange psqt_change;
   std::array<Square, 2> kings;
@@ -22,7 +20,8 @@ struct AccumulatorEntry {
 };
 
 struct BucketCacheEntry {
-  AccumulatorEntry accumulator;
+  alignas(simd::kAlignment)
+      std::array<PsqtPerspectiveAccumulator, 2> psqt_perspectives;
   MultiArray<BitBoard, 2, kNumPieceTypes> piece_bbs{};
   MultiArray<BitBoard, 2, kNumColors> side_bbs{};
 
@@ -34,7 +33,6 @@ struct BucketCacheEntry {
 };
 
 struct PerspectiveView {
-  PsqtPerspectiveAccumulator& psqt;
   ThreatPerspectiveAccumulator& threat;
 };
 
@@ -45,10 +43,9 @@ class Accumulator {
   }
 
   void SetFromState(const BoardState& state);
-  void RefreshPerspective(AccumulatorEntry& __restrict__ accumulator,
-                          const BoardState& __restrict__ state,
-                          Color perspective,
-                          bool reset = false);
+  const PsqtPerspectiveAccumulator& RefreshBucketCache(const BoardState& state,
+                                                       Color perspective,
+                                                       bool reset = false);
 
   void PushChanges(const BoardState& previous_state,
                    PsqtAccumulatorChange& psqt_change);
@@ -70,8 +67,7 @@ class Accumulator {
 
   [[nodiscard]] PerspectiveView operator[](int perspective) {
     auto& entry = stack_[head_idx_];
-    return {entry.psqt_perspectives[perspective],
-            entry.threat_perspectives[perspective]};
+    return {entry.threat_perspectives[perspective]};
   }
 
  private:
