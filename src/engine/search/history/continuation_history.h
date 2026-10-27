@@ -50,8 +50,9 @@ class ContinuationHistory {
                        int quiet_history_score) {
     const auto total_score =
         GetScore(state, move, stack - 1) + GetScore(state, move, stack - 2) +
-        GetScore(state, move, stack - 3) + GetScore(state, move, stack - 4) +
-        GetScore(state, move, stack - 6) + quiet_history_score / 2;
+        GetScore(state, move, stack - 3) / 2 +
+        GetScore(state, move, stack - 4) + GetScore(state, move, stack - 6) +
+        quiet_history_score / 2;
 
     UpdateIndividualScore(state, move, bonus, total_score, stack - 1);
     UpdateIndividualScore(state, move, bonus, total_score, stack - 2);
