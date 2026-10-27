@@ -1158,6 +1158,11 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrSecondKillerMove;
       }
 
+      // Reduce more if we reduced the previous move enough
+      if (prev_stack->reduction > reduction + 512) {
+        reduction += 128;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
