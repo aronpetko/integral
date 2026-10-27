@@ -722,6 +722,7 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+  (stack + 2)->cutoff_count = 0;
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (prev_stack->reduction >= kHindsightDepthReduction &&
@@ -1158,6 +1159,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrSecondKillerMove;
       }
 
+      if ((stack + 1)->cutoff_count > 3) {
+        reduction += 512;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
@@ -1277,6 +1282,7 @@ Score Searcher::PVSearch(Thread &thread,
           // quiet
           history.capture_history->Penalize(state, history_depth, captures);
           // Beta cutoff: The opponent had a better move earlier in the tree
+          ++stack->cutoff_count;
           break;
         } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
                    alpha > -kTBWinInMaxPlyScore) {
