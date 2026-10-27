@@ -966,6 +966,7 @@ Score Searcher::PVSearch(Thread &thread,
       const int futility_margin =
           kFutMarginBase +
           kFutMarginMult * lmr_fractional_depth / kLmrDepthScale +
+          80 * (stack->eval >= beta) +
           stack->history_score / kFutMarginHistDiv;
       if (lmr_depth <= kFutPruneDepth && !stack->in_check && is_quiet &&
           stack->static_eval + futility_margin <= alpha &&
