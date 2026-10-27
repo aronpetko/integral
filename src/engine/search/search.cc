@@ -899,7 +899,7 @@ Score Searcher::PVSearch(Thread &thread,
   MoveList quiets, captures;
 
   int moves_seen = 0;
-  Score best_score = kScoreNone;
+  Score best_score = kScoreNone, singular_score = kScoreNone;
   Move best_move = Move::NullMove();
 
   MovePicker move_picker(
@@ -1044,7 +1044,7 @@ Score Searcher::PVSearch(Thread &thread,
            std::clamp(tt_move_history / 1024, -beta_margin, beta_margin));
 
       stack->excluded_tt_move = tt_move;
-      const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
+      singular_score = PVSearch<NodeType::kNonPV>(
           thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
       stack->excluded_tt_move = Move::NullMove();
 
@@ -1054,13 +1054,12 @@ Score Searcher::PVSearch(Thread &thread,
 
       // No move was able to beat the TT entries score, so we extend the TT
       // move's search
-      if (tt_move_excluded_score < new_beta) {
+      if (singular_score < new_beta) {
         // Extend more if the TT move is singular by a big margin
-        if (tt_move_excluded_score <
+        if (singular_score <
             new_beta - kSeDoubleMargin - kSePvDoubleMargin * in_pv_node) {
-          extensions =
-              2 + (!in_pv_node && is_quiet &&
-                   tt_move_excluded_score < new_beta - kSeTripleMargin);
+          extensions = 2 + (!in_pv_node && is_quiet &&
+                            singular_score < new_beta - kSeTripleMargin);
           depth += !in_pv_node && depth < kSeDepthExtensionDepth;
         } else {
           extensions = 1;
@@ -1069,9 +1068,9 @@ Score Searcher::PVSearch(Thread &thread,
       // Multi-cut: The singular search had a beta cutoff, indicating that
       // the TT move was not singular. Therefore, we prune if the same score
       // would cause a cutoff based on our current search window
-      else if (tt_move_excluded_score >= beta &&
-               std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
-        return tt_move_excluded_score;
+      else if (singular_score >= beta &&
+               std::abs(singular_score) < kTBWinInMaxPlyScore) {
+        return singular_score;
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.
@@ -1156,6 +1155,12 @@ Score Searcher::PVSearch(Thread &thread,
 
       if (move == stack->killer_moves[1]) {
         reduction -= kLmrSecondKillerMove;
+      }
+
+      // Reduce more if the TT move's saved score is far higher than the rest
+      if (tt_entry && tt_entry->score != kScoreNone && singular_score != kScoreNone) {
+        const auto margin = tt_entry->score - singular_score;
+        reduction += std::clamp(512 * (margin - 128) / 128, 0, 2048);
       }
 
       stack->reduction = reduction;
