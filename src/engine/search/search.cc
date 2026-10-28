@@ -1159,7 +1159,7 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrSecondKillerMove;
       }
 
-      if ((stack + 1)->cutoff_count > 3) {
+      if ((stack + 1)->cutoff_count > 5) {
         reduction += 1024;
       }
 
