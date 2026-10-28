@@ -301,11 +301,11 @@ Score Searcher::QuiescentSearch(Thread &thread,
   }
 
   // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
+  const bool can_use_tt_score = tt_hit && tt_entry->CanUseScore(alpha, beta);
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= tt_depth) {
+  if (!in_pv_node && can_use_tt_score && tt_entry->depth >= tt_depth) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
@@ -566,7 +566,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, can_use_tt_score = false, tt_was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
@@ -577,7 +577,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Use the TT entry's evaluation if possible
   if (tt_hit) {
-    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
+    can_use_tt_score = tt_entry->CanUseScore(alpha, beta);
     tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
@@ -589,16 +589,20 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
+  if (!stack->excluded_tt_move && !in_pv_node && tt_hit &&
       (cut_node || tt_entry->score <= alpha) &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
-    return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+    if (can_use_tt_score) {
+      return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
+    } else if (depth > kTTPenaltyDepth) {
+      tt_entry->Penalize(1);
+    }
   }
 
   // The TT entry had sufficient depth but its bound points the wrong way, so
   // it's useless for producing a cutoff here
   if (!stack->excluded_tt_move && !in_pv_node && tt_hit &&
-      tt_entry->score != kScoreNone && !can_use_tt_eval &&
+      tt_entry->score != kScoreNone && !can_use_tt_score &&
       tt_entry->depth > depth - (tt_entry->score <= beta) &&
       depth > kTTPenaltyDepth) {
     tt_entry->Penalize(1);
