@@ -721,8 +721,6 @@ Score Searcher::PVSearch(Thread &thread,
     opponent_worsening = stack->static_eval + (stack - 1)->static_eval > 1;
   }
 
-  (stack + 1)->ClearKillerMoves();
-
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (prev_stack->reduction >= kHindsightDepthReduction &&
         !stack->excluded_tt_move && !opponent_worsening) {
@@ -1149,15 +1147,6 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrComplexity;
       }
 
-      // Reduce less if this move is a killer move
-      if (move == stack->killer_moves[0]) {
-        reduction -= kLmrFirstKillerMove;
-      }
-
-      if (move == stack->killer_moves[1]) {
-        reduction -= kLmrSecondKillerMove;
-      }
-
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
@@ -1262,7 +1251,6 @@ Score Searcher::PVSearch(Thread &thread,
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
           if (is_quiet) {
-            stack->AddKillerMove(move);
             history.quiet_history->UpdateScore(
                 state, stack, history_depth, stack->threats, quiets);
             history.pawn_history->UpdateScore(

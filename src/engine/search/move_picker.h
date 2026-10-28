@@ -26,8 +26,6 @@ class MovePicker {
     kTTMove,
     kGenerateNoisys,
     kGoodNoisys,
-    kFirstKiller,
-    kSecondKiller,
     kGenerateQuiets,
     kQuiets,
     kBadNoisys,
@@ -69,6 +67,7 @@ class MovePicker {
   int moves_idx_;
   int see_threshold_;
   bool force_evasions_;
+  bool skip_quiets_;
 };
 
 }  // namespace search
