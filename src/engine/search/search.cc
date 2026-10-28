@@ -595,6 +595,15 @@ Score Searcher::PVSearch(Thread &thread,
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
+  // The TT entry had sufficient depth but its bound points the wrong way, so
+  // it's useless for producing a cutoff here
+  if (!stack->excluded_tt_move && !in_pv_node && tt_hit &&
+      tt_entry->score != kScoreNone && !can_use_tt_eval &&
+      tt_entry->depth > depth - (tt_entry->score <= beta) &&
+      depth > kTTPenaltyDepth) {
+    tt_entry->Penalize(1);
+  }
+
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&

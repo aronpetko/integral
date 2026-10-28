@@ -107,6 +107,8 @@ TUNABLE_STEP(kLmrSecondKillerMove, 947, 512, 2048, false, 150);
 TUNABLE_STEP(kLmrRoundingCutoff, 579, 512, 2048, false, 120);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
+
+TUNABLE(kTTPenaltyDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 215, 50, 300, false);
 
 TUNABLE_STEP(kHistoryBonusMargin, 45, 5, 120, false, 10);

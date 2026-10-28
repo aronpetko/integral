@@ -57,6 +57,11 @@ struct TranspositionTableEntry {
             (flag == kLowerBound && score >= beta) || flag == kExact);
   }
 
+  // Flag this entry as less useful by lowering its depth
+  void Penalize(int penalty) {
+    depth = std::max(static_cast<int>(depth) - penalty, 0);
+  }
+
   // Adjusts mate scores to correctly indicate the ply until mate
   [[nodiscard]] static Score CorrectScore(Score score, I32 ply) {
     if (score >= kTBWinInMaxPlyScore) {
