@@ -1160,7 +1160,7 @@ Score Searcher::PVSearch(Thread &thread,
       }
 
       if ((stack + 1)->cutoff_count > 3) {
-        reduction += 512;
+        reduction += 1024;
       }
 
       stack->reduction = reduction;
