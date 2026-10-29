@@ -588,10 +588,12 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
-  // window to allow early cutoff
+  // window to allow early cutoff. At lower depths, the score must also agree
+  // with the expected node type
   if (!stack->excluded_tt_move && !in_pv_node && tt_hit &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
-    if (can_use_tt_score && (cut_node || tt_entry->score <= alpha)) {
+    if (can_use_tt_score && (cut_node == (tt_entry->score >= beta) ||
+                             depth > kTTCutoffNodeDepth)) {
       return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     }
 
