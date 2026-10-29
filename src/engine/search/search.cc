@@ -1159,6 +1159,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrSecondKillerMove;
       }
 
+      if (!is_capture && std::abs(alpha) < kTBWinInMaxPlyScore) {
+        reduction += 48 * std::clamp(alpha - stack->eval, -64, 96) / 16;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
