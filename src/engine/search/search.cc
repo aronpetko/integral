@@ -1291,9 +1291,6 @@ Score Searcher::PVSearch(Thread &thread,
           history.capture_history->Penalize(state, history_depth, captures);
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
-        } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
-                   alpha > -kTBWinInMaxPlyScore) {
-          --depth;
         }
       }
     }
