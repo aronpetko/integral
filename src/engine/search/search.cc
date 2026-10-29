@@ -590,11 +590,14 @@ Score Searcher::PVSearch(Thread &thread,
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
   if (!stack->excluded_tt_move && !in_pv_node && tt_hit &&
-      (cut_node || tt_entry->score <= alpha) &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
-    if (can_use_tt_score) {
+    if (can_use_tt_score && (cut_node || tt_entry->score <= alpha)) {
       return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
-    } else if (depth > kTTPenaltyDepth) {
+    }
+
+    // The entry had sufficient depth but its bound points the wrong way, so
+    // it's useless for producing a cutoff here
+    if (!can_use_tt_score && depth > kTTPenaltyDepth) {
       tt_entry->Penalize(1);
     }
   }
