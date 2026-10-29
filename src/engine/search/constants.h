@@ -109,6 +109,8 @@ TUNABLE_STEP(kLmrRoundingCutoff, 579, 512, 2048, false, 120);
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 215, 50, 300, false);
 
+TUNABLE(kTTCutoffNodeDepth, 4, 1, 10, true);
+
 TUNABLE_STEP(kHistoryBonusMargin, 45, 5, 120, false, 10);
 
 TUNABLE_STEP(kPcmQuietHistoryWeight, 1047, 512, 2048, false, 128);
