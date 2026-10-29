@@ -1159,6 +1159,10 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrSecondKillerMove;
       }
 
+      if (tt_move && tt_move.IsCapture(state)) {
+        reduction += 1024;
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
