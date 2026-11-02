@@ -587,12 +587,19 @@ Score Searcher::PVSearch(Thread &thread,
     tt_move = thread.root_moves[thread.pv_move_idx].move;
   }
 
+  const auto &prev_stack = stack - 1;
+
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff. At lower depths, the score must also agree
   // with the expected node type
   if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
       (cut_node == (tt_entry->score >= beta) || depth > kTTCutoffNodeDepth) &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
+    if (tt_move && !tt_move.IsNoisy(state)) {
+      const auto bonus = 24 * history::HistoryBonus(depth) / 32;
+      history.quiet_history->UpdateMoveScore(
+          FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
+    }
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
@@ -686,7 +693,6 @@ Score Searcher::PVSearch(Thread &thread,
     stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
   }
 
-  const auto &prev_stack = stack - 1;
   if (stack->ply > 1 && prev_stack->move && !prev_stack->capture_move &&
       !prev_stack->in_check && !stack->in_check) {
     const I32 their_loss =
