@@ -300,12 +300,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
     tt_static_eval = tt_entry->static_eval;
   }
 
-  // Use the TT entry's evaluation if possible
-  const bool can_use_tt_eval = tt_hit && tt_entry->CanUseScore(alpha, beta);
-
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff
-  if (!in_pv_node && can_use_tt_eval && tt_entry->depth >= tt_depth) {
+  if (!in_pv_node && tt_hit && tt_entry->CanUseScore(alpha, beta) &&
+      tt_entry->depth >= tt_depth) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
 
@@ -566,7 +564,7 @@ Score Searcher::PVSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   auto tt_move = Move::NullMove();
-  bool tt_hit = false, can_use_tt_eval = false, tt_was_in_pv = in_pv_node;
+  bool tt_hit = false, tt_was_in_pv = in_pv_node;
   Score tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
@@ -577,7 +575,6 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Use the TT entry's evaluation if possible
   if (tt_hit) {
-    can_use_tt_eval = tt_entry->CanUseScore(alpha, beta);
     tt_was_in_pv |= tt_entry->was_in_pv;
     tt_move = tt_entry->move;
     tt_static_eval = tt_entry->static_eval;
@@ -590,7 +587,8 @@ Score Searcher::PVSearch(Thread &thread,
   // Saved scores from non-PV nodes must fall within the current alpha/beta
   // window to allow early cutoff. At lower depths, the score must also agree
   // with the expected node type
-  if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
+  if (!stack->excluded_tt_move && !in_pv_node && tt_hit &&
+      tt_entry->CanUseScore(alpha, beta) &&
       (cut_node == (tt_entry->score >= beta) || depth > kTTCutoffNodeDepth) &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
@@ -652,6 +650,7 @@ Score Searcher::PVSearch(Thread &thread,
 
   // Approximate the current evaluation at this node
   Score raw_static_eval;
+  bool can_use_tt_eval = false;
   if (stack->in_check) {
     stack->static_eval = stack->eval = raw_static_eval = kScoreNone;
     stack->eval_complexity = 0;
@@ -677,10 +676,12 @@ Score Searcher::PVSearch(Thread &thread,
     // Adjust eval depending on if we can use the score stored in the TT
     if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
         tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
+      can_use_tt_eval = true;
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
       stack->eval = stack->static_eval;
+      can_use_tt_eval = false;
     }
 
     stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
@@ -723,6 +724,10 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   (stack + 1)->ClearKillerMoves();
+
+  if (can_use_tt_eval && stack->eval - stack->static_eval >= 30 + depth * 80) {
+    ++depth;
+  }
 
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (prev_stack->reduction >= kHindsightDepthReduction &&
