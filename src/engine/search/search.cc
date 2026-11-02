@@ -598,7 +598,7 @@ Score Searcher::PVSearch(Thread &thread,
     if (tt_move && !tt_move.IsNoisy(state)) {
       const auto bonus = 24 * history::HistoryBonus(depth) / 32;
       history.quiet_history->UpdateMoveScore(
-          FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
+          state.turn, tt_move, state.threats, bonus);
     }
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
