@@ -683,7 +683,9 @@ Score Searcher::PVSearch(Thread &thread,
       stack->eval = stack->static_eval;
     }
 
-    stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
+    if (std::abs(stack->eval) < kTBWinInMaxPlyScore) {
+      stack->eval_complexity = std::abs(stack->eval - raw_static_eval);
+    }
   }
 
   const auto &prev_stack = stack - 1;
