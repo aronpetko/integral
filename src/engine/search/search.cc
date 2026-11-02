@@ -730,7 +730,7 @@ Score Searcher::PVSearch(Thread &thread,
       ++depth;
     }
 
-    if (can_use_tt_eval &&
+    if (can_use_tt_eval && depth <= 6 &&
         stack->eval - stack->static_eval >= 30 + depth * 80) {
       ++depth;
     }
