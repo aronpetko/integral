@@ -674,14 +674,13 @@ Score Searcher::PVSearch(Thread &thread,
     stack->static_eval = AdjustStaticEval(raw_static_eval, thread, stack);
 
     // Adjust eval depending on if we can use the score stored in the TT
-    if (tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
-        tt_entry->CanUseScore(stack->static_eval, stack->static_eval)) {
-      can_use_tt_eval = true;
+    if ((can_use_tt_eval =
+             tt_hit && std::abs(tt_entry->score) < kTBWinInMaxPlyScore &&
+             tt_entry->CanUseScore(stack->static_eval, stack->static_eval))) {
       stack->eval =
           TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
     } else {
       stack->eval = stack->static_eval;
-      can_use_tt_eval = false;
     }
 
     stack->eval_complexity = std::abs(stack->static_eval - raw_static_eval);
@@ -725,7 +724,8 @@ Score Searcher::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (can_use_tt_eval && stack->eval - stack->static_eval >= 30 + depth * 80) {
+  if (depth <= 6 && can_use_tt_eval &&
+      stack->eval - stack->static_eval >= 30 + depth * 80) {
     ++depth;
   }
 
