@@ -730,9 +730,9 @@ Score Searcher::PVSearch(Thread &thread,
       ++depth;
     }
 
-    if (can_use_tt_eval && depth <= 6 &&
-        stack->eval - stack->static_eval >= 30 + depth * 80) {
-      ++depth;
+    if (can_use_tt_eval && depth > 2 &&
+        stack->static_eval - stack->eval >= 30 + depth * 80) {
+      --depth;
     }
 
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
