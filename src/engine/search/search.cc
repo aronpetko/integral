@@ -724,14 +724,14 @@ Score Searcher::PVSearch(Thread &thread,
 
   (stack + 1)->ClearKillerMoves();
 
-  if (depth <= 6 && can_use_tt_eval &&
-      stack->eval - stack->static_eval >= 30 + depth * 80) {
-    ++depth;
-  }
-
   if (!in_pv_node && !stack->in_check && stack->eval < kTBWinInMaxPlyScore) {
     if (prev_stack->reduction >= kHindsightDepthReduction &&
         !stack->excluded_tt_move && !opponent_worsening) {
+      ++depth;
+    }
+
+    if (can_use_tt_eval &&
+        stack->eval - stack->static_eval >= 30 + depth * 80) {
       ++depth;
     }
 
