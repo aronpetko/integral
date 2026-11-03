@@ -1201,14 +1201,11 @@ Score Searcher::PVSearch(Thread &thread,
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
                         : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
+        const auto &pre_move_state = board.GetStateHistory().Back();
         const int quiet_history_score = history.quiet_history->GetScore(
-            board.GetStateHistory().Back(), move, stack->threats);
+            pre_move_state, move, stack->threats);
         history.continuation_history->Update(
-            board.GetStateHistory().Back(),
-            move,
-            bonus,
-            stack,
-            quiet_history_score);
+            pre_move_state, move, bonus, stack, quiet_history_score);
       }
     }
 
@@ -1266,63 +1263,26 @@ Score Searcher::PVSearch(Thread &thread,
         if (alpha >= beta) {
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
-          const int history_bonus = history::HistoryBonus(history_depth);
-          const int history_malus = history::HistoryPenalty(history_depth);
+          const int bonus = history::HistoryBonus(history_depth);
+          const int malus = history::HistoryPenalty(history_depth);
           if (is_quiet) {
             stack->AddKillerMove(move);
-
-            const int quiet_bonus = history_bonus;
-            const int pawn_bonus = history_bonus;
-            const int cont_bonus = history_bonus;
-            const int quiet_malus = history_malus;
-            const int pawn_malus = history_malus;
-            const int cont_malus = history_malus;
-
-            // Decay the malus for quiets searched later in the move ordering
-            const auto malus_scale = [](int i) {
+            history.UpdateQuietScore(state, stack, move, bonus);
+            for (int i = 0; i < quiets.Size(); i++) {
+              // Decay the malus for quiets searched later in the move ordering
               const int denom = 1024 + 45 * i;
-              return 1024 * 1024 / (denom * denom / 1024);
-            };
-
-            history.quiet_history->Update(
-                state.turn, move, stack->threats, quiet_bonus);
-            for (int i = 0; i < quiets.Size(); i++) {
-              history.quiet_history->Update(
-                  state.turn,
-                  quiets[i],
-                  stack->threats,
-                  quiet_malus * malus_scale(i) / 1024);
-            }
-
-            history.pawn_history->Update(state, move, pawn_bonus);
-            for (int i = 0; i < quiets.Size(); i++) {
-              history.pawn_history->Update(
-                  state, quiets[i], pawn_malus * malus_scale(i) / 1024);
-            }
-
-            history.continuation_history->Update(
-                state,
-                move,
-                cont_bonus,
-                stack,
-                history.quiet_history->GetScore(state, move, stack->threats));
-            for (int i = 0; i < quiets.Size(); i++) {
-              history.continuation_history->Update(
-                  state,
-                  quiets[i],
-                  cont_malus * malus_scale(i) / 1024,
-                  stack,
-                  history.quiet_history->GetScore(
-                      state, quiets[i], stack->threats));
+              const int scale = 1024 * 1024 / (denom * denom / 1024);
+              const int decayed_malus = malus * scale / 1024;
+              history.UpdateQuietScore(state, stack, quiets[i], decayed_malus);
             }
           } else if (is_capture) {
-            history.capture_history->Update(state, move, history_bonus);
+            history.capture_history->Update(state, move, bonus);
           }
           // Since "good" captures are expected to be the best moves, we apply a
           // penalty to all captures even in the case where the best move was
           // quiet
           for (int i = 0; i < captures.Size(); i++) {
-            history.capture_history->Update(state, captures[i], history_malus);
+            history.capture_history->Update(state, captures[i], malus);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;

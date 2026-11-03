@@ -40,6 +40,15 @@ class History {
     pawn_history->Clear();
   }
 
+  // Updates every history table that scores quiet moves
+  void UpdateQuietScore(const BoardState &state, StackEntry *stack, Move move,
+                        int bonus) {
+    quiet_history->Update(state.turn, move, stack->threats, bonus);
+    pawn_history->Update(state, move, bonus);
+    const int quiet = quiet_history->GetScore(state, move, stack->threats);
+    continuation_history->Update(state, move, bonus, stack, quiet);
+  }
+
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,
                                  Move move,
                                  StackEntry *stack) {
