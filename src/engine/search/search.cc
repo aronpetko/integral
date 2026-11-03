@@ -824,15 +824,13 @@ Score Searcher::PVSearch(Thread &thread,
                                   ? tt_move
                                   : Move::NullMove();
 
-        int moves_seen = 0;
+        const int probcut_depth = depth - 3 + 2 * improving;
         MovePicker move_picker(
             MovePickerType::kNoisy, board, pc_tt_move, history, stack, pc_see);
         while (const auto move = move_picker.Next()) {
           if (move == stack->excluded_tt_move || !board.IsMoveLegal(move)) {
             continue;
           }
-
-          ++moves_seen;
 
           stack->move = move;
           stack->moved_piece = state.GetPieceType(move.GetFrom());
@@ -843,7 +841,6 @@ Score Searcher::PVSearch(Thread &thread,
               history.correction_history->GetContEntry(state, move);
           stack->history_score = history.GetMoveScore(state, move, stack);
 
-          const int probcut_depth = depth - 3;
           const auto searched =
               thread.nodes_searched.load(std::memory_order_relaxed);
           thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
