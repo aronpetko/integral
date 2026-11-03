@@ -59,7 +59,7 @@ TUNABLE_STEP(kLmpDepthMult, 1113, 512, 2048, false, 64);
 TUNABLE_STEP(kLmpDiv, 3016, 2048, 4608, false, 128);
 TUNABLE_STEP(kLmpImprovingDiv, 1986, 1024, 3584, false, 128);
 
-TUNABLE(kFutPruneDepth, 8, 6, 12, true);
+TUNABLE(kFutPruneDepth, 12, 6, 12, true);
 TUNABLE_STEP(kFutMarginBase, 131, 100, 250, false, 20);
 TUNABLE_STEP(kFutMarginMult, 83, 50, 200, false, 5);
 TUNABLE(kFutMarginHistDiv, 124, 32, 256, false);
