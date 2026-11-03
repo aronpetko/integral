@@ -1159,6 +1159,12 @@ Score Searcher::PVSearch(Thread &thread,
         reduction -= kLmrSecondKillerMove;
       }
 
+      if (tt_hit && tt_entry->score != kScoreNone &&
+          stack->static_eval > tt_entry->score) {
+        const int overestimate = stack->static_eval - tt_entry->score;
+        reduction += 8 * std::min(overestimate, 128);
+      }
+
       stack->reduction = reduction;
 
       // Scale reduction back down to an integer
