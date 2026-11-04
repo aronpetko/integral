@@ -42,6 +42,23 @@ void Initialize(search::Searcher &searcher) {
 
 namespace commands {
 
+struct SearchMovesInputProcessor : public CommandInputProcessor {
+  bool Process(std::stringstream &stream, std::string &output) override {
+    output.clear();
+    std::string move;
+    for (auto pos = stream.tellg(); stream >> move; pos = stream.tellg()) {
+      if (move.size() < 4 || move.size() > 5 ||
+          move[1] < '1' || move[1] > '8' ||
+          move[3] < '1' || move[3] > '8') {
+        stream.seekg(pos);
+        break;
+      }
+      output += move + ' ';
+    }
+    return !output.empty();
+  }
+};
+
 void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
   listener.RegisterCommand("position", CommandType::kOrdered, {
     CreateArgument("fen", ArgumentType::kOptional, LimitedInputProcessor<6>()),
@@ -78,6 +95,7 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
     CreateArgument("winc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("btime", ArgumentType::kOptional, LimitedInputProcessor<1>()),
     CreateArgument("binc", ArgumentType::kOptional, LimitedInputProcessor<1>()),
+    CreateArgument("searchmoves", ArgumentType::kOptional, SearchMovesInputProcessor()),
   }, [&board, &searcher](Command *cmd) {
     const auto perft_depth = cmd->ParseArgument<int>("perft");
     if (perft_depth) {
@@ -121,7 +139,29 @@ void Initialize(Board &board, search::Searcher &searcher) {  // clang-format off
     if (cmd->ArgumentExists("infinite") || !time_config.HasBeenModified())
       time_config.infinite = true;
 
-    searcher.Start(time_config);
+    std::vector<Move> search_moves;
+    if (cmd->ArgumentExists("searchmoves")) {
+      std::istringstream moves(
+          cmd->ParseArgument<std::string>("searchmoves").value_or(""));
+      std::vector<std::string> tokens;
+      for (std::string token; moves >> token;) {
+        tokens.push_back(token);
+      }
+      const auto moves_on_board = move_gen::GenerateMoves<MoveGenType::kAll>(board);
+      for (int i = 0; i < moves_on_board.Size(); ++i) {
+        const auto move = moves_on_board[i];
+        if (std::ranges::find(tokens, move.ToString()) != tokens.end() &&
+            board.IsMoveLegal(move)) {
+          search_moves.push_back(move);
+        }
+      }
+      if (search_moves.empty()) {
+        fmt::println("bestmove 0000");
+        return;
+      }
+    }
+
+    searcher.Start(time_config, std::move(search_moves));
   });
 
   listener.RegisterCommand("datagen", CommandType::kUnordered, {

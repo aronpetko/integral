@@ -69,7 +69,11 @@ void Searcher::IterativeDeepening(Thread &thread) {
   constexpr bool regular_search = type == SearchType::kRegular;
 
   const auto root_stack = &thread.stack.Front();
-  thread.root_moves = RootMoveList(thread.board);
+  if (regular_search && !search_moves_.empty()) {
+    thread.root_moves = RootMoveList(search_moves_);
+  } else {
+    thread.root_moves = RootMoveList(thread.board);
+  }
 
   const int multi_pv =
       std::min(uci::listener.GetOption("MultiPV")->GetValue<int>(),
@@ -1335,7 +1339,8 @@ Score Searcher::PVSearch(Thread &thread,
       tt_flag = TranspositionTableEntry::kUpperBound;
     }
 
-    if (!in_root || thread.pv_move_idx == 0) {
+    const bool restricted_root = in_root && thread.root_moves.IsRestricted();
+    if (!restricted_root && (!in_root || thread.pv_move_idx == 0)) {
       // Attempt to update the transposition table with the evaluation of this
       // position
       const TranspositionTableEntry new_tt_entry(zobrist_key,
@@ -1349,7 +1354,8 @@ Score Searcher::PVSearch(Thread &thread,
           tt_entry, new_tt_entry, zobrist_key, stack->ply, in_pv_node);
     }
 
-    if (!stack->in_check && (!best_move || !best_move.IsNoisy(state))) {
+    if (!restricted_root && !stack->in_check &&
+        (!best_move || !best_move.IsNoisy(state))) {
       history.correction_history->UpdateScore(
           state, stack, best_score, tt_flag, depth);
     }
@@ -1496,13 +1502,14 @@ void Searcher::SetThreadCount(U16 count) {
   }
 }
 
-void Searcher::Start(TimeConfig time_config) {
+void Searcher::Start(TimeConfig time_config, std::vector<Move> search_moves) {
   WaitForThreads();
 
   // Wait untl all search threads have stopped
   stop_barrier_.ArriveAndWait();
   stop_.store(false, std::memory_order_relaxed);
 
+  search_moves_ = std::move(search_moves);
   time_mgmt_.SetConfig(time_config);
   time_mgmt_.Start();
 
