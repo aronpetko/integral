@@ -437,7 +437,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
           if (is_capture) {
-            history.capture_history->UpdateScore(state, move, 1);
+            history.capture_history->Update(
+                state, move, history::HistoryBonus(1));
           }
           break;
         }
@@ -460,7 +461,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, 1, captures);
+    const int capture_malus = history::HistoryPenalty(1);
+    for (int i = 0; i < captures.Size(); i++) {
+      history.capture_history->Update(state, captures[i], capture_malus);
+    }
   }
 
   // Return an interpolated score toward beta for a safety "cushion"
@@ -694,9 +698,9 @@ Score Searcher::PVSearch(Thread &thread,
     const I32 bonus = std::clamp<I32>(-kEvalHistUpdateMult * their_loss / 10,
                                       -kEvalHistUpdateMin,
                                       kEvalHistUpdateMax);
-    history.quiet_history->UpdateMoveScore(
+    history.quiet_history->Update(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
-    history.pawn_history->UpdateMoveScore(
+    history.pawn_history->Update(
         board.GetStateHistory().Back(), prev_stack->move, bonus);
   }
 
@@ -1197,14 +1201,11 @@ Score Searcher::PVSearch(Thread &thread,
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
                         : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
+        const auto &pre_move_state = board.GetStateHistory().Back();
         const int quiet_history_score = history.quiet_history->GetScore(
-            board.GetStateHistory().Back(), move, stack->threats);
-        history.continuation_history->UpdateMoveScore(
-            board.GetStateHistory().Back(),
-            move,
-            bonus,
-            stack,
-            quiet_history_score);
+            pre_move_state, move, stack->threats);
+        history.continuation_history->Update(
+            pre_move_state, move, bonus, stack, quiet_history_score);
       }
     }
 
@@ -1262,21 +1263,27 @@ Score Searcher::PVSearch(Thread &thread,
         if (alpha >= beta) {
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
+          const int bonus = history::HistoryBonus(history_depth);
+          const int malus = history::HistoryPenalty(history_depth);
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
-            history.pawn_history->UpdateScore(
-                state, stack, history_depth, quiets);
-            history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets, history.quiet_history);
+            history.UpdateQuietScore(state, stack, move, bonus);
+            for (int i = 0; i < quiets.Size(); i++) {
+              // Decay the malus for quiets searched later in the move ordering
+              const int denom = 1024 + 45 * i;
+              const int scale = 1024 * 1024 / (denom * denom / 1024);
+              const int decayed_malus = malus * scale / 1024;
+              history.UpdateQuietScore(state, stack, quiets[i], decayed_malus);
+            }
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, move, history_depth);
+            history.capture_history->Update(state, move, bonus);
           }
           // Since "good" captures are expected to be the best moves, we apply a
           // penalty to all captures even in the case where the best move was
           // quiet
-          history.capture_history->Penalize(state, history_depth, captures);
+          for (int i = 0; i < captures.Size(); i++) {
+            history.capture_history->Update(state, captures[i], malus);
+          }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
         }
@@ -1315,9 +1322,9 @@ Score Searcher::PVSearch(Thread &thread,
     const auto pawn_history_bonus =
         kPcmPawnHistoryWeight * history_bonus / kPcmHistoryBonusScale;
     const auto past_turn = FlipColor(state.turn);
-    history.quiet_history->UpdateMoveScore(
+    history.quiet_history->Update(
         past_turn, prev_stack->move, prev_stack->threats, quiet_history_bonus);
-    history.pawn_history->UpdateMoveScore(
+    history.pawn_history->Update(
         board.GetStateHistory().Back(), prev_stack->move, pawn_history_bonus);
   }
 
