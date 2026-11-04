@@ -1,6 +1,7 @@
 #ifndef INTEGRAL_SEARCH_H_
 #define INTEGRAL_SEARCH_H_
 
+#include <span>
 #include <thread>
 
 #include "../../chess/move_gen.h"
@@ -45,6 +46,12 @@ class RootMoveList {
       if (board.IsMoveLegal(move)) {
         list_.Push({move, 0});
       }
+    }
+  }
+
+  explicit RootMoveList(std::span<const Move> search_moves) : restricted_(true) {
+    for (const auto move : search_moves) {
+      list_.Push({move, 0});
     }
   }
 
@@ -96,7 +103,12 @@ class RootMoveList {
     return list_.Empty();
   }
 
+  [[nodiscard]] bool IsRestricted() const {
+    return restricted_;
+  }
+
  private:
+  bool restricted_ = false;
   List<RootMove, 256> list_;
 };
 
@@ -171,7 +183,7 @@ class Searcher {
 
   ~Searcher();
 
-  void Start(TimeConfig time_config);
+  void Start(TimeConfig time_config, std::vector<Move> search_moves = {});
 
   std::pair<Score, Move> DataGenStart(std::unique_ptr<Thread> &thread,
                                       TimeConfig time_config);
@@ -223,6 +235,7 @@ class Searcher {
  private:
   Board &board_;
   TimeManagement time_mgmt_;
+  std::vector<Move> search_moves_;
   std::atomic_bool stop_, quit_;
   Barrier stop_barrier_, start_barrier_, search_end_barrier_,
       thread_init_barrier_;
