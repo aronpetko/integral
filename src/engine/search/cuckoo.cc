@@ -1,5 +1,8 @@
 #include "cuckoo.h"
 
+#include <cstdio>
+#include <cstdlib>
+
 namespace search::cuckoo {
 
 void Initialize() {
@@ -37,8 +40,8 @@ void Initialize() {
           }
 
           auto move = Move(from, to);
-          auto key = zobrist::pieces[colored_piece][from] ^
-                     zobrist::pieces[colored_piece][to] ^ zobrist::turn;
+          auto key = zobrist::kPieces[colored_piece][from] ^
+                     zobrist::kPieces[colored_piece][to] ^ zobrist::kTurn;
           U32 slot = H1(key);
 
           while (true) {

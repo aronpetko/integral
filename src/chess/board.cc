@@ -248,13 +248,13 @@ void Board::MakeMove(Move move) {
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {
-    state_.zobrist_key ^= zobrist::en_passant[state_.en_passant.File()];
+    state_.zobrist_key ^= zobrist::kEnPassant[state_.en_passant.File()];
     state_.en_passant = Squares::kNoSquare;
   }
 
   if (piece == PieceType::kPawn && std::abs(to.Rank() - from.Rank()) == 2) {
     state_.en_passant = to - (us == Color::kWhite ? 8 : -8);
-    state_.zobrist_key ^= zobrist::en_passant[state_.en_passant.File()];
+    state_.zobrist_key ^= zobrist::kEnPassant[state_.en_passant.File()];
   }
 
   // Move the piece
@@ -278,12 +278,12 @@ void Board::MakeMove(Move move) {
   }
 
   // Update the castling rights depending on the piece that moved
-  state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
+  state_.zobrist_key ^= zobrist::kCastleRights[state_.castle_rights.AsU8()];
   state_.castle_rights &= castle_masks_[from] & castle_masks_[to];
-  state_.zobrist_key ^= zobrist::castle_rights[state_.castle_rights.AsU8()];
+  state_.zobrist_key ^= zobrist::kCastleRights[state_.castle_rights.AsU8()];
 
   state_.turn = FlipColor(state_.turn);
-  state_.zobrist_key ^= zobrist::turn;
+  state_.zobrist_key ^= zobrist::kTurn;
 
   state_.fifty_moves_clock = new_fifty_move_clock;
   ++state_.half_moves;
@@ -311,12 +311,12 @@ void Board::MakeNullMove() {
 
   // Xor out en passant if it exists
   if (state_.en_passant != Squares::kNoSquare) {
-    state_.zobrist_key ^= zobrist::en_passant[state_.en_passant.File()];
+    state_.zobrist_key ^= zobrist::kEnPassant[state_.en_passant.File()];
     state_.en_passant = Squares::kNoSquare;
   }
 
   state_.turn = FlipColor(state_.turn);
-  state_.zobrist_key ^= zobrist::turn;
+  state_.zobrist_key ^= zobrist::kTurn;
 
   state_.fifty_moves_clock++;
 
@@ -324,9 +324,9 @@ void Board::MakeNullMove() {
 }
 
 U64 Board::PredictKeyAfter(Move move) const {
-  auto key = state_.zobrist_key ^ zobrist::turn;
+  auto key = state_.zobrist_key ^ zobrist::kTurn;
   if (move == Move::NullMove()) {
-    return key ^ zobrist::fifty_move[state_.fifty_moves_clock + 1];
+    return key ^ zobrist::kFiftyMove[state_.fifty_moves_clock + 1];
   }
 
   const auto from = move.GetFrom();
@@ -336,13 +336,13 @@ U64 Board::PredictKeyAfter(Move move) const {
 
   // Xor out from position
   const int colored_piece = piece * 2 + state_.turn;
-  key ^= zobrist::pieces[colored_piece][from];
+  key ^= zobrist::kPieces[colored_piece][from];
 
   const auto captured_piece = state_.GetPieceType(to);
   if (captured_piece != PieceType::kNone) {
     const int colored_captured_piece =
         captured_piece * 2 + FlipColor(state_.turn);
-    key ^= zobrist::pieces[colored_captured_piece][to];
+    key ^= zobrist::kPieces[colored_captured_piece][to];
   }
 
   auto new_piece = piece;
@@ -353,25 +353,25 @@ U64 Board::PredictKeyAfter(Move move) const {
   if (move_type == MoveType::kEnPassant) {
     const Square pawn_square =
         state_.en_passant - (state_.turn == Color::kWhite ? 8 : -8);
-    key ^= zobrist::pieces[PieceType::kPawn * 2 + FlipColor(state_.turn)]
+    key ^= zobrist::kPieces[PieceType::kPawn * 2 + FlipColor(state_.turn)]
                           [pawn_square];
   }
 
   if (state_.en_passant != Squares::kNoSquare) {
-    key ^= zobrist::en_passant[state_.en_passant.File()];
+    key ^= zobrist::kEnPassant[state_.en_passant.File()];
   }
 
   if (piece == PieceType::kPawn && std::abs(to.Rank() - from.Rank()) == 2) {
-    key ^= zobrist::en_passant[from.File()];
+    key ^= zobrist::kEnPassant[from.File()];
   }
 
   const int colored_new_piece = new_piece * 2 + state_.turn;
-  key ^= zobrist::pieces[colored_new_piece][to];
+  key ^= zobrist::kPieces[colored_new_piece][to];
 
   const int new_fifty_moves_clock =
       (move.IsCapture(state_) || piece == kPawn ? 0
                                                 : state_.fifty_moves_clock + 1);
-  key ^= zobrist::fifty_move[new_fifty_moves_clock];
+  key ^= zobrist::kFiftyMove[new_fifty_moves_clock];
 
   return key;
 }

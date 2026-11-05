@@ -128,22 +128,22 @@ struct BoardState {
     // Insert the piece to the hash
     if constexpr (update_key) {
       const int colored_piece = piece_type * 2 + color;
-      zobrist_key ^= zobrist::pieces[colored_piece][square];
+      zobrist_key ^= zobrist::kPieces[colored_piece][square];
 
       if (piece_type == PieceType::kPawn) {
-        pawn_key ^= zobrist::pieces[colored_piece][square];
+        pawn_key ^= zobrist::kPieces[colored_piece][square];
       } else {
-        non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
+        non_pawn_keys[color] ^= zobrist::kPieces[colored_piece][square];
 
         if (piece_type == PieceType::kKing) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
-          major_key ^= zobrist::pieces[colored_piece][square];
+          minor_key ^= zobrist::kPieces[colored_piece][square];
+          major_key ^= zobrist::kPieces[colored_piece][square];
         } else if (piece_type == PieceType::kKnight ||
                    piece_type == PieceType::kBishop) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
+          minor_key ^= zobrist::kPieces[colored_piece][square];
         } else if (piece_type == PieceType::kRook ||
                    piece_type == PieceType::kQueen) {
-          major_key ^= zobrist::pieces[colored_piece][square];
+          major_key ^= zobrist::kPieces[colored_piece][square];
         }
       }
     }
@@ -156,23 +156,23 @@ struct BoardState {
     // Remove the piece from the hash
     if constexpr (update_key) {
       const int colored_piece = piece_type * 2 + color;
-      zobrist_key ^= zobrist::pieces[colored_piece][square];
+      zobrist_key ^= zobrist::kPieces[colored_piece][square];
 
       if (piece_type == PieceType::kPawn) {
-        pawn_key ^= zobrist::pieces[colored_piece][square];
+        pawn_key ^= zobrist::kPieces[colored_piece][square];
       } else {
-        non_pawn_keys[color] ^= zobrist::pieces[colored_piece][square];
+        non_pawn_keys[color] ^= zobrist::kPieces[colored_piece][square];
 
         if (piece_type == PieceType::kKing) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
-          major_key ^= zobrist::pieces[colored_piece][square];
+          minor_key ^= zobrist::kPieces[colored_piece][square];
+          major_key ^= zobrist::kPieces[colored_piece][square];
         }
         if (piece_type == PieceType::kKnight ||
             piece_type == PieceType::kBishop) {
-          minor_key ^= zobrist::pieces[colored_piece][square];
+          minor_key ^= zobrist::kPieces[colored_piece][square];
         } else if (piece_type == PieceType::kRook ||
                    piece_type == PieceType::kQueen) {
-          major_key ^= zobrist::pieces[colored_piece][square];
+          major_key ^= zobrist::kPieces[colored_piece][square];
         }
       }
     }

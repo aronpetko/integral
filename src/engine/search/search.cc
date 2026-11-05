@@ -284,7 +284,7 @@ Score Searcher::QuiescentSearch(Thread &thread,
   // Probe the transposition table to see if we have already evaluated this
   // position
   const U64 zobrist_key =
-      state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
+      state.zobrist_key ^ zobrist::kFiftyMove[state.fifty_moves_clock];
 
   const int tt_depth = state.InCheck();
   const auto tt_entry = transposition_table_.Probe(zobrist_key);
@@ -574,7 +574,7 @@ Score Searcher::PVSearch(Thread &thread,
   Score tt_static_eval = kScoreNone;
 
   const U64 zobrist_key =
-      state.zobrist_key ^ zobrist::fifty_move[state.fifty_moves_clock];
+      state.zobrist_key ^ zobrist::kFiftyMove[state.fifty_moves_clock];
 
   const auto &tt_entry = transposition_table_.Probe(zobrist_key);
   tt_hit = tt_entry->CompareKey(zobrist_key);

@@ -49,7 +49,7 @@ BoardState StringToBoard(std::string_view fen_str) {
   state.turn = (turn == 'w' ? Color::kWhite : Color::kBlack);
 
   if (state.turn == Color::kBlack) {
-    state.zobrist_key ^= zobrist::turn;
+    state.zobrist_key ^= zobrist::kTurn;
   }
 
   std::string castle_rights;
@@ -85,7 +85,7 @@ BoardState StringToBoard(std::string_view fen_str) {
                                       rook_square);
   }
 
-  state.zobrist_key ^= zobrist::castle_rights[state.castle_rights.AsU8()];
+  state.zobrist_key ^= zobrist::kCastleRights[state.castle_rights.AsU8()];
 
   std::string en_passant;
   stream >> en_passant;
@@ -93,7 +93,7 @@ BoardState StringToBoard(std::string_view fen_str) {
   if (en_passant != "-") {
     state.en_passant =
         Square(Square::FromRankFile(en_passant[1] - '1', en_passant[0] - 'a'));
-    state.zobrist_key ^= zobrist::en_passant[state.en_passant.File()];
+    state.zobrist_key ^= zobrist::kEnPassant[state.en_passant.File()];
   }
 
   stream >> state.fifty_moves_clock;

@@ -9,6 +9,7 @@
 
 #include "../chess/board.h"
 #include "../engine/search/search.h"
+#include "../utils/random.h"
 #include "format/binpack.h"
 #include "format/fens.h"
 
