@@ -45,6 +45,11 @@ class MovePicker {
 
   void SkipQuiets();
 
+  // Stop treating the TT move as special so that it's generated and ordered
+  // like any other move in the later stages. Only valid right after the TT
+  // move stage, before any moves have been generated.
+  void DeferTTMove();
+
   [[nodiscard]] Stage GetStage() const {
     return stage_;
   }

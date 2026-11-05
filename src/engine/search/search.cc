@@ -1049,6 +1049,7 @@ Score Searcher::PVSearch(Thread &thread,
            std::clamp(tt_move_history / 1024, -beta_margin, beta_margin));
 
       stack->excluded_tt_move = tt_move;
+      stack->move = Move::NullMove();
       const Score tt_move_excluded_score = PVSearch<NodeType::kNonPV>(
           thread, reduced_depth, new_beta - 1, new_beta, stack, cut_node);
       stack->excluded_tt_move = Move::NullMove();
@@ -1077,6 +1078,16 @@ Score Searcher::PVSearch(Thread &thread,
       else if (tt_move_excluded_score >= beta &&
                std::abs(tt_move_excluded_score) < kTBWinInMaxPlyScore) {
         return tt_move_excluded_score;
+      }
+      // The singular search found a move that scored better than the TT
+      // entry, so the TT move likely isn't the best move here. Stop searching
+      // it first and let it be ordered like any other move instead.
+      else if (tt_move_excluded_score > tt_entry->score && stack->move) {
+        move_picker.DeferTTMove();
+        // Must be set to a null move so that we don't enter singular extensions
+        // on the next move picker iteration
+        tt_move = Move::NullMove();
+        continue;
       }
       // Negative Extensions: Search less since the TT move was not
       // singular, and it might cause a beta cutoff again.

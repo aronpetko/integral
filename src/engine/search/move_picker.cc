@@ -153,6 +153,10 @@ void MovePicker::SkipQuiets() {
   }
 }
 
+void MovePicker::DeferTTMove() {
+  tt_move_ = Move::NullMove();
+}
+
 Move &MovePicker::SelectionSort(List<ScoredMove, kMaxMoves> &move_list,
                                 int index) {
   int best_move_idx = index;
