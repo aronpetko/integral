@@ -8,6 +8,7 @@
 #include "../../../../shared/multi_array.h"
 #include "../../../tuner/spsa.h"
 #include "../../../utils/hash_table.h"
+#include "../../evaluation/nnue/perspective_accumulator.h"
 #include "../stack.h"
 
 namespace search::history {
@@ -132,8 +133,10 @@ class CorrectionHistory {
   }
 
  private:
+  constexpr static U64 kHmcBuckets = nnue::arch::kHmcRowCount;
+
   [[nodiscard]] U64 PawnTableEntries() const {
-    return hash_size_ * kNumColors;
+    return hash_size_ * kHmcBuckets * kNumColors;
   }
 
   [[nodiscard]] U64 MajorTableEntries() const {
@@ -141,7 +144,7 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] U64 NonPawnTableEntries() const {
-    return hash_size_ * kNumColors * kNumColors;
+    return hash_size_ * kHmcBuckets * kNumColors * kNumColors;
   }
 
   static void ClearTable(std::atomic_int16_t *table, U64 entries) {
@@ -182,7 +185,9 @@ class CorrectionHistory {
   }
 
   [[nodiscard]] U64 GetPawnTableIndex(const BoardState &state) const {
-    return (state.pawn_key & (hash_size_ - 1ULL)) * kNumColors + state.turn;
+    const U64 hash_index = state.pawn_key & (hash_size_ - 1ULL);
+    const U64 hmc_bucket = nnue::GetHmcBucket(state.fifty_moves_clock);
+    return (hash_index * kHmcBuckets + hmc_bucket) * kNumColors + state.turn;
   }
 
   [[nodiscard]] U64 GetMajorTableIndex(const BoardState &state) const {
@@ -192,7 +197,10 @@ class CorrectionHistory {
   [[nodiscard]] U64 GetNonPawnTableIndex(const BoardState &state,
                                          Color color) const {
     const U64 hash_index = state.non_pawn_keys[color] & (hash_size_ - 1ULL);
-    return (hash_index * kNumColors + state.turn) * kNumColors + color;
+    const U64 hmc_bucket = nnue::GetHmcBucket(state.fifty_moves_clock);
+    return ((hash_index * kHmcBuckets + hmc_bucket) * kNumColors + state.turn) *
+               kNumColors +
+           color;
   }
 
  private:
