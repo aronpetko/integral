@@ -1263,7 +1263,8 @@ Score Searcher::PVSearch(Thread &thread,
         if (alpha >= beta) {
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
-          const int bonus = history::HistoryBonus(history_depth);
+          const int bonus = history::HistoryBonus(history_depth) +
+                            100 * (tt_hit && tt_entry->score <= alpha);
           const int malus = history::HistoryPenalty(history_depth);
           if (is_quiet) {
             stack->AddKillerMove(move);
