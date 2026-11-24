@@ -69,7 +69,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
   constexpr bool regular_search = type == SearchType::kRegular;
 
   const auto root_stack = &thread.stack.Front();
-  thread.root_moves = RootMoveList(thread.board);
+  thread.root_moves.Generate(thread.board);
 
   const int multi_pv =
       std::min(uci::listener.GetOption("MultiPV")->GetValue<int>(),

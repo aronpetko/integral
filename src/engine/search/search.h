@@ -38,7 +38,10 @@ struct RootMove {
 
 class RootMoveList {
  public:
-  explicit RootMoveList(Board &board) {
+  RootMoveList() = default;
+
+  void Generate(const Board &board) {
+    list_.Clear();
     auto move_list = move_gen::GenerateMoves<MoveGenType::kAll>(board);
     for (int i = 0; i < move_list.Size(); i++) {
       const auto move = move_list[i];
@@ -47,8 +50,6 @@ class RootMoveList {
       }
     }
   }
-
-  RootMoveList() = default;
 
   void SortNextMove(int idx) {
     for (int i = idx; i < Size(); ++i) {
