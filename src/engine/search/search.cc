@@ -1282,7 +1282,11 @@ Score Searcher::PVSearch(Thread &thread,
           // penalty to all captures even in the case where the best move was
           // quiet
           for (int i = 0; i < captures.Size(); i++) {
-            history.capture_history->Update(state, captures[i], malus);
+            // Decay the malus for captures searched later in the move ordering
+            const int denom = 1024 + 45 * i;
+            const int scale = 1024 * 1024 / (denom * denom / 1024);
+            const int decayed_malus = malus * scale / 1024;
+            history.capture_history->Update(state, captures[i], decayed_malus);
           }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
