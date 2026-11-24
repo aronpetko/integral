@@ -95,7 +95,8 @@ Score Evaluate(Board &board) {
   std::array<U16, arch::kL1Size / 4> nnz_indices;
   int nnz_count = 0;
   auto nnz_base = simd::Zero<U16, 8>();
-  const auto lookup_increment = simd::Set<U16, 8>(8);
+  const auto lookup_increment =
+      simd::Set<U16, 8>(kI32Lanes < 8 ? kI32Lanes : 8);
 
   // Activate the feature layer neurons
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
@@ -132,12 +133,11 @@ Score Evaluate(Board &board) {
         const auto clipped_pair_value1 =
             simd::Min(pair_accumulator_value1, quantise_vector);
 
-        // Perform a left-shift on them and multiply the products using the
-        // higher 16 bits
-        const auto first_product = simd::MulhiEpi16(
-            clipped_value << (16 - kFtShift), clipped_pair_value);
-        const auto second_product = simd::MulhiEpi16(
-            clipped_value1 << (16 - kFtShift), clipped_pair_value1);
+        // Multiply the pairs and shift down by kFtShift
+        const auto first_product =
+            simd::MulShiftEpi16<kFtShift>(clipped_value, clipped_pair_value);
+        const auto second_product =
+            simd::MulShiftEpi16<kFtShift>(clipped_value1, clipped_pair_value1);
 
         // Pack the two I16 vectors into a U8 vector, which will clamp negative
         // values to 0 because of unsigned saturation. This is why we didn't

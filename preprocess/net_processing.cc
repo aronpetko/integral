@@ -17,12 +17,14 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   network->threat_weights = raw_network->threat_weights;
 
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
+  using Block128 = simd::Vector<I16, 8>;
+  constexpr int kWeightsPerBlock = sizeof(Block128) / sizeof(int16_t);
   constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
-  std::array<__m128i, kNumRegs> regs;
 
-  auto weights = reinterpret_cast<__m128i*>(&network->feature_weights);
-  auto biases = reinterpret_cast<__m128i*>(&network->feature_biases);
+  std::array<Block128, kNumRegs> regs;
+
+  auto weights = reinterpret_cast<Block128*>(&network->feature_weights);
+  auto biases = reinterpret_cast<Block128*>(&network->feature_biases);
 
   for (int i = 0; i < nnue::arch::kInputBucketCount * 768 *
                           nnue::arch::kL1Size / kWeightsPerBlock;
@@ -40,7 +42,7 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
       biases[i + j] = regs[simd::kPackusOrder[j]];
   }
 
-  auto hmc = reinterpret_cast<__m128i*>(&network->hmc_weights);
+  auto hmc = reinterpret_cast<Block128*>(&network->hmc_weights);
   for (int i = 0;
        i < nnue::arch::kHmcRowCount * nnue::arch::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
