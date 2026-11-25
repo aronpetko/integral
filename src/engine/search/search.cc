@@ -734,6 +734,11 @@ Score Searcher::PVSearch(Thread &thread,
       ++depth;
     }
 
+    if (prev_stack->reduction <= 3072 && !stack->excluded_tt_move &&
+        depth >= 3 && stack->static_eval + prev_stack->static_eval >= 150) {
+      --depth;
+    }
+
     // Reverse (Static) Futility Pruning: Cutoff if we think the position
     // can't fall below beta anytime soon
     if (depth <= kRevFutDepth && !stack->excluded_tt_move &&
