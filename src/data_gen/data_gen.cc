@@ -8,6 +8,7 @@
 #include <fstream>
 
 #include "../chess/board.h"
+#include "../engine/evaluation/nnue/nnue.h"
 #include "../engine/search/search.h"
 #include "format/binpack.h"
 #include "format/fens.h"

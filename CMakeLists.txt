@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 project(integral)
 
 # Set the C++ standard and verbosity
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Include necessary modules
@@ -50,46 +51,21 @@ else ()
     message(STATUS "Using user-specified EVALFILE: ${EVALFILE}")
 endif ()
 
-# Option for preparing the network to sparse permute neurons (requires turning off AVX)
-option(SPARSE_PERMUTE OFF)
-if (SPARSE_PERMUTE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSPARSE_PERMUTE")
+# Relative paths are taken from the build directory
+get_filename_component(EVALFILE "${EVALFILE}" ABSOLUTE BASE_DIR "${CMAKE_BINARY_DIR}")
+
+# MantaRay, which does the network inference, is only supported by Clang
+if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "MantaRay requires Clang, but the compiler is ${CMAKE_CXX_COMPILER_ID}")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 22)
+    message(WARNING "MantaRay is developed against Clang 22, but the compiler is Clang ${CMAKE_CXX_COMPILER_VERSION}")
 endif ()
 
-# Add Clang-specific flags
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fconstexpr-steps=100000000>)
-    add_compile_definitions(FMT_CONSTEVAL=)
-endif ()
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fconstexpr-steps=100000000>)
+add_compile_definitions(FMT_CONSTEVAL=)
 
-# Define output path for preprocessed file
-set(PREPROCESSED_FILE "${CMAKE_CURRENT_BINARY_DIR}/processed.nnue")
-set(PREPROCESS_BUILD_NATIVE ${BUILD_NATIVE} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_VNNI512 ${BUILD_VNNI512} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_AVX512 ${BUILD_AVX512} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_AVX2_BMI2 ${BUILD_AVX2_BMI2} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_AVX2 ${BUILD_AVX2} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_SSE41_POPCNT ${BUILD_SSE41_POPCNT} CACHE INTERNAL "")
-set(PREPROCESS_BUILD_DEBUG ${BUILD_DEBUG} CACHE INTERNAL "")
-set(PREPROCESS_SPARSE_PERMUTE ${SPARSE_PERMUTE} CACHE INTERNAL "")
-
-# Add subdirectory containing the preprocess project
-add_subdirectory(preprocess)
-
-# Custom command to run preprocessing
-add_custom_command(
-        OUTPUT ${PREPROCESSED_FILE}
-        COMMAND preprocess ${EVALFILE} ${PREPROCESSED_FILE}
-        DEPENDS preprocess ${EVALFILE}
-        COMMENT "Running net preprocessing"
-        VERBATIM
-)
-
-# Custom target that depends on the output file
-add_custom_target(run_preprocess ALL DEPENDS ${PREPROCESSED_FILE})
-
-# Define preprocessed file as a macro so it’s accessible from C++
-add_definitions(-DEVALFILE="${PREPROCESSED_FILE}")
+# The network is embedded into the executable as is
+add_definitions(-DEVALFILE="${EVALFILE}")
 
 # Architecture-specific flags
 set(CXXFLAGS_NATIVE "-march=native")
@@ -198,6 +174,7 @@ endif ()
 # Include third-party directories
 include_directories(third-party/fathom)
 include_directories(third-party/fmt/include)
+include_directories(third-party/mantaray/include)
 add_definitions(-DFMT_HEADER_ONLY)
 
 # Collect all source files
@@ -213,8 +190,8 @@ add_executable(integral ${SOURCES}
         src/data_gen/format/binpack.h
         src/engine/search/cuckoo.cc)
 
-# Make sure main build depends on this
-add_dependencies(integral run_preprocess)
+# Rebuild when the embedded network changes
+set_source_files_properties(src/engine/evaluation/nnue/nnue.cc PROPERTIES OBJECT_DEPENDS "${EVALFILE}")
 
 # NUMA thread pinning
 option(USE_NUMA "Pin search threads to NUMA nodes when available" ON)

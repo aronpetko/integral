@@ -1,12 +1,13 @@
 #include "nnue.h"
 
+#include <MantaRay/MantaRay.h>
+#include <fmt/format.h>
+
+#include <algorithm>
 #include <mutex>
+#include <span>
 #include <vector>
 
-#include "../../../utils/hash_table.h"
-
-#include "../../../../shared/nnue/definitions.h"
-#include "../../../../shared/simd.h"
 #include "accumulator.h"
 
 #ifdef _MSC_VER
@@ -16,7 +17,6 @@
 #endif
 
 #include "../../../third-party/incbin/incbin.h"
-#include "sparse.h"
 
 #ifdef SP_MSVC
 #pragma pop_macro("_MSC_VER")
@@ -27,26 +27,300 @@ INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
-static Network *embedded_network = nullptr;
+namespace arch {
 
-[[nodiscard]] I32 CReLU(I16 value) {
-  return std::clamp<I32>(value, 0, arch::kFtQuantization);
+constexpr std::size_t kInputBucketCount = 16;
+constexpr std::size_t kPsqtFeatureCount = kInputBucketCount * 768;
+constexpr std::size_t kPawnPairFeatureCount = 4560;
+constexpr std::size_t kThreatFeatureCount = 59808;
+constexpr std::size_t kThreatPawnPairFeatureCount =
+    kThreatFeatureCount + kPawnPairFeatureCount;
+constexpr std::size_t kL1Size = 1024;
+constexpr std::size_t kL2Size = 16;
+constexpr std::size_t kL3Size = 32;
+constexpr std::size_t kOutputBucketCount = 8;
+
+constexpr std::size_t kHmcBucketsStart = 14;
+constexpr std::size_t kHmcBucketsStep = 8;
+constexpr std::size_t kHmcBucketCount =
+    (100 - kHmcBucketsStart + kHmcBucketsStep - 1) / kHmcBucketsStep;
+
+constexpr std::int32_t kFtQuantization = 255;
+constexpr std::int32_t kL1Quantization = 128;
+constexpr int kFtShift = 9;
+
+constexpr std::int32_t kEvalScale = 200;
+
+// clang-format off
+constexpr MantaRay::BucketLayout kKingBuckets = MantaRay::Mirrored({
+  0,  1,  2,  3,
+  4,  5,  6,  7,
+  8,  8,  9,  9,
+  10, 10, 11, 11,
+  12, 12, 13, 13,
+  12, 12, 13, 13,
+  14, 14, 15, 15,
+  14, 14, 15, 15,
+});
+// clang-format on
+
+}  // namespace arch
+
+namespace {
+
+using HmcBucketTable = std::array<U8, 101>;
+
+constexpr HmcBucketTable kHmcBucketTable = [] {
+  HmcBucketTable table{};
+  for (std::size_t clock = 0; clock < table.size(); ++clock) {
+    if (clock < arch::kHmcBucketsStart) {
+      table[clock] = arch::kHmcBucketCount;
+    } else {
+      const std::size_t idx =
+          (clock - arch::kHmcBucketsStart) / arch::kHmcBucketsStep;
+      table[clock] = static_cast<U8>(std::min(idx, arch::kHmcBucketCount - 1));
+    }
+  }
+  return table;
+}();
+
+// The half-move clock's bucket as a single input feature, which is absent
+// while the clock is too low to have one. It's the same from both perspectives
+// and changes without a piece moving (null moves), so rather than being
+// accumulated its row is looked up when evaluating
+struct HalfMoveClock {
+  using Trigger = MantaRay::NoTrigger;
+
+  static constexpr MantaRay::u32 InputSize = arch::kHmcBucketCount;
+  static constexpr MantaRay::u32 MaxActive = 1;
+  static constexpr MantaRay::u32 MaxChanges = 1;
+  static constexpr bool Shared = true;
+  static constexpr bool Cached = false;
+  static constexpr bool Incremental = false;
+
+  template <typename Board, typename Emit>
+  static constexpr void Active(MantaRay::u08,
+                               const Board& board,
+                               Emit&& emit) noexcept {
+    if (const auto bucket = board.HmcBucket(); bucket < InputSize) {
+      emit(bucket);
+    }
+  }
+};
+
+using OutputBucket = MantaRay::MaterialCount<arch::kOutputBucketCount>;
+
+// (768x16hm + 59808 threats + 4560 pawn pairs + hmc -> 1024)x2 -> (16 -> 32 ->
+// 1)x8. The tensors are listed in the order that they're laid out in the
+// network file
+constexpr auto Architecture() {
+  using namespace MantaRay;
+
+  auto [psqt_stm, psqt_ntm] = Input<KingBuckets<arch::kKingBuckets>>();
+  auto [pawn_pair_stm, pawn_pair_ntm] = Input<PawnPairs<>>();
+  auto [threat_stm, threat_ntm] = Input<Threats<TI59808>>();
+  const auto hmc_input = Input<HalfMoveClock>();
+
+  const auto psqt = Linear(arch::kPsqtFeatureCount,
+                           arch::kL1Size,
+                           Weights<i16>(arch::kFtQuantization));
+  const auto hmc = Linear(arch::kHmcBucketCount,
+                          arch::kL1Size,
+                          Weights<i16>(arch::kFtQuantization));
+  // Pawn pair rows come first, followed by the threat rows
+  const auto threats = Linear(arch::kThreatPawnPairFeatureCount,
+                              arch::kL1Size,
+                              Weights<i08>(arch::kFtQuantization));
+  const auto feature_biases =
+      Parameter(arch::kL1Size, Biases<i16>(arch::kFtQuantization));
+
+  const auto l1 = Affine(arch::kL1Size,
+                         arch::kOutputBucketCount * arch::kL2Size,
+                         Weights<i08>(arch::kL1Quantization).RowMajor(),
+                         Biases<f32>(),
+                         Dequantize());
+  // The reduction orders make the float layers sum in a fixed order, so that
+  // the evaluation is the same on every instruction set
+  const auto l2 = Affine(arch::kL2Size,
+                         arch::kOutputBucketCount * arch::kL3Size,
+                         Weights<f32>().RowMajor(),
+                         Biases<f32>())
+                      .Ordered(Reduction::BiasFirstFma);
+  const auto l3 = Affine(arch::kL3Size,
+                         arch::kOutputBucketCount,
+                         Weights<f32>().RowMajor(),
+                         Biases<f32>())
+                      .Ordered(Reduction::Lanes16);
+
+  const auto transform = [&](const auto& psqt_input,
+                             const auto& pawn_pair_input,
+                             const auto& threat_input) {
+    const auto accumulator =
+        psqt(psqt_input) +
+        threats.Inputs(0, arch::kPawnPairFeatureCount)(pawn_pair_input) +
+        threats.Inputs(arch::kPawnPairFeatureCount,
+                       arch::kThreatPawnPairFeatureCount)(threat_input) +
+        feature_biases;
+    // Pairwise CReLU on the accumulator and the half-move clock row
+    return Pairwise(ClippedReLU(Wrap<i16>(accumulator + hmc(hmc_input)))) >>
+           arch::kFtShift;
+  };
+
+  const auto l1_output = ClippedReLU(Select<OutputBucket>(
+      l1(Concat(transform(psqt_stm, pawn_pair_stm, threat_stm),
+                transform(psqt_ntm, pawn_pair_ntm, threat_ntm)))));
+  const auto l2_output = ClippedReLU(Select<OutputBucket>(l2(l1_output)));
+
+  return Output(Bullet(psqt.Weights(),
+                       hmc.Weights(),
+                       threats.Weights(),
+                       feature_biases,
+                       l1.Weights(),
+                       l1.Biases(),
+                       l2.Weights(),
+                       l2.Biases(),
+                       l3.Weights(),
+                       l3.Biases()),
+                Head{Select<OutputBucket>(l3(l2_output)), arch::kEvalScale});
 }
 
-[[nodiscard]] float CReLU(float value) {
-  return std::clamp(value, 0.0f, 1.0f);
+using Network = MantaRay::Network<Architecture>;
+
+// The search never goes deeper than kMaxPlyFromRoot, and moves made outside of
+// it (like the ones in a position command) re-root the stack when it's full
+constexpr std::size_t kStackCapacity = kMaxPlyFromRoot + 64;
+
+using AccumulatorStack =
+    MantaRay::AccumulatorStack<Architecture,
+                               kStackCapacity,
+                               MantaRay::UpdatePolicy::Lazy,
+                               MantaRay::Accumulators::Combined>;
+
+// MantaRay's view of a board state
+class BoardView {
+ public:
+  explicit BoardView(const BoardState& state) : state_(state) {}
+
+  [[nodiscard]] U64 Pieces(U8 side, MantaRay::Piece piece) const {
+    return (state_.piece_bbs[static_cast<int>(piece)] & state_.side_bbs[side])
+        .AsU64();
+  }
+
+  [[nodiscard]] U64 Occupied() const {
+    return state_.Occupied().AsU64();
+  }
+
+  [[nodiscard]] U8 King(U8 side) const {
+    return state_.King(static_cast<Color>(side)).GetLsb();
+  }
+
+  // The piece on a square as color * 6 + piece type, with 12 for empty squares
+  [[nodiscard]] U8 At(U8 square) const {
+    return kPieceCodes[state_.mailbox[square]];
+  }
+
+  [[nodiscard]] U8 SideToMove() const {
+    return state_.turn;
+  }
+
+  [[nodiscard]] U32 HmcBucket() const {
+    return kHmcBucketTable[std::min<U16>(state_.fifty_moves_clock, 100)];
+  }
+
+ private:
+  static constexpr auto kPieceCodes = [] {
+    std::array<U8, 32> codes{};
+    codes.fill(12);
+    for (const auto color : {Color::kWhite, Color::kBlack}) {
+      for (int piece = PieceType::kPawn; piece <= PieceType::kKing; ++piece) {
+        codes[BoardState::ToMailbox(static_cast<PieceType>(piece), color)] =
+            color * 6 + piece;
+      }
+    }
+    return codes;
+  }();
+
+  const BoardState& state_;
+};
+
+Network* embedded_network = nullptr;
+
+// Per thread so each NUMA node can read its own copy of the network
+thread_local Network* network = nullptr;
+
+[[nodiscard]] Network* LoadNetwork() {
+  const std::span bytes(reinterpret_cast<const std::byte*>(gEVALData),
+                        gEVALSize);
+
+  auto loaded = std::make_unique<Network>();
+  if (const auto result = loaded->Load(bytes); !result) {
+    fmt::println("Failed to load the embedded network ({} bytes): {}",
+                 gEVALSize,
+                 result.Message());
+    std::abort();
+  }
+
+  return loaded.release();
+}
+
+}  // namespace
+
+struct Accumulator::Impl {
+  explicit Impl(const Network& bound_network)
+      : bound_network(&bound_network), stack(bound_network) {}
+
+  const Network* bound_network;
+  AccumulatorStack stack;
+};
+
+Accumulator::Accumulator() : impl_(std::make_unique<Impl>(*network)) {}
+
+Accumulator::~Accumulator() = default;
+
+void Accumulator::SetFromState(const BoardState& state) {
+  if (impl_->bound_network != network) {
+    impl_ = std::make_unique<Impl>(*network);
+  }
+  impl_->stack.Reset(BoardView(state));
+}
+
+void Accumulator::PushChanges(const BoardChange& change,
+                              const BoardState& state) {
+  auto& stack = impl_->stack;
+  if (stack.Depth() + 1 == kStackCapacity) {
+    stack.Reset(BoardView(state));
+    return;
+  }
+
+  MantaRay::PieceDelta delta;
+  for (int i = 0; i < change.num_removed; ++i) {
+    const auto& [square, piece, color] = change.removed[i];
+    delta.Remove(static_cast<MantaRay::Piece>(piece), color, square);
+  }
+  for (int i = 0; i < change.num_added; ++i) {
+    const auto& [square, piece, color] = change.added[i];
+    delta.Insert(static_cast<MantaRay::Piece>(piece), color, square);
+  }
+
+  stack.Push(delta, BoardView(state));
+}
+
+void Accumulator::UndoMove(const BoardState& state) {
+  auto& stack = impl_->stack;
+  // The entries below a re-rooted stack are gone
+  if (stack.Depth() == 0) {
+    stack.Reset(BoardView(state));
+  } else {
+    stack.Pop();
+  }
+}
+
+Score Accumulator::Evaluate(const BoardState& state) {
+  return impl_->stack.Evaluate(BoardView(state));
 }
 
 void LoadFromIncBin() {
-  if (gEVALSize != sizeof(Network)) {
-    fmt::println("Invalid embedded network size: {} bytes; expected {}",
-                 gEVALSize,
-                 sizeof(Network));
-    std::abort();
-  }
-  // Load the preprocessed network from embedded binary data
-  embedded_network =
-      reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
+  embedded_network = LoadNetwork();
   network = embedded_network;
 }
 
@@ -57,308 +331,25 @@ void UseNetworkForNode(std::optional<std::size_t> node) {
   }
 
   static std::mutex mutex;
-  static std::vector<Network *> replicas;
+  static std::vector<Network*> replicas;
 
   std::lock_guard lock(mutex);
   if (*node >= replicas.size()) {
     replicas.resize(*node + 1, nullptr);
   }
 
-  auto &replica = replicas[*node];
+  auto& replica = replicas[*node];
   if (!replica) {
-    replica = static_cast<Network *>(
-        AlignedAlloc(alignof(Network), sizeof(Network)));
-    std::memcpy(replica, embedded_network, sizeof(Network));
+    // Loaded on the calling thread so that the node's memory is first touched
+    // by a thread pinned to it
+    replica = LoadNetwork();
   }
 
   network = replica;
 }
 
-Score Evaluate(Board &board) {
-  auto &state = board.GetState();
-  auto &accumulator = *board.GetAccumulator();
-
-  accumulator.ApplyChanges(state);
-  const auto bucket = accumulator.GetOutputBucket(state);
-  const int hmc_bucket = GetHmcBucket(state.fifty_moves_clock);
-
-  constexpr int kFtShift = 9;
-
-#if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  constexpr int kI32Lanes = simd::kNativeLanes<I32>;
-  constexpr int kI16Lanes = simd::kNativeLanes<I16>;
-  constexpr int kI8Lanes = simd::kNativeLanes<I8>;
-  constexpr int kF32Lanes = simd::kNativeLanes<float>;
-
-  const auto quantise_vector = simd::Set<I16>(arch::kFtQuantization);
-
-  std::array<U16, arch::kL1Size / 4> nnz_indices;
-  int nnz_count = 0;
-  auto nnz_base = simd::Zero<U16, 8>();
-  const auto lookup_increment =
-      simd::Set<U16, 8>(kI32Lanes < 8 ? kI32Lanes : 8);
-
-  // Activate the feature layer neurons
-  alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
-  const auto transform_features = [&]<bool kHasHmc>() {
-    for (int them = 0; them <= 1; them++) {
-      const auto perspective = static_cast<Color>(state.turn ^ them);
-      const auto &stm_accumulator = accumulator[perspective];
-      const auto hmc = kHasHmc ? network->hmc_weights[hmc_bucket].data() : nullptr;
-
-      const auto load_neurons = [&](int idx) {
-        auto value = simd::Load<I16>(&stm_accumulator.threat[idx]);
-        if constexpr (kHasHmc) {
-          value = value + simd::Load<I16>(&hmc[idx]);
-        }
-        return value;
-      };
-
-      for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
-        // Clip first accumulator values
-        const auto accumulator_value = load_neurons(i);
-        const auto pair_accumulator_value = load_neurons(i + arch::kL1Size / 2);
-
-        const auto clipped_value =
-            simd::Clip(accumulator_value, arch::kFtQuantization);
-        const auto clipped_pair_value =
-            simd::Min(pair_accumulator_value, quantise_vector);
-
-        // Clip second accumulator values
-        const auto accumulator_value1 = load_neurons(i + kI16Lanes);
-        const auto pair_accumulator_value1 =
-            load_neurons(i + arch::kL1Size / 2 + kI16Lanes);
-        const auto clipped_value1 =
-            simd::Clip(accumulator_value1, arch::kFtQuantization);
-        const auto clipped_pair_value1 =
-            simd::Min(pair_accumulator_value1, quantise_vector);
-
-        // Multiply the pairs and shift down by kFtShift
-        const auto first_product =
-            simd::MulShiftEpi16<kFtShift>(clipped_value, clipped_pair_value);
-        const auto second_product =
-            simd::MulShiftEpi16<kFtShift>(clipped_value1, clipped_pair_value1);
-
-        // Pack the two I16 vectors into a U8 vector, which will clamp negative
-        // values to 0 because of unsigned saturation. This is why we didn't
-        // clamp the pair values to 0 earlier, effectively saving us an
-        // operation
-        auto &features =
-            simd::AsVector<U8>(&feature_output[i + them * arch::kL1Size / 2]);
-        features = simd::PackusEpi16(first_product, second_product);
-
-        // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
-        // perform to minimize the amount of computation done by only
-        // mat-mulling the positive, non-zero activated features with the next
-        // layer's weights
-        // -----------------------------------------------------------------------
-        // Get a mask of all positive, non-zero elements
-        // Each bit in `nnz_mask` corresponds to whether a specific feature is
-        // positive (1) or zero (0)
-        const auto nnz_mask = simd::NonZeroMask(simd::Cast<I32>(features));
-        // Loop through 8-bit (U8) slices of this 16-bit mask
-        for (int chunk = 0; chunk < kI32Lanes; chunk += 8) {
-          // Extract the 8-bit slice from the mask
-          const U8 slice = (nnz_mask >> chunk) & 0b11111111;
-          // Lookup the relative indices for each set bit in the mask,
-          // essentially retrieving the indices for each positive element as an
-          // 8-element vector of I16s
-          const auto indices =
-              simd::Load<U16, 8>(sparse::nnz_table[slice].indices.data());
-          // Store these absolute indices into our table. We account for the
-          // fact that they are relative indices (to this slice) by adding
-          // `nnz_base`, which will reflect the position each element is in the
-          // entire table
-          simd::Store<U16, 8>(&nnz_indices[nnz_count], nnz_base + indices);
-          // Update to reflect the total number of non-zero features processed
-          nnz_count += BitBoard(slice).PopCount();
-          // Increment to reflect the starting index of the next slice
-          nnz_base += lookup_increment;
-        }
-      }
-    }
-  };
-
-  if (hmc_bucket == arch::kHmcBucketCount) {
-    transform_features.template operator()<false>();
-  } else {
-    transform_features.template operator()<true>();
-  }
-
-#ifdef SPARSE_PERMUTE
-  sparse::CountActivations(feature_output);
-#endif
-
-  // Forward the feature layer neurons to the 2nd layer
-  alignas(simd::kAlignment) std::array<I32, arch::kL2Size> l1_sums{};
-  {
-    int i = 0;
-    for (; i < nnz_count - 1; i += 2) {
-      const int idx = nnz_indices[i] * 4, idx_two = nnz_indices[i + 1] * 4;
-      const auto feature_vector = simd::Cast<U8>(
-          simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx])));
-      const auto feature_vector_two = simd::Cast<U8>(
-          simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx_two])));
-      for (int j = 0; j < arch::kL2Size; j += kI32Lanes) {
-        const auto weight_vector =
-            simd::AsVector<I8>(&network->l1_weights[bucket][idx + j / 4][0]);
-        const auto weight_vector_two = simd::AsVector<I8>(
-            &network->l1_weights[bucket][idx_two + j / 4][0]);
-        auto &features = simd::AsVector<I32>(&l1_sums[j]);
-        features = simd::DpbusdEpi32x2(features,
-                                       feature_vector,
-                                       weight_vector,
-                                       feature_vector_two,
-                                       weight_vector_two);
-      }
-    }
-
-    // Handle the remaining features
-    for (; i < nnz_count; i++) {
-      const int idx = nnz_indices[i] * 4;
-      const auto feature_vector = simd::Cast<U8>(
-          simd::Set(*reinterpret_cast<I32 *>(&feature_output[idx])));
-      for (int j = 0; j < arch::kL2Size; j += kI32Lanes) {
-        const auto weight_vector =
-            simd::AsVector<I8>(&network->l1_weights[bucket][idx + j / 4][0]);
-        auto &features = simd::AsVector<I32>(&l1_sums[j]);
-        features = simd::DpbusdEpi32(features, feature_vector, weight_vector);
-      }
-    }
-  }
-
-  // Quantisation constants to convert to float
-  constexpr float kL1Normalization =
-      static_cast<float>(1 << kFtShift) /
-      static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
-                         arch::kL1Quantization);
-  const auto l1_multiplier_vector = simd::Set<float>(kL1Normalization);
-
-  alignas(simd::kAlignment) std::array<float, arch::kL2Size> l1_output;
-  for (int i = 0; i < arch::kL2Size; i += kF32Lanes) {
-    const auto bias_vector =
-        simd::AsVector<float>(&network->l1_biases[bucket][i]);
-    const auto float_vector =
-        simd::Convert<float>(simd::AsVector<I32>(&l1_sums[i]));
-    const auto casted_sum =
-        simd::MultiplyAdd(float_vector, l1_multiplier_vector, bias_vector);
-    simd::AsVector<float>(&l1_output[i]) = simd::Clamp(casted_sum, 0.0f, 1.0f);
-  }
-
-  // Forward the feature layer neurons to the 2nd layer
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_sums;
-  std::memcpy(
-      l2_sums.data(), network->l2_biases[bucket].data(), sizeof(l2_sums));
-  for (int i = 0; i < arch::kL2Size; i++) {
-    const auto l1_vector = simd::Set<float>(l1_output[i]);
-    for (int j = 0; j < arch::kL3Size; j += kF32Lanes) {
-      const auto weight_vector =
-          simd::AsVector<float>(&network->l2_weights[bucket][i][j]);
-      auto &features = simd::AsVector<float>(&l2_sums[j]);
-      features = simd::MultiplyAdd(weight_vector, l1_vector, features);
-    }
-  }
-
-  alignas(simd::kAlignment) std::array<float, arch::kL3Size> l2_output;
-  for (int i = 0; i < arch::kL3Size; i += kF32Lanes) {
-    simd::AsVector<float>(&l2_output[i]) =
-        simd::Clamp(simd::AsVector<float>(&l2_sums[i]), 0.0f, 1.0f);
-  }
-
-  // Forward the feature layer neurons to the 3rd (final) layer
-  constexpr int kResultChunks = 64 / sizeof(simd::Vepf32);
-  std::array<simd::Vepf32, kResultChunks> result_sums;
-  result_sums.fill(simd::Zero<float>());
-  for (int i = 0; i < arch::kL3Size / kF32Lanes; i += kResultChunks) {
-    for (int chunk = 0; chunk < kResultChunks; chunk++) {
-      const auto weight_vector = simd::AsVector<float>(
-          &network->l3_weights[bucket][(i + chunk) * kF32Lanes]);
-      const auto l2_vector =
-          simd::AsVector<float>(&l2_output[(i + chunk) * kF32Lanes]);
-      result_sums[chunk] =
-          simd::MultiplyAdd(l2_vector, weight_vector, result_sums[chunk]);
-    }
-  }
-
-  const auto l3_output =
-      simd::ReduceAdd(result_sums) + network->l3_biases[bucket];
-  return static_cast<Score>(l3_output * arch::kEvalScale);
-
-#else
-  // Activate the feature layer via pair-wise CReLU multiplication
-  std::array<U8, arch::kL1Size> feature_output{};
-  for (int them = 0; them <= 1; them++) {
-    const auto perspective = static_cast<Color>(state.turn ^ them);
-    const auto &stm_accumulator = accumulator[perspective];
-    const I16 *hmc = network->hmc_weights[hmc_bucket].data();
-    for (int i = 0; i < arch::kL1Size / 2; i++) {
-      const auto first_val =
-          CReLU(static_cast<I16>(stm_accumulator.threat[i] + hmc[i]));
-      const auto second_val =
-          CReLU(static_cast<I16>(stm_accumulator.threat[i + arch::kL1Size / 2] +
-                                 hmc[i + arch::kL1Size / 2]));
-
-      const auto product = (first_val * second_val) >> 9;
-      feature_output[i + them * arch::kL1Size / 2] = static_cast<U8>(product);
-    }
-  }
-
-#ifdef SPARSE_PERMUTE
-  sparse::CountActivations(feature_output);
-#endif
-
-  const float kL1Normalization =
-      static_cast<float>(1 << kFtShift) /
-      static_cast<float>(arch::kFtQuantization * arch::kFtQuantization *
-                         arch::kL1Quantization);
-
-  // Forward the feature layer neurons to the 2nd layer
-  std::array<I32, arch::kL2Size> l1_sums{};
-  for (int i = 0; i < arch::kL1Size; i++) {
-    if (!feature_output[i]) continue;
-
-    for (int j = 0; j < arch::kL2Size; j++) {
-      l1_sums[j] += feature_output[i] * network->l1_weights[bucket][i][j];
-    }
-  }
-
-  // Activate 2nd layer neurons
-  std::array<float, arch::kL2Size> l1_output{};
-  for (int i = 0; i < arch::kL2Size; i++) {
-    l1_output[i] = CReLU(static_cast<float>(l1_sums[i]) * kL1Normalization +
-                         network->l1_biases[bucket][i]);
-  }
-
-  // Forward the 2nd layer neurons to the 3rd layer
-  std::array<float, arch::kL3Size> l2_output{};
-  std::memcpy(
-      l2_output.data(), network->l2_biases[bucket].data(), sizeof(l2_output));
-  for (int i = 0; i < arch::kL2Size; i++) {
-    for (int j = 0; j < arch::kL3Size; j++) {
-      l2_output[j] = std::fma(
-          l1_output[i], network->l2_weights[bucket][i][j], l2_output[j]);
-    }
-  }
-
-  // Forward 3rd layer neurons to output layer
-  constexpr int kResultChunks = 64 / sizeof(float);
-  std::array<float, kResultChunks> result_sums{};
-
-  for (int i = 0; i < arch::kL3Size; i += kResultChunks) {
-    for (int chunk = 0; chunk < kResultChunks; chunk++) {
-      const float activated = CReLU(l2_output[i + chunk]);
-      result_sums[chunk] = std::fma(activated,
-                                    network->l3_weights[bucket][i + chunk],
-                                    result_sums[chunk]);
-    }
-  }
-
-  const float l3_output =
-      network->l3_biases[bucket] + simd::ReduceAdd(result_sums);
-
-  // Scale output
-  return static_cast<Score>(l3_output * arch::kEvalScale);
-#endif
+Score Evaluate(Board& board) {
+  return board.GetAccumulator()->Evaluate(board.GetState());
 }
 
 }  // namespace nnue

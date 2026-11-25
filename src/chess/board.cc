@@ -220,13 +220,9 @@ void Board::MakeMove(Move move) {
   const auto castle_index = CastleRights::CastleIndex(
       us, to > from ? CastleRights::kKingside : CastleRights::kQueenside);
 
-  // Initialize PSQT accumulator change
-  nnue::PsqtAccumulatorChange accum_change{};
-  accum_change.sub_0 = {from, piece, us};
-  accum_change.add_0 = {
-      move_type == MoveType::kCastle ? kKingCastleTargets[castle_index] : to,
-      piece,
-      us};
+  // The pieces this move takes off the board and puts on it, for the
+  // accumulator
+  nnue::BoardChange accum_change{};
 
   int new_fifty_move_clock =
       piece == PieceType::kPawn ? 0 : state_.fifty_moves_clock + 1;
@@ -235,15 +231,11 @@ void Board::MakeMove(Move move) {
     const Square pawn_square =
         state_.en_passant - (us == Color::kWhite ? 8 : -8);
     state_.RemovePiece(pawn_square, them);
-    accum_change.type = nnue::PsqtAccumulatorChange::kCapture;
-    accum_change.sub_1 = {pawn_square, PieceType::kPawn, them};
+    accum_change.Remove(pawn_square, PieceType::kPawn, them);
   } else if (captured != PieceType::kNone) {
     state_.RemovePiece(to, them);
     new_fifty_move_clock = 0;
-    accum_change.type = nnue::PsqtAccumulatorChange::kCapture;
-    accum_change.sub_1 = {to, captured, them};
-  } else {
-    accum_change.type = nnue::PsqtAccumulatorChange::kNormal;
+    accum_change.Remove(to, captured, them);
   }
 
   // Xor out en passant if it exists
@@ -259,22 +251,22 @@ void Board::MakeMove(Move move) {
 
   // Move the piece
   state_.RemovePiece(from, state_.turn);
+  accum_change.Remove(from, piece, us);
 
   auto new_piece = piece;
   if (move_type == MoveType::kCastle) {
     HandleCastling(move);
-    accum_change.type = nnue::PsqtAccumulatorChange::kCastle;
-    accum_change.add_1 = {
-        kRookCastleTargets[castle_index], PieceType::kRook, us};
-    accum_change.sub_1 = {to, PieceType::kRook, us};
+    accum_change.Remove(to, PieceType::kRook, us);
+    accum_change.Add(kKingCastleTargets[castle_index], PieceType::kKing, us);
+    accum_change.Add(kRookCastleTargets[castle_index], PieceType::kRook, us);
   } else if (move_type == MoveType::kPromotion) {
     new_piece = PieceType(static_cast<int>(move.GetPromotionType()) + 1);
-    accum_change.add_0.piece = new_piece;
   }
 
   // The rook and king are placed by HandleCastling for castling moves
   if (move_type != MoveType::kCastle) {
     state_.PlacePiece(to, new_piece, state_.turn);
+    accum_change.Add(to, new_piece, us);
   }
 
   // Update the castling rights depending on the piece that moved
@@ -290,14 +282,13 @@ void Board::MakeMove(Move move) {
 
   CalculateThreats();
 
-  // Push the accumulator change, pointing at the pre-move state in history
-  accumulator_->PushChanges(history_.Back(), accum_change);
+  accumulator_->PushChanges(accum_change, state_);
 }
 
 void Board::UndoMove() {
   state_ = history_.PopBack();
   key_history_.PopBack();
-  accumulator_->UndoMove();
+  accumulator_->UndoMove(state_);
 }
 
 void Board::UndoNullMove() {
