@@ -3,10 +3,9 @@
 #include <mutex>
 #include <vector>
 
-#include "../../../utils/hash_table.h"
-
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
+#include "../../../utils/hash_table.h"
 #include "accumulator.h"
 
 #ifdef _MSC_VER
@@ -66,8 +65,8 @@ void UseNetworkForNode(std::optional<std::size_t> node) {
 
   auto &replica = replicas[*node];
   if (!replica) {
-    replica = static_cast<Network *>(
-        AlignedAlloc(alignof(Network), sizeof(Network)));
+    replica =
+        static_cast<Network *>(AlignedAlloc(alignof(Network), sizeof(Network)));
     std::memcpy(replica, embedded_network, sizeof(Network));
   }
 
@@ -89,6 +88,7 @@ Score Evaluate(Board &board) {
   constexpr int kI16Lanes = simd::kNativeLanes<I16>;
   constexpr int kI8Lanes = simd::kNativeLanes<I8>;
   constexpr int kF32Lanes = simd::kNativeLanes<float>;
+  constexpr int kBlockSize = 64;
 
   const auto quantise_vector = simd::Set<I16>(arch::kFtQuantization);
 
@@ -104,7 +104,8 @@ Score Evaluate(Board &board) {
     for (int them = 0; them <= 1; them++) {
       const auto perspective = static_cast<Color>(state.turn ^ them);
       const auto &stm_accumulator = accumulator[perspective];
-      const auto hmc = kHasHmc ? network->hmc_weights[hmc_bucket].data() : nullptr;
+      const auto hmc =
+          kHasHmc ? network->hmc_weights[hmc_bucket].data() : nullptr;
 
       const auto load_neurons = [&](int idx) {
         auto value = simd::Load<I16>(&stm_accumulator.threat[idx]);
@@ -114,66 +115,76 @@ Score Evaluate(Board &board) {
         return value;
       };
 
-      for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
-        // Clip first accumulator values
-        const auto accumulator_value = load_neurons(i);
-        const auto pair_accumulator_value = load_neurons(i + arch::kL1Size / 2);
+      // We process I16 neurons in groups of 64 (the number of neurons that
+      // fit in two AVX512 registers) on every architecture. This is done to
+      // maintain equivalent ordering across architectures when packing neurons
+      // into the U8 feature output
+      for (int block = 0; block < arch::kL1Size / 2; block += kBlockSize) {
+        for (int i = 0; i < kBlockSize / 2; i += kI16Lanes) {
+          // Clip first accumulator values
+          const auto accumulator_value = load_neurons(block + i);
+          const auto pair_accumulator_value =
+              load_neurons(block + i + arch::kL1Size / 2);
 
-        const auto clipped_value =
-            simd::Clip(accumulator_value, arch::kFtQuantization);
-        const auto clipped_pair_value =
-            simd::Min(pair_accumulator_value, quantise_vector);
+          const auto clipped_value =
+              simd::Clip(accumulator_value, arch::kFtQuantization);
+          const auto clipped_pair_value =
+              simd::Min(pair_accumulator_value, quantise_vector);
 
-        // Clip second accumulator values
-        const auto accumulator_value1 = load_neurons(i + kI16Lanes);
-        const auto pair_accumulator_value1 =
-            load_neurons(i + arch::kL1Size / 2 + kI16Lanes);
-        const auto clipped_value1 =
-            simd::Clip(accumulator_value1, arch::kFtQuantization);
-        const auto clipped_pair_value1 =
-            simd::Min(pair_accumulator_value1, quantise_vector);
+          // Clip second accumulator values
+          const auto accumulator_value1 =
+              load_neurons(block + i + kBlockSize / 2);
+          const auto pair_accumulator_value1 =
+              load_neurons(block + i + arch::kL1Size / 2 + kBlockSize / 2);
+          const auto clipped_value1 =
+              simd::Clip(accumulator_value1, arch::kFtQuantization);
+          const auto clipped_pair_value1 =
+              simd::Min(pair_accumulator_value1, quantise_vector);
 
-        // Multiply the pairs and shift down by kFtShift
-        const auto first_product =
-            simd::MulShiftEpi16<kFtShift>(clipped_value, clipped_pair_value);
-        const auto second_product =
-            simd::MulShiftEpi16<kFtShift>(clipped_value1, clipped_pair_value1);
+          // Multiply the pairs and shift down by kFtShift
+          const auto first_product =
+              simd::MulShiftEpi16<kFtShift>(clipped_value, clipped_pair_value);
+          const auto second_product = simd::MulShiftEpi16<kFtShift>(
+              clipped_value1, clipped_pair_value1);
 
-        // Pack the two I16 vectors into a U8 vector, which will clamp negative
-        // values to 0 because of unsigned saturation. This is why we didn't
-        // clamp the pair values to 0 earlier, effectively saving us an
-        // operation
-        auto &features =
-            simd::AsVector<U8>(&feature_output[i + them * arch::kL1Size / 2]);
-        features = simd::PackusEpi16(first_product, second_product);
+          // Pack the two I16 vectors into a U8 vector, which will clamp
+          // negative values to 0 because of unsigned saturation. This is why we
+          // didn't clamp the pair values to 0 earlier, effectively saving us an
+          // operation
+          const std::size_t block_output_idx =
+              block + (i / kI16Lanes) * kI8Lanes;
+          auto &features = simd::AsVector<U8>(
+              &feature_output[block_output_idx + them * arch::kL1Size / 2]);
+          features = simd::PackusEpi16(first_product, second_product);
 
-        // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
-        // perform to minimize the amount of computation done by only
-        // mat-mulling the positive, non-zero activated features with the next
-        // layer's weights
-        // -----------------------------------------------------------------------
-        // Get a mask of all positive, non-zero elements
-        // Each bit in `nnz_mask` corresponds to whether a specific feature is
-        // positive (1) or zero (0)
-        const auto nnz_mask = simd::NonZeroMask(simd::Cast<I32>(features));
-        // Loop through 8-bit (U8) slices of this 16-bit mask
-        for (int chunk = 0; chunk < kI32Lanes; chunk += 8) {
-          // Extract the 8-bit slice from the mask
-          const U8 slice = (nnz_mask >> chunk) & 0b11111111;
-          // Lookup the relative indices for each set bit in the mask,
-          // essentially retrieving the indices for each positive element as an
-          // 8-element vector of I16s
-          const auto indices =
-              simd::Load<U16, 8>(sparse::nnz_table[slice].indices.data());
-          // Store these absolute indices into our table. We account for the
-          // fact that they are relative indices (to this slice) by adding
-          // `nnz_base`, which will reflect the position each element is in the
-          // entire table
-          simd::Store<U16, 8>(&nnz_indices[nnz_count], nnz_base + indices);
-          // Update to reflect the total number of non-zero features processed
-          nnz_count += BitBoard(slice).PopCount();
-          // Increment to reflect the starting index of the next slice
-          nnz_base += lookup_increment;
+          // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization
+          // we perform to minimize the amount of computation done by only
+          // mat-mulling the positive, non-zero activated features with the next
+          // layer's weights
+          // -----------------------------------------------------------------------
+          // Get a mask of all positive, non-zero elements
+          // Each bit in `nnz_mask` corresponds to whether a specific feature is
+          // positive (1) or zero (0)
+          const auto nnz_mask = simd::NonZeroMask(simd::Cast<I32>(features));
+          // Loop through 8-bit (U8) slices of this 16-bit mask
+          for (int chunk = 0; chunk < kI32Lanes; chunk += 8) {
+            // Extract the 8-bit slice from the mask
+            const U8 slice = (nnz_mask >> chunk) & 0b11111111;
+            // Lookup the relative indices for each set bit in the mask,
+            // essentially retrieving the indices for each positive element as
+            // an 8-element vector of I16s
+            const auto indices =
+                simd::Load<U16, 8>(sparse::nnz_table[slice].indices.data());
+            // Store these absolute indices into our table. We account for the
+            // fact that they are relative indices (to this slice) by adding
+            // `nnz_base`, which will reflect the position each element is in
+            // the entire table
+            simd::Store<U16, 8>(&nnz_indices[nnz_count], nnz_base + indices);
+            // Update to reflect the total number of non-zero features processed
+            nnz_count += BitBoard(slice).PopCount();
+            // Increment to reflect the starting index of the next slice
+            nnz_base += lookup_increment;
+          }
         }
       }
     }

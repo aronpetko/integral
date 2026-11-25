@@ -35,7 +35,7 @@ struct PsqtFeaturePolicy {
   using Weight = I16;
 
   static Value Bias(int i) {
-    return network->feature_biases[i];
+    return network->pst_biases[i];
   }
 
   static std::span<Weight, kWidth> FeatureRow(Square square,

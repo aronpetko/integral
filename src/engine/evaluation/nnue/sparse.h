@@ -65,20 +65,20 @@ static void SavePermutedNetwork(std::string output) {
     const int idx = sorted_neurons[i];
 
     // Feature biases
-    permuted_network->feature_biases[i] = network->feature_biases[idx];
-    permuted_network->feature_biases[i + arch::kL1Size / 2] =
-        network->feature_biases[idx + arch::kL1Size / 2];
+    permuted_network->pst_biases[i] = network->pst_biases[idx];
+    permuted_network->pst_biases[i + arch::kL1Size / 2] =
+        network->pst_biases[idx + arch::kL1Size / 2];
 
     // Feature weights
     for (int bucket = 0; bucket < arch::kInputBucketCount; ++bucket) {
       for (int side = 0; side <= 1; ++side) {
         for (int piece = 0; piece < kNumPieceTypes; ++piece) {
           for (int square = 0; square < kSquareCount; ++square) {
-            permuted_network->feature_weights[bucket][side][piece][square][i] =
-                network->feature_weights[bucket][side][piece][square][idx];
-            permuted_network->feature_weights[bucket][side][piece][square]
+            permuted_network->pst_weights[bucket][side][piece][square][i] =
+                network->pst_weights[bucket][side][piece][square][idx];
+            permuted_network->pst_weights[bucket][side][piece][square]
                                              [i + arch::kL1Size / 2] =
-                network->feature_weights[bucket][side][piece][square]
+                network->pst_weights[bucket][side][piece][square]
                                         [idx + arch::kL1Size / 2];
           }
         }

@@ -38,10 +38,10 @@ constexpr std::int32_t kEvalScale = 200;
 // clang-format off
 
 struct RawNetwork {
-  MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
+  MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> pst_weights;
   MultiArray<I16, arch::kHmcBucketCount, arch::kL1Size> hmc_weights;
   MultiArray<I8, arch::kThreatPawnPairFeatureCount, arch::kL1Size> threat_weights;
-  MultiArray<I16, arch::kL1Size> feature_biases;
+  MultiArray<I16, arch::kL1Size> pst_biases;
   MultiArray<I8, arch::kOutputBucketCount, arch::kL2Size, arch::kL1Size> l1_weights;
   MultiArray<float, arch::kOutputBucketCount, arch::kL2Size> l1_biases;
   MultiArray<float, arch::kOutputBucketCount, arch::kL3Size, arch::kL2Size> l2_weights;
@@ -51,10 +51,10 @@ struct RawNetwork {
 };
 
 struct alignas(simd::kAlignment) Network {
-  alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> feature_weights;
+  alignas(simd::kAlignment) MultiArray<I16, arch::kInputBucketCount, 2, PieceType::kNumPieceTypes, Squares::kSquareCount, arch::kL1Size> pst_weights;
   alignas(simd::kAlignment) MultiArray<I16, arch::kHmcRowCount, arch::kL1Size> hmc_weights;
   alignas(simd::kAlignment) MultiArray<I8, arch::kThreatPawnPairFeatureCount, arch::kL1Size> threat_weights;
-  alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> feature_biases;
+  alignas(simd::kAlignment) MultiArray<I16, arch::kL1Size> pst_biases;
   union {
     alignas(simd::kAlignment) MultiArray<I8, arch::kOutputBucketCount, arch::kL1Size, arch::kL2Size> l1_weights;
     alignas(simd::kAlignment) MultiArray<I8, arch::kOutputBucketCount, arch::kL1Size * arch::kL2Size> l1_weights_alt;

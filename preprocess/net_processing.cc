@@ -4,63 +4,40 @@
 
 #include "../shared/nnue/definitions.h"
 
+template <typename T>
+void PermuteForPackus(void* data, std::size_t bytes) {
+  using Block = simd::Vector<T, 8>;
+  constexpr std::size_t kBlocksPerGroup = 8;
+
+  auto blocks = static_cast<Block*>(data);
+  for (std::size_t i = 0; i < bytes / sizeof(Block); i += kBlocksPerGroup) {
+    std::array<Block, kBlocksPerGroup> group{};
+    std::copy_n(blocks + i, kBlocksPerGroup, group.begin());
+
+    for (std::size_t j = 0; j < kBlocksPerGroup; j++) {
+      blocks[i + j] = group[simd::kAVX512PackusOrder[j]];
+    }
+  }
+}
+
 std::unique_ptr<nnue::Network> ProcessNetwork(
     const std::unique_ptr<nnue::RawNetwork>& raw_network) {
   auto network = std::make_unique<nnue::Network>();
 
   // Copy over arrays that don't need transposing
-  network->feature_weights = raw_network->feature_weights;
+  network->pst_weights = raw_network->pst_weights;
   for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
     network->hmc_weights[h] = raw_network->hmc_weights[h];
   }
-  network->feature_biases = raw_network->feature_biases;
+  network->pst_biases = raw_network->pst_biases;
   network->threat_weights = raw_network->threat_weights;
 
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  using Block128 = simd::Vector<I16, 8>;
-  constexpr int kWeightsPerBlock = sizeof(Block128) / sizeof(int16_t);
-  constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
-
-  std::array<Block128, kNumRegs> regs;
-
-  auto weights = reinterpret_cast<Block128*>(&network->feature_weights);
-  auto biases = reinterpret_cast<Block128*>(&network->feature_biases);
-
-  for (int i = 0; i < nnue::arch::kInputBucketCount * 768 *
-                          nnue::arch::kL1Size / kWeightsPerBlock;
-       i += kNumRegs) {
-    for (int j = 0; j < kNumRegs; j++) regs[j] = weights[i + j];
-
-    for (int j = 0; j < kNumRegs; j++)
-      weights[i + j] = regs[simd::kPackusOrder[j]];
-  }
-
-  for (int i = 0; i < nnue::arch::kL1Size / kWeightsPerBlock; i += kNumRegs) {
-    for (int j = 0; j < kNumRegs; j++) regs[j] = biases[i + j];
-
-    for (int j = 0; j < kNumRegs; j++)
-      biases[i + j] = regs[simd::kPackusOrder[j]];
-  }
-
-  auto hmc = reinterpret_cast<Block128*>(&network->hmc_weights);
-  for (int i = 0;
-       i < nnue::arch::kHmcRowCount * nnue::arch::kL1Size / kWeightsPerBlock;
-       i += kNumRegs) {
-    for (int j = 0; j < kNumRegs; j++) regs[j] = hmc[i + j];
-
-    for (int j = 0; j < kNumRegs; j++) hmc[i + j] = regs[simd::kPackusOrder[j]];
-  }
-
-  // Same 8-element granularity as the FT weights, but I8 rows -> 8-byte blocks.
-  auto threats = reinterpret_cast<U64*>(&network->threat_weights);
-  std::array<U64, kNumRegs> threat_regs;
-  for (std::size_t i = 0; i < nnue::arch::kThreatPawnPairFeatureCount *
-                                  nnue::arch::kL1Size / kWeightsPerBlock;
-       i += kNumRegs) {
-    for (int j = 0; j < kNumRegs; j++) threat_regs[j] = threats[i + j];
-    for (int j = 0; j < kNumRegs; j++)
-      threats[i + j] = threat_regs[simd::kPackusOrder[j]];
-  }
+  PermuteForPackus<I16>(&network->pst_weights, sizeof(network->pst_weights));
+  PermuteForPackus<I16>(&network->pst_biases, sizeof(network->pst_biases));
+  PermuteForPackus<I16>(&network->hmc_weights, sizeof(network->hmc_weights));
+  PermuteForPackus<I8>(&network->threat_weights,
+                       sizeof(network->threat_weights));
 #endif
 
   network->l1_biases = raw_network->l1_biases;
@@ -132,8 +109,11 @@ int main(int argc, char* argv[]) {
   const auto input_size = input_stream.tellg();
   if (input_size != static_cast<std::streamoff>(raw_size) &&
       input_size != static_cast<std::streamoff>(padded_size)) {
-    fmt::println("Invalid network size: {} bytes; expected {} or {} (Bullet padding)",
-                 static_cast<long long>(input_size), raw_size, padded_size);
+    fmt::println(
+        "Invalid network size: {} bytes; expected {} or {} (Bullet padding)",
+        static_cast<long long>(input_size),
+        raw_size,
+        padded_size);
     return EXIT_FAILURE;
   }
 

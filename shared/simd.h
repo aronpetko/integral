@@ -424,12 +424,14 @@ template <typename V, std::size_t Count>
   return ReduceAdd(acc);
 }
 
+// Permute all input weights as we would on AVX512
+constexpr int kAVX512PackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
 #if BUILD_HAS_AVX512
-constexpr int kPackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
+// constexpr int kPackusOrder[8] = {0, 2, 4, 6, 1, 3, 5, 7};
 #elif BUILD_HAS_AVX2
-constexpr int kPackusOrder[4] = {0, 2, 1, 3};
+// constexpr int kPackusOrder[4] = {0, 2, 1, 3};
 #else
-constexpr int kPackusOrder[2] = {0, 1};
+// constexpr int kPackusOrder[2] = {0, 1};
 #endif
 
 [[nodiscard]] inline Vepi32 MultiplyAddEpi16(Vepi16 a, Vepi16 b) {
