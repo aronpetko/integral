@@ -623,6 +623,29 @@ template <int kShift>
 #endif
 }
 
+// Bitmask of I32 lanes greater than zero across consecutive vectors, with the
+// first vector in the lowest bits.
+template <std::size_t Count>
+[[nodiscard]] inline U16 NonZeroMask(const std::array<Vepi32, Count>& vs) {
+#if BUILD_HAS_NEON
+  if constexpr (Count == 2) {
+    // Moving a mask out of a vector register is the expensive part, so both
+    // vectors are narrowed into one and moved out together
+    constexpr std::uint16_t kLaneBits[8] = {1, 2, 4, 8, 16, 32, 64, 128};
+    const uint32x4_t first = vcgtzq_s32(std::bit_cast<int32x4_t>(vs[0]));
+    const uint32x4_t second = vcgtzq_s32(std::bit_cast<int32x4_t>(vs[1]));
+    const uint16x8_t positive = vuzp1q_u16(vreinterpretq_u16_u32(first),
+                                           vreinterpretq_u16_u32(second));
+    return vaddvq_u16(vandq_u16(positive, vld1q_u16(kLaneBits)));
+  }
+#endif
+  U16 mask = 0;
+  for (std::size_t i = 0; i < Count; ++i) {
+    mask |= NonZeroMask(vs[i]) << (i * kNativeLanes<I32>);
+  }
+  return mask;
+}
+
 [[nodiscard]] inline Vepu8 PermuteBytes(Vepu8 table, Vepu8 indices) {
 #if BUILD_HAS_AVX512VBMI
   const auto idx = std::bit_cast<__m512i>(indices);
