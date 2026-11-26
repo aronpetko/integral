@@ -92,11 +92,22 @@ Score Evaluate(Board &board) {
 
   const auto quantise_vector = simd::Set<I16>(arch::kFtQuantization);
 
-  std::array<U16, arch::kL1Size / 4> nnz_indices;
+  // Each NNZ lookup covers up to 8 I32 lanes, so narrow registers are grouped
+  // to fill a lookup rather than spending one on each
+#if BUILD_HAS_NEON
+  constexpr int kNnzVectors = 8 / kI32Lanes;
+#else
+  constexpr int kNnzVectors = 1;
+#endif
+  constexpr int kNnzLanes = kI32Lanes * kNnzVectors;
+
+  // Every lookup stores 8 indices no matter how many of them are valid, so
+  // leave room for the last store to run past the final valid index
+  std::array<U16, arch::kL1Size / 4 + 8> nnz_indices;
   int nnz_count = 0;
   auto nnz_base = simd::Zero<U16, 8>();
   const auto lookup_increment =
-      simd::Set<U16, 8>(kI32Lanes < 8 ? kI32Lanes : 8);
+      simd::Set<U16, 8>(kNnzLanes < 8 ? kNnzLanes : 8);
 
   // Activate the feature layer neurons
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
@@ -114,7 +125,8 @@ Score Evaluate(Board &board) {
         return value;
       };
 
-      for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes) {
+      // Pair-wise activates one register of features
+      const auto activate = [&](int i) {
         // Clip first accumulator values
         const auto accumulator_value = load_neurons(i);
         const auto pair_accumulator_value = load_neurons(i + arch::kL1Size / 2);
@@ -146,6 +158,14 @@ Score Evaluate(Board &board) {
         auto &features =
             simd::AsVector<U8>(&feature_output[i + them * arch::kL1Size / 2]);
         features = simd::PackusEpi16(first_product, second_product);
+        return features;
+      };
+
+      for (int i = 0; i < arch::kL1Size / 2; i += kI8Lanes * kNnzVectors) {
+        std::array<simd::Vepi32, kNnzVectors> features;
+        for (int vector = 0; vector < kNnzVectors; vector++) {
+          features[vector] = simd::Cast<I32>(activate(i + vector * kI8Lanes));
+        }
 
         // Sparse Processing, or NNZ (Number of Non-Zero), is an optimization we
         // perform to minimize the amount of computation done by only
@@ -155,9 +175,9 @@ Score Evaluate(Board &board) {
         // Get a mask of all positive, non-zero elements
         // Each bit in `nnz_mask` corresponds to whether a specific feature is
         // positive (1) or zero (0)
-        const auto nnz_mask = simd::NonZeroMask(simd::Cast<I32>(features));
+        const auto nnz_mask = simd::NonZeroMask(features);
         // Loop through 8-bit (U8) slices of this 16-bit mask
-        for (int chunk = 0; chunk < kI32Lanes; chunk += 8) {
+        for (int chunk = 0; chunk < kNnzLanes; chunk += 8) {
           // Extract the 8-bit slice from the mask
           const U8 slice = (nnz_mask >> chunk) & 0b11111111;
           // Lookup the relative indices for each set bit in the mask,
@@ -171,7 +191,7 @@ Score Evaluate(Board &board) {
           // entire table
           simd::Store<U16, 8>(&nnz_indices[nnz_count], nnz_base + indices);
           // Update to reflect the total number of non-zero features processed
-          nnz_count += BitBoard(slice).PopCount();
+          nnz_count += sparse::NnzCount(slice);
           // Increment to reflect the starting index of the next slice
           nnz_base += lookup_increment;
         }

@@ -32,6 +32,24 @@ struct NnzEntry {
 
 alignas(simd::kAlignment) constexpr auto nnz_table = GenerateNnzTable();
 
+// The number of set bits in a slice of the NNZ mask
+[[nodiscard]] inline int NnzCount(U8 slice) {
+#if BUILD_HAS_NEON
+  // There is no scalar popcount here, and the vector one costs a round trip
+  // through the vector registers, so the count is looked up instead
+  static constexpr auto kCounts = [] {
+    std::array<U8, 256> counts{};
+    for (int i = 0; i < 256; i++) {
+      counts[i] = BitBoard(i).PopCount();
+    }
+    return counts;
+  }();
+  return kCounts[slice];
+#else
+  return BitBoard(slice).PopCount();
+#endif
+}
+
 #ifdef SPARSE_PERMUTE
 //  This is the array where we keep track of the number of pair-wise activated
 //  neurons during a bench sequence, to be used for permuting the input and L1
