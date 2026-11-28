@@ -11,31 +11,18 @@ TUNABLE(kPawnHistFill, -967, -3000, 0, false);
 
 class PawnHistory {
  public:
-  PawnHistory() : table_({}) {
-    table_.fill(kPawnHistFill);
+  PawnHistory() {
+    Clear();
   }
 
-  void UpdateMoveScore(const BoardState &state, Move move, I16 bonus) {
-    // Apply a linear dampening to the bonus as the depth increases
+  void Clear() {
+    table_.fill(static_cast<I16>(kPawnHistFill));
+  }
+
+  void Update(const BoardState &state, Move move, I16 bonus) {
     I16 &score = table_[GetIndex(state)][state.turn]
                        [state.GetPieceType(move.GetFrom())][move.GetTo()];
     score += ScaleBonus(score, bonus);
-  }
-
-  void UpdateScore(const BoardState &state,
-                   StackEntry *stack,
-                   I16 depth,
-                   MoveList &quiets) {
-    const I16 bonus = HistoryBonus(depth);
-
-    // Apply a linear dampening to the bonus as the depth increases
-    UpdateMoveScore(state, stack->move, bonus);
-
-    // Lower the score of the quiet moves that failed to raise alpha (gravity)
-    const I16 penalty = HistoryPenalty(depth);
-    for (int i = 0; i < quiets.Size(); i++) {
-      UpdateMoveScore(state, quiets[i], penalty);
-    }
   }
 
   [[nodiscard]] int GetScore(const BoardState &state, Move move) const {

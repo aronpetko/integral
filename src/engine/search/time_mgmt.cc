@@ -161,7 +161,7 @@ U64 TimedLimiter::TimeElapsed() const {
 }
 
 void TimedLimiter::CalculateLimits() {
-  const int overhead = uci::listener.GetOption("MoveOverhead").GetValue<int>();
+  const int overhead = uci::listener.GetOption("MoveOverhead")->GetValue<int>();
 
   if (move_time_ != 0) {
     hard_limit_ = move_time_ - overhead;

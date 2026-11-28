@@ -38,7 +38,10 @@ struct RootMove {
 
 class RootMoveList {
  public:
-  explicit RootMoveList(Board &board) {
+  RootMoveList() = default;
+
+  void Generate(const Board &board) {
+    list_.Clear();
     auto move_list = move_gen::GenerateMoves<MoveGenType::kAll>(board);
     for (int i = 0; i < move_list.Size(); i++) {
       const auto move = move_list[i];
@@ -47,8 +50,6 @@ class RootMoveList {
       }
     }
   }
-
-  RootMoveList() = default;
 
   void SortNextMove(int idx) {
     for (int i = idx; i < Size(); ++i) {
@@ -218,6 +219,8 @@ class Searcher {
                  StackEntry *stack,
                  bool cut_node);
 
+  void CheckTime(Thread &thread);
+
   [[nodiscard]] bool ShouldQuit();
 
  private:
@@ -229,7 +232,8 @@ class Searcher {
   std::mutex stop_mutex_, thread_stopped_mutex_;
   std::atomic_int searching_threads_;
   std::condition_variable thread_stopped_signal_;
-  std::unique_ptr<history::CorrectionHistory> correction_history_;
+  std::vector<std::unique_ptr<history::CorrectionHistory>>
+      correction_histories_;
   std::vector<std::unique_ptr<Thread>> threads_;
   std::vector<std::thread> raw_threads_;
   TranspositionTable transposition_table_;

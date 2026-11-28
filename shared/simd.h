@@ -224,6 +224,10 @@ template <typename V>
     if constexpr (kLanesOf<V> == 4)
       return std::bit_cast<V>(
           _mm_min_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
+#elif BUILD_HAS_NEON
+    if constexpr (kLanesOf<V> == 4)
+      return std::bit_cast<V>(
+          vminq_f32(std::bit_cast<float32x4_t>(a), std::bit_cast<float32x4_t>(b)));
 #endif
   }
 #if defined(__clang__)
@@ -248,6 +252,10 @@ template <typename V>
     if constexpr (kLanesOf<V> == 4)
       return std::bit_cast<V>(
           _mm_max_ps(std::bit_cast<__m128>(a), std::bit_cast<__m128>(b)));
+#elif BUILD_HAS_NEON
+    if constexpr (kLanesOf<V> == 4)
+      return std::bit_cast<V>(
+          vmaxq_f32(std::bit_cast<float32x4_t>(a), std::bit_cast<float32x4_t>(b)));
 #endif
   }
 #if defined(__clang__)
@@ -394,6 +402,13 @@ template <typename V>
     const __m128 sum32 = _mm_add_ss(sum64, upper32);
     return _mm_cvtss_f32(sum32);
   }
+#elif BUILD_HAS_NEON
+  if constexpr (std::is_same_v<E, I32> && kLanes == 4) {
+    return vaddvq_s32(std::bit_cast<int32x4_t>(v));
+  }
+  if constexpr (std::is_same_v<E, float> && kLanes == 4) {
+    return vaddvq_f32(std::bit_cast<float32x4_t>(v));
+  }
 #endif
   E lanes[kLanes];
   std::memcpy(lanes, &v, sizeof(lanes));
@@ -427,6 +442,12 @@ constexpr int kPackusOrder[2] = {0, 1};
 #elif BUILD_HAS_SSE41
   return std::bit_cast<Vepi32>(
       _mm_madd_epi16(std::bit_cast<__m128i>(a), std::bit_cast<__m128i>(b)));
+#elif BUILD_HAS_NEON
+  const auto va = std::bit_cast<int16x8_t>(a);
+  const auto vb = std::bit_cast<int16x8_t>(b);
+  const int32x4_t lo = vmull_s16(vget_low_s16(va), vget_low_s16(vb));
+  const int32x4_t hi = vmull_high_s16(va, vb);
+  return std::bit_cast<Vepi32>(vpaddq_s32(lo, hi));
 #else
   Vepi32 out{};
   for (std::size_t i = 0; i < kNativeLanes<I32>; ++i)
@@ -446,11 +467,31 @@ constexpr int kPackusOrder[2] = {0, 1};
 #elif BUILD_HAS_SSE41
   return std::bit_cast<Vepi16>(
       _mm_mulhi_epi16(std::bit_cast<__m128i>(a), std::bit_cast<__m128i>(b)));
+#elif BUILD_HAS_NEON
+  const auto va = std::bit_cast<int16x8_t>(a);
+  const auto vb = std::bit_cast<int16x8_t>(b);
+  const int32x4_t lo = vmull_s16(vget_low_s16(va), vget_low_s16(vb));
+  const int32x4_t hi = vmull_high_s16(va, vb);
+  return std::bit_cast<Vepi16>(vuzp2q_s16(vreinterpretq_s16_s32(lo),
+                                          vreinterpretq_s16_s32(hi)));
 #else
   Vepi16 out{};
   for (std::size_t i = 0; i < kNativeLanes<I16>; ++i)
     out[i] = I16((I32(a[i]) * I32(b[i])) >> 16);
   return out;
+#endif
+}
+
+// Computes (a * b) >> kShift for a >= 0
+template <int kShift>
+[[nodiscard]] inline Vepi16 MulShiftEpi16(Vepi16 a, Vepi16 b) {
+  static_assert(kShift >= 1 && kShift <= 15);
+#if BUILD_HAS_NEON
+  return std::bit_cast<Vepi16>(
+      vqdmulhq_s16(std::bit_cast<int16x8_t>(a << (15 - kShift)),
+                   std::bit_cast<int16x8_t>(b)));
+#else
+  return MulhiEpi16(a << (16 - kShift), b);
 #endif
 }
 
@@ -464,6 +505,10 @@ constexpr int kPackusOrder[2] = {0, 1};
 #elif BUILD_HAS_SSE41
   return std::bit_cast<Vepu8>(
       _mm_packus_epi16(std::bit_cast<__m128i>(a), std::bit_cast<__m128i>(b)));
+#elif BUILD_HAS_NEON
+  return std::bit_cast<Vepu8>(
+      vcombine_u8(vqmovun_s16(std::bit_cast<int16x8_t>(a)),
+                  vqmovun_s16(std::bit_cast<int16x8_t>(b))));
 #else
   constexpr std::size_t kHalf = kNativeLanes<I16>;
   Vepu8 out{};
@@ -495,6 +540,25 @@ constexpr int kPackusOrder[2] = {0, 1};
       _mm_maddubs_epi16(std::bit_cast<__m128i>(u), std::bit_cast<__m128i>(i));
   return sum +
          std::bit_cast<Vepi32>(_mm_madd_epi16(product, _mm_set1_epi16(1)));
+#elif BUILD_HAS_NEON && defined(__ARM_FEATURE_MATMUL_INT8)
+  return std::bit_cast<Vepi32>(vusdotq_s32(std::bit_cast<int32x4_t>(sum),
+                                           std::bit_cast<uint8x16_t>(u),
+                                           std::bit_cast<int8x16_t>(i)));
+#elif BUILD_HAS_NEON && defined(__ARM_FEATURE_DOTPROD)
+  // Exact only when u <= 127
+  return std::bit_cast<Vepi32>(vdotq_s32(std::bit_cast<int32x4_t>(sum),
+                                         std::bit_cast<int8x16_t>(u),
+                                         std::bit_cast<int8x16_t>(i)));
+#elif BUILD_HAS_NEON
+  const auto vu = std::bit_cast<uint8x16_t>(u);
+  const auto vi = std::bit_cast<int8x16_t>(i);
+  const int16x8_t p_lo =
+      vmulq_s16(vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(vu))),
+                vmovl_s8(vget_low_s8(vi)));
+  const int16x8_t p_hi = vmulq_s16(vreinterpretq_s16_u16(vmovl_high_u8(vu)),
+                                   vmovl_high_s8(vi));
+  return sum + std::bit_cast<Vepi32>(
+                   vpaddq_s32(vpaddlq_s16(p_lo), vpaddlq_s16(p_hi)));
 #else
   for (std::size_t j = 0; j < kNativeLanes<I32>; ++j)
     for (std::size_t k = 0; k < 4; ++k)
@@ -547,6 +611,10 @@ constexpr int kPackusOrder[2] = {0, 1};
 #elif BUILD_HAS_SSE41
   return U16(_mm_movemask_ps(_mm_castsi128_ps(
       _mm_cmpgt_epi32(std::bit_cast<__m128i>(v), _mm_setzero_si128()))));
+#elif BUILD_HAS_NEON
+  constexpr std::uint32_t kLaneBits[4] = {1, 2, 4, 8};
+  const uint32x4_t positive = vcgtzq_s32(std::bit_cast<int32x4_t>(v));
+  return U16(vaddvq_u32(vandq_u32(positive, vld1q_u32(kLaneBits))));
 #else
   U16 mask = 0;
   for (std::size_t i = 0; i < kNativeLanes<I32>; ++i)

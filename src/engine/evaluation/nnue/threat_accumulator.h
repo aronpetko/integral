@@ -1,44 +1,53 @@
 #ifndef INTEGRAL_THREAT_ACCUMULATOR_H
 #define INTEGRAL_THREAT_ACCUMULATOR_H
 
+#include "pawn_pair/pawn_pair_features.h"
 #include "perspective_accumulator.h"
+#include "psqt_accumulator.h"
+#include "threats/threat_features.h"
 
 namespace nnue {
 
 struct ThreatAccumulatorChange {
   static constexpr int kMaxThreatRows = 256;
+  static constexpr int kMaxPawnPairRows = 16 * 15 / 2;
 
   struct ThreatChangeInfo {
     Square attacker_square;
-    PieceType attacker_type;
-    Color attacker_color;
     Square victim_square;
-    PieceType victim_type;
-    Color victim_color;
+    U8 pair;
+  };
+
+  struct PawnPairChangeInfo {
+    std::array<U16, 2> indices;
   };
 
   template <bool kAddChange>
   void PushChangeInfo(ThreatChangeInfo info);
 
   template <bool kAddChange>
+  void PushChangeInfo(PawnPairChangeInfo info);
+
+  template <bool kPutPiece, bool kChangesOccupancy>
   void UpdateThreatsForPiece(const BoardState& state,
                              PieceType piece_type,
                              Color piece_color,
-                             Square square,
-                             BitBoard exclude = 0);
-  template <bool kAddChange>
-  void UpdateDiscoveredThreats(const BoardState& state,
-                               Square square,
-                               BitBoard exclude = 0);
-  template <bool kAddChange>
-  void UpdateThreatsForSquares(const BoardState& state,
-                               BitBoard updated_squares);
+                             Square square);
+  void UpdateThreatsForMove(const BoardState& state,
+                            const PsqtAccumulatorChange& change);
 
-  List<ThreatChangeInfo, kMaxThreatRows> adds;
-  List<ThreatChangeInfo, kMaxThreatRows> subs;
+  template <bool kAddChange>
+  void UpdatePawnPairsForSquares(const BoardState& state,
+                                 BitBoard updated_squares);
+
+  List<ThreatChangeInfo, kMaxThreatRows> threat_adds;
+  List<ThreatChangeInfo, kMaxThreatRows> threat_subs;
+  List<PawnPairChangeInfo, kMaxPawnPairRows> pawn_pair_adds;
+  List<PawnPairChangeInfo, kMaxPawnPairRows> pawn_pair_subs;
 
   void Clear() {
-    adds.Clear(), subs.Clear();
+    threat_adds.Clear(), threat_subs.Clear();
+    pawn_pair_adds.Clear(), pawn_pair_subs.Clear();
   }
 };
 
@@ -51,14 +60,22 @@ struct ThreatFeaturePolicy {
   static Value Bias(int) {
     return 0;
   }
-  static std::pair<Weight const*, bool> FeatureRow(Color perspective,
-                                                   Square king_square,
-                                                   PieceType attacker,
-                                                   Color attacker_color,
-                                                   PieceType victim,
-                                                   Color victim_color,
+  static U8 SquareFlip(Color perspective, Square king_square) {
+    return (0b111000 * perspective) | (0b111 * (king_square.File() >= kFileE));
+  }
+
+  static U8 PairFlip(Color perspective) {
+    return threats::kThreatPairColorFlip * perspective;
+  }
+
+  static std::pair<Weight const*, bool> FeatureRow(U8 pair,
                                                    Square from,
-                                                   Square to);
+                                                   Square to) {
+    const auto feature = threats::GetThreatFeatureIndex(pair, from, to);
+    const bool valid = feature < arch::kThreatFeatureCount;
+    const auto row = valid ? arch::kPawnPairFeatureCount + feature : 0;
+    return {network->threat_weights[row].as_array().data(), valid};
+  }
 
   template <typename Emit>
   static void ForEachActiveFeature(const BoardState& state,
@@ -67,6 +84,8 @@ struct ThreatFeaturePolicy {
                                    Emit&& emit) {
     const auto occupied = state.Occupied();
     const auto targets = state.KinglessOccupied();
+    const U8 square_flip = SquareFlip(perspective, king_square);
+    const U8 pair_flip = PairFlip(perspective);
     for (int piece = PieceType::kPawn; piece <= PieceType::kQueen; ++piece) {
       for (Square from : state.piece_bbs[piece]) {
         const auto attacker_type = static_cast<PieceType>(piece);
@@ -74,22 +93,40 @@ struct ThreatFeaturePolicy {
         const auto attacks = move_gen::GetPieceAttacks(
             from, attacker_type, attacker_color, occupied);
         for (const Square to : attacks& targets) {
-          const auto victim = state.GetPieceType(to);
-          const auto victim_color = state.GetPieceColor(to);
-          const auto [threat_feature_row, valid] = FeatureRow(perspective,
-                                                              king_square,
-                                                              attacker_type,
-                                                              attacker_color,
-                                                              victim,
-                                                              victim_color,
-                                                              from,
-                                                              to);
+          const auto pair = threats::PackThreatPair(attacker_type,
+                                                    attacker_color,
+                                                    state.GetPieceType(to),
+                                                    state.GetPieceColor(to));
+          const auto [threat_feature_row, valid] = FeatureRow(
+              pair ^ pair_flip, from ^ square_flip, to ^ square_flip);
           __builtin_prefetch(threat_feature_row);
           emit(threat_feature_row, valid);
         }
       }
     }
+    auto remaining = state.Pawns();
+    for (const Square first : state.Pawns()) {
+      remaining &= ~BitBoard::FromSquare(first);
+      const auto first_id = pawn_pair::GetPawnId(
+          first ^ square_flip, state.GetPieceColor(first), perspective);
+      for (const Square second :
+           remaining& pawn_pair::kAdjacentFileMasks[first]) {
+        const auto second_id = pawn_pair::GetPawnId(
+            second ^ square_flip, state.GetPieceColor(second), perspective);
+        const auto index = pawn_pair::GetPawnIndex(first_id, second_id);
+        const auto* row = network->threat_weights[index].as_array().data();
+        __builtin_prefetch(row);
+        emit(row, true);
+      }
+    }
   }
+
+  static Weight const* PawnPairRow(Color perspective,
+                                   Square king_square,
+                                   Square first,
+                                   Color first_color,
+                                   Square second,
+                                   Color second_color);
 };
 
 class ThreatPerspectiveAccumulator
@@ -97,8 +134,26 @@ class ThreatPerspectiveAccumulator
  public:
   void ApplyChange(const ThreatPerspectiveAccumulator& previous,
                    const ThreatAccumulatorChange& change,
+                   I16 const* const* psqt_adds,
+                   int num_psqt_adds,
+                   I16 const* const* psqt_subs,
+                   int num_psqt_subs,
                    Color perspective,
                    Square king_square);
+
+  void Refresh(const PsqtPerspectiveAccumulator& psqt,
+               const BoardState& state,
+               Color perspective,
+               Square king_square) {
+    Weight const* rows[512];
+    int num_rows = 0;
+    ThreatFeaturePolicy::ForEachActiveFeature(
+        state, perspective, king_square, [&](Weight const* row, bool valid) {
+          rows[num_rows] = row;
+          num_rows += valid;
+        });
+    ApplyDeltas(&psqt[0], rows, num_rows, nullptr, 0, nullptr, 0, nullptr, 0);
+  }
 };
 
 }  // namespace nnue

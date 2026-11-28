@@ -1,10 +1,13 @@
 #include "search.h"
 
 #include <algorithm>
+#include <mutex>
 #include <numeric>
 #include <thread>
 
 #include "../../data_gen/data_gen.h"
+#include "../../utils/numa.h"
+#include "../evaluation/nnue/nnue.h"
 #include "../uci/reporter.h"
 #include "constants.h"
 #include "fmt/format.h"
@@ -66,7 +69,7 @@ void Searcher::IterativeDeepening(Thread &thread) {
   constexpr bool regular_search = type == SearchType::kRegular;
 
   const auto root_stack = &thread.stack.Front();
-  thread.root_moves = RootMoveList(thread.board);
+  thread.root_moves.Generate(thread.board);
   if constexpr (!regular_search) {
     if (thread.root_moves.Empty()) {
       return;
@@ -74,12 +77,12 @@ void Searcher::IterativeDeepening(Thread &thread) {
   }
 
   const int multi_pv = std::min(
-      regular_search ? uci::listener.GetOption("MultiPV").GetValue<int>()
+      regular_search ? uci::listener.GetOption("MultiPV")->GetValue<int>()
                      : thread.multi_pv,
       thread.root_moves.Size());
-  // Opening randomization must only sample fully searched MultiPV lines.
+  // Opening randomization must only sample fully searched MultiPV lines
   std::vector<RootMove> completed_moves;
-  const bool minimal = uci::listener.GetOption("Minimal").GetValue<bool>();
+  const bool minimal = uci::listener.GetOption("Minimal")->GetValue<bool>();
 
   std::unique_ptr<uci::reporter::ReportInfo> report_info;
   if (thread.IsMainThread()) {
@@ -276,6 +279,11 @@ Score Searcher::QuiescentSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
+  CheckTime(thread);
+  if (ShouldQuit()) {
+    return 0;
+  }
+
   // A principal variation (PV) node falls inside the [alpha, beta] window and
   // is one which has most of its child moves searched
   constexpr bool in_pv_node = node_type != NodeType::kNonPV;
@@ -432,6 +440,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
         -QuiescentSearch<node_type>(thread, -beta, -alpha, stack + 1);
     board.UndoMove();
 
+    if (ShouldQuit()) {
+      return 0;
+    }
+
     moves_seen++;
 
     if (score > best_score) {
@@ -448,7 +460,8 @@ Score Searcher::QuiescentSearch(Thread &thread,
         if (alpha >= beta) {
           // Beta cutoff: The opponent had a better move earlier in the tree
           if (is_capture) {
-            history.capture_history->UpdateScore(state, move, 1);
+            history.capture_history->Update(
+                state, move, history::HistoryBonus(1));
           }
           break;
         }
@@ -471,7 +484,10 @@ Score Searcher::QuiescentSearch(Thread &thread,
   if (best_move) {
     // Since "good" captures are expected to be the best moves, we apply a
     // penalty to all captures even in the case where the best move was quiet
-    history.capture_history->Penalize(state, 1, captures);
+    const int capture_malus = history::HistoryPenalty(1);
+    for (int i = 0; i < captures.Size(); i++) {
+      history.capture_history->Update(state, captures[i], capture_malus);
+    }
   }
 
   // Return an interpolated score toward beta for a safety "cushion"
@@ -515,14 +531,7 @@ Score Searcher::PVSearch(Thread &thread,
   auto &history = thread.history;
   const auto &state = board.GetState();
 
-  static thread_local int counter = 0;
-  if (thread.IsMainThread() && (++counter & 4095) == 0) {
-    counter = 0;
-    if (time_mgmt_.TimesUp(thread.nodes_searched)) {
-      stop_.store(true, std::memory_order_relaxed);
-    }
-  }
-
+  CheckTime(thread);
   if (ShouldQuit()) {
     return 0;
   }
@@ -606,9 +615,10 @@ Score Searcher::PVSearch(Thread &thread,
   }
 
   // Saved scores from non-PV nodes must fall within the current alpha/beta
-  // window to allow early cutoff
+  // window to allow early cutoff. At lower depths, the score must also agree
+  // with the expected node type
   if (!stack->excluded_tt_move && !in_pv_node && can_use_tt_eval &&
-      (cut_node || tt_entry->score <= alpha) &&
+      (cut_node == (tt_entry->score >= beta) || depth > kTTCutoffNodeDepth) &&
       tt_entry->depth > depth - (tt_entry->score <= beta)) {
     return TranspositionTableEntry::CorrectScore(tt_entry->score, stack->ply);
   }
@@ -616,8 +626,8 @@ Score Searcher::PVSearch(Thread &thread,
   // Probe the Syzygy table bases
   int syzygy_min_score = -kMateScore, syzygy_max_score = kMateScore;
   if (syzygy::enabled && !in_root && !stack->excluded_tt_move &&
-      state.Occupied().PopCount() <= 7 && depth >= syzygy::probe_depth &&
-      state.fifty_moves_clock == 0 &&
+      state.Occupied().PopCount() <= syzygy::MaximumPieces() &&
+      depth >= syzygy::probe_depth && state.fifty_moves_clock == 0 &&
       !state.castle_rights.CanCastle(state.turn) &&
       !state.castle_rights.CanCastle(FlipColor(state.turn))) {
     const auto tb_result = syzygy::ProbePosition(state);
@@ -711,9 +721,9 @@ Score Searcher::PVSearch(Thread &thread,
     const I32 bonus = std::clamp<I32>(-kEvalHistUpdateMult * their_loss / 10,
                                       -kEvalHistUpdateMin,
                                       kEvalHistUpdateMax);
-    history.quiet_history->UpdateMoveScore(
+    history.quiet_history->Update(
         FlipColor(state.turn), prev_stack->move, prev_stack->threats, bonus);
-    history.pawn_history->UpdateMoveScore(
+    history.pawn_history->Update(
         board.GetStateHistory().Back(), prev_stack->move, bonus);
   }
 
@@ -861,7 +871,9 @@ Score Searcher::PVSearch(Thread &thread,
           stack->history_score = history.GetMoveScore(state, move, stack);
 
           const int probcut_depth = depth - 3;
-          thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
+          const auto searched =
+              thread.nodes_searched.load(std::memory_order_relaxed);
+          thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
 
           board.MakeMove(move);
 
@@ -878,6 +890,10 @@ Score Searcher::PVSearch(Thread &thread,
           }
 
           board.UndoMove();
+
+          if (ShouldQuit()) {
+            return 0;
+          }
 
           if (score >= pc_beta) {
             const TranspositionTableEntry new_tt_entry(
@@ -936,7 +952,8 @@ Score Searcher::PVSearch(Thread &thread,
     // Pruning guards
     if (!in_root && best_score > -kTBWinInMaxPlyScore) {
       constexpr int kLmrDepthScale = 1024;
-      int reduction = tables::kLateMoveReduction[is_quiet][depth][moves_seen] *
+      int reduction = tables::kLateMoveReduction[is_quiet][std::min(
+                          depth, kMaxSearchDepth)][moves_seen] *
                       kLmrDepthScale;
 
       // Reduce more in non-PV nodes
@@ -983,6 +1000,22 @@ Score Searcher::PVSearch(Thread &thread,
           !board.MoveGivesDirectCheck(move)) {
         move_picker.SkipQuiets();
         continue;
+      }
+
+      // Bad Noisy Futility Pruning: Stop searching losing captures at
+      // near-leaf nodes when even winning the captured piece can't raise alpha
+      if (move_picker.GetStage() == MovePicker::Stage::kBadNoisys &&
+          move.GetType() != MoveType::kPromotion && !stack->in_check &&
+          lmr_depth <= kBadNoisyFutPruneDepth) {
+        const auto captured =
+            move.IsEnPassant(state) ? kPawn : state.GetPieceType(move.GetTo());
+        const int futility_score =
+            stack->static_eval + kBadNoisyFutMarginBase +
+            *eval::kSeePieceScores[captured] +
+            kBadNoisyFutMarginMult * lmr_fractional_depth / kLmrDepthScale;
+        if (futility_score <= alpha) {
+          continue;
+        }
       }
 
       // History Pruning: Prune moves with a low history score moves at
@@ -1088,8 +1121,10 @@ Score Searcher::PVSearch(Thread &thread,
     board.MakeMove(move);
 
     const bool gives_check = state.InCheck();
-    const U32 prev_nodes_searched =
-        thread.nodes_searched.fetch_add(1, std::memory_order_relaxed);
+
+    const auto searched = thread.nodes_searched.load(std::memory_order_relaxed);
+    thread.nodes_searched.store(searched + 1, std::memory_order_relaxed);
+    const U32 prev_nodes_searched = searched;
 
     // Principal Variation Search (PVS)
     int new_depth = depth + extensions - 1;
@@ -1099,10 +1134,11 @@ Score Searcher::PVSearch(Thread &thread,
 
     // Late Move Reduction: Moves that are less likely to be good (due to the
     // move ordering) are searched at lower depths
-    if (depth > 2 && moves_seen >= 1 + in_root * 2) {
+    if (depth > 2 && moves_seen >= 1) {
       constexpr int kLmrScale = 1024;
-      reduction =
-          tables::kLateMoveReduction[is_quiet][depth][moves_seen] * kLmrScale;
+      reduction = tables::kLateMoveReduction[is_quiet][std::min(
+                      depth, kMaxSearchDepth)][moves_seen] *
+                  kLmrScale;
 
       // Reduce more in non-PV nodes
       if (!in_pv_node) {
@@ -1188,8 +1224,11 @@ Score Searcher::PVSearch(Thread &thread,
         const int bonus = score <= alpha ? history::HistoryPenalty(new_depth)
                         : score >= beta  ? history::HistoryBonus(depth)
                                          : 0;
-        history.continuation_history->UpdateMoveScore(
-            board.GetStateHistory().Back(), move, bonus, stack);
+        const auto &pre_move_state = board.GetStateHistory().Back();
+        const int quiet_history_score = history.quiet_history->GetScore(
+            pre_move_state, move, stack->threats);
+        history.continuation_history->Update(
+            pre_move_state, move, bonus, stack, quiet_history_score);
       }
     }
 
@@ -1247,26 +1286,29 @@ Score Searcher::PVSearch(Thread &thread,
         if (alpha >= beta) {
           const int history_depth =
               depth + (alpha > beta + kHistoryBonusMargin);
+          const int bonus = history::HistoryBonus(history_depth);
+          const int malus = history::HistoryPenalty(history_depth);
           if (is_quiet) {
             stack->AddKillerMove(move);
-            history.quiet_history->UpdateScore(
-                state, stack, history_depth, stack->threats, quiets);
-            history.pawn_history->UpdateScore(
-                state, stack, history_depth, quiets);
-            history.continuation_history->UpdateScore(
-                state, stack, history_depth, quiets);
+            history.UpdateQuietScore(state, stack, move, bonus);
+            for (int i = 0; i < quiets.Size(); i++) {
+              // Decay the malus for quiets searched later in the move ordering
+              const int denom = 1024 + 45 * i;
+              const int scale = 1024 * 1024 / (denom * denom / 1024);
+              const int decayed_malus = malus * scale / 1024;
+              history.UpdateQuietScore(state, stack, quiets[i], decayed_malus);
+            }
           } else if (is_capture) {
-            history.capture_history->UpdateScore(state, move, history_depth);
+            history.capture_history->Update(state, move, bonus);
           }
           // Since "good" captures are expected to be the best moves, we apply a
           // penalty to all captures even in the case where the best move was
           // quiet
-          history.capture_history->Penalize(state, history_depth, captures);
+          for (int i = 0; i < captures.Size(); i++) {
+            history.capture_history->Update(state, captures[i], malus);
+          }
           // Beta cutoff: The opponent had a better move earlier in the tree
           break;
-        } else if (depth > 4 && depth < 10 && beta < kTBWinInMaxPlyScore &&
-                   alpha > -kTBWinInMaxPlyScore) {
-          --depth;
         }
       }
     }
@@ -1303,9 +1345,9 @@ Score Searcher::PVSearch(Thread &thread,
     const auto pawn_history_bonus =
         kPcmPawnHistoryWeight * history_bonus / kPcmHistoryBonusScale;
     const auto past_turn = FlipColor(state.turn);
-    history.quiet_history->UpdateMoveScore(
+    history.quiet_history->Update(
         past_turn, prev_stack->move, prev_stack->threats, quiet_history_bonus);
-    history.pawn_history->UpdateMoveScore(
+    history.pawn_history->Update(
         board.GetStateHistory().Back(), prev_stack->move, pawn_history_bonus);
   }
 
@@ -1378,6 +1420,7 @@ void Searcher::QuitThreads() {
     return;
   }
 
+  stop_.store(true, std::memory_order_relaxed);
   quit_.store(true, std::memory_order_release);
   stop_barrier_.ArriveAndWait();
   start_barrier_.ArriveAndWait();
@@ -1385,6 +1428,16 @@ void Searcher::QuitThreads() {
   for (auto &&thread : raw_threads_) {
     if (thread.joinable()) {
       thread.join();
+    }
+  }
+}
+
+void Searcher::CheckTime(Thread &thread) {
+  static thread_local int counter = 0;
+  if (thread.IsMainThread() && (++counter & 4095) == 0) {
+    counter = 0;
+    if (time_mgmt_.TimesUp(thread.nodes_searched)) {
+      stop_.store(true, std::memory_order_relaxed);
     }
   }
 }
@@ -1410,8 +1463,6 @@ void Searcher::SetThreadCount(U16 count) {
   stop_barrier_.Reset(count + 1);
   start_barrier_.Reset(count + 1);
 
-  correction_history_ = std::make_unique<history::CorrectionHistory>(count);
-
   raw_threads_.clear();
   raw_threads_.shrink_to_fit();
   raw_threads_.reserve(count);
@@ -1419,27 +1470,64 @@ void Searcher::SetThreadCount(U16 count) {
   threads_.shrink_to_fit();
   threads_.resize(count);
 
+  const auto affinities = numa::GetThreadAffinities(count);
+
+  correction_histories_.clear();
+  std::mutex correction_history_mutex;
+
   for (U16 i = 0; i < count; i++) {
-    raw_threads_.emplace_back([this, i]() {
-      threads_[i] = std::make_unique<Thread>(i, correction_history_.get());
-      // Touch memory to enforce first-touch
-      auto &thread = *threads_[i];
-      thread.stack.Reset();
-      thread.history.Clear();
-      thread.scores.fill(kScoreNone);
+    raw_threads_.emplace_back(
+        [this, i, &affinities, &correction_history_mutex]() {
+          const auto &affinity = affinities[i];
+          numa::PinThread(affinity);
+          nnue::UseNetworkForNode(affinity.node);
 
-      thread_init_barrier_.ArriveAndWait();
+          // Correction history is allocated to be shared once per NUMA node and
+          // across all threads pinned to that node
+          history::CorrectionHistory *correction_history;
+          {
+            std::lock_guard lock(correction_history_mutex);
+            const auto node = affinity.node.value_or(0);
+            if (node >= correction_histories_.size()) {
+              correction_histories_.resize(node + 1);
+            }
 
-      Run(*threads_[i]);
-    });
+            auto &shared = correction_histories_[node];
+            if (!shared) {
+              const auto node_threads = std::ranges::count(
+                  affinities, affinity.node, &numa::Affinity::node);
+              shared = std::make_unique<history::CorrectionHistory>(
+                  static_cast<U16>(node_threads));
+            }
+            correction_history = shared.get();
+          }
+
+          threads_[i] = std::make_unique<Thread>(i, correction_history);
+
+          auto &thread = *threads_[i];
+          thread.stack.Reset();
+          thread.history.Clear();
+          thread.scores.fill(kScoreNone);
+
+          thread_init_barrier_.ArriveAndWait();
+
+          Run(*threads_[i]);
+        });
   }
   thread_init_barrier_.ArriveAndWait();
+
+  for (std::size_t node = 0; node < correction_histories_.size(); ++node) {
+    const auto node_threads = std::ranges::count(
+        affinities, std::optional(node), &numa::Affinity::node);
+    if (node_threads > 0) {
+      fmt::println(
+          "info string {} threads pinned to NUMA node {}", node_threads, node);
+    }
+  }
 }
 
 void Searcher::Start(TimeConfig time_config) {
-  if (searching_threads_.load() > 0) {
-    return;
-  }
+  WaitForThreads();
 
   // Wait untl all search threads have stopped
   stop_barrier_.ArriveAndWait();
@@ -1491,18 +1579,21 @@ U64 Searcher::Bench(std::unique_ptr<Thread> &thread, int depth) {
 
 void Searcher::Stop() {
   stop_.store(true, std::memory_order_relaxed);
-  WaitForThreads();
 }
 
 void Searcher::NewGame(bool clear_tables) {
+  WaitForThreads();
+
   if (clear_tables) {
     transposition_table_.Clear(std::max<int>(1, threads_.size()));
     tables::kLateMoveReduction = tables::GenerateLateMoveReductionTable();
   }
 
   // Shared between every thread, so it's cleared once here
-  if (correction_history_) {
-    correction_history_->Clear();
+  for (auto &correction_history : correction_histories_) {
+    if (correction_history) {
+      correction_history->Clear();
+    }
   }
 
   for (auto &thread : threads_) {
@@ -1529,6 +1620,7 @@ U64 Searcher::GetTbHits() const {
 }
 
 void Searcher::ResizeHash(U64 size) {
+  WaitForThreads();
   transposition_table_.Resize(size);
   transposition_table_.Clear(std::max<int>(1, threads_.size()));
 }

@@ -31,10 +31,22 @@ class History {
     pawn_history = std::make_unique<PawnHistory>();
   }
 
-  // Reinitialize the history objects for quicker clearing. Correction history
-  // is shared between threads, so it's owned and cleared elsewhere.
+  // Correction history is shared between threads, so it's owned and cleared
+  // by the main Searcher instance
   void Clear() {
-    Initialize();
+    quiet_history->Clear();
+    continuation_history->Clear();
+    capture_history->Clear();
+    pawn_history->Clear();
+  }
+
+  // Updates every history table that scores quiet moves
+  void UpdateQuietScore(const BoardState &state, StackEntry *stack, Move move,
+                        int bonus) {
+    quiet_history->Update(state.turn, move, stack->threats, bonus);
+    pawn_history->Update(state, move, bonus);
+    const int quiet = quiet_history->GetScore(state, move, stack->threats);
+    continuation_history->Update(state, move, bonus, stack, quiet);
   }
 
   [[nodiscard]] I32 GetMoveScore(const BoardState &state,

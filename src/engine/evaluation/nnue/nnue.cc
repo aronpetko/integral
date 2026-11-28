@@ -1,5 +1,10 @@
 #include "nnue.h"
 
+#include <mutex>
+#include <vector>
+
+#include "../../../utils/hash_table.h"
+
 #include "../../../../shared/nnue/definitions.h"
 #include "../../../../shared/simd.h"
 #include "accumulator.h"
@@ -22,6 +27,8 @@ INCBIN(EVAL, EVALFILE);
 
 namespace nnue {
 
+static Network *embedded_network = nullptr;
+
 [[nodiscard]] I32 CReLU(I16 value) {
   return std::clamp<I32>(value, 0, arch::kFtQuantization);
 }
@@ -31,8 +38,40 @@ namespace nnue {
 }
 
 void LoadFromIncBin() {
-  // Load raw network from binary data
-  network = reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
+  if (gEVALSize != sizeof(Network)) {
+    fmt::println("Invalid embedded network size: {} bytes; expected {}",
+                 gEVALSize,
+                 sizeof(Network));
+    std::abort();
+  }
+  // Load the preprocessed network from embedded binary data
+  embedded_network =
+      reinterpret_cast<Network *>(const_cast<unsigned char *>(gEVALData));
+  network = embedded_network;
+}
+
+void UseNetworkForNode(std::optional<std::size_t> node) {
+  if (!node) {
+    network = embedded_network;
+    return;
+  }
+
+  static std::mutex mutex;
+  static std::vector<Network *> replicas;
+
+  std::lock_guard lock(mutex);
+  if (*node >= replicas.size()) {
+    replicas.resize(*node + 1, nullptr);
+  }
+
+  auto &replica = replicas[*node];
+  if (!replica) {
+    replica = static_cast<Network *>(
+        AlignedAlloc(alignof(Network), sizeof(Network)));
+    std::memcpy(replica, embedded_network, sizeof(Network));
+  }
+
+  network = replica;
 }
 
 Score Evaluate(Board &board) {
@@ -56,7 +95,8 @@ Score Evaluate(Board &board) {
   std::array<U16, arch::kL1Size / 4> nnz_indices;
   int nnz_count = 0;
   auto nnz_base = simd::Zero<U16, 8>();
-  const auto lookup_increment = simd::Set<U16, 8>(8);
+  const auto lookup_increment =
+      simd::Set<U16, 8>(kI32Lanes < 8 ? kI32Lanes : 8);
 
   // Activate the feature layer neurons
   alignas(simd::kAlignment) std::array<U8, arch::kL1Size> feature_output;
@@ -64,12 +104,10 @@ Score Evaluate(Board &board) {
     for (int them = 0; them <= 1; them++) {
       const auto perspective = static_cast<Color>(state.turn ^ them);
       const auto &stm_accumulator = accumulator[perspective];
-      const auto hmc =
-          kHasHmc ? accumulator.HmcRow(perspective, hmc_bucket) : nullptr;
+      const auto hmc = kHasHmc ? network->hmc_weights[hmc_bucket].data() : nullptr;
 
       const auto load_neurons = [&](int idx) {
-        auto value = simd::Load<I16>(&stm_accumulator.psqt[idx]) +
-                     simd::Load<I16>(&stm_accumulator.threat[idx]);
+        auto value = simd::Load<I16>(&stm_accumulator.threat[idx]);
         if constexpr (kHasHmc) {
           value = value + simd::Load<I16>(&hmc[idx]);
         }
@@ -95,12 +133,11 @@ Score Evaluate(Board &board) {
         const auto clipped_pair_value1 =
             simd::Min(pair_accumulator_value1, quantise_vector);
 
-        // Perform a left-shift on them and multiply the products using the
-        // higher 16 bits
-        const auto first_product = simd::MulhiEpi16(
-            clipped_value << (16 - kFtShift), clipped_pair_value);
-        const auto second_product = simd::MulhiEpi16(
-            clipped_value1 << (16 - kFtShift), clipped_pair_value1);
+        // Multiply the pairs and shift down by kFtShift
+        const auto first_product =
+            simd::MulShiftEpi16<kFtShift>(clipped_value, clipped_pair_value);
+        const auto second_product =
+            simd::MulShiftEpi16<kFtShift>(clipped_value1, clipped_pair_value1);
 
         // Pack the two I16 vectors into a U8 vector, which will clamp negative
         // values to 0 because of unsigned saturation. This is why we didn't
@@ -253,13 +290,12 @@ Score Evaluate(Board &board) {
   for (int them = 0; them <= 1; them++) {
     const auto perspective = static_cast<Color>(state.turn ^ them);
     const auto &stm_accumulator = accumulator[perspective];
-    const I16 *hmc = accumulator.HmcRow(perspective, hmc_bucket);
+    const I16 *hmc = network->hmc_weights[hmc_bucket].data();
     for (int i = 0; i < arch::kL1Size / 2; i++) {
-      const auto first_val = CReLU(static_cast<I16>(
-          stm_accumulator.psqt[i] + stm_accumulator.threat[i] + hmc[i]));
+      const auto first_val =
+          CReLU(static_cast<I16>(stm_accumulator.threat[i] + hmc[i]));
       const auto second_val =
-          CReLU(static_cast<I16>(stm_accumulator.psqt[i + arch::kL1Size / 2] +
-                                 stm_accumulator.threat[i + arch::kL1Size / 2] +
+          CReLU(static_cast<I16>(stm_accumulator.threat[i + arch::kL1Size / 2] +
                                  hmc[i + arch::kL1Size / 2]));
 
       const auto product = (first_val * second_val) >> 9;

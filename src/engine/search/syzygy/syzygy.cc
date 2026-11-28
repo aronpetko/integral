@@ -13,7 +13,7 @@ void Free() {
   tb_free();
 }
 
-ProbeResult ProbePosition(const BoardState &state) {
+[[nodiscard]] ProbeResult ProbePosition(const BoardState &state) {
   const Square en_passant =
       state.en_passant != Squares::kNoSquare ? state.en_passant : Square(0);
   const auto result = tb_probe_wdl(state.Occupied(Color::kWhite).AsU64(),
@@ -40,6 +40,10 @@ ProbeResult ProbePosition(const BoardState &state) {
     default:
       return ProbeResult::kDraw;
   }
+}
+
+[[nodiscard]] U32 MaximumPieces() {
+  return TB_LARGEST;
 }
 
 }  // namespace syzygy

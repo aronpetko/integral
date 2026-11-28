@@ -59,10 +59,14 @@ TUNABLE_STEP(kLmpDepthMult, 1113, 512, 2048, false, 64);
 TUNABLE_STEP(kLmpDiv, 3016, 2048, 4608, false, 128);
 TUNABLE_STEP(kLmpImprovingDiv, 1986, 1024, 3584, false, 128);
 
-TUNABLE(kFutPruneDepth, 8, 6, 12, true);
+TUNABLE(kFutPruneDepth, 12, 6, 12, true);
 TUNABLE_STEP(kFutMarginBase, 131, 100, 250, false, 20);
 TUNABLE_STEP(kFutMarginMult, 83, 50, 200, false, 5);
 TUNABLE(kFutMarginHistDiv, 124, 32, 256, false);
+
+TUNABLE(kBadNoisyFutPruneDepth, 5, 3, 10, true);
+TUNABLE_STEP(kBadNoisyFutMarginBase, 100, 0, 200, false, 15);
+TUNABLE_STEP(kBadNoisyFutMarginMult, 150, 50, 250, false, 10);
 
 TUNABLE(kSeeQuietThresh, -27, -150, -5, false);
 TUNABLE(kSeeNoisyThresh, -94, -150, -5, false);
@@ -104,6 +108,8 @@ TUNABLE_STEP(kLmrRoundingCutoff, 579, 512, 2048, false, 120);
 
 TUNABLE(kProbcutDepth, 5, 1, 10, true);
 TUNABLE(kProbcutBetaDelta, 215, 50, 300, false);
+
+TUNABLE(kTTCutoffNodeDepth, 4, 1, 10, true);
 
 TUNABLE_STEP(kHistoryBonusMargin, 45, 5, 120, false, 10);
 

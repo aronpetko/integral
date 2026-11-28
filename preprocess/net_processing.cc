@@ -10,21 +10,21 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
 
   // Copy over arrays that don't need transposing
   network->feature_weights = raw_network->feature_weights;
-  for (int b = 0; b < nnue::arch::kInputBucketCount; ++b) {
-    for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
-      network->hmc_weights[b][h] = raw_network->hmc_weights[b][h];
-    }
+  for (int h = 0; h < nnue::arch::kHmcBucketCount; ++h) {
+    network->hmc_weights[h] = raw_network->hmc_weights[h];
   }
   network->feature_biases = raw_network->feature_biases;
   network->threat_weights = raw_network->threat_weights;
 
 #if BUILD_HAS_SIMD and !defined(SPARSE_PERMUTE)
-  constexpr int kWeightsPerBlock = sizeof(__m128i) / sizeof(int16_t);
+  using Block128 = simd::Vector<I16, 8>;
+  constexpr int kWeightsPerBlock = sizeof(Block128) / sizeof(int16_t);
   constexpr int kNumRegs = sizeof(simd::Vepi16) / 8;
-  std::array<__m128i, kNumRegs> regs;
 
-  auto weights = reinterpret_cast<__m128i*>(&network->feature_weights);
-  auto biases = reinterpret_cast<__m128i*>(&network->feature_biases);
+  std::array<Block128, kNumRegs> regs;
+
+  auto weights = reinterpret_cast<Block128*>(&network->feature_weights);
+  auto biases = reinterpret_cast<Block128*>(&network->feature_biases);
 
   for (int i = 0; i < nnue::arch::kInputBucketCount * 768 *
                           nnue::arch::kL1Size / kWeightsPerBlock;
@@ -42,9 +42,9 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
       biases[i + j] = regs[simd::kPackusOrder[j]];
   }
 
-  auto hmc = reinterpret_cast<__m128i*>(&network->hmc_weights);
-  for (int i = 0; i < nnue::arch::kInputBucketCount * nnue::arch::kHmcRowCount *
-                          nnue::arch::kL1Size / kWeightsPerBlock;
+  auto hmc = reinterpret_cast<Block128*>(&network->hmc_weights);
+  for (int i = 0;
+       i < nnue::arch::kHmcRowCount * nnue::arch::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) regs[j] = hmc[i + j];
 
@@ -54,7 +54,7 @@ std::unique_ptr<nnue::Network> ProcessNetwork(
   // Same 8-element granularity as the FT weights, but I8 rows -> 8-byte blocks.
   auto threats = reinterpret_cast<U64*>(&network->threat_weights);
   std::array<U64, kNumRegs> threat_regs;
-  for (std::size_t i = 0; i < nnue::arch::kThreatFeatureCount *
+  for (std::size_t i = 0; i < nnue::arch::kThreatPawnPairFeatureCount *
                                   nnue::arch::kL1Size / kWeightsPerBlock;
        i += kNumRegs) {
     for (int j = 0; j < kNumRegs; j++) threat_regs[j] = threats[i + j];
@@ -120,9 +120,30 @@ int main(int argc, char* argv[]) {
 
   auto raw_network = std::make_unique<nnue::RawNetwork>();
 
-  std::ifstream input_stream(input_path, std::ios::binary);
+  std::ifstream input_stream(input_path, std::ios::binary | std::ios::ate);
+  if (!input_stream) {
+    fmt::println("Failed to open network: {}", input_path);
+    return 1;
+  }
+
+  constexpr std::size_t raw_size = sizeof(nnue::RawNetwork);
+  constexpr std::size_t padded_size = (raw_size + 63) / 64 * 64;
+
+  const auto input_size = input_stream.tellg();
+  if (input_size != static_cast<std::streamoff>(raw_size) &&
+      input_size != static_cast<std::streamoff>(padded_size)) {
+    fmt::println("Invalid network size: {} bytes; expected {} or {} (Bullet padding)",
+                 static_cast<long long>(input_size), raw_size, padded_size);
+    return EXIT_FAILURE;
+  }
+
+  input_stream.seekg(0);
   input_stream.read(reinterpret_cast<char*>(raw_network.get()),
                     sizeof(nnue::RawNetwork));
+  if (!input_stream) {
+    fmt::println("Failed to read complete network: {}", input_path);
+    return EXIT_FAILURE;
+  }
 
   const auto processed_network = ProcessNetwork(raw_network);
 
@@ -130,8 +151,10 @@ int main(int argc, char* argv[]) {
   output_stream.write(reinterpret_cast<char*>(processed_network.get()),
                       sizeof(nnue::Network));
 
-  if (output_stream.bad()) {
+  output_stream.close();
+  if (!output_stream) {
     fmt::println("Failed to write processed network");
+    return 1;
   } else {
     fmt::println("Successfully wrote processed network to {}", output_path);
   }
